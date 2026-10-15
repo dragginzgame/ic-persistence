@@ -1,0 +1,68 @@
+.DEFAULT_GOAL := help
+SHARED_TOOLING_RUST := 1
+export RELEASE_DELIVERY := direct
+include make/consumer.mk
+export YQ := $(CURDIR)/.tools/host/bin/yq
+release-patch release-minor release-major release-resume: export IC_STORAGE_RELEASE_PREPARE := 1
+
+.PHONY: help version check-doc-links check-license check-pins check-release-commands ci
+.PHONY: release-version release-preflight release-verify release-prepare-version
+.PHONY: release-prepared-check release-files release-commit-check release-committed-check
+.PHONY: release-tagged-check release-push-check
+
+help:
+	@echo "Setup: install-tools; offline verification: tools-check"
+	@echo "Focused: shared-tooling-check, check-doc-links, check-license, check-pins, check-release-commands"
+	@echo "Complete scaffold gate: ci; current version: version"
+	@echo "Authorized releases: release-patch, release-minor, release-major; recovery: release-resume VERSION=x.y.z"
+
+version release-version:
+	@bash scripts/release/adapter.sh version
+
+check-doc-links:
+	perl scripts/ci/check-documentation-links.pl --root . README.md AGENTS.md CHANGELOG.md docs/status/current.md docs/upstreams.md crates/ic-storage/README.md
+
+check-license:
+	perl scripts/ci/check-license.pl --kind mit --file LICENSE
+	cmp LICENSE crates/ic-storage/LICENSE
+
+check-pins:
+	bash scripts/ci/check-dependency-pins.sh --consumer "$(CURDIR)" --cargo-inheritance
+
+check-release-commands:
+	bash scripts/ci/check-release-commands.sh . make/consumer.mk make/tools.mk make/release.mk make/rust-format.mk make/execution.mk scripts/ci/check-make-execution.sh
+
+ci:
+	+bash scripts/ci/run-validation-targets.sh --fail-fast shared-tooling-check check-doc-links check-license check-pins check-release-commands fmt-check check clippy docs-check msrv package
+
+release-preflight:
+	@bash scripts/release/adapter.sh preflight
+
+release-verify:
+	+VALIDATION_FAILURE_LOG_DIR="$$(git rev-parse --git-path release-state)/validation-failures" bash scripts/ci/run-validation-targets.sh ci
+
+release-prepare-version:
+	@bash scripts/release/adapter.sh prepare
+
+release-prepared-check release-committed-check release-tagged-check release-push-check:
+	@bash scripts/release/adapter.sh check
+
+release-commit-check:
+	@bash scripts/release/adapter.sh commit-check
+
+release-files:
+	@printf 'Cargo.toml\0Cargo.lock\0CHANGELOG.md\0'
+
+.PHONY: check clippy docs-check msrv package publish publish-check
+check:
+	+cargo check --workspace --all-targets --locked
+clippy:
+	+cargo clippy --workspace --all-targets --locked -- -D warnings
+docs-check:
+	+RUSTDOCFLAGS='-D warnings' cargo doc --workspace --no-deps --locked
+msrv:
+	+cargo +1.85.0 check --workspace --all-targets --locked
+package:
+	+cargo package -p ic-storage --locked
+publish publish-check:
+	+bash scripts/release/publish.sh "$@"
