@@ -1,6 +1,6 @@
 # Changelog
 
-## [0.1.4]
+## [0.1.4] - 2026-10-16
 
 - Return removed values while reclaiming their overflow pages in one validated
   pass. In the nonzero-key 4 MiB fixture, deletion drops from 155M to 107M
