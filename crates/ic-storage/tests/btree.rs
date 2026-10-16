@@ -660,13 +660,22 @@ fn insertion_reuses_the_validated_leaf() {
         assert_eq!(reads.get(), 2);
     }
     // Split the full root, then check reuse while descending through a branch.
+    reads.set(0);
     assert_eq!(tree.insert(&key(31), &[7]).unwrap(), None);
+    assert_eq!(reads.get(), 2);
     reads.set(0);
     assert_eq!(tree.insert(&key(32), &[7]).unwrap(), None);
     assert_eq!(reads.get(), 4);
+    for n in 33..47 {
+        assert_eq!(tree.insert(&key(n), &[7]).unwrap(), None);
+    }
+    // The right child is full: splitting it must reuse the decoded child too.
+    reads.set(0);
+    assert_eq!(tree.insert(&key(47), &[7]).unwrap(), None);
+    assert_eq!(reads.get(), 4);
     tree.validate().unwrap();
     let tree = BTreeMap::open(tree.into_memory(), Config::default(), Lexicographic).unwrap();
-    for n in 0..33 {
+    for n in 0..48 {
         assert_eq!(tree.get(&key(n)).unwrap(), Some(vec![7]));
     }
 }

@@ -21,11 +21,12 @@ impl<'a, M: Memory, C: Comparator> Transaction<'a, M, C> {
             allocated: BTreeSet::new(),
         }
     }
-    fn read(&self, id: u64) -> Result<Page, Error> {
+    fn read_into(&self, id: u64, output: &mut Page) -> Result<(), Error> {
         if let Some(page) = self.pages.get(&id) {
-            return Ok(**page);
+            output.copy_from_slice(page.as_slice());
+            return Ok(());
         }
-        page::read(&self.tree.memory, self.tree.header.next, id)
+        page::read_into(&self.tree.memory, self.tree.header.next, id, output)
     }
     pub fn allocate(&mut self) -> Result<u64, Error> {
         let id;
@@ -34,7 +35,8 @@ impl<'a, M: Memory, C: Comparator> Transaction<'a, M, C> {
             self.header.next = id.checked_add(1).ok_or(Error::Capacity)?;
         } else {
             id = self.header.free;
-            let page = self.read(id)?;
+            let mut page = [0; SIZE];
+            self.read_into(id, &mut page)?;
             if page[0] != page::FREE || !self.allocated.insert(id) {
                 return Err(Error::Corrupt);
             }
@@ -45,30 +47,36 @@ impl<'a, M: Memory, C: Comparator> Transaction<'a, M, C> {
         }
         Ok(id)
     }
-    // Return the validated prior page so chain reclamation need not reread it.
-    fn free(&mut self, id: u64) -> Result<Page, Error> {
+    fn free(&mut self, id: u64) -> Result<(), Error> {
+        let mut page = [0; SIZE];
+        self.free_into(id, &mut page)
+    }
+    // Keep the validated prior bytes in the caller's buffer for chain traversal.
+    fn free_into(&mut self, id: u64, previous: &mut Page) -> Result<(), Error> {
         if id == 0 || id >= self.header.next {
             return Err(Error::Corrupt);
         }
-        let previous = self.read(id)?;
+        self.read_into(id, previous)?;
         if previous[0] == page::FREE {
             return Err(Error::Corrupt);
         }
         self.stage_free(id);
-        Ok(previous)
+        Ok(())
     }
     // The caller has already checked this page is in range and live in this
     // transaction. Keep that validation separate from staging its free record.
     fn stage_free(&mut self, id: u64) {
         let page = page::free(self.header.free);
-        self.pages.insert(id, Box::new(page));
+        self.pages.insert(id, page);
         self.header.free = id;
     }
     fn node(&self, id: u64) -> Result<Node, Error> {
-        Node::decode(&self.read(id)?, self.header.next, self.header.config)
+        let mut page = [0; SIZE];
+        self.read_into(id, &mut page)?;
+        Node::decode(&page, self.header.next, self.header.config)
     }
     pub fn put_node(&mut self, id: u64, node: &Node) -> Result<(), Error> {
-        self.pages.insert(id, Box::new(node.encode()?));
+        self.pages.insert(id, node.encode()?);
         Ok(())
     }
     fn key(&self, record: Record) -> Result<Vec<u8>, Error> {
@@ -80,8 +88,9 @@ impl<'a, M: Memory, C: Comparator> Transaction<'a, M, C> {
         let mut bytes =
             Vec::with_capacity(usize::try_from(record.key_len).map_err(|_| Error::Corrupt)?);
         let mut id = record.key;
+        let mut page = [0; SIZE];
         while bytes.len() < usize::try_from(record.key_len).map_err(|_| Error::Corrupt)? {
-            let page = self.read(id)?;
+            self.read_into(id, &mut page)?;
             if page[0] != page::BLOB {
                 return Err(Error::Corrupt);
             }
@@ -130,8 +139,9 @@ impl<'a, M: Memory, C: Comparator> Transaction<'a, M, C> {
         if id == 0 {
             return Ok(());
         }
+        let mut page = [0; SIZE];
         while len != 0 {
-            let page = self.free(id)?;
+            self.free_into(id, &mut page)?;
             if page[0] != page::BLOB {
                 return Err(Error::Corrupt);
             }
@@ -148,9 +158,8 @@ impl<'a, M: Memory, C: Comparator> Transaction<'a, M, C> {
         }
         Ok(())
     }
-    fn split(&mut self, parent: &mut Node, at: usize) -> Result<(), Error> {
+    fn split(&mut self, parent: &mut Node, at: usize, mut left: Node) -> Result<(), Error> {
         let left_id = parent.children[at];
-        let mut left = self.node(left_id)?;
         if left.entries.len() != MAX {
             return Err(Error::Corrupt);
         }
@@ -181,8 +190,9 @@ impl<'a, M: Memory, C: Comparator> Transaction<'a, M, C> {
         let old_len = usize::try_from(remaining).map_err(|_| Error::Corrupt)?;
         let mut previous = Vec::with_capacity(old_len);
         if id != 0 {
+            let mut page = [0; SIZE];
             while remaining != 0 {
-                let page = self.read(id)?;
+                self.read_into(id, &mut page)?;
                 if page[0] != page::BLOB {
                     return Err(Error::Corrupt);
                 }
@@ -247,7 +257,7 @@ impl<'a, M: Memory, C: Comparator> Transaction<'a, M, C> {
                 entries: Vec::new(),
                 children: vec![self.header.root],
             };
-            self.split(&mut parent, 0)?;
+            self.split(&mut parent, 0, node)?;
             self.put_node(id, &parent)?;
             self.header.root = id;
             node = parent;
@@ -288,7 +298,7 @@ impl<'a, M: Memory, C: Comparator> Transaction<'a, M, C> {
             }
             let mut child = self.node(node.children[at])?;
             if child.entries.len() == MAX {
-                self.split(&mut node, at)?;
+                self.split(&mut node, at, child)?;
                 let comparison = self.tree.order.compare(key, &self.key(node.entries[at])?)?;
                 self.put_node(id, &node)?;
                 if comparison == Ordering::Equal {

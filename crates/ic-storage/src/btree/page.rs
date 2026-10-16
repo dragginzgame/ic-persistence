@@ -106,13 +106,13 @@ impl Node {
             children: Vec::new(),
         }
     }
-    pub fn encode(&self) -> Result<Page, Error> {
+    pub fn encode(&self) -> Result<Box<Page>, Error> {
         if self.entries.len() > MAX
             || (!self.children.is_empty() && self.children.len() != self.entries.len() + 1)
         {
             return Err(Error::Corrupt);
         }
-        let mut page = [0; SIZE];
+        let mut page = zeroed_page();
         page[0] = if self.children.is_empty() {
             LEAF
         } else {
@@ -243,7 +243,13 @@ pub(super) fn encode_blob(next: u64, payload: &[u8]) -> Box<Page> {
     put(&mut page, SIZE - 8, hash);
     page
 }
-pub(super) fn free(next: u64) -> Page {
+fn zeroed_page() -> Box<Page> {
+    vec![0; SIZE]
+        .into_boxed_slice()
+        .try_into()
+        .expect("fixed page length")
+}
+pub(super) fn free(next: u64) -> Box<Page> {
     const TAIL_FACTOR: u64 = {
         let mut factor = 1u64;
         let mut at = 16;
@@ -253,7 +259,7 @@ pub(super) fn free(next: u64) -> Page {
         }
         factor
     };
-    let mut page = [0; SIZE];
+    let mut page = zeroed_page();
     page[0] = FREE;
     put(&mut page, 8, next);
     // Only freshly constructed free pages have a known-zero tail. FNV-1a
@@ -274,6 +280,16 @@ fn verify(page: &Page) -> Result<(), Error> {
     Ok(())
 }
 pub(super) fn read(memory: &impl Memory, next: u64, id: u64) -> Result<Page, Error> {
+    let mut page = [0; SIZE];
+    read_into(memory, next, id, &mut page)?;
+    Ok(page)
+}
+pub(super) fn read_into(
+    memory: &impl Memory,
+    next: u64,
+    id: u64,
+    page: &mut Page,
+) -> Result<(), Error> {
     if id == 0 || id >= next {
         return Err(Error::Corrupt);
     }
@@ -283,10 +299,8 @@ pub(super) fn read(memory: &impl Memory, next: u64, id: u64) -> Result<Page, Err
     {
         return Err(Error::Corrupt);
     }
-    let mut page = [0; SIZE];
-    memory.read(offset, &mut page);
-    verify(&page)?;
-    Ok(page)
+    memory.read(offset, page);
+    verify(page)
 }
 pub(super) fn blob(
     memory: &impl Memory,
@@ -297,8 +311,9 @@ pub(super) fn blob(
     let len = usize::try_from(len).map_err(|_| Error::Corrupt)?;
     let mut output = Vec::with_capacity(len);
     let mut id = start;
+    let mut page = [0; SIZE];
     while output.len() < len {
-        let page = read(memory, next, id)?;
+        read_into(memory, next, id, &mut page)?;
         if page[0] != BLOB {
             return Err(Error::Corrupt);
         }

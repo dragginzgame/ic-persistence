@@ -278,11 +278,9 @@ impl<M: Memory, C: Comparator> BTreeMap<M, C> {
         Ok(())
     }
     fn node(&self, id: u64) -> Result<Node, Error> {
-        Node::decode(
-            &page::read(&self.memory, self.header.next, id)?,
-            self.header.next,
-            self.header.config,
-        )
+        let mut page = [0; page::SIZE];
+        page::read_into(&self.memory, self.header.next, id, &mut page)?;
+        Node::decode(&page, self.header.next, self.header.config)
     }
     fn key(&self, record: Record) -> Result<Vec<u8>, Error> {
         if record.key == 0 {

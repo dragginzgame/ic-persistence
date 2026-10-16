@@ -31,7 +31,7 @@ needed for this coverage. This remains a synthetic comparator, not IcyDB's codec
 The accepted IcyDB transition is a hard cut without a legacy reader; retained-data
 disposition and canister qualification remain required before adoption.
 
-Cargo.toml and Cargo.lock select released 0.1.4, tagged at `60d0f01` (`v0.1.4`).
+Cargo.toml and Cargo.lock select released 0.1.5, tagged at `caaadcc` (`v0.1.5`).
 Current qualification uses IC Host FS 0.22.1 and IC Metrics 0.11.5 from that
 release's lockfile. Release metadata is untouched during implementation.
 
@@ -237,4 +237,65 @@ Native Clippy caught a narrowing cast in the first candidate; the retained
 checked conversion passes. Five codec and 22 storage tests pass on Rust 1.99
 and 1.85; four upstream tests, the 320,000-operation campaign, native/Wasm
 Clippy, formatting and links pass. API, format, versions and dependencies
-remain unchanged. The current package version is still 0.1.4 with 0.1.5 notes.
+remain unchanged. That qualification preceded the 0.1.5 release.
+
+Pending 0.1.6 constructs tree-node and reclaimed-page encodings directly in heap
+buffers, removing intermediate 4 KiB copies while preserving all stored bytes
+and validation/publication rules. A fresh 0.1.5 baseline uses IC Testkit 0.49.0
+and the release lockfile. The combined change improves 214/506 instruction cases
+and leaves 292 unchanged, with no regressions or upstream count changes.
+Nonzero-key 4 MiB shrink falls from 102.6M to 98.3M and removal from 106.9M to
+102.6M; root-splitting insertion improves 10.38%. All three builds repeat their
+2,024 measurements exactly. Artifact identities are recorded in the design.
+Five codec and 22 storage tests pass on Rust 1.99 and 1.85; four upstream tests,
+the 320,000-operation campaign, workspace/Wasm Clippy, formatting and doc links
+pass. No dependency, API, persisted-format or package-version changes are made.
+
+The next 0.1.6 continuation reads overflow chains and nodes directly into
+caller-owned stack buffers, avoiding intermediate page results while retaining
+bounds, checksum, chain and staging validation. The fresh baseline preserves
+the incoming IC Metrics 0.11.6 lockfile change and prior heap-encoding work.
+All 506 instruction cases improve, up to 33.30%; the final build beats upstream
+in 375 cases. Nonzero-key 17-byte value scans fall from 399k to 326k; 4 MiB reads
+fall from 62.4M to 53.7M and changed replacement from 132.7M to 119.7M, now below
+upstream's 124.2M. Large reads and value scans remain more expensive than upstream.
+All three builds repeat 2,024 rows exactly; upstream counters differ by at most
+three instructions between builds. Five codec and 22 storage tests pass on Rust
+1.99 and 1.85; four upstream tests, the 320,000-operation campaign, workspace/Wasm
+Clippy, formatting and links pass. Evidence and hashes are in the design.
+No API, format or release metadata changes are made by this continuation.
+
+A further 0.1.6 continuation reuses buffers when reclaiming chains and reading
+free-list allocation metadata, eliminating the transaction page-return wrapper.
+All validation and staged-publication guarantees remain. The rebuilt starting
+Wasm matches the prior artifact exactly. The new matrix improves 130/506 cases,
+leaves 376 unchanged and has no regressions or upstream count changes. Nonzero-key
+4 MiB removal falls from 102.6M to 85.2M instructions (29.49% below upstream);
+regrow/refill improve about 5%. Both runs repeat all 2,024 rows exactly.
+Five codec and 22 storage tests pass on Rust 1.99 and 1.85; four upstream tests,
+the 320,000-operation campaign, workspace/Wasm Clippy, formatting and links pass.
+Artifact identities and remaining qualification limits are in the design.
+
+Iterator boundary-key vectors now reuse capacity after the first excluded
+boundary, retaining separate owned keys for returned entries and all bound checks.
+All 92 scan cases improve; nonzero-key 32-byte-row key scans improve 3.42% and
+value scans 2.00%. Zero-suffix maximum-key value scans improve 10.62%; large
+value-scan gains remain negligible. Across the fixed operation sequence, 478
+cases improve, 26 increase and two are unchanged; the largest increase is 0.241%
+for 32-byte-key shrink. Upstream compiled-build shifts remain under 0.02%.
+Both runs repeat all 2,024 counters/results exactly. Five codec and 22 storage
+tests pass on Rust 1.99 and 1.85, including mixed-direction/bounded ranges;
+four upstream tests, the 320,000-operation campaign, workspace/Wasm Clippy,
+formatting and links pass. Artifacts and tradeoffs are recorded in the design.
+
+Insertion now passes its already-validated full node to splitting instead of
+reading it again. Root-split insertion uses two stable reads instead of three;
+a full-child split uses four instead of five. The strengthened read-budget test
+fails before the fix and passes afterward, with reopening/content checks.
+Root-splitting insertion improves 8.85%; new insertion in the 2,048/4,096-entry
+index fixtures improves 3.34/3.36%. Fourteen cases improve, 78 increase by at most
+17 instructions (0.00573%), and 414 are unchanged; upstream counts are unchanged.
+Both runs repeat all 2,024 rows exactly. Five codec and 22 storage tests pass on
+Rust 1.99 and 1.85; four upstream tests, the 320,000-operation campaign,
+workspace/Wasm Clippy, formatting and links pass. Artifact identities and
+qualification limits are in the design. No API, format or version changes.

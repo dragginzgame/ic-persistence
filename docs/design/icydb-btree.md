@@ -830,3 +830,222 @@ upstream in 352 cases. Five codec and 22 storage tests pass on Rust 1.99 and
 1.85; four upstream comparisons, the 320,000-operation extended campaign,
 native/Wasm Clippy, formatting and documentation links pass. Full release,
 macOS and actual IcyDB integration qualification remain outside this run.
+
+### Direct heap encoding for nodes and reclaimed pages
+
+Pending 0.1.6 builds node and free-page encodings directly in zero-initialized
+heap buffers. Transactions retain those buffers instead of boxing a returned
+4 KiB stack array. Field offsets, zero padding, checksums and staging/publication
+rules are unchanged. There is no unsafe code or API/format change. Existing
+free-page byte-compatibility and corruption tests remain applicable; structural,
+reopening, failure and differential tests exercise the node path.
+
+A fresh baseline uses released 0.1.5 (`caaadcc`) and its lockfile, including
+IC Testkit 0.49.0 rather than the 0.48.0 used by earlier attempts. All three
+builds use the same 23 fixtures, Rust 1.99 and PocketIC server 16.0.0/client
+16.1.0. Dependency selections were not changed during this investigation.
+Node-only encoding improves 214/506 instruction cases, with 292 unchanged.
+The combined node/free-page change improves the same 214 cases further where
+reclamation occurs; 292 remain unchanged and none regress. Upstream counts
+are unchanged. The final build beats upstream in 356/506 cases.
+
+Selected nonzero-key measurements against the fresh baseline:
+
+| Fixture / operation | Baseline instructions | Final instructions | Reduction |
+| --- | ---: | ---: | ---: |
+| index_full_root / insert_new | 486,812 | 436,286 | 10.38% |
+| row_overflow / remove | 1,362,855 | 1,316,548 | 3.40% |
+| row_overflow / shrink | 646,567 | 629,736 | 2.60% |
+| row_1m / remove | 26,994,581 | 25,897,571 | 4.06% |
+| row_4m / shrink | 102,615,276 | 98,273,171 | 4.23% |
+| row_4m / remove | 106,917,969 | 102,572,040 | 4.06% |
+
+Artifacts include `results.csv`, `run.log`, `benchmark.wasm` and the runner:
+
+| Attempt | Directory | Wasm SHA-256 |
+| --- | --- | --- |
+| Fresh baseline | `target/heap-node-baseline.aonwZP/` | `b6568822619e838de30ad711e89fbe404d3118ae386106efa2eca974363bbf8b` |
+| Node encoding only | `target/heap-node-encoded.M5cNsY/` | `6859286bcf33d49246d2997a5a75bfb14eee1d903b6ae1f5b10bcc862fd71567` |
+| Node and free-page encoding | `target/heap-node-free.uAkGbk/` | `1fa69698af9ac7acaede9db5973788a1a42e72226c0aa4651c9d6d24021cb42c` |
+
+Five codec and 22 storage tests pass on Rust 1.99 and 1.85; four regular upstream
+comparisons, the 320,000-operation extended campaign, workspace and Wasm Clippy,
+formatting and documentation links pass. Full release validation, native macOS
+and actual IcyDB integration remain outside this qualification.
+All three builds repeat instruction, capacity and result-length counters exactly
+across two fresh runs each (2,024 rows per build; 6,072 rows retained).
+
+### Read directly into caller-owned page buffers
+
+The next pending 0.1.6 change separates validated page reads from ownership of
+their destination buffer. Overflow value/key traversal and replacement reuse a
+single stack page for each chain; node decoders read directly into their local
+buffer. This avoids moving 4 KiB pages inside result values before consuming
+them. Bounds, checksums, page types and terminal chain pointers are still checked.
+Transaction reads still prefer staged pages, and errors still prevent publication.
+No cross-request cache, unsafe code, public API or persisted-format change is
+introduced. Existing corruption, failed-growth, comparator and mixed-range tests
+exercise the changed paths.
+
+The fresh baseline includes the prior uncommitted heap-encoding changes and the
+incoming IC Metrics 0.11.6 lockfile selection. That dependency change was preserved,
+not made by this optimization. All attempts use the same source inputs apart
+from the described read-buffer changes, the same 23 fixtures, IC Testkit 0.49.0,
+Rust 1.99 and PocketIC server 16.0.0/client 16.1.0.
+
+Overflow-only buffer reuse first reduced 4 MiB changed replacement to 119.7M
+instructions, but some inline cases increased by up to 0.016%. Extending direct
+buffer reads to node decoding removes those measured regressions. Selected
+nonzero-key measurements for the combined implementation:
+
+| Fixture / operation | Baseline instructions | Final instructions | Upstream final |
+| --- | ---: | ---: | ---: |
+| row_32 / get | 92,867 | 80,377 | 100,845 |
+| row_overflow / get | 92,806 | 80,316 | 100,118 |
+| row_overflow / replace_changed | 269,304 | 252,438 | 190,634 |
+| row_overflow / scan_values | 398,844 | 325,576 | 149,879 |
+| row_4m / get | 62,405,179 | 53,739,776 | 37,954,113 |
+| row_4m / replace_changed | 132,661,690 | 119,663,851 | 124,157,534 |
+| row_4m / scan_values | 305,609,512 | 270,960,493 | 200,787,294 |
+
+Large changed replacements now beat upstream, but large reads and value scans
+still trail it. The new read path reduces copies, not the required stable-memory
+traffic or checksum coverage. Artifact directories contain `results.csv`,
+`run.log`, `benchmark.wasm` and the runner:
+
+| Attempt | Directory | Wasm SHA-256 |
+| --- | --- | --- |
+| Current-source baseline | `target/read-buffer-baseline.lGkrzE/` | `1b45f343f6a5dacde3aa3f2d8aa60668a7ba514ccf1de5ddc228373d4d962901` |
+| Overflow buffers | `target/read-buffer-reuse.TEC8Yp/` | `3426e3a9fe76e4d948a2930a383d4e8461383eeaac0c930ef166e48c9366e4c9` |
+| Overflow and node buffers | `target/read-buffer-nodes.bR1KBe/` | `65dc56ff4e750d05744f4d3f29a701419f92e82f2e85011882a3cc0d5ed58eb1` |
+
+Five codec and 22 storage tests pass on Rust 1.99 and 1.85; four regular upstream
+comparisons, the 320,000-operation extended campaign, workspace/Wasm Clippy,
+formatting and links pass. Full release validation, macOS and actual IcyDB codec
+integration remain outside this qualification.
+All three builds repeat instruction, capacity and result-length counters exactly
+across 2,024 rows each (6,072 total). The combined change improves all 506 cases,
+by up to 33.30%; it beats upstream in 375 cases. Upstream counters differ in 236
+cases by only -3 to +2 instructions; those small compiled-build differences are
+retained in the comparison rather than treated as identical baselines.
+
+### Reuse buffers for reclamation and free-list allocation
+
+The next 0.1.6 continuation extends caller-owned buffers to reclamation and
+free-list allocation. A reclaimed chain page is validated into a reusable buffer,
+then staged free while its prior bytes remain available for collecting the old
+value and following the successor pointer. Single-page node reclamation uses the
+same validation path. Allocation reads free-list metadata directly into its local
+buffer. Range, checksum, live/free and chain-terminal checks and staged failure
+semantics are preserved; the now-unused transaction page-return wrapper is removed.
+
+The starting Wasm rebuilt byte-for-byte as the prior
+`target/read-buffer-nodes.bR1KBe/benchmark.wasm` (SHA-256
+`65dc56ff4e750d05744f4d3f29a701419f92e82f2e85011882a3cc0d5ed58eb1`), allowing its
+retained matrix to serve as the exact baseline. Fixture, compiler and dependency
+selections are unchanged, including the incoming IC Metrics 0.11.6 selection.
+Selected nonzero-key instruction counts:
+
+| Fixture / operation | Baseline | Final | Reduction |
+| --- | ---: | ---: | ---: |
+| row_overflow / remove | 1,257,580 | 1,236,528 | 1.67% |
+| row_1m / remove | 25,884,413 | 21,548,786 | 16.75% |
+| row_4m / remove | 102,557,336 | 85,219,076 | 16.91% |
+| row_4m / regrow | 84,906,533 | 80,560,868 | 5.12% |
+| row_4m / refill | 86,440,564 | 82,094,899 | 5.03% |
+
+Final artifacts (`results.csv`, `run.log`, `benchmark.wasm` and runner) remain in
+`target/reclaim-buffer-reuse.u20zWG/`, with Wasm SHA-256
+`0e922529aa0a26044aaac46aa2dfd4cc2c70cfcc30532282971d555a71c9c626`.
+Five codec and 22 storage tests pass on Rust 1.99 and 1.85, including late-chain
+corruption without partial writes, failed growth, reopening and reclamation
+traffic coverage. Four regular upstream comparisons, the 320,000-operation
+extended campaign, workspace/Wasm Clippy, formatting and links pass. No API,
+persisted-format, dependency or release metadata change is made. Full release
+validation, native macOS and IcyDB integration remain outside this run.
+All counters and result lengths repeat exactly across both fresh runs (2,024
+rows). Of 506 comparisons, 130 improve and 376 are unchanged; none regress and
+upstream counts are unchanged. The final matrix still beats upstream in 375
+cases. The 4 MiB removal cost is 29.49% below upstream's 120,852,418 instructions.
+
+### Reuse iterator boundary-key capacity
+
+Pending 0.1.6 keeps the existing excluded-boundary vector and clones the next
+key into its reusable capacity. The first step from an included or unbounded
+endpoint still constructs an excluded boundary. Returned entries retain their
+own key bytes; custom comparator, endpoint and mixed-direction checks are
+unchanged. This avoids repeated boundary allocations, not the byte copy itself.
+Existing all-bound combinations, interleaved directions and semantic-key tests
+exercise variable keys and boundary reuse.
+
+The starting Wasm rebuilt to the exact previous reclamation artifact hash
+`0e922529aa0a26044aaac46aa2dfd4cc2c70cfcc30532282971d555a71c9c626`, so
+`target/reclaim-buffer-reuse.u20zWG/` supplies the baseline. Source dependencies,
+23 fixtures and compiler/PocketIC selections are unchanged. Selected nonzero-key
+scan counts are:
+
+| Fixture / operation | Baseline instructions | Final instructions |
+| --- | ---: | ---: |
+| index_full_root / scan_keys | 113,838 | 107,570 |
+| index_full_root / scan_values | 86,667 | 78,367 |
+| index_long / scan_values | 366,874 | 356,483 |
+| index_max / scan_values | 3,501,926 | 3,331,564 |
+| row_32 / scan_keys | 135,311 | 130,681 |
+| row_32 / scan_values | 325,688 | 319,180 |
+| row_4m / scan_values | 270,960,493 | 270,958,555 |
+
+The largest relative improvement is 10.62% for zero-suffix maximum-key value
+scans; dense large-value scan gains are negligible. Across the ordered matrix,
+478 cases improve, 26 increase and two are unchanged. The largest increase is
+0.241% for zero-suffix 32-byte-key shrink after the scans. Allocation history
+can affect later operations in this harness; these counts are not isolated
+allocation profiles or application-level speedups.
+
+Artifacts (`results.csv`, `run.log`, `benchmark.wasm` and runner) are retained in
+`target/cursor-boundary-reuse.LXigzA/`; Wasm SHA-256 is
+`df8cb5e5b3f40a6421bb095636757b7336bf96b5634354a90567b91791861e18`.
+Five codec and 22 storage tests pass on Rust 1.99 and 1.85; four upstream tests,
+the 320,000-operation extended campaign, workspace/Wasm Clippy, formatting and
+links pass. No API, format or release metadata changes are introduced. Full
+release validation, macOS execution and actual IcyDB workloads remain unqualified.
+Both runs repeat every instruction, capacity and result-length counter exactly
+across 2,024 rows. All 92 scan cases improve. Upstream counters also shift in
+274 cases, from -12,423 to +3 instructions (largest relative change under 0.02%);
+these compiled-build differences are retained rather than attributed to our
+iterator's allocation savings.
+
+### Reuse validated full nodes during splits
+
+Pending 0.1.6 passes the full node already decoded by insertion into the split
+routine. This removes the redundant stable-memory read and decoding allocation
+without changing the median, children, allocation order or staged publication.
+Both root and non-root splits consume their validated node. The existing read
+budget regression is strengthened to require two stable reads for root-splitting
+insertion (previously three), and four for splitting a full child (previously
+five). It fails before the fix and passes afterward, with reopening and content
+checks; the failure tests still reject growth without publishing staged writes.
+
+The starting Wasm matches `target/cursor-boundary-reuse.LXigzA/benchmark.wasm`
+exactly (SHA-256 `df8cb5e5b3f40a6421bb095636757b7336bf96b5634354a90567b91791861e18`),
+so its 23-fixture matrix is reused as the baseline. Source dependencies, compiler
+and PocketIC selection are unchanged. Selected nonzero-key new insertions:
+
+| Fixture | Baseline instructions | Final instructions | Reduction |
+| --- | ---: | ---: | ---: |
+| index_full_root | 415,219 | 378,473 | 8.85% |
+| index_2048 | 1,244,628 | 1,203,086 | 3.34% |
+| index_4096 | 1,256,098 | 1,213,878 | 3.36% |
+
+Fourteen matrix cases improve, 78 increase slightly and 414 are unchanged.
+The largest relative increase is 0.00573% for index_full_root refill; upstream
+counts are unchanged. The count beating upstream remains 375/506. This is a
+split-specific improvement, not a general read/scan speedup.
+Artifacts (`results.csv`, `run.log`, `benchmark.wasm` and runner) remain in
+`target/split-node-reuse.8WTAsh/`, Wasm SHA-256
+`b0abe2146ab21c54b30eb15ef909e9307b60d31482e14566d02132d86678043b`.
+Five codec and 22 storage tests pass on Rust 1.99 and 1.85; four regular upstream
+comparisons, the 320,000-operation extended campaign, workspace/Wasm Clippy,
+formatting and links pass. No API, format or release metadata changes are made.
+Full release validation, macOS and actual IcyDB integration remain outside this run.
+Both fresh runs repeat all instruction, capacity and result-length counters
+exactly across 2,024 rows. Absolute increases are at most 17 instructions.

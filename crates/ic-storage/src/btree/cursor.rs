@@ -212,10 +212,15 @@ impl<'a, M: Memory, C: Comparator> Range<'a, M, C> {
                 }
             }
         }
-        if reverse {
-            self.upper = Bound::Excluded(key.clone());
+        let boundary = if reverse {
+            &mut self.upper
         } else {
-            self.lower = Bound::Excluded(key.clone());
+            &mut self.lower
+        };
+        if let Bound::Excluded(previous) = boundary {
+            previous.clone_from(&key);
+        } else {
+            *boundary = Bound::Excluded(key.clone());
         }
         Ok(Some(Entry {
             tree: self.tree,

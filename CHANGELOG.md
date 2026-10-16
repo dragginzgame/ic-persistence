@@ -1,5 +1,28 @@
 # Changelog
 
+## [0.1.6]
+
+- Reuse the validated full node during splits instead of rereading it.
+  Root-splitting insertion improves 8.9%, and new insertion in the 2,048/4,096
+  entry index fixtures improves about 3.3%, with unchanged split semantics.
+- Reuse iterator boundary-key capacity across scan steps. Scan instructions
+  improve by up to 10.6% in the synthetic matrix; some later mutation cases
+  increase by at most 0.25%. Forward, reverse and interleaved range semantics
+  remain unchanged.
+- Reuse page buffers during reclamation and free-list allocation. The nonzero-key
+  4 MiB fixture removes values in 85M rather than 103M instructions, about 29%
+  below upstream; regrow and refill improve about 5%. Validation and stored
+  bytes remain unchanged.
+- Read overflow chains and tree nodes into caller-owned buffers, avoiding
+  intermediate page copies while retaining full validation. In the nonzero-key
+  fixtures, 17-byte value scans improve about 18%, 4 MiB reads about 14%, and
+  4 MiB changed replacement falls from 133M to 120M instructions, below upstream.
+- Encode tree nodes and reclaimed pages directly in heap buffers, avoiding
+  intermediate 4 KiB copies. The nonzero-key 4 MiB fixture uses about 4% fewer
+  instructions for shrink and removal; root-splitting insertion improves 10%.
+  Persisted bytes and validation guarantees remain unchanged, with no
+  instruction regressions in the expanded comparison matrix.
+
 ## [0.1.5] - 2026-10-16
 
 - Fold freshly initialized overflow-page padding directly into its checksum.

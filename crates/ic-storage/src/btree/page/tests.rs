@@ -51,7 +51,7 @@ fn free_pages_preserve_bytes_and_validate_padding() {
         super::put(&mut expected, 8, next);
         seal(&mut expected);
         let actual = super::free(next);
-        assert_eq!(actual, expected, "free-list successor {next}");
+        assert_eq!(*actual, expected, "free-list successor {next}");
         assert_eq!(verify(&actual), Ok(()));
     }
     let mut page = super::free(42);
