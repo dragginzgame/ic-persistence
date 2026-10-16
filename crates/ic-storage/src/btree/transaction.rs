@@ -121,7 +121,12 @@ impl<'a, M: Memory, C: Comparator> Transaction<'a, M, C> {
         }
         Ok(next)
     }
-    fn free_blob(&mut self, mut id: u64, mut len: u64) -> Result<(), Error> {
+    fn free_blob(
+        &mut self,
+        mut id: u64,
+        mut len: u64,
+        mut output: Option<&mut Vec<u8>>,
+    ) -> Result<(), Error> {
         if id == 0 {
             return Ok(());
         }
@@ -129,6 +134,10 @@ impl<'a, M: Memory, C: Comparator> Transaction<'a, M, C> {
             let page = self.free(id)?;
             if page[0] != page::BLOB {
                 return Err(Error::Corrupt);
+            }
+            if let Some(bytes) = output.as_mut() {
+                let take = usize::try_from(len.min(PAYLOAD as u64)).map_err(|_| Error::Corrupt)?;
+                bytes.extend_from_slice(&page[16..16 + take]);
             }
             let next = page::number(&page, 8);
             len = len.saturating_sub(PAYLOAD as u64);
@@ -401,16 +410,22 @@ impl<'a, M: Memory, C: Comparator> Transaction<'a, M, C> {
         self.put_node(id, &node)?;
         Ok(removed)
     }
-    pub fn remove(&mut self, key: &[u8]) -> Result<(), Error> {
+    pub fn remove(&mut self, key: &[u8]) -> Result<Vec<u8>, Error> {
         let removed = self.delete(self.header.root, key, 0)?;
-        self.free_blob(removed.key, removed.key_len)?;
-        self.free_blob(removed.value, removed.value_len)?;
+        self.free_blob(removed.key, removed.key_len, None)?;
+        let len = usize::try_from(removed.value_len).map_err(|_| Error::Corrupt)?;
+        let mut previous = Vec::with_capacity(len);
+        if removed.value == 0 {
+            previous.extend_from_slice(&removed.value_inline[..len]);
+        } else {
+            self.free_blob(removed.value, removed.value_len, Some(&mut previous))?;
+        }
         let root = self.node(self.header.root)?;
         if root.entries.is_empty() && !root.children.is_empty() {
             self.free(self.header.root)?;
             self.header.root = root.children[0];
         }
-        Ok(())
+        Ok(previous)
     }
     pub fn commit(self) -> Result<Header, Error> {
         let bytes = self

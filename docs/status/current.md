@@ -31,8 +31,9 @@ needed for this coverage. This remains a synthetic comparator, not IcyDB's codec
 The accepted IcyDB transition is a hard cut without a legacy reader; retained-data
 disposition and canister qualification remain required before adoption.
 
-Cargo.toml and Cargo.lock now both select released 0.1.2, tagged at `d1eae1a`.
-The earlier lockfile mismatch is resolved; validation runs in the real checkout.
+Cargo.toml and Cargo.lock select released 0.1.3, tagged at `5906b48` (`v0.1.3`).
+The incoming local IC Host FS update to 0.22 is preserved; current qualification
+uses its locked 0.22.1 selection and IC Metrics 0.11.5. Release metadata is untouched.
 
 Released 0.1.2 reuses the located node and reads the previous overflow value once
 during replacement. Native interface read traffic is halved for the index,
@@ -56,7 +57,7 @@ fixture. Fewer Memory calls do not prove fewer IC instructions; actual IcyDB
 schemas and bounded large-value comparisons remain unqualified. See the design
 document for reproducible commands, measurements and limitations.
 
-Pending 0.1.3 adds profiles using IcyDB's bound metadata from committed revision
+Released 0.1.3 adds profiles using IcyDB's bound metadata from committed revision
 `e104fe1c9f5921336f0e5b292acbda99f8311476`: variable index keys up to 16,668
 bytes with variable one-byte values; fixed 12-byte journal keys with variable
 64 KiB chunks; variable data keys up to 262 bytes with unbounded row values.
@@ -125,3 +126,33 @@ full matrix, reproducible commands, hashes and measurement limitations.
 Three checksum tests and 18 regular storage tests pass on Rust 1.99 and 1.85;
 four regular upstream tests and the 320,000-operation campaign pass on 1.99.
 Native and Wasm Clippy pass. No public API or persisted format change is made.
+
+Pending 0.1.4 folds verified trailing zero chunks into the checksum using the
+same FNV-1a arithmetic. It still inspects all covered bytes; full nonzero payload
+pages pay one failed suffix check. The format and integrity guarantees are
+unchanged. A new test compares the original checksum at all 4,088 possible
+last-nonzero-byte positions, alongside existing full-page corruption tests.
+
+The runner now tests both zero-filled and nonzero-filled key suffixes, producing
+1,200 measurements per build. Fresh baseline/optimized builds use the same
+working dependency selections. All 300 operation/profile/pattern comparisons
+improve by 0.67–53.13%, and each build repeats every counter/result length exactly.
+With nonzero keys, 17-byte reads improve 37.6% and value scans 52.3%; maximum-key
+lookups improve only 9.4%, versus 42% with zero-filled keys. Small-value mutation
+and large-row costs still exceed upstream. Full measurements and artifact
+identities are in the design document; these remain synthetic canister fixtures.
+Four checksum tests and 18 storage tests pass on Rust 1.99 and 1.85. Four regular
+upstream tests, the 320,000-operation campaign and native/Wasm Clippy pass on 1.99.
+
+The 0.1.4 continuation collects the returned value while reclaiming its overflow
+pages. The preliminary existence lookup reads keys only, removing a second
+payload traversal. Nonzero-key 4 MiB removal falls from 154,691,671 to
+106,900,172 instructions versus upstream's 120,839,997; 1 MiB removal also becomes
+cheaper than upstream. The 16-byte inline fixture regresses about 0.12%, and
+small overflow values remain expensive. All 1,200 matrix measurements repeat
+exactly. The tightened read-budget test fails before the change and passes
+afterward. A new late-payload corruption test proves no writes, unchanged bytes
+and length, and successful removal after repairing only the injected corruption.
+Four checksum and 19 storage tests pass on Rust 1.99 and 1.85; four upstream
+tests, the 320,000-operation campaign and native/Wasm Clippy pass on 1.99.
+API, stored format and release metadata are unchanged.

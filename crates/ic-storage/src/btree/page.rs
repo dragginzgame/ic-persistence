@@ -191,15 +191,24 @@ pub(super) fn number(page: &Page, at: usize) -> u64 {
     u64::from_le_bytes(bytes)
 }
 fn checksum(page: &Page) -> u64 {
+    const ZERO_CHUNK_FACTOR: u64 = 0x100_0000_01b3u64.wrapping_pow(8);
+    let mut end = SIZE - 8;
+    let mut suffix_factor = 1u64;
+    // Inspect every byte of trailing zero chunks, but fold their FNV steps
+    // together. Restrict this to the suffix so full payload pages pay one check.
+    while end >= 8 && page[end - 8..end] == [0; 8] {
+        suffix_factor = suffix_factor.wrapping_mul(ZERO_CHUNK_FACTOR);
+        end -= 8;
+    }
     let mut hash = 0xcbf2_9ce4_8422_2325u64;
     // The covered region is a multiple of eight. Fixed-size inner iterations
     // let Wasm eliminate per-byte loop control without changing FNV-1a order.
-    for chunk in page[..SIZE - 8].chunks_exact(8) {
+    for chunk in page[..end].chunks_exact(8) {
         for byte in chunk {
             hash = (hash ^ u64::from(*byte)).wrapping_mul(0x100_0000_01b3);
         }
     }
-    hash
+    hash.wrapping_mul(suffix_factor)
 }
 pub(super) fn seal(page: &mut Page) {
     put(page, SIZE - 8, checksum(page));

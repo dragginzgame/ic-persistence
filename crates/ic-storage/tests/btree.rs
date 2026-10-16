@@ -945,9 +945,43 @@ fn removal_avoids_duplicate_overflow_page_reads() {
     reads.set(0);
     assert_eq!(tree.remove(b"row").unwrap(), Some(value));
     assert!(
-        reads.get() <= 2 * lookup_reads + 8192,
-        "removal should read the returned payload and reclaim its pages without a third payload pass"
+        reads.get() <= lookup_reads + 8192,
+        "removal should collect the returned payload while reclaiming its pages in one pass"
     );
+    tree.validate().unwrap();
+    let tree = BTreeMap::open(tree.into_memory(), Config::default(), Lexicographic).unwrap();
+    assert!(tree.is_empty());
+}
+
+#[test]
+fn late_corruption_discards_collected_removal_and_staged_pages() {
+    let memory = ObservedMemory::default();
+    let backing = memory.memory.clone();
+    let writes = memory.write_calls.clone();
+    let mut tree = BTreeMap::create(memory, Config::default(), Lexicographic).unwrap();
+    let mut value = vec![0xab; 10000];
+    value[9000..].fill(0xcd);
+    tree.insert(b"row", &value).unwrap();
+    // Mark the tail of a multi-page payload, after valid pages were traversed.
+    let tail = backing
+        .borrow()
+        .windows(64)
+        .position(|bytes| bytes == [0xcd; 64])
+        .unwrap();
+    backing.write(tail as u64, &[0x7f]);
+    let before = backing.borrow().clone();
+    writes.set(0);
+    assert_eq!(tree.remove(b"row"), Err(Error::Corrupt));
+    assert_eq!(writes.get(), 0);
+    assert_eq!(*backing.borrow(), before);
+    assert_eq!(tree.len(), 1);
+    assert!(tree.contains_key(b"row").unwrap());
+    assert_eq!(tree.remove(b"missing").unwrap(), None);
+    assert_eq!(writes.get(), 0);
+
+    // Repair only the injected corruption; the failed transaction changed nothing.
+    backing.write(tail as u64, &[0xcd]);
+    assert_eq!(tree.remove(b"row").unwrap(), Some(value));
     tree.validate().unwrap();
     let tree = BTreeMap::open(tree.into_memory(), Config::default(), Lexicographic).unwrap();
     assert!(tree.is_empty());

@@ -61,3 +61,18 @@ fn free_pages_preserve_bytes_and_validate_padding() {
         page[at] ^= 1;
     }
 }
+
+#[test]
+fn zero_suffix_checksum_matches_original_at_every_boundary() {
+    let mut page = [0; SIZE];
+    for at in 0..SIZE - 8 {
+        page[at] = 0xa5;
+        let expected = page[..SIZE - 8]
+            .iter()
+            .fold(0xcbf2_9ce4_8422_2325u64, |hash, byte| {
+                (hash ^ u64::from(*byte)).wrapping_mul(0x100_0000_01b3)
+            });
+        assert_eq!(checksum(&page), expected, "last nonzero byte {at}");
+        page[at] = 0;
+    }
+}

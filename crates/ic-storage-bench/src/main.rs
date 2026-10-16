@@ -20,9 +20,13 @@ fn main() -> Result<(), Box<dyn Error>> {
         PocketIcStartupConfig::spawn(&args[0], Duration::from_secs(30)).start_managed_server()?;
     println!("run,engine,profile,operation,instructions,heap_bytes,stable_bytes,result_bytes");
     for run in 0..2 {
-        for (profile, fixture) in fixtures::FIXTURES.iter().enumerate() {
+        for (profile, fixture, dense_keys) in fixtures::FIXTURES
+            .iter()
+            .enumerate()
+            .flat_map(|(id, fixture)| [false, true].map(|dense| (id, fixture, dense)))
+        {
             let profile = u8::try_from(profile)?;
-            let name = fixture.name;
+            let name = format!("{}{}", fixture.name, if dense_keys { "_dense" } else { "" });
             let batch = (524_288 / (fixture.key_len + fixture.value_len)).clamp(1, 32) as u64;
             assert!(fixture.count <= 2048 * batch && fixture.kind <= 2);
             for engine in 0u8..=1 {
@@ -35,7 +39,7 @@ fn main() -> Result<(), Box<dyn Error>> {
                 pic.install_canister(
                     id,
                     wasm.clone(),
-                    candid::encode_args((engine, profile))?,
+                    candid::encode_args((engine, profile, dense_keys))?,
                     None,
                 );
                 let mut seeded = false;

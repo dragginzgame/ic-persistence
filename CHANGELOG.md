@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.1.4]
+
+- Return removed values while reclaiming their overflow pages in one validated
+  pass. In the nonzero-key 4 MiB fixture, deletion drops from 155M to 107M
+  instructions, below upstream's 121M, while preserving staged failure handling.
+- Reduce checksum work on verified zero-filled page suffixes while preserving
+  the exact checksum and persisted format. In the nonzero-key 17-byte row
+  fixture, reads use 38% fewer instructions and value scans 52% fewer than 0.1.3;
+  large-row read improvements are smaller; replacement and small-value mutation
+  costs still exceed upstream.
+- Compare both zero-filled and nonzero-filled synthetic keys across the canister
+  matrix, exposing how data patterns affect the measured gains.
+
 ## [0.1.3] - 2026-10-16
 
 - Expand canister comparisons to 15 fixtures and ten operations, covering

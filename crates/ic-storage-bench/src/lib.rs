@@ -113,15 +113,16 @@ struct State {
     key_len: usize,
     value_len: usize,
     seeded: u64,
+    dense_keys: bool,
 }
 thread_local! { static STATE: RefCell<Option<State>> = const { RefCell::new(None) }; }
-fn key(n: u64, len: usize) -> Vec<u8> {
-    let mut bytes = vec![0; len];
+fn key(n: u64, len: usize, dense: bool) -> Vec<u8> {
+    let mut bytes = vec![if dense { 0xa5 } else { 0 }; len];
     bytes[..8].copy_from_slice(&n.to_be_bytes());
     bytes
 }
 #[ic_cdk::init]
-fn init(engine: u8, profile: u8) {
+fn init(engine: u8, profile: u8, dense_keys: bool) {
     assert!(engine <= 1);
     let fixture = &fixtures::FIXTURES[usize::from(profile)];
     assert_ne!(fixture.name, "");
@@ -144,6 +145,7 @@ fn init(engine: u8, profile: u8) {
             key_len,
             value_len,
             seeded: 0,
+            dense_keys,
         });
     });
 }
@@ -157,7 +159,10 @@ fn seed(batch: u64) -> bool {
             assert!(
                 state
                     .tree
-                    .insert(key(n, state.key_len), vec![7; state.value_len])
+                    .insert(
+                        key(n, state.key_len, state.dense_keys),
+                        vec![7; state.value_len]
+                    )
                     .is_none()
             );
         }
@@ -175,7 +180,7 @@ fn measure(operation: u8) -> (u128, u128, u128, u64) {
         } else {
             state.count / 2
         };
-        let key = key(target, state.key_len);
+        let key = key(target, state.key_len, state.dense_keys);
         let value_len = if operation == 6 { 1 } else { state.value_len };
         let value = vec![7; value_len];
         let before = Performance::counters();
@@ -193,7 +198,7 @@ fn measure(operation: u8) -> (u128, u128, u128, u64) {
             assert!(result.is_none());
         } else if operation == 2 {
             let expected = (0..state.count.min(16))
-                .flat_map(|n| self::key(n, state.key_len))
+                .flat_map(|n| self::key(n, state.key_len, state.dense_keys))
                 .collect::<Vec<_>>();
             assert_eq!(result.as_ref().unwrap(), &expected);
         } else {
@@ -205,7 +210,9 @@ fn measure(operation: u8) -> (u128, u128, u128, u64) {
             assert_eq!(result.as_ref().unwrap(), &vec![7; len]);
         }
         if matches!(operation, 1 | 3 | 6 | 7 | 8 | 9) {
-            let stored = state.tree.get(self::key(target, state.key_len));
+            let stored = state
+                .tree
+                .get(self::key(target, state.key_len, state.dense_keys));
             let expected = if operation == 3 {
                 None
             } else {

@@ -426,3 +426,116 @@ nonempty-name assertion in canister initialization. Native regular and extended
 differential checks, Rust 1.85 storage tests and native/Wasm Clippy pass; macOS,
 actual IcyDB codec mixes, random insertion profiles, bounded/reverse canister
 scans and rollback/upgrade recovery remain unqualified.
+
+### Zero-suffix checksum qualification after 0.1.3
+
+The checksum now scans backward over complete eight-byte zero chunks before
+hashing the remaining prefix. Each zero chunk is inspected, then represented
+by multiplication by the FNV prime raised to eight; the accumulated suffix
+factor is applied after the prefix. This is exactly the original FNV-1a result,
+including nonzero corruptions in padding. It does not trust a page tag or assume
+that reserved bytes are zero. Full payloads incur only the failed suffix test
+and final multiplication. The free-page construction shortcut remains separate:
+it knows the newly constructed padding, while this read/seal path verifies it.
+
+A new test compares with the original algorithm at all 4,088 positions of the
+last nonzero covered byte. Existing seeded patterns and corruption at every
+page position also pass, including stored checksum bytes. No persisted byte,
+inline threshold, API, read-traffic or mutation publication contract changes.
+
+To distinguish padding gains from synthetic-key bias, every fixture now runs
+with two key suffix patterns: zeros, and `0xa5` bytes (`_dense` in CSV names).
+Both retain the big-endian counter in the first eight bytes and the same sizes,
+bounds, insertion order and nonzero value bytes. The current benchmark's init
+arguments are `(engine, profile, dense_keys)`; the runner owns this non-published
+contract and the `make bench-run` command is unchanged. These patterns exercise
+zero-rich versus nonzero-rich bytes, not real codecs or random key order.
+
+Each controlled build produces 1,200 measurements: 15 fixtures, two patterns,
+ten operations, two engines and two fresh runs. Baseline and optimized builds
+use this same expanded harness and locked dependency graph. Across all 300 of
+our operation/profile/pattern combinations, instructions fall by 0.67–53.13%.
+All counters and result lengths repeat exactly within each build. This is a
+fixture result, not a general performance guarantee or weighted workload score.
+
+Selected **nonzero-key** results, in instructions:
+
+| Fixture | Operation | Before | After | Upstream after |
+| --- | --- | ---: | ---: | ---: |
+| 17-byte row | Get | 154,593 | 96,514 | 100,118 |
+| 17-byte row | Replace | 796,659 | 663,868 | 190,439 |
+| 17-byte row | Value scan | 901,701 | 430,162 | 149,871 |
+| 17-byte row | Remove | 1,672,655 | 1,396,344 | 274,168 |
+| 4 MiB row | Get | 62,948,166 | 62,386,894 | 37,954,113 |
+| 4 MiB row | Replace | 146,834,890 | 145,687,062 | 124,318,245 |
+| 4 MiB row | Value scan | 322,135,008 | 319,966,993 | 200,787,801 |
+| 4 MiB row | Remove | 155,867,785 | 154,691,671 | 120,839,995 |
+
+Nonzero 256-byte index-key lookup falls from 494,150 to 256,033 instructions
+(48.2%), while maximum 16,668-byte index-key lookup falls from 2,047,774 to
+1,854,746 (9.4%). Zero-filled maximum keys showed a much larger 42% improvement:
+reporting only that pattern would overstate the general long-key benefit.
+Small overflow reads are now competitive in this fixture, but mutation and
+value-scan costs still expose the extra page required above the 16-byte inline
+limit. Large nonzero payload improvements remain below 1% for these operations.
+
+Controlled baseline: `target/key-pattern-baseline.SaviDD`, Wasm SHA-256
+`ce98435a3265de89bc5507eda89102e9a725dde0ed5e2578c8238254c77dcca9`.
+Optimized: `target/key-pattern-optimized.eSra9b`, Wasm SHA-256
+`7ba9ed4061802203e71874b9d0c076fec6e1886d32a760410cda8fea0664007f`.
+Both directories retain the measured Wasm, CSV and log. Source starts from
+release `5906b48` with the incoming IC Host FS 0.22/locked 0.22.1 and IC Metrics
+0.11.5 changes preserved; the baseline adds the key-pattern harness but retains
+the original checksum. Compiler, PocketIC and other selections match the earlier
+setup. No dependency change is attributed to this optimization.
+
+The preliminary zero-key-only comparison is also retained:
+`target/zero-chunk-baseline.hwlJKj` (Wasm SHA-256
+`050d8d887688fad013a1410dc02a1f1892b397a81a9c87f1cb71c852ed554325`)
+and `target/zero-suffix-bench.re7TwI` (Wasm SHA-256
+`a97c36881c80cbf074c75bac51bddbf192581bfc56ae07f52947f37bc73c8ad0`).
+Native differential, failure/reopen and Rust 1.85 checks pass; the prior macOS,
+real-codec and canister recovery qualification limits still apply.
+
+### Single-pass value reclamation
+
+Deletion previously called `get` to materialize the returned value before
+starting its transaction, then traversed the value pages again when freeing
+them. It now checks key existence without loading the value and collects the
+previous bytes from the validated pages returned during reclamation. Inline
+values are copied from the removed record. Key pages are reclaimed without
+collecting their bytes. Node changes, free-list changes and the returned value
+remain staged until validation and capacity checks complete; no application
+error after partial staging publishes any page.
+
+The read-budget regression now allows only one payload pass plus bounded
+node overhead; it failed before this change and passes afterward. A new test
+corrupts the tail of a multi-page value, checks `Error::Corrupt`, zero backing
+writes, unchanged bytes and length, then repairs only that injected byte and
+successfully removes/reopens the tree. Existing split/merge, replacement-record,
+custom-order, corruption and differential tests also pass. This remains native
+failure evidence, not qualification of canister traps or upgrade recovery.
+
+The unchanged two-pattern canister harness produces these nonzero-key results:
+
+| Removed value | Previous instructions | Single-pass instructions | Upstream |
+| --- | ---: | ---: | ---: |
+| 17 bytes | 1,396,344 | 1,377,786 | 274,170 |
+| 64 KiB | 3,686,780 | 2,920,415 | 13,186,662 |
+| 1 MiB | 38,948,493 | 26,995,276 | 30,225,135 |
+| 4 MiB | 154,691,671 | 106,900,172 | 120,839,997 |
+
+The 4 MiB fixture improves 30.9% against the prior implementation and is 11.5%
+cheaper than upstream. The read/copy needed to return the payload still exists;
+only the redundant traversal is removed. Small overflow removal remains costly.
+The 16-byte inline fixture increases from 696,469 to 697,290 instructions
+(0.12%) with either key pattern; it has no overflow traversal to eliminate.
+These are per-operation synthetic results, not an overall workload victory.
+
+All 1,200 measurements repeat exactly across the two fresh runs. The prior
+artifact is `target/key-pattern-optimized.eSra9b` above; the new CSV, log and
+measured Wasm are retained in `target/single-pass-delete.9v83Hq`, SHA-256
+`97c1735b41393640278151ec04ac2c4d7d73164e3eaaa5e1bb99ee3aff7593b5`.
+Dependency, compiler, server and fixture selections are unchanged. Four checksum
+tests and 19 storage tests pass on Rust 1.99 and 1.85; four upstream tests and
+the 320,000-operation extended campaign pass on 1.99. Native/Wasm Clippy passes.

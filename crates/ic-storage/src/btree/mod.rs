@@ -230,15 +230,14 @@ impl<M: Memory, C: Comparator> BTreeMap<M, C> {
     /// # Errors
     /// Rejects malformed keys and observed corruption without publishing changes.
     pub fn remove(&mut self, key: &[u8]) -> Result<Option<Vec<u8>>, Error> {
-        let previous = self.get(key)?;
-        if previous.is_none() {
+        if !self.contains_key(key)? {
             return Ok(None);
         }
         let mut tx = Transaction::new(self);
-        tx.remove(key)?;
+        let previous = tx.remove(key)?;
         tx.header.len = tx.header.len.checked_sub(1).ok_or(Error::Corrupt)?;
         self.header = tx.commit()?;
-        Ok(previous)
+        Ok(Some(previous))
     }
 
     /// Iterate a bounded range in either direction without reading value payloads.
