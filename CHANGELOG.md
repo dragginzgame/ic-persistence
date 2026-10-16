@@ -1,6 +1,6 @@
 # Changelog
 
-## [0.1.6]
+## [0.1.6] - 2026-10-16
 
 - Reuse the validated full node during splits instead of rereading it.
   Root-splitting insertion improves 8.9%, and new insertion in the 2,048/4,096
