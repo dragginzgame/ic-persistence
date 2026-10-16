@@ -2,6 +2,14 @@
 
 ## [0.3.0] - Unreleased
 
+- Adopt IC Memory 0.45 allocation requests and IC Testkit 0.50 caller-selected
+  Candid reply limits in the adapter tests and benchmark. Preserve incoming
+  dependency updates, including IC Host FS 0.24.
+- Qualify both wrapped engines with governed-memory mixed workloads: 256
+  measurements repeat exactly with matching model results. Row instruction
+  totals are near parity; index totals remain 1.84 times upstream. Retain this
+  separately from earlier raw-memory performance evidence.
+
 - Require IC Memory runtime handles for public collections. Replace generic
   public engine access with an explicit wrapper and remove memory extraction.
 - Add governed wrappers for upstream maps, sets, cells, vectors, heaps and logs,

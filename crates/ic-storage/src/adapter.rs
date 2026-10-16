@@ -4,7 +4,7 @@
 //! contracts. Mutations are not our custom tree's staged transactions. These
 //! wrappers expose neither raw memory nor unrestricted upstream collections.
 //! Use distinct admitted allocations, drop before reopening, and never retain
-//! memory clones. IC Memory 0.44 does not yet enforce exclusive allocation leases.
+//! memory clones. IC Memory 0.45 does not yet enforce exclusive allocation leases.
 use crate::substrate::{self, DefaultMemoryImpl, Memory};
 pub use crate::{BTreeMap, Comparator, Config, Entry, Error, Lexicographic, Range};
 use ic_memory::RuntimeMemory;

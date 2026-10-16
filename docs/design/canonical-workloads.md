@@ -270,3 +270,31 @@ and the retained library passes its locked Rust 1.85 check. No new production
 change, dependency update, release or IcyDB modification is retained by this
 allocation investigation. See [dependency ownership](../upstreams.md#benchmark-dependency-resolution)
 for the separate ICU/time inspection.
+
+
+## Governed-memory baseline with IC Memory 0.45
+
+Both engines now use allocation-governed runtime handles, and upstream collections
+are accessed through the IC Storage wrapper. This changes memory plumbing from
+historical raw-memory runs; the numbers below are a new baseline, not an isolated
+algorithm speedup/regression attribution. Runtime bootstrap occurs outside measured
+operations. IC Memory 0.45, IC Testkit 0.50, IC Host FS 0.24, Rust 1.99 and PocketIC
+server 16.0.0/client 16.1.0 are retained with the attempt lockfile.
+
+| Mixed workload | Our instruction total | Upstream total | Ours/upstream |
+| --- | ---: | ---: | ---: |
+| Rows | 341,181,083 | 340,590,375 | 1.0017 |
+| Index | 210,158,188 | 114,285,849 | 1.8389 |
+
+Totals sum all eight operations across four rounds in one fresh run, excluding
+seeding and bootstrap. Both fresh runs repeat every instruction, heap/stable
+capacity and result-length counter exactly across 256 measurements. Paired engine
+result lengths agree; the canister's heap-model checks also pass. Mixed index
+performance remains an optimization target; these are synthetic codecs and do
+not establish deployed IcyDB performance or exclusive allocation ownership.
+
+Attempt `target/governed-memory045.by7rDA/` retains `runner`, `benchmark.wasm`,
+`Cargo.lock`, `workloads.csv` and `workloads.log`. Wasm SHA-256:
+`45d3b6319f04ef8e5d6fdbdd9195f8924a77f64da2bd0b55a1c2c3e1d8bd90d3`.
+The native runner's finite Candid limits admit every boolean and counter reply.
+The older full fixture matrix was not rerun for this focused adoption.

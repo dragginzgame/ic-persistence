@@ -15,6 +15,7 @@ ic-testkit = { workspace = true }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 ic-host-fs = { workspace = true }
+ic-testkit-candid = { workspace = true }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 ic-cdk = { workspace = true }

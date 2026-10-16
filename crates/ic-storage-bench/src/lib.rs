@@ -4,8 +4,7 @@ mod fixtures;
 mod workloads;
 use ic_memory::{
     GenericAllocationPolicy, MemoryAllocationPool, MemoryAuthority, MemoryRequest, MemoryRuntime,
-    RuntimeMemory, SchemaMetadata, SealedDeclarationSnapshot,
-    ic_stable_structures::DefaultMemoryImpl as Memory,
+    RuntimeMemory, SealedDeclarationSnapshot, ic_stable_structures::DefaultMemoryImpl as Memory,
 };
 use ic_storage::adapter::{StableBTreeMap as Upstream, Storable, storable::Bound};
 use ic_storage::{BTreeMap, Config, Lexicographic};
@@ -131,10 +130,9 @@ fn governed_memory() -> RuntimeMemory<Memory> {
         vec![],
     )
     .unwrap();
-    let declarations = SealedDeclarationSnapshot::new(vec![
-        MemoryRequest::new("bench", "bench.tree.v1", SchemaMetadata::default()).unwrap(),
-    ])
-    .unwrap();
+    let declarations =
+        SealedDeclarationSnapshot::new(vec![MemoryRequest::new("bench", "bench.tree.v1").unwrap()])
+            .unwrap();
     let mut runtime = MemoryRuntime::new(Memory::default()).unwrap();
     runtime
         .bootstrap(&declarations, &pool, &GenericAllocationPolicy)

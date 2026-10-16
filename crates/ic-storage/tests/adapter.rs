@@ -1,8 +1,7 @@
 //! Public collection adapters require committed IC Memory allocations.
 use ic_memory::{
     GenericAllocationPolicy, MemoryAllocationPool, MemoryAuthority, MemoryRequest, MemoryRuntime,
-    RuntimeOpenError, SchemaMetadata, SealedDeclarationSnapshot,
-    ic_stable_structures::VectorMemory,
+    RuntimeOpenError, SealedDeclarationSnapshot, ic_stable_structures::VectorMemory,
 };
 use ic_storage::{BTreeMap, Config, Lexicographic, adapter::*};
 
@@ -21,10 +20,7 @@ fn runtime(backing: VectorMemory) -> MemoryRuntime<VectorMemory> {
             "log.index",
             "log.data",
         ]
-        .map(|key| {
-            MemoryRequest::new("test", &format!("test.{key}.v1"), SchemaMetadata::default())
-                .unwrap()
-        })
+        .map(|key| MemoryRequest::new("test", &format!("test.{key}.v1")).unwrap())
         .to_vec(),
     )
     .unwrap();

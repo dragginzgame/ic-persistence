@@ -1,7 +1,16 @@
 //! Run the canister probe against an explicitly supplied, pre-admitted server.
 mod fixtures;
 use ic_testkit::pic::{CandidCallExt, PocketIcBuilder, PocketIcStartupConfig, update_candid_args};
+use ic_testkit_candid::DecodeLimits;
 use std::{error::Error, path::Path, time::Duration};
+// Replies contain only a bool or four integer counters, never stored payloads.
+const REPLY_LIMITS: DecodeLimits = DecodeLimits {
+    reply_bytes: 256,
+    decoding_quota: 10_000,
+    skipping_quota: 0,
+    type_entries: 0,
+    header_bytes: 32,
+};
 fn main() -> Result<(), Box<dyn Error>> {
     let args = std::env::args_os().skip(1).collect::<Vec<_>>();
     if !(args.len() == 2 || (args.len() == 3 && args[2] == "workloads")) {
@@ -47,7 +56,7 @@ fn main() -> Result<(), Box<dyn Error>> {
                 );
                 let mut seeded = false;
                 for _ in 0..2048 {
-                    if pic.update_candid::<bool, _>(id, "seed", (batch,))? {
+                    if pic.update_candid::<bool, _>(id, "seed", (batch,), REPLY_LIMITS)? {
                         seeded = true;
                         break;
                     }
@@ -75,6 +84,7 @@ fn main() -> Result<(), Box<dyn Error>> {
                             candid::Principal::anonymous(),
                             "measure",
                             (operation,),
+                            REPLY_LIMITS,
                         )?;
                     println!(
                         "{run},{engine},{name},{label},{instructions},{heap},{stable},{result}"
@@ -104,7 +114,8 @@ fn run_workloads(server: &str, wasm: &[u8]) -> Result<(), Box<dyn Error>> {
                     None,
                 );
                 for batch in 0..32 {
-                    let done = pic.update_candid::<bool, _>(id, "workload_seed", ())?;
+                    let done =
+                        pic.update_candid::<bool, _>(id, "workload_seed", (), REPLY_LIMITS)?;
                     assert_eq!(done, batch == 31);
                 }
                 for round in 0..4 {
@@ -128,6 +139,7 @@ fn run_workloads(server: &str, wasm: &[u8]) -> Result<(), Box<dyn Error>> {
                                 candid::Principal::anonymous(),
                                 "workload_measure",
                                 (u8::try_from(operation)?,),
+                                REPLY_LIMITS,
                             )?;
                         println!(
                             "{run},{engine},{name},{label}_{round},{instructions},{heap},{stable},{result}"

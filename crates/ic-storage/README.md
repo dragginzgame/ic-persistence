@@ -90,7 +90,7 @@ fn bypass(map: &ic_storage::adapter::StableBTreeMap<u64, u64>) {
 }
 ```
 
-IC Memory 0.44 runtime handles are cloneable and can be reopened. Requiring them
+IC Memory 0.45 runtime handles are cloneable and can be reopened. Requiring them
 proves allocation provenance, **not exclusive ownership**. Do not retain clones,
 open a second collection over the same allocation, or write through raw handles
 while a collection is live. Enforcing exclusive leases requires a change at the

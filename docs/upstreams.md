@@ -86,8 +86,8 @@ The dependency guard permits the direct substrate dependency only in this
 workspace's `ic-storage` package, including renamed dependency declarations.
 It is a local guard, not a claim that other repositories have been migrated.
 
-Exclusive ownership remains an IC Memory prerequisite. The published 0.44
-runtime and inspected sibling source both permit cloned/repeated handles.
+Exclusive ownership remains an IC Memory prerequisite. The published 0.45
+runtime still permits cloned/repeated handles.
 The authority must issue a non-cloneable allocation lease, reject a second live
 open with a typed error, and release the lease on drop (including failed
 collection construction). A log needs two distinct leases. Bootstrap and raw
@@ -95,5 +95,19 @@ backing access must not furnish an alternate mutable route to a leased region;
 multiple runtime owners over one backing also need an explicit restriction.
 IC Storage must consume that released capability when available. A downstream
 registry cannot enforce this across other runtime callers and is not added.
-The sibling has active runtime changes; this task does not modify that checkout
-or claim the unreleased ownership guarantee.
+This task does not modify the sibling checkout or claim the unreleased
+ownership guarantee.
+
+
+## IC Memory 0.45 and IC Testkit 0.50 adoption
+
+The incoming dependency selections are preserved: IC Memory 0.45, IC Host FS
+0.24 and IC Testkit 0.50. Allocation requests now contain authority and stable
+key only; the adapter tests and benchmark no longer pass removed schema metadata.
+The native runner explicitly depends on IC Testkit Candid 0.50 for `DecodeLimits`.
+All seed and measurement calls admit at most 256 reply bytes, 32 header bytes,
+10,000 decoding work units, no type-table entries and no skipped values. Replies
+are primitive booleans or four integer counters, never stored row payloads.
+These limits are qualified by the governed mixed-workload run; they do not change
+canister measurement regions or storage formats. Runtime libraries remain free
+of this native decoding dependency.

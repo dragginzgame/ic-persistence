@@ -1,7 +1,7 @@
 # Current handoff
 
 Released source is 0.2.0; the pending breaking API batch is 0.3.0. Public custom
-and upstream collections now use explicit wrappers consuming IC Memory 0.44
+and upstream collections now use explicit wrappers consuming IC Memory 0.45
 runtime handles. No raw inner collection, Deref or memory extraction is exposed.
 IC Storage privately depends on both IC Memory and ic-stable-structures; the
 benchmark uses the storage adapter. The local dependency guard permits the
@@ -10,13 +10,20 @@ substrate only in the infrastructure library. Package versions are unchanged.
 Allocation admission is enforced by the handle type; exclusivity is not yet
 enforced by IC Memory. The exact upstream prerequisite and dirty sibling
 boundary are recorded in [upstream ownership](../upstreams.md#collection-ownership-boundary).
-IcyDB adoption, exclusive leases and governed-memory performance measurements
-remain outstanding. Prior benchmark numbers used different memory plumbing.
+IcyDB adoption and exclusive leases remain outstanding. The governed mixed
+workload now passes 256 measurements with exact repeats and model checks; see
+[the new baseline](../design/canonical-workloads.md#governed-memory-baseline-with-ic-memory-045).
+Rows total 1.0017 times upstream instructions; index totals 1.8389 times upstream.
+Prior benchmark numbers used different memory plumbing.
 Focused qualification: both public adapter tests pass on Rust 1.91; six
 compile-fail examples and the valid documentation example pass. Native library
 and Wasm benchmark Clippy, all-target MSRV checking, warning-free Rustdoc,
 formatting, links and dependency pins pass. The dependency guard rejects a
 renamed consumer import. Full release validation was not run.
+IC Memory 0.45 request construction and IC Testkit 0.50 finite Candid reply
+limits are adopted in the test and benchmark callers. Incoming dependency
+updates are preserved. Public adapter tests on Rust 1.91, documentation tests,
+native library/runner and Wasm Clippy, pins and boundary checks pass.
 The earlier handoff paragraphs below retain historical qualification.
 
 The maintainer has selected Rust 1.91 as the library MSRV. The root manifest,
