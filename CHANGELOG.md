@@ -1,6 +1,6 @@
 # Changelog
 
-## [0.3.0] - Unreleased
+## [0.3.0]
 
 - Adopt IC Memory 0.45 allocation requests and IC Testkit 0.50 caller-selected
   Candid reply limits in the adapter tests and benchmark. Preserve incoming
