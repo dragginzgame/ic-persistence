@@ -1,6 +1,6 @@
 # Changelog
 
-## [0.1.1]
+## [0.1.1] - 2026-10-16
 
 - Synchronize the local Cargo lockfile identity with the current 0.1.0 manifest
   so locked release preflight can run without changing dependency selections.
