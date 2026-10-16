@@ -855,14 +855,14 @@ dependencies = [
 
 [[package]]
 name = "ic-storage"
-version = "0.1.2"
+version = "0.1.3"
 dependencies = [
  "ic-stable-structures",
 ]
 
 [[package]]
 name = "ic-storage-bench"
-version = "0.1.2"
+version = "0.1.3"
 dependencies = [
  "candid",
  "ic-cdk",

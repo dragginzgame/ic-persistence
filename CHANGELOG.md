@@ -1,6 +1,6 @@
 # Changelog
 
-## [0.1.3]
+## [0.1.3] - 2026-10-16
 
 - Expand canister comparisons to 15 fixtures and ten operations, covering
   inline/page boundaries, long keys, tree sizes, misses, value scans and
