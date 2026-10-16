@@ -17,7 +17,7 @@ ic-cdk = "0.20.3"
 ic-host-fs = "0.22"
 ic-stable-structures = "0.7.2"
 ic-storage = { path = "crates/ic-storage" }
-ic-testkit = "0.48"
+ic-testkit = "0.49"
 
 [workspace.lints.rust]
 missing_docs = "warn"
