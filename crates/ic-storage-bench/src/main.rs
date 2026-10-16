@@ -4,8 +4,8 @@ use ic_testkit::pic::{CandidCallExt, PocketIcBuilder, PocketIcStartupConfig, upd
 use std::{error::Error, path::Path, time::Duration};
 fn main() -> Result<(), Box<dyn Error>> {
     let args = std::env::args_os().skip(1).collect::<Vec<_>>();
-    if args.len() != 2 {
-        return Err("usage: ic-storage-bench POCKET_IC_BIN BENCH_WASM".into());
+    if !(args.len() == 2 || (args.len() == 3 && args[2] == "workloads")) {
+        return Err("usage: ic-storage-bench POCKET_IC_BIN BENCH_WASM [workloads]".into());
     }
     let wasm = ic_host_fs::read::read_file(Path::new(&args[1]), 32 * 1024 * 1024)?;
     eprintln!(
@@ -19,6 +19,9 @@ fn main() -> Result<(), Box<dyn Error>> {
     let server =
         PocketIcStartupConfig::spawn(&args[0], Duration::from_secs(30)).start_managed_server()?;
     println!("run,engine,profile,operation,instructions,heap_bytes,stable_bytes,result_bytes");
+    if args.len() == 3 {
+        return run_workloads(server.url(), &wasm);
+    }
     for run in 0..2 {
         for (profile, fixture, dense_keys) in fixtures::FIXTURES
             .iter()
@@ -76,6 +79,60 @@ fn main() -> Result<(), Box<dyn Error>> {
                     println!(
                         "{run},{engine},{name},{label},{instructions},{heap},{stable},{result}"
                     );
+                }
+            }
+        }
+    }
+    Ok(())
+}
+
+fn run_workloads(server: &str, wasm: &[u8]) -> Result<(), Box<dyn Error>> {
+    for run in 0..2 {
+        for (profile, name) in ["mixed_rows", "mixed_index"].iter().enumerate() {
+            for engine in 0u8..=1 {
+                let pic = PocketIcBuilder::new()
+                    .with_server_url(server.parse()?)
+                    .with_application_subnet()
+                    .build();
+                let id = pic.create_canister();
+                pic.add_cycles(id, 100_000_000_000_000);
+                let profile = u8::try_from(fixtures::FIXTURES.len() + profile)?;
+                pic.install_canister(
+                    id,
+                    wasm.to_vec(),
+                    candid::encode_args((engine, profile, false))?,
+                    None,
+                );
+                for batch in 0..32 {
+                    let done = pic.update_candid::<bool, _>(id, "workload_seed", ())?;
+                    assert_eq!(done, batch == 31);
+                }
+                for round in 0..4 {
+                    for (operation, label) in [
+                        "read_mix",
+                        "fold_put",
+                        "fold_delete",
+                        "refill",
+                        "keys_forward",
+                        "keys_reverse",
+                        "values_forward",
+                        "values_reverse",
+                    ]
+                    .iter()
+                    .enumerate()
+                    {
+                        let (instructions, heap, stable, result): (u128, u128, u128, u64) =
+                            update_candid_args(
+                                &pic,
+                                id,
+                                candid::Principal::anonymous(),
+                                "workload_measure",
+                                (u8::try_from(operation)?,),
+                            )?;
+                        println!(
+                            "{run},{engine},{name},{label}_{round},{instructions},{heap},{stable},{result}"
+                        );
+                    }
                 }
             }
         }

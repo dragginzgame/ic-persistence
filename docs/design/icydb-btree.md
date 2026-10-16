@@ -1,5 +1,8 @@
 # IcyDB-driven B-tree boundary
 
+The [canonical-store investigation](canonical-workloads.md) traces newer committed
+IcyDB codecs, adds mixed workloads, and records isolated layout/read-cost experiments.
+
 Source inspection: IcyDB commit `e104fe1c9f5921336f0e5b292acbda99f8311476`,
 with its current `icydb-core/src/db` store wrappers as the consumer evidence.
 IcyDB itself is not modified by this implementation.

@@ -15,7 +15,7 @@ The reviewed [Shared Tooling snapshot](.shared-tooling.snapshot) pins version
 Read [AGENTS.md](AGENTS.md) for local contributor instructions and
 [the setup guide](docs/local-setup.md) for Linux/macOS prerequisites.
 Rust 1.99.0 is the development toolchain. The Rust 2024 library lives in
-`crates/ic-storage`, inherits root workspace metadata, and supports Rust 1.85.0.
+`crates/ic-storage`, inherits root workspace metadata, and supports Rust 1.91.0.
 See [upstream ownership](docs/upstreams.md) for Shared Tooling and IC Host Tooling.
 
 The non-published `ic-storage-bench` package uses Rust 1.99 and IC Testkit for
@@ -25,6 +25,12 @@ and runs fresh local PocketIC instances. Supply an already-admitted 16.x server;
 the command does not provision one. See the [measurement contract and results](docs/design/icydb-btree.md#canister-instruction-baseline)
 before interpreting the CSV output. `make msrv` checks the public library;
 workspace checks and `make wasm-check` also cover benchmark compilation.
+
+For variable-size canonical-store workloads, build the runner with
+`cargo build -p ic-storage-bench --bin ic-storage-bench --locked`, then pass
+`workloads` as its third argument after the server and Wasm paths. The
+[workload investigation](docs/design/canonical-workloads.md) documents the exact
+command, model checks, copy trace, measured results and experimental limitations.
 
 ```sh
 make install-tools

@@ -1,6 +1,7 @@
 //! Non-published canister probe; each installation owns one fresh memory region.
 #![cfg(target_arch = "wasm32")]
 mod fixtures;
+mod workloads;
 use ic_stable_structures::{
     BTreeMap as Upstream, DefaultMemoryImpl as Memory, Storable, storable::Bound,
 };
@@ -124,6 +125,10 @@ fn key(n: u64, len: usize, dense: bool) -> Vec<u8> {
 #[ic_cdk::init]
 fn init(engine: u8, profile: u8, dense_keys: bool) {
     assert!(engine <= 1);
+    if usize::from(profile) >= fixtures::FIXTURES.len() {
+        workloads::init(engine, usize::from(profile) - fixtures::FIXTURES.len());
+        return;
+    }
     let fixture = &fixtures::FIXTURES[usize::from(profile)];
     assert_ne!(fixture.name, "");
     let (count, key_len, value_len) = (fixture.count, fixture.key_len, fixture.value_len);

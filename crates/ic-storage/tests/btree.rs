@@ -137,11 +137,10 @@ fn all_range_bounds_and_interleaved_directions() {
                 Bound::Included(a) | Bound::Excluded(a),
                 Bound::Included(b) | Bound::Excluded(b),
             ) = (lower, upper)
+                && a > b
             {
-                if a > b {
-                    assert!(matches!(range, Err(Error::InvalidRange)));
-                    continue;
-                }
+                assert!(matches!(range, Err(Error::InvalidRange)));
+                continue;
             }
             let mut range = range.unwrap();
             let (mut front, mut back) = (0, expected.len());
@@ -1073,5 +1072,57 @@ fn shrinking_replacement_reads_each_overflow_page_once() {
         tree.validate().unwrap();
         let tree = BTreeMap::open(tree.into_memory(), Config::default(), Lexicographic).unwrap();
         assert_eq!(tree.get(b"row").unwrap(), Some(replacement));
+    }
+}
+
+#[test]
+fn overflow_key_corruption_preserves_published_bytes() {
+    // Exercise a short overflow key, an exact payload page and a chained key.
+    for len in [33, 4072, 4073] {
+        let key = vec![0xa7; len];
+        let mut tree = fresh();
+        tree.insert(&key, b"value").unwrap();
+        let memory = tree.into_memory();
+        let payload = memory
+            .borrow()
+            .windows(33)
+            .position(|bytes| bytes == [0xa7; 33])
+            .unwrap();
+        let start = payload / 4096 * 4096;
+        let original = memory.borrow()[start..start + 4096].to_vec();
+        for fault in 0..3 {
+            let mut page = original.clone();
+            match fault {
+                0 => page[16] ^= 1, // Payload damage with the original checksum.
+                1 => page[0] = 1,   // Authenticated wrong page kind.
+                _ => {
+                    // An authenticated nonterminal chain must not be accepted
+                    // merely because enough key bytes have been collected.
+                    let self_id = u64::try_from(start / 4096).unwrap();
+                    page[8..16].copy_from_slice(&self_id.to_le_bytes());
+                }
+            }
+            if fault != 0 {
+                let checksum = page[..4088]
+                    .iter()
+                    .fold(0xcbf2_9ce4_8422_2325u64, |hash, byte| {
+                        (hash ^ u64::from(*byte)).wrapping_mul(0x100_0000_01b3)
+                    });
+                page[4088..].copy_from_slice(&checksum.to_le_bytes());
+            }
+            memory.write(u64::try_from(start).unwrap(), &page);
+            let before = memory.borrow().clone();
+            let mut tree = Tree::open(memory.clone(), Config::default(), Lexicographic).unwrap();
+            assert_eq!(tree.get(&key), Err(Error::Corrupt));
+            assert_eq!(tree.contains_key(&key), Err(Error::Corrupt));
+            assert!(matches!(tree.iter().next(), Some(Err(Error::Corrupt))));
+            assert_eq!(tree.insert(&key, b"changed"), Err(Error::Corrupt));
+            assert_eq!(tree.remove(&key), Err(Error::Corrupt));
+            assert_eq!(*memory.borrow(), before);
+            memory.write(u64::try_from(start).unwrap(), &original);
+        }
+        let tree = Tree::open(memory, Config::default(), Lexicographic).unwrap();
+        assert_eq!(tree.get(&key).unwrap(), Some(b"value".to_vec()));
+        tree.validate().unwrap();
     }
 }

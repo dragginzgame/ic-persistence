@@ -20,7 +20,7 @@ version release-version:
 	@bash scripts/release/adapter.sh version
 
 check-doc-links:
-	perl scripts/ci/check-documentation-links.pl --root . README.md AGENTS.md CHANGELOG.md docs/status/current.md docs/upstreams.md crates/ic-storage/README.md docs/design/icydb-btree.md
+	perl scripts/ci/check-documentation-links.pl --root . README.md AGENTS.md CHANGELOG.md docs/status/current.md docs/upstreams.md crates/ic-storage/README.md docs/design/icydb-btree.md docs/design/canonical-workloads.md
 
 check-license:
 	perl scripts/ci/check-license.pl --kind mit --file LICENSE
@@ -61,7 +61,7 @@ clippy:
 docs-check:
 	+RUSTDOCFLAGS='-D warnings' cargo doc --workspace --no-deps --locked
 msrv:
-	+cargo +1.85.0 check -p ic-storage --all-targets --locked
+	+cargo +1.91.0 check -p ic-storage --all-targets --locked
 package:
 	+cargo package -p ic-storage --locked
 publish publish-check:

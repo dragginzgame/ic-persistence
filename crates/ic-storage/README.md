@@ -5,6 +5,8 @@ The current implementation provides ordered byte keys, opaque variable-size
 values, custom comparators and fallible operations. It does not yet replace
 `IcyDB`'s deployed canonical stores.
 
+The library requires Rust 1.91 or later.
+
 ```rust
 use ic_storage::{BTreeMap, Config, Lexicographic};
 use ic_stable_structures::VectorMemory;

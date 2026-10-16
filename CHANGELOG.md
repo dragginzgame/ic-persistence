@@ -1,5 +1,26 @@
 # Changelog
 
+## [0.2.0]
+
+- Raise the library's minimum supported Rust version from 1.85 to 1.91 at the
+  maintainer's request, updating the MSRV check and Linux/macOS CI setup.
+  Consumers building with older compilers must upgrade to Rust 1.91 or later.
+- Update the native benchmark's ICU dependencies to 2.3.x and time to 0.3.55
+  under the new compiler floor, without disabling resolver fallback.
+- Reject branch-vector preallocation experiments after the mixed workload
+  exposes row-scan regressions despite gains in the older matrix.
+- Compare single-page overflow keys directly from verified page buffers during
+  binary search, avoiding temporary key vectors. Mixed-index reads improve
+  2.05% and mutations 1.4–1.9%; unrelated matrix cases regress at most 0.12%.
+  Key integrity checks, custom ordering and stored bytes remain unchanged.
+- Add canonical-store workload comparisons with variable-size rows and keys,
+  nonsequential insertion, repeated folds/deletes/refills and bounded forward
+  and reverse scans, checked against an independent heap model.
+- Trace committed IcyDB codecs and retain isolated layout/checksum experiments.
+  Wider fixed inline values regress most cases and are not adopted; large-read
+  diagnostics identify checksum verification as the dominant measured cost.
+  Production storage behavior and persisted format remain unchanged.
+
 ## [0.1.6] - 2026-10-16
 
 - Reuse the validated full node during splits instead of rereading it.

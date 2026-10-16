@@ -214,7 +214,7 @@ fn checksum_with_zero_tail(page: &Page, mut end: usize) -> u64 {
     let mut hash = 0xcbf2_9ce4_8422_2325u64;
     // The covered region is a multiple of eight. Fixed-size inner iterations
     // let Wasm eliminate per-byte loop control without changing FNV-1a order.
-    for chunk in page[..end].chunks_exact(8) {
+    for chunk in page[..end].as_chunks::<8>().0 {
         for byte in chunk {
             hash = (hash ^ u64::from(*byte)).wrapping_mul(0x100_0000_01b3);
         }
@@ -302,6 +302,15 @@ pub(super) fn read_into(
     memory.read(offset, page);
     verify(page)
 }
+// Borrow a complete payload only after the caller has verified its page.
+pub(super) fn single_blob(page: &Page, len: u64) -> Result<&[u8], Error> {
+    if page[0] != BLOB || number(page, 8) != 0 || len > PAYLOAD as u64 {
+        return Err(Error::Corrupt);
+    }
+    let len = usize::try_from(len).map_err(|_| Error::Corrupt)?;
+    Ok(&page[16..16 + len])
+}
+
 pub(super) fn blob(
     memory: &impl Memory,
     next: u64,

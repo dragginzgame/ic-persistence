@@ -174,10 +174,9 @@ impl<'a, M: Memory, C: Comparator> Range<'a, M, C> {
             Bound::Included(left) | Bound::Excluded(left),
             Bound::Included(right) | Bound::Excluded(right),
         ) = (lower, upper)
+            && tree.order.compare(left, right)? == Ordering::Greater
         {
-            if tree.order.compare(left, right)? == Ordering::Greater {
-                return Err(Error::InvalidRange);
-            }
+            return Err(Error::InvalidRange);
         }
         Ok(Self {
             lower: lower.map(<[u8]>::to_vec),

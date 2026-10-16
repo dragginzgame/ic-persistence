@@ -108,11 +108,17 @@ impl<'a, M: Memory, C: Comparator> Transaction<'a, M, C> {
         let (mut lo, mut hi) = (0, node.entries.len());
         while lo < hi {
             let mid = lo + (hi - lo) / 2;
-            match self
-                .tree
-                .order
-                .compare(&self.key(node.entries[mid])?, key)?
-            {
+            let record = node.entries[mid];
+            let order = if record.key != 0 && record.key_len <= PAYLOAD as u64 {
+                let mut buffer = [0; SIZE];
+                self.read_into(record.key, &mut buffer)?;
+                self.tree
+                    .order
+                    .compare(page::single_blob(&buffer, record.key_len)?, key)?
+            } else {
+                self.tree.order.compare(&self.key(record)?, key)?
+            };
+            match order {
                 Ordering::Less => lo = mid + 1,
                 Ordering::Equal => return Ok((mid, true)),
                 Ordering::Greater => hi = mid,
@@ -541,10 +547,10 @@ fn audit_node<M: Memory, C: Comparator>(
         audit_blob(tree, record.value, record.value_len, seen)?;
         let key = tree.key(*record)?;
         tree.check_key(&key)?;
-        if let Some(previous) = previous.as_ref() {
-            if tree.order.compare(previous, &key)? != Ordering::Less {
-                return Err(Error::Corrupt);
-            }
+        if let Some(previous) = previous.as_ref()
+            && tree.order.compare(previous, &key)? != Ordering::Less
+        {
+            return Err(Error::Corrupt);
         }
         *previous = Some(key);
         *count = count.checked_add(1).ok_or(Error::Corrupt)?;

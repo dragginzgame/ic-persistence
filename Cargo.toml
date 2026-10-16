@@ -6,7 +6,7 @@ resolver = "3"
 [workspace.package]
 version = "0.1.6"
 edition = "2024"
-rust-version = "1.85.0"
+rust-version = "1.91.0"
 repository = "https://github.com/dragginzgame/ic-storage"
 description = "Page-based stable-memory B-tree storage for Internet Computer applications"
 license = "MIT"

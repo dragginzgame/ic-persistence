@@ -1,5 +1,54 @@
 # Current handoff
 
+The maintainer has selected Rust 1.91 as the library MSRV. The root manifest,
+`make msrv`, README and Linux/macOS CI setup now agree on 1.91.0; development
+and the benchmark retain Rust 1.99. Normal targeted resolution now selects
+ICU 2.3.0/provider 2.3.1, idna_adapter 1.2.2 and time 0.3.55 with companions.
+The incoming IC Metrics 0.11.7 update remains intact. This consumer compiler
+requirement moves the pending changelog to 0.2.0; package versions are unchanged.
+Earlier 1.85 and pending-0.1.7 references below describe historical qualification.
+The final library passes its all-target MSRV check and 32 regular codec/storage/
+upstream tests on Rust 1.91. New MSRV-aware Clippy suggestions use let-chains
+and fixed-size slice chunks; native library/test/runner and Wasm benchmark
+Clippy pass. The updated runner and final Wasm pass 256 mixed-workload
+measurements with model checks and exact repeats. Formatting, pins and links
+pass; full release validation and macOS execution remain outside this change.
+
+The latest investigation preserves the incoming IC Metrics 0.11.7 lock update.
+ICU/time lag comes from Cargo's Rust 1.85 workspace fallback, not an upstream
+version cap: they are native benchmark dependencies, absent from the library
+and benchmark Wasm graphs. Targeted dry runs and current registry metadata are
+documented in [upstream ownership](../upstreams.md#benchmark-dependency-resolution);
+no dependency upgrade or resolver-policy change is made.
+Branch-child vector preallocation is rejected: small index gains came with
+4.95–5.61% higher mixed row-value scan totals. The incoming production source is
+restored and its rebuilt Wasm matches the fresh baseline. Details and both
+experimental artifacts are retained in the canonical-workload investigation.
+
+The latest 0.1.7 continuation borrows single-page overflow-key bytes during
+binary search, avoiding a temporary allocation/copy without changing persisted
+bytes or checksum/chain validation. All 16 mixed-workload operation totals improve;
+index reads improve 2.05%, index mutations 1.4–1.9%, reverse row-key scans 10.97%.
+In the older matrix, 56 cases improve and 450 increase by at most 0.1164%.
+Both suites repeat exactly (2,280 new measurements); upstream counts are unchanged.
+The new corruption test covers short/exact-page/chained keys and preserves bytes
+on rejected operations. All 23 storage tests pass on Rust 1.99 and 1.85;
+four upstream tests, the 320,000-operation campaign and native/Wasm Clippy pass.
+Details and retained artifacts are in the investigation linked below. Prior
+workload additions remain in the working tree; no release metadata is changed.
+
+Released source is now 0.1.6 at `654a2d7`; older version references below describe
+their historical evidence. The pending 0.1.7 batch adds canonical-store workloads
+and [copy/layout/read-cost evidence](../design/canonical-workloads.md).
+It inspects committed IcyDB `996498ad` without touching its dirty working tree.
+Mixed row key scans win, but the new mixed-index workloads lose to upstream.
+An isolated 48-byte inline-value prototype regresses 478/506 matrix cases and
+is rejected. A deliberately weakened checksum diagnostic isolates 64.8% of
+the 4 MiB lookup cost; production verification remains intact. All 6,584 successful
+measurements repeat exactly. Native/Wasm benchmark Clippy, formatting and doc
+links pass; full release and macOS qualification are not claimed. Production
+B-tree source, dependency selections and package versions are unchanged.
+
 The repository implements its own stable-memory B-tree in `crates/ic-storage`.
 It supports custom encoded-key order, inline small payloads, overflow chains,
 page reuse, fallible operations, lazy bidirectional ranges and structural audit.
@@ -16,7 +65,7 @@ Shared Tooling 0.15.4 is recorded in the root snapshot. Its revision
 `879eb2b021522252a67e908dbc217a0f4efb2a6f` matches remote HEAD as checked on
 2026-10-16; all 99 exported files pass snapshot verification. Uncommitted sibling
 changes are not adopted. Development uses Rust 1.99.0; the library retains
-Rust 1.85.0 support.
+Rust 1.91.0 support following the maintainer's explicit floor change.
 
 The released 0.1.1 patch makes value replacement reuse existing overflow pages
 without splitting tree nodes. It preserves the public API and stored format.

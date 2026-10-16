@@ -307,7 +307,16 @@ impl<M: Memory, C: Comparator> BTreeMap<M, C> {
         let (mut lo, mut hi) = (0, node.entries.len());
         while lo < hi {
             let mid = lo + (hi - lo) / 2;
-            match self.order.compare(&self.key(node.entries[mid])?, key)? {
+            let record = node.entries[mid];
+            let order = if record.key != 0 && record.key_len <= page::PAYLOAD as u64 {
+                let mut buffer = [0; page::SIZE];
+                page::read_into(&self.memory, self.header.next, record.key, &mut buffer)?;
+                self.order
+                    .compare(page::single_blob(&buffer, record.key_len)?, key)?
+            } else {
+                self.order.compare(&self.key(record)?, key)?
+            };
+            match order {
                 Ordering::Less => lo = mid + 1,
                 Ordering::Equal => return Ok((mid, true)),
                 Ordering::Greater => hi = mid,
