@@ -38,6 +38,8 @@ to a persisted free list; stable memory's physical capacity does not shrink.
 Replacing an existing value preserves tree topology and reuses its overflow
 pages. Shrinking frees excess pages; growing allocates only the extra pages
 needed. Same-size and shrinking replacements do not require backing growth.
+Replacement reuses the located node and collects the returned previous value
+during its overflow-chain traversal, avoiding a second search and payload read.
 Default limits accept keys up to 128 KiB and values up to 4 MiB. Callers select
 and retain exact limits when creating/opening a store. Values are opaque bytes;
 application codecs remain responsible for their meaning and validation.

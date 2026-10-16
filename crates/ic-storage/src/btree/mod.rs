@@ -175,7 +175,9 @@ impl<M: Memory, C: Comparator> BTreeMap<M, C> {
     /// # Errors
     /// Rejects malformed keys, oversized keys, and observed storage corruption.
     pub fn get(&self, key: &[u8]) -> Result<Option<Vec<u8>>, Error> {
-        self.find(key)?.map(|record| self.value(record)).transpose()
+        self.find(key)?
+            .map(|(_, node, at)| self.value(node.entries[at]))
+            .transpose()
     }
 
     /// Test key membership without reading the value payload.
@@ -185,14 +187,14 @@ impl<M: Memory, C: Comparator> BTreeMap<M, C> {
         Ok(self.find(key)?.is_some())
     }
 
-    fn find(&self, key: &[u8]) -> Result<Option<Record>, Error> {
+    fn find(&self, key: &[u8]) -> Result<Option<(u64, Node, usize)>, Error> {
         self.check_key(key)?;
         let mut id = self.header.root;
         for _ in 0..page::MAX_HEIGHT {
             let node = self.node(id)?;
             let (at, found) = self.locate(&node, key)?;
             if found {
-                return Ok(Some(node.entries[at]));
+                return Ok(Some((id, node, at)));
             }
             if node.children.is_empty() {
                 return Ok(None);
@@ -211,14 +213,15 @@ impl<M: Memory, C: Comparator> BTreeMap<M, C> {
         if value.len() > self.header.config.max_value_bytes as usize {
             return Err(Error::TooLarge);
         }
-        let previous = self.get(key)?;
+        let located = self.find(key)?;
         let mut tx = Transaction::new(self);
-        if previous.is_some() {
-            tx.replace(key, value)?;
+        let previous = if let Some((id, node, at)) = located {
+            Some(tx.replace(id, node, at, value)?)
         } else {
             tx.insert(key, value)?;
             tx.header.len = tx.header.len.checked_add(1).ok_or(Error::Capacity)?;
-        }
+            None
+        };
         self.header = tx.commit()?;
         Ok(previous)
     }

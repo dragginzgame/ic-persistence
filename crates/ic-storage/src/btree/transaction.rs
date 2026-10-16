@@ -163,16 +163,20 @@ impl<'a, M: Memory, C: Comparator> Transaction<'a, M, C> {
         parent.children.insert(at + 1, right_id);
         Ok(())
     }
-    fn replace_value(&mut self, record: &mut Record, value: &[u8]) -> Result<(), Error> {
+    fn replace_value(&mut self, record: &mut Record, value: &[u8]) -> Result<Vec<u8>, Error> {
         let mut ids = Vec::new();
         let mut id = record.value;
         let mut remaining = record.value_len;
+        let old_len = usize::try_from(remaining).map_err(|_| Error::Corrupt)?;
+        let mut previous = Vec::with_capacity(old_len);
         if id != 0 {
             while remaining != 0 {
                 let page = self.read(id)?;
                 if page[0] != page::BLOB {
                     return Err(Error::Corrupt);
                 }
+                let take = (old_len - previous.len()).min(PAYLOAD);
+                previous.extend_from_slice(&page[16..16 + take]);
                 ids.push(id);
                 id = page::number(&page, 8);
                 remaining = remaining.saturating_sub(PAYLOAD as u64);
@@ -180,6 +184,8 @@ impl<'a, M: Memory, C: Comparator> Transaction<'a, M, C> {
             if id != 0 {
                 return Err(Error::Corrupt);
             }
+        } else {
+            previous.extend_from_slice(&record.value_inline[..old_len]);
         }
         let needed = if value.len() <= 16 {
             0
@@ -207,20 +213,18 @@ impl<'a, M: Memory, C: Comparator> Transaction<'a, M, C> {
         if needed == 0 {
             record.value_inline[..value.len()].copy_from_slice(value);
         }
-        Ok(())
+        Ok(previous)
     }
-    pub fn replace(&mut self, key: &[u8], value: &[u8]) -> Result<(), Error> {
-        let mut id = self.header.root;
-        for _ in 0..MAX_HEIGHT {
-            let mut node = self.node(id)?;
-            let (at, found) = self.locate(&node, key)?;
-            if found {
-                self.replace_value(&mut node.entries[at], value)?;
-                return self.put_node(id, &node);
-            }
-            id = *node.children.get(at).ok_or(Error::Corrupt)?;
-        }
-        Err(Error::Corrupt)
+    pub fn replace(
+        &mut self,
+        id: u64,
+        mut node: Node,
+        at: usize,
+        value: &[u8],
+    ) -> Result<Vec<u8>, Error> {
+        let previous = self.replace_value(&mut node.entries[at], value)?;
+        self.put_node(id, &node)?;
+        Ok(previous)
     }
     pub fn insert(&mut self, key: &[u8], value: &[u8]) -> Result<(), Error> {
         let root = self.node(self.header.root)?;

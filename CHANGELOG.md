@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.1.2]
+
+- Add direct differential tests against ic-stable-structures 0.7.2 and a heap
+  model, including seeded mutation campaigns, semantic key ordering, range
+  bounds, large payloads, reopen cycles and rejection of upstream-format bytes.
+- Compare native read/write traffic and capacity with upstream trees, including
+  bounded index types; record both small-entry costs and large-payload benefits.
+- Reuse the located node and read the previous overflow value once during
+  replacement, halving read traffic in the native index/journal/row fixtures.
+  The public API, persisted format and staged-write failure contract are unchanged.
+- Add an opt-in stable-memory traffic qualification for gets, replacements,
+  forward/reverse key scans and removals. Native byte counts do not establish
+  canister instruction costs or production IcyDB performance.
+
 ## [0.1.1] - 2026-10-16
 
 - Synchronize the local Cargo lockfile identity with the current 0.1.0 manifest

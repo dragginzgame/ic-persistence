@@ -287,6 +287,9 @@ fn semantic_key_order_differs_from_wire_order() {
 struct ObservedMemory {
     memory: VectorMemory,
     reads: Rc<Cell<u64>>,
+    writes: Rc<Cell<u64>>,
+    read_calls: Rc<Cell<u64>>,
+    write_calls: Rc<Cell<u64>>,
     deny_growth: Rc<Cell<bool>>,
 }
 impl Memory for ObservedMemory {
@@ -301,12 +304,147 @@ impl Memory for ObservedMemory {
         }
     }
     fn read(&self, offset: u64, bytes: &mut [u8]) {
+        self.read_calls.set(self.read_calls.get() + 1);
         self.reads.set(self.reads.get() + bytes.len() as u64);
         self.memory.read(offset, bytes);
     }
     fn write(&self, offset: u64, bytes: &[u8]) {
+        self.write_calls.set(self.write_calls.get() + 1);
+        self.writes.set(self.writes.get() + bytes.len() as u64);
         self.memory.write(offset, bytes);
     }
+}
+
+#[test]
+#[ignore = "explicit native stable-memory traffic qualification"]
+fn workload_memory_traffic() {
+    println!(
+        "engine,workload,operation,read_bytes,write_bytes,reserved_bytes,read_calls,write_calls"
+    );
+    for (name, count, size) in [
+        ("index", 2048, 1),
+        ("journal", 64, 65536),
+        ("row", 4, 4_194_304),
+    ] {
+        let memory = ObservedMemory::default();
+        let reads = memory.reads.clone();
+        let writes = memory.writes.clone();
+        let read_calls = memory.read_calls.clone();
+        let write_calls = memory.write_calls.clone();
+        let mut tree = BTreeMap::create(memory, Config::default(), Lexicographic).unwrap();
+        let value = vec![7; size];
+        for n in 0..count {
+            tree.insert(&key(n), &value).unwrap();
+        }
+        for operation in ["get", "replace", "scan_keys", "reverse_keys", "remove"] {
+            reads.set(0);
+            writes.set(0);
+            read_calls.set(0);
+            write_calls.set(0);
+            match operation {
+                "get" => assert_eq!(tree.get(&key(count / 2)).unwrap(), Some(value.clone())),
+                "replace" => assert_eq!(
+                    tree.insert(&key(count / 2), &value).unwrap(),
+                    Some(value.clone())
+                ),
+                "scan_keys" => {
+                    for entry in tree.iter().take(16) {
+                        assert_eq!(entry.unwrap().value_len(), size as u64);
+                    }
+                }
+                "reverse_keys" => {
+                    for entry in tree.iter().rev().take(16) {
+                        assert_eq!(entry.unwrap().value_len(), size as u64);
+                    }
+                }
+                "remove" => assert_eq!(tree.remove(&key(count / 2)).unwrap(), Some(value.clone())),
+                _ => unreachable!(),
+            }
+            println!(
+                "ic-storage,{name},{operation},{},{},{},{},{}",
+                reads.get(),
+                writes.get(),
+                tree.memory_bytes(),
+                read_calls.get(),
+                write_calls.get()
+            );
+        }
+        tree.validate().unwrap();
+        let memory = ObservedMemory::default();
+        let reads = memory.reads.clone();
+        let writes = memory.writes.clone();
+        let read_calls = memory.read_calls.clone();
+        let write_calls = memory.write_calls.clone();
+        let backing = memory.memory.clone();
+        let mut upstream = ic_stable_structures::BTreeMap::<Vec<u8>, Vec<u8>, _>::new(memory);
+        for n in 0..count {
+            upstream.insert(key(n), value.clone());
+        }
+        for operation in ["get", "replace", "scan_keys", "reverse_keys", "remove"] {
+            reads.set(0);
+            writes.set(0);
+            read_calls.set(0);
+            write_calls.set(0);
+            match operation {
+                "get" => assert_eq!(upstream.get(&key(count / 2)), Some(value.clone())),
+                "replace" => assert_eq!(
+                    upstream.insert(key(count / 2), value.clone()),
+                    Some(value.clone())
+                ),
+                "scan_keys" => {
+                    for entry in upstream.iter().take(16) {
+                        assert_eq!(entry.key().len(), 8);
+                    }
+                }
+                "reverse_keys" => {
+                    for entry in upstream.iter().rev().take(16) {
+                        assert_eq!(entry.key().len(), 8);
+                    }
+                }
+                "remove" => assert_eq!(upstream.remove(&key(count / 2)), Some(value.clone())),
+                _ => unreachable!(),
+            }
+            println!(
+                "upstream,{name},{operation},{},{},{},{},{}",
+                reads.get(),
+                writes.get(),
+                backing.size() * 65536,
+                read_calls.get(),
+                write_calls.get()
+            );
+        }
+    }
+}
+
+#[test]
+fn replacement_reads_only_one_search_path_and_payload() {
+    let memory = ObservedMemory::default();
+    let reads = memory.reads.clone();
+    let mut tree = BTreeMap::create(memory, Config::default(), Lexicographic).unwrap();
+    for n in 0..1024 {
+        tree.insert(&key(n), &[0]).unwrap();
+    }
+    for n in [0, 15, 511, 1023] {
+        reads.set(0);
+        assert_eq!(tree.get(&key(n)).unwrap(), Some(vec![0]));
+        let lookup_reads = reads.get();
+        reads.set(0);
+        assert_eq!(tree.insert(&key(n), &[1]).unwrap(), Some(vec![0]));
+        assert_eq!(
+            reads.get(),
+            lookup_reads,
+            "replacement must reuse the located node"
+        );
+    }
+    let value = vec![7; 65536];
+    tree.insert(&key(0), &value).unwrap();
+    reads.set(0);
+    assert_eq!(tree.get(&key(0)).unwrap(), Some(value.clone()));
+    let lookup_reads = reads.get();
+    reads.set(0);
+    assert_eq!(tree.insert(&key(0), &value).unwrap(), Some(value));
+    assert_eq!(reads.get(), lookup_reads, "old payload must be read once");
+    tree.validate().unwrap();
 }
 #[test]
 fn icydb_sized_rows_large_keys_and_lazy_values() {
@@ -441,6 +579,8 @@ fn corrupt_value_is_lazy_and_failed_mutation_preserves_bytes() {
     assert!(tree.contains_key(b"key").unwrap());
     assert!(!tree.contains_key(b"missing").unwrap());
     assert_eq!(entry.value(), Err(Error::Corrupt));
+    assert_eq!(tree.insert(b"key", b"replacement"), Err(Error::Corrupt));
+    assert_eq!(*memory.borrow(), before);
     assert_eq!(tree.remove(b"key"), Err(Error::Corrupt));
     assert_eq!(*memory.borrow(), before);
     assert_eq!(tree.validate(), Err(Error::Corrupt));
@@ -524,4 +664,53 @@ fn failed_overflow_extension_preserves_reused_pages() {
     assert_eq!(*backing.borrow(), before);
     assert_eq!(tree.get(b"row").unwrap(), Some(original));
     tree.validate().unwrap();
+}
+
+#[test]
+#[ignore = "explicit bounded upstream index traffic qualification"]
+fn bounded_upstream_index_memory_traffic() {
+    let memory = ObservedMemory::default();
+    let reads = memory.reads.clone();
+    let writes = memory.writes.clone();
+    let read_calls = memory.read_calls.clone();
+    let write_calls = memory.write_calls.clone();
+    let backing = memory.memory.clone();
+    let mut tree = ic_stable_structures::BTreeMap::<[u8; 8], [u8; 1], _>::new(memory);
+    for n in 0u64..2048 {
+        tree.insert(n.to_be_bytes(), [7]);
+    }
+    println!(
+        "engine,workload,operation,read_bytes,write_bytes,reserved_bytes,read_calls,write_calls"
+    );
+    for operation in ["get", "replace", "scan_keys", "reverse_keys", "remove"] {
+        reads.set(0);
+        writes.set(0);
+        read_calls.set(0);
+        write_calls.set(0);
+        let key = 1024u64.to_be_bytes();
+        match operation {
+            "get" => assert_eq!(tree.get(&key), Some([7])),
+            "replace" => assert_eq!(tree.insert(key, [7]), Some([7])),
+            "scan_keys" => {
+                for entry in tree.iter().take(16) {
+                    assert_eq!(entry.key().len(), 8);
+                }
+            }
+            "reverse_keys" => {
+                for entry in tree.iter().rev().take(16) {
+                    assert_eq!(entry.key().len(), 8);
+                }
+            }
+            "remove" => assert_eq!(tree.remove(&key), Some([7])),
+            _ => unreachable!(),
+        }
+        println!(
+            "upstream-bounded,index,{operation},{},{},{},{},{}",
+            reads.get(),
+            writes.get(),
+            backing.size() * 65536,
+            read_calls.get(),
+            write_calls.get()
+        );
+    }
 }
