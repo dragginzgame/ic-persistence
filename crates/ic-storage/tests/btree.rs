@@ -714,3 +714,157 @@ fn bounded_upstream_index_memory_traffic() {
         );
     }
 }
+
+// Bound metadata from IcyDB e104fe1c9f5921336f0e5b292acbda99f8311476.
+// These bytes model lengths and order only; they are not IcyDB wire codecs.
+#[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd)]
+struct ProfileBytes<const MAX: u32, const FIXED: bool>(Vec<u8>);
+impl<const MAX: u32, const FIXED: bool> ic_stable_structures::Storable
+    for ProfileBytes<MAX, FIXED>
+{
+    const BOUND: ic_stable_structures::storable::Bound = if MAX == 0 {
+        ic_stable_structures::storable::Bound::Unbounded
+    } else {
+        ic_stable_structures::storable::Bound::Bounded {
+            max_size: MAX,
+            is_fixed_size: FIXED,
+        }
+    };
+    fn to_bytes(&self) -> std::borrow::Cow<'_, [u8]> {
+        std::borrow::Cow::Borrowed(&self.0)
+    }
+    fn into_bytes(self) -> Vec<u8> {
+        self.0
+    }
+    fn from_bytes(bytes: std::borrow::Cow<'_, [u8]>) -> Self {
+        Self(bytes.into_owned())
+    }
+}
+fn reset_traffic(memory: &ObservedMemory) {
+    memory.reads.set(0);
+    memory.writes.set(0);
+    memory.read_calls.set(0);
+    memory.write_calls.set(0);
+}
+fn report_traffic(engine: &str, profile: &str, operation: &str, memory: &ObservedMemory) {
+    println!(
+        "{engine},{profile},{operation},{},{},{},{},{}",
+        memory.reads.get(),
+        memory.writes.get(),
+        memory.size() * 65536,
+        memory.read_calls.get(),
+        memory.write_calls.get()
+    );
+}
+fn compare_bound_profile<const KMAX: u32, const VMAX: u32, const KFIXED: bool>(
+    name: &str,
+    count: u64,
+    key_len: usize,
+    value_len: usize,
+) {
+    let own_memory = ObservedMemory::default();
+    let other_memory = ObservedMemory::default();
+    let mut own = BTreeMap::create(own_memory.clone(), Config::default(), Lexicographic).unwrap();
+    let mut other = ic_stable_structures::BTreeMap::<
+        ProfileBytes<KMAX, KFIXED>,
+        ProfileBytes<VMAX, false>,
+        _,
+    >::new(other_memory.clone());
+    let encode_key = |n: u64| {
+        let mut bytes = vec![0; key_len];
+        bytes[..8].copy_from_slice(&n.to_be_bytes());
+        bytes
+    };
+    let value = vec![7; value_len];
+    for n in 0..count {
+        let key = encode_key(n);
+        assert!(own.insert(&key, &value).unwrap().is_none());
+        assert!(
+            other
+                .insert(ProfileBytes(key), ProfileBytes(value.clone()))
+                .is_none()
+        );
+    }
+    // Drop both handles and reopen their own formats before measurement.
+    own = BTreeMap::open(own.into_memory(), Config::default(), Lexicographic).unwrap();
+    other = ic_stable_structures::BTreeMap::load(other.into_memory());
+    for operation in ["get", "replace", "scan_keys", "remove"] {
+        reset_traffic(&own_memory);
+        reset_traffic(&other_memory);
+        let key = encode_key(count / 2);
+        match operation {
+            "get" => {
+                assert_eq!(own.get(&key).unwrap(), Some(value.clone()));
+                assert_eq!(other.get(&ProfileBytes(key)).unwrap().0, value);
+            }
+            "replace" => {
+                assert_eq!(own.insert(&key, &value).unwrap(), Some(value.clone()));
+                assert_eq!(
+                    other
+                        .insert(ProfileBytes(key), ProfileBytes(value.clone()))
+                        .unwrap()
+                        .0,
+                    value
+                );
+            }
+            "scan_keys" => {
+                let a = own
+                    .iter()
+                    .take(16)
+                    .map(|entry| entry.unwrap().key().to_vec())
+                    .collect::<Vec<_>>();
+                let b = other
+                    .iter()
+                    .take(16)
+                    .map(|entry| entry.key().0.clone())
+                    .collect::<Vec<_>>();
+                assert_eq!(a, b);
+            }
+            "remove" => {
+                assert_eq!(own.remove(&key).unwrap(), Some(value.clone()));
+                assert_eq!(other.remove(&ProfileBytes(key)).unwrap().0, value);
+            }
+            _ => unreachable!(),
+        }
+        report_traffic("ic-storage", name, operation, &own_memory);
+        report_traffic("upstream", name, operation, &other_memory);
+    }
+    own.validate().unwrap();
+    assert_eq!(own.len(), other.len());
+    let own = BTreeMap::open(own.into_memory(), Config::default(), Lexicographic).unwrap();
+    let other = ic_stable_structures::BTreeMap::<
+        ProfileBytes<KMAX, KFIXED>,
+        ProfileBytes<VMAX, false>,
+        _,
+    >::load(other.into_memory());
+    let mut seen = 0;
+    for (a, b) in own.iter().zip(other.iter()) {
+        let a = a.unwrap();
+        assert_eq!(a.key(), b.key().0);
+        assert_eq!(a.value().unwrap(), b.value().0);
+        seen += 1;
+    }
+    assert_eq!(own.len(), other.len());
+    assert_eq!(seen, own.len());
+}
+#[test]
+fn icydb_bound_profiles_reopen_and_mutate() {
+    compare_bound_profile::<16668, 1, false>("index-smoke", 64, 64, 1);
+    compare_bound_profile::<16668, 1, false>("index-max", 16, 16668, 1);
+    compare_bound_profile::<12, 65536, true>("journal-smoke", 16, 12, 65536);
+    compare_bound_profile::<262, 0, false>("row-smoke", 16, 262, 4096);
+}
+#[test]
+#[ignore = "explicit IcyDB-bound metadata comparison"]
+fn icydb_bound_profiles_memory_traffic() {
+    println!(
+        "engine,profile,operation,read_bytes,write_bytes,reserved_bytes,read_calls,write_calls"
+    );
+    compare_bound_profile::<16668, 1, false>("index-24", 2048, 24, 1);
+    compare_bound_profile::<16668, 1, false>("index-64", 2048, 64, 1);
+    compare_bound_profile::<16668, 1, false>("index-1024", 512, 1024, 1);
+    compare_bound_profile::<12, 65536, true>("journal-4k", 64, 12, 4096);
+    compare_bound_profile::<12, 65536, true>("journal-64k", 64, 12, 65536);
+    compare_bound_profile::<262, 0, false>("row-4k", 64, 25, 4096);
+    compare_bound_profile::<262, 0, false>("row-4m", 4, 25, 4 * 1024 * 1024);
+}

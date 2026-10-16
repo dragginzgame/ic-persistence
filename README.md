@@ -42,7 +42,7 @@ local Linux checks do not establish macOS qualification.
 
 ## Releases
 
-`make version` reads the root Cargo workspace version. The pending `0.1.2`
+`make version` reads the root Cargo workspace version. The pending `0.1.3`
 changes are recorded in [CHANGELOG.md](CHANGELOG.md). Authorized releases use
 `make release-patch`, `make release-minor` or `make release-major` according to
 the change. These commands validate, update metadata, commit, push and tag

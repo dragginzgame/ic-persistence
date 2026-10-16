@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.3]
+
+- Compare upstream storage with IcyDB's declared key/value bounds across seven
+  synthetic index, journal and row profiles, including read/write bytes, calls
+  and reserved capacity. Add regular bounded-profile mutation/reopen coverage.
+- Record how upstream bound metadata changes the earlier capacity comparison;
+  actual IcyDB codecs and canister instruction costs remain unqualified.
+
 ## [0.1.2] - 2026-10-16
 
 - Add direct differential tests against ic-stable-structures 0.7.2 and a heap

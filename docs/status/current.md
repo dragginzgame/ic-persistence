@@ -31,10 +31,10 @@ needed for this coverage. This remains a synthetic comparator, not IcyDB's codec
 The accepted IcyDB transition is a hard cut without a legacy reader; retained-data
 disposition and canister qualification remain required before adoption.
 
-Cargo.toml and Cargo.lock now both select released 0.1.1, tagged at `19d53cc`.
+Cargo.toml and Cargo.lock now both select released 0.1.2, tagged at `d1eae1a`.
 The earlier lockfile mismatch is resolved; validation runs in the real checkout.
 
-Pending 0.1.2 reuses the located node and reads the previous overflow value once
+Released 0.1.2 reuses the located node and reads the previous overflow value once
 during replacement. Native interface read traffic is halved for the index,
 journal-sized value and row fixtures; writes and reserved capacity are unchanged.
 The reproducible command and before/after measurements are in the
@@ -55,3 +55,14 @@ while large-value replacements use less traffic than the unbounded upstream
 fixture. Fewer Memory calls do not prove fewer IC instructions; actual IcyDB
 schemas and bounded large-value comparisons remain unqualified. See the design
 document for reproducible commands, measurements and limitations.
+
+Pending 0.1.3 adds profiles using IcyDB's bound metadata from committed revision
+`e104fe1c9f5921336f0e5b292acbda99f8311476`: variable index keys up to 16,668
+bytes with variable one-byte values; fixed 12-byte journal keys with variable
+64 KiB chunks; variable data keys up to 262 bytes with unbounded row values.
+Synthetic bytes preserve sizes/order but do not implement the actual codecs.
+The seven-profile comparison passes on native Linux; broader index bounds make
+upstream capacity much larger than the earlier eight-byte-bound baseline.
+Our small-entry read/write byte costs remain higher. See the design document's
+bound-matched results before extrapolating from either baseline. No persisted
+format, production algorithm or release metadata changes are made in this batch.

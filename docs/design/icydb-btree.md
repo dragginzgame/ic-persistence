@@ -128,3 +128,57 @@ replacements and key-only scans reduce traffic in the unbounded comparison.
 This does not establish an overall performance winner: bounded large-value
 layouts, actual IcyDB schemas, heap usage, IC instructions and rollback/upgrade
 behavior still require qualification before adoption.
+
+## IcyDB bound-matched profiles (0.1.3)
+
+The next fixture copies only the `Storable::BOUND` declarations from committed
+IcyDB revision `e104fe1c9f5921336f0e5b292acbda99f8311476`. It does not depend on
+the sibling checkout, import its dirty working tree, or reproduce its codecs.
+Opaque synthetic keys preserve byte lengths and ordering. Both trees receive
+the same bytes, are reopened before measurement, and are compared after mutations
+and another reopen. This isolates layout decisions from application encoding.
+
+| Profile | Key bound | Value bound | Source within `icydb-core/src` |
+| --- | --- | --- | --- |
+| Index | 16,668 bytes, variable | 1 byte, variable | `db/index/key/codec/{bounds,envelope}.rs`, `db/index/entry.rs` |
+| Journal | 12 bytes, fixed | 65,536 bytes, variable | `db/journal/store.rs` |
+| Row | 262 bytes, variable | Unbounded (application limit 4 MiB) | `db/data/{key,row}.rs` |
+
+The composite primary-key maximum is `2 + 4 * (1 + 62) = 254` bytes, using
+`db/key_taxonomy.rs` and `types/account.rs`. Data keys add an eight-byte entity
+tag. Index keys add the 20-byte prefix, four `(2 + 4096)` component envelopes,
+and a `(2 + 254)` primary-key envelope, giving 16,668 bytes. Row size admission
+does not make its upstream `Storable` declaration bounded.
+
+```sh
+cargo test --locked --test btree icydb_bound_profiles_reopen_and_mutate
+cargo test --release --locked --test btree icydb_bound_profiles_memory_traffic -- --ignored --nocapture
+```
+
+Linux/Rust 1.99 results for the pending 0.1.3 fixture against upstream 0.7.2:
+
+| Profile (entries; actual key/value bytes) | Capacity ours / upstream | Replacement read bytes ours / upstream |
+| --- | ---: | ---: |
+| Index (2,048; 24 / 1) | 589,824 / 56,098,816 | 12,288 / 729 |
+| Index (2,048; 64 / 1) | 8,978,432 / 56,098,816 | 57,344 / 1,249 |
+| Index (512; 1,024 / 1) | 2,293,760 / 14,090,240 | 45,056 / 13,649 |
+| Journal (64; 12 / 4,096) | 589,824 / 5,963,776 | 16,384 / 20,814 |
+| Journal (64; 12 / 65,536) | 4,521,984 / 7,077,888 | 77,824 / 328,025 |
+| Row (64; 25 / 4,096) | 589,824 / 327,680 | 16,384 / 21,518 |
+| Row (4; 25 / 4,194,304) | 16,908,288 / 17,235,968 | 4,227,072 / 16,959,545 |
+
+Capacity is measured after replacement, before deletion. Upstream chooses its
+node allocation size from both declared bounds when both are bounded; these
+wide index-key bounds therefore change capacity dramatically from the earlier
+eight-byte fixed-key fixture. Our 64-byte keys exceed the 32-byte inline limit
+and each requires an overflow page, explaining our own sharp capacity increase.
+The earlier compact-bound result remains valid for that fixture, not for IcyDB's
+declared index layout.
+
+Read/write byte traffic still favors upstream for tiny index entries; our tree
+uses fewer calls. For bounded journals, replacements use less traffic here, but
+upstream key-only scans use fewer bytes (535 versus 8,192 for 64 KiB chunks).
+Large-row replacement benefits persist because IcyDB rows are unbounded upstream.
+These results do not justify an overall speed claim or a format redesign yet:
+measure actual canister instructions, real encoded-key distributions, heap usage,
+and application rollback/upgrade behavior before deciding adoption or tuning.
