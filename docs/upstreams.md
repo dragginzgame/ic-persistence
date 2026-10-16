@@ -21,3 +21,9 @@ that authority. DFINITY's `ic-stable-structures` supplies the common Memory trai
 IC Storage implements its own collections and incompatible persisted format.
 IcyDB owns typed key codecs, comparator semantics and application recovery; see
 [the consumer boundary](design/icydb-btree.md).
+
+[IC Testkit](https://github.com/dragginzgame/ic-testkit) owns canister performance
+counters, typed simulator calls and the managed PocketIC server lifecycle used by
+`ic-storage-bench`. Its native runner uses IC Host FS for bounded artifact reads
+and hashes. These dependencies belong to the non-published benchmark package;
+the `ic-storage` library still depends only on the shared Memory substrate.

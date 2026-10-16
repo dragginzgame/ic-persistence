@@ -18,6 +18,14 @@ Rust 1.99.0 is the development toolchain. The Rust 2024 library lives in
 `crates/ic-storage`, inherits root workspace metadata, and supports Rust 1.85.0.
 See [upstream ownership](docs/upstreams.md) for Shared Tooling and IC Host Tooling.
 
+The non-published `ic-storage-bench` package uses Rust 1.99 and IC Testkit for
+canister instruction measurements; it does not raise the storage library's floor.
+`make bench-run POCKET_IC_BIN=/absolute/path/to/pocket-ic` builds the release Wasm
+and runs fresh local PocketIC instances. Supply an already-admitted 16.x server;
+the command does not provision one. See the [measurement contract and results](docs/design/icydb-btree.md#canister-instruction-baseline)
+before interpreting the CSV output. `make msrv` checks the public library;
+workspace checks and `make wasm-check` also cover benchmark compilation.
+
 ```sh
 make install-tools
 make tools-check

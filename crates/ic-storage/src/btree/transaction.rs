@@ -8,7 +8,8 @@ use std::{
 pub(super) struct Transaction<'a, M, C> {
     tree: &'a BTreeMap<M, C>,
     pub header: Header,
-    pages: Pages<u64, Page>,
+    // Keep balancing the staging index from moving entire 4 KiB page buffers.
+    pages: Pages<u64, Box<Page>>,
     allocated: BTreeSet<u64>,
 }
 impl<'a, M: Memory, C: Comparator> Transaction<'a, M, C> {
@@ -22,7 +23,7 @@ impl<'a, M: Memory, C: Comparator> Transaction<'a, M, C> {
     }
     fn read(&self, id: u64) -> Result<Page, Error> {
         if let Some(page) = self.pages.get(&id) {
-            return Ok(*page);
+            return Ok(**page);
         }
         page::read(&self.tree.memory, self.tree.header.next, id)
     }
@@ -44,23 +45,25 @@ impl<'a, M: Memory, C: Comparator> Transaction<'a, M, C> {
         }
         Ok(id)
     }
-    fn free(&mut self, id: u64) -> Result<(), Error> {
-        if id == 0 || id >= self.header.next || self.read(id)?[0] == page::FREE {
+    // Return the validated prior page so chain reclamation need not reread it.
+    fn free(&mut self, id: u64) -> Result<Page, Error> {
+        if id == 0 || id >= self.header.next {
             return Err(Error::Corrupt);
         }
-        let mut page = [0; SIZE];
-        page[0] = page::FREE;
-        page::put(&mut page, 8, self.header.free);
-        page::seal(&mut page);
-        self.pages.insert(id, page);
+        let previous = self.read(id)?;
+        if previous[0] == page::FREE {
+            return Err(Error::Corrupt);
+        }
+        let page = page::free(self.header.free);
+        self.pages.insert(id, Box::new(page));
         self.header.free = id;
-        Ok(())
+        Ok(previous)
     }
     fn node(&self, id: u64) -> Result<Node, Error> {
         Node::decode(&self.read(id)?, self.header.next, self.header.config)
     }
     pub fn put_node(&mut self, id: u64, node: &Node) -> Result<(), Error> {
-        self.pages.insert(id, node.encode()?);
+        self.pages.insert(id, Box::new(node.encode()?));
         Ok(())
     }
     fn key(&self, record: Record) -> Result<Vec<u8>, Error> {
@@ -113,7 +116,7 @@ impl<'a, M: Memory, C: Comparator> Transaction<'a, M, C> {
             page::put(&mut page, 8, next);
             page[16..16 + chunk.len()].copy_from_slice(chunk);
             page::seal(&mut page);
-            self.pages.insert(id, page);
+            self.pages.insert(id, Box::new(page));
             next = id;
         }
         Ok(next)
@@ -123,12 +126,11 @@ impl<'a, M: Memory, C: Comparator> Transaction<'a, M, C> {
             return Ok(());
         }
         while len != 0 {
-            let page = self.read(id)?;
+            let page = self.free(id)?;
             if page[0] != page::BLOB {
                 return Err(Error::Corrupt);
             }
             let next = page::number(&page, 8);
-            self.free(id)?;
             len = len.saturating_sub(PAYLOAD as u64);
             id = next;
         }
@@ -205,7 +207,7 @@ impl<'a, M: Memory, C: Comparator> Transaction<'a, M, C> {
             page::put(&mut page, 8, ids.get(index + 1).copied().unwrap_or(0));
             page[16..16 + chunk.len()].copy_from_slice(chunk);
             page::seal(&mut page);
-            self.pages.insert(id, page);
+            self.pages.insert(id, Box::new(page));
         }
         record.value = ids.first().copied().unwrap_or(0);
         record.value_len = value.len() as u64;
@@ -425,7 +427,7 @@ impl<'a, M: Memory, C: Comparator> Transaction<'a, M, C> {
         // trap must roll the entire message back; filesystem crash atomicity is
         // intentionally not claimed by this storage contract.
         for (id, page) in self.pages {
-            self.tree.memory.write(id * SIZE as u64, &page);
+            self.tree.memory.write(id * SIZE as u64, page.as_slice());
         }
         self.tree.memory.write(0, &self.header.encode());
         Ok(self.header)

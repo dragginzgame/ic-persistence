@@ -64,5 +64,64 @@ Synthetic bytes preserve sizes/order but do not implement the actual codecs.
 The seven-profile comparison passes on native Linux; broader index bounds make
 upstream capacity much larger than the earlier eight-byte-bound baseline.
 Our small-entry read/write byte costs remain higher. See the design document's
-bound-matched results before extrapolating from either baseline. No persisted
-format, production algorithm or release metadata changes are made in this batch.
+bound-matched results before extrapolating from either baseline.
+
+The 0.1.3 continuation extends those profiles through shrink/regrowth and
+delete/refill phases, auditing and reopening between phases. All seven profiles
+reuse our existing capacity. It also removes a redundant read during overflow
+reclamation: `free` returns its validated prior page to chain traversal. The
+new traffic regression fails before the fix and passes afterward. A 4 MiB row
+removal now reads 8,454,144 bytes instead of 12,677,120. No API, persisted format
+or release metadata changes are made.
+Validation: all 18 regular storage tests pass on Rust 1.99 and 1.85; the four
+regular upstream tests and 320,000-operation extended campaign pass on 1.99.
+The seven churn profiles, Clippy, Wasm compilation, formatting and doc links pass.
+
+`ic-storage-bench` now supplies a non-published canister and native runner using
+IC Testkit 0.48.0, IC CDK 0.20.3 and IC Host FS 0.21.0. Its Rust 1.99 floor is
+separate from the public library's Rust 1.85 floor. `make bench-run` accepts an
+explicit pre-admitted server; regular CI compiles the native and Wasm targets,
+while simulator execution remains opt-in. No server is downloaded implicitly.
+
+Two fresh runs per engine/profile completed with PocketIC server 16.0.0 and
+client 16.1.0 on Linux. Each operation's instruction count repeated exactly.
+The measured results change the traffic-only conclusion: our key-only scans
+use fewer instructions in these fixtures, but large-row reads and mutations
+use more. A 4 MiB replacement costs 215,655,911 instructions here versus
+124,318,147 upstream. See the design document for all results, artifact hashes,
+measurement exclusions and retained failed/successful attempts. These synthetic
+canister results do not qualify actual IcyDB codecs, production subnet costs,
+rollback or upgrade recovery. No dependency was added to the library itself.
+
+Instruction investigation retains two compatible optimizations: checksum
+iteration in eight-byte chunks with the same FNV-1a byte order, and boxed page
+buffers in the transaction staging index. The former reduces loop overhead;
+the latter avoids moving 4 KiB buffers when the heap B-tree balances. Combined,
+4 MiB replacement falls from 215,655,911 to 146,834,753 instructions and removal
+from 265,860,686 to 195,445,266. Total Wasm heap capacity after replacement falls
+from 17,367,040 to 13,893,632 bytes. Large-row operations still trail upstream.
+Two fresh runs repeat all counters exactly; the design records intermediate
+measurements and artifact identity. API, persisted bytes and staging semantics
+are unchanged. Two new checksum tests compare the original persisted algorithm
+and reject corruption at every page byte. These and all 18 regular storage
+tests pass on Rust 1.99 and 1.85; four regular upstream comparisons, the extended
+320,000-operation campaign, and native/Wasm Clippy pass on 1.99. Formatting and
+documentation links pass. Full release validation and macOS remain outside this run.
+
+The canister runner now covers 15 fixtures and ten ordered operations, with
+shared host/canister descriptors. It exercises inline and overflow boundaries,
+long keys, tree sizes, misses, key/value scans, shrink/regrow, removal/refill and
+new insertions. Each measured build produces 600 rows across two fresh runs;
+all counters and result lengths repeat exactly. Bulk value collection replaces
+byte-by-byte flattening in the scan harness; earlier scan evidence is retained.
+
+New free pages compute the identical FNV-1a checksum of their known-zero tail
+using a compile-time multiplier. Existing pages still verify every byte.
+Expanded 4 MiB removal falls from 195,445,228 to 155,867,505 instructions;
+shrink falls from 196,375,461 to 156,797,740. Both still trail upstream. Mid-size
+rows can win, while 17-byte values and long keys expose substantial losses;
+value scans must not be conflated with key-only scans. See the design for the
+full matrix, reproducible commands, hashes and measurement limitations.
+Three checksum tests and 18 regular storage tests pass on Rust 1.99 and 1.85;
+four regular upstream tests and the 320,000-operation campaign pass on 1.99.
+Native and Wasm Clippy pass. No public API or persisted format change is made.

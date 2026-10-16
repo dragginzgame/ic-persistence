@@ -61,7 +61,7 @@ clippy:
 docs-check:
 	+RUSTDOCFLAGS='-D warnings' cargo doc --workspace --no-deps --locked
 msrv:
-	+cargo +1.85.0 check --workspace --all-targets --locked
+	+cargo +1.85.0 check -p ic-storage --all-targets --locked
 package:
 	+cargo package -p ic-storage --locked
 publish publish-check:
@@ -71,3 +71,11 @@ test:
 	+cargo test -p ic-storage --locked
 wasm-check:
 	+cargo check -p ic-storage --target wasm32-unknown-unknown --locked
+	+cargo check -p ic-storage-bench --lib --target wasm32-unknown-unknown --locked
+
+.PHONY: bench-build bench-run
+bench-build:
+	+cargo build -p ic-storage-bench --lib --release --target wasm32-unknown-unknown --locked
+bench-run: bench-build
+	@test -n "$(POCKET_IC_BIN)" || { echo 'Set POCKET_IC_BIN to an admitted PocketIC 16.x server'; exit 2; }
+	+cargo run -p ic-storage-bench --bin ic-storage-bench --release --locked -- "$(POCKET_IC_BIN)" "target/wasm32-unknown-unknown/release/ic_storage_bench.wasm"

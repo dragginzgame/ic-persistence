@@ -1,6 +1,9 @@
 use super::{Config, Error};
 use crate::Memory;
 
+#[cfg(test)]
+mod tests;
+
 pub(super) const SIZE: usize = 4096;
 pub(super) const PAYLOAD: usize = SIZE - 24;
 pub(super) const DEGREE: usize = 16;
@@ -188,14 +191,42 @@ pub(super) fn number(page: &Page, at: usize) -> u64 {
     u64::from_le_bytes(bytes)
 }
 fn checksum(page: &Page) -> u64 {
-    page[..SIZE - 8]
-        .iter()
-        .fold(0xcbf2_9ce4_8422_2325, |hash, byte| {
-            (hash ^ u64::from(*byte)).wrapping_mul(0x100_0000_01b3)
-        })
+    let mut hash = 0xcbf2_9ce4_8422_2325u64;
+    // The covered region is a multiple of eight. Fixed-size inner iterations
+    // let Wasm eliminate per-byte loop control without changing FNV-1a order.
+    for chunk in page[..SIZE - 8].chunks_exact(8) {
+        for byte in chunk {
+            hash = (hash ^ u64::from(*byte)).wrapping_mul(0x100_0000_01b3);
+        }
+    }
+    hash
 }
 pub(super) fn seal(page: &mut Page) {
     put(page, SIZE - 8, checksum(page));
+}
+pub(super) fn free(next: u64) -> Page {
+    const TAIL_FACTOR: u64 = {
+        let mut factor = 1u64;
+        let mut at = 16;
+        while at < SIZE - 8 {
+            factor = factor.wrapping_mul(0x100_0000_01b3);
+            at += 1;
+        }
+        factor
+    };
+    let mut page = [0; SIZE];
+    page[0] = FREE;
+    put(&mut page, 8, next);
+    // Only freshly constructed free pages have a known-zero tail. FNV-1a
+    // over each zero byte multiplies by the prime, so fold the tail at once.
+    // Reads still verify every byte, including the reserved zero padding.
+    let prefix = page[..16]
+        .iter()
+        .fold(0xcbf2_9ce4_8422_2325u64, |hash, byte| {
+            (hash ^ u64::from(*byte)).wrapping_mul(0x100_0000_01b3)
+        });
+    put(&mut page, SIZE - 8, prefix.wrapping_mul(TAIL_FACTOR));
+    page
 }
 fn verify(page: &Page) -> Result<(), Error> {
     if number(page, SIZE - 8) != checksum(page) {

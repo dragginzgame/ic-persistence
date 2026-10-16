@@ -1,0 +1,25 @@
+[package]
+name = "ic-storage-bench"
+version = { workspace = true }
+edition = { workspace = true }
+rust-version = "1.99.0"
+license = { workspace = true }
+publish = false
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+candid = { workspace = true }
+ic-testkit = { workspace = true }
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+ic-host-fs = { workspace = true }
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+ic-cdk = { workspace = true }
+ic-stable-structures = { workspace = true }
+ic-storage = { workspace = true }
+
+[lints]
+workspace = true

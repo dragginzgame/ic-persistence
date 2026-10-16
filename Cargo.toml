@@ -1,5 +1,6 @@
 [workspace]
-members = ["crates/ic-storage"]
+members = ["crates/ic-storage", "crates/ic-storage-bench"]
+default-members = ["crates/ic-storage"]
 resolver = "3"
 
 [workspace.package]
@@ -11,7 +12,12 @@ description = "Page-based stable-memory B-tree storage for Internet Computer app
 license = "MIT"
 
 [workspace.dependencies]
+candid = "0.10.38"
+ic-cdk = "0.20.3"
+ic-host-fs = "0.21"
 ic-stable-structures = "0.7.2"
+ic-storage = { path = "crates/ic-storage" }
+ic-testkit = "0.48"
 
 [workspace.lints.rust]
 missing_docs = "warn"

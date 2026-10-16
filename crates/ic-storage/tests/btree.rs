@@ -756,6 +756,8 @@ fn report_traffic(engine: &str, profile: &str, operation: &str, memory: &Observe
         memory.write_calls.get()
     );
 }
+// Keep the shared operation sequence together so both engines receive the same workload.
+#[allow(clippy::too_many_lines)]
 fn compare_bound_profile<const KMAX: u32, const VMAX: u32, const KFIXED: bool>(
     name: &str,
     count: u64,
@@ -788,7 +790,17 @@ fn compare_bound_profile<const KMAX: u32, const VMAX: u32, const KFIXED: bool>(
     // Drop both handles and reopen their own formats before measurement.
     own = BTreeMap::open(own.into_memory(), Config::default(), Lexicographic).unwrap();
     other = ic_stable_structures::BTreeMap::load(other.into_memory());
-    for operation in ["get", "replace", "scan_keys", "remove"] {
+    for operation in [
+        "get",
+        "replace",
+        "scan_keys",
+        "remove",
+        "restore",
+        "shrink_all",
+        "grow_all",
+        "delete_even",
+        "refill_even",
+    ] {
         reset_traffic(&own_memory);
         reset_traffic(&other_memory);
         let key = encode_key(count / 2);
@@ -824,10 +836,61 @@ fn compare_bound_profile<const KMAX: u32, const VMAX: u32, const KFIXED: bool>(
                 assert_eq!(own.remove(&key).unwrap(), Some(value.clone()));
                 assert_eq!(other.remove(&ProfileBytes(key)).unwrap().0, value);
             }
+            "restore" => {
+                assert!(own.insert(&key, &value).unwrap().is_none());
+                assert!(
+                    other
+                        .insert(ProfileBytes(key), ProfileBytes(value.clone()))
+                        .is_none()
+                );
+            }
+            "shrink_all" | "grow_all" => {
+                let small = vec![7; value_len.min(16)];
+                let (old, new) = if operation == "shrink_all" {
+                    (&value, &small)
+                } else {
+                    (&small, &value)
+                };
+                for n in 0..count {
+                    let key = encode_key((n * 109) % count);
+                    assert_eq!(own.insert(&key, new).unwrap().as_ref(), Some(old));
+                    assert_eq!(
+                        &other
+                            .insert(ProfileBytes(key), ProfileBytes(new.clone()))
+                            .unwrap()
+                            .0,
+                        old
+                    );
+                }
+            }
+            "delete_even" => {
+                for n in (0..count).step_by(2) {
+                    let key = encode_key(n);
+                    assert_eq!(own.remove(&key).unwrap(), Some(value.clone()));
+                    assert_eq!(other.remove(&ProfileBytes(key)).unwrap().0, value);
+                }
+            }
+            "refill_even" => {
+                for n in (0..count).rev().filter(|n| n % 2 == 0) {
+                    let key = encode_key(n);
+                    assert!(own.insert(&key, &value).unwrap().is_none());
+                    assert!(
+                        other
+                            .insert(ProfileBytes(key), ProfileBytes(value.clone()))
+                            .is_none()
+                    );
+                }
+            }
             _ => unreachable!(),
         }
         report_traffic("ic-storage", name, operation, &own_memory);
         report_traffic("upstream", name, operation, &other_memory);
+        // Audit outside measurement, then reopen between phases to exercise
+        // persisted free lists rather than relying on retained heap state.
+        own.validate().unwrap();
+        assert_eq!(own.len(), other.len());
+        own = BTreeMap::open(own.into_memory(), Config::default(), Lexicographic).unwrap();
+        other = ic_stable_structures::BTreeMap::load(other.into_memory());
     }
     own.validate().unwrap();
     assert_eq!(own.len(), other.len());
@@ -867,4 +930,25 @@ fn icydb_bound_profiles_memory_traffic() {
     compare_bound_profile::<12, 65536, true>("journal-64k", 64, 12, 65536);
     compare_bound_profile::<262, 0, false>("row-4k", 64, 25, 4096);
     compare_bound_profile::<262, 0, false>("row-4m", 4, 25, 4 * 1024 * 1024);
+}
+
+#[test]
+fn removal_avoids_duplicate_overflow_page_reads() {
+    let memory = ObservedMemory::default();
+    let reads = memory.reads.clone();
+    let mut tree = BTreeMap::create(memory, Config::default(), Lexicographic).unwrap();
+    let value = vec![9; 65536];
+    tree.insert(b"row", &value).unwrap();
+    reads.set(0);
+    assert_eq!(tree.get(b"row").unwrap(), Some(value.clone()));
+    let lookup_reads = reads.get();
+    reads.set(0);
+    assert_eq!(tree.remove(b"row").unwrap(), Some(value));
+    assert!(
+        reads.get() <= 2 * lookup_reads + 8192,
+        "removal should read the returned payload and reclaim its pages without a third payload pass"
+    );
+    tree.validate().unwrap();
+    let tree = BTreeMap::open(tree.into_memory(), Config::default(), Lexicographic).unwrap();
+    assert!(tree.is_empty());
 }

@@ -182,3 +182,247 @@ Large-row replacement benefits persist because IcyDB rows are unbounded upstream
 These results do not justify an overall speed claim or a format redesign yet:
 measure actual canister instructions, real encoded-key distributions, heap usage,
 and application rollback/upgrade behavior before deciding adoption or tuning.
+
+### Churn and overflow reclamation
+
+The same profile command now continues with restore, shrink-all to at most 16
+bytes, regrow-all to original values, delete even-numbered keys and refill those
+keys in reverse order. One-byte index values remain one byte during the shrink
+and grow phases. Bulk counters are phase totals, not per-operation averages.
+Each phase audits our tree and reopens both trees outside the measured counters.
+Returned old values are checked throughout; final contents and counts must agree.
+
+All seven profiles retain our original reserved capacity through churn. This is
+evidence for these fixtures, not a guarantee that arbitrary reorderings never
+need more node pages. Upstream also reuses capacity in most fixtures; its 64 KiB
+journal profile grows from 7,077,888 to 7,602,176 bytes during the first deletion.
+
+The deletion measurements exposed a redundant read: chain traversal read each
+overflow page, then freeing it read it again. Returning the already-validated
+prior page from reclamation eliminates that third payload pass (returning the
+old value still needs its own read). All updates remain staged; a chain/type
+error after staging discards the transaction before any writes are published.
+
+| Single removal | Prior read bytes | Revised read bytes | Write bytes, both |
+| --- | ---: | ---: | ---: |
+| 64 KiB journal value | 233,472 | 163,840 | 86,016 |
+| 4 MiB row | 12,677,120 | 8,454,144 | 4,231,168 |
+
+Native byte counts cannot account for checksum CPU cost, allocation or IC system
+call pricing. IC Testkit already owns canister counter emission and PocketIC
+lifecycle helpers; a separate benchmark canister/host runner is still required
+here to obtain instruction and heap evidence without raising the library's MSRV.
+The following section records the initial implementation of that harness.
+
+## Canister instruction baseline
+
+`ic-storage-bench` is a non-published workspace package with a release Wasm
+canister and native runner. Its tooling requires Rust 1.99; `ic-storage` retains
+Rust 1.85 and its original dependency graph. IC Testkit owns counter capture,
+Candid calls and managed server lifetime. IC Host FS owns bounded artifact reads
+and hashes. Each run uses a fresh application-subnet PocketIC instance and one
+canister owning its complete fresh stable-memory region; no allocation manager
+or IcyDB installation is involved.
+
+```sh
+make bench-run POCKET_IC_BIN=/absolute/path/to/admitted/pocket-ic
+```
+
+The explicit server must satisfy Testkit's 16.x protocol admission. The runner
+does not install/download it. It emits CSV to stdout and artifact hashes/errors
+to stderr. Preserve both outputs in a new attempt directory. The release Wasm
+is built by `bench-build`; native runner optimization does not affect canister
+instruction counters. Setup uses bounded batches in separate messages. Two fresh
+runs per engine/profile execute get, same-size replacement, a key-only scan of
+up to 16 entries, then removal. Engine 0 is ours; engine 1 is upstream 0.7.2.
+
+The profiles match the declared bounds above: 2,048 index entries with 24-byte
+keys/one-byte values; 64 journal entries with 12-byte keys/64 KiB values; four
+rows with 25-byte keys/4 MiB values. Encoded bytes are synthetic and ordered
+lexicographically, not IcyDB's real codecs or comparator. Input construction,
+seeding, result validation and Candid reply encoding are outside the measured
+interval. Dispatch, storage operations and result materialization are inside.
+There is small counter-read overhead; counts are not adjusted by a blank probe.
+Heap bytes are total Wasm memory capacity after the operation, not live heap
+allocations, peak usage, or a per-operation allocation delta. Stable bytes are
+reserved stable capacity. Results are asserted after measurement in the canister.
+
+Observed on Linux, Rust 1.99 release Wasm, IC Testkit 0.48.0, IC CDK 0.20.3,
+PocketIC client 16.1.0 and server 16.0.0. Both fresh runs produced identical
+instruction counts for each engine/profile/operation:
+
+| Profile | Operation | Our instructions | Upstream instructions |
+| --- | --- | ---: | ---: |
+| Index | Get | 180,243 | 350,507 |
+| Index | Replace | 625,276 | 441,410 |
+| Index | Key scan | 244,666 | 576,678 |
+| Index | Remove | 2,330,403 | 1,703,767 |
+| Journal | Get | 1,236,339 | 564,457 |
+| Journal | Replace | 4,003,353 | 2,522,514 |
+| Journal | Key scan | 170,608 | 388,837 |
+| Journal | Remove | 5,742,443 | 10,818,500 |
+| Row | Get | 68,748,732 | 37,953,614 |
+| Row | Replace | 215,655,911 | 124,318,147 |
+| Row | Key scan | 74,710 | 23,021,659 |
+| Row | Remove | 265,860,686 | 120,852,456 |
+
+The small-entry and large-record tradeoffs are real: fewer/larger stable calls
+and lower byte traffic do not account for our checksums, page decoding, staging
+and allocation work. These results locate operations needing investigation;
+they do not isolate which of those costs dominates. Do not remove integrity
+checks or change persisted layout based on traffic counts alone. These runs do
+not prove application recovery, upgrade safety, actual IcyDB performance, or
+production-subnet cycle costs; macOS simulator execution is also unqualified.
+
+Evidence from this working tree is retained under `target/canister-bench.E706g7`
+(`results.csv`, `run.log`). Wasm SHA-256:
+`b3e5b6f4b949d78553dd3be420c9dcaca4fba218d65e08d9baa00eddecd457f8`.
+Server SHA-256:
+`69e324bdb68d32d878b7a9504b1379f08f8d1921272bacb065b0fabb3d0f3792`.
+The initial sandbox listener failure is retained in `target/canister-bench.RV48RT`;
+the initial reply-decoder mismatch is retained in `target/canister-bench.rECDFS`.
+The successful run uses the corrected top-level tuple reply decoder.
+
+### Checksum and staging investigation
+
+Two sequential changes isolate useful implementation costs without changing
+the format or skipping validation. First, iterate the checksum in eight-byte
+chunks so the compiler can reduce loop control while retaining exactly the
+same FNV-1a byte sequence. Second, store staged pages as boxed buffers: the
+heap B-tree then moves pointers during balancing instead of 4 KiB arrays.
+This adds individual page allocations but reduces staging movement and capacity
+in the large-row fixture. Reads still copy out a validated page; publication
+still reserves capacity before writing staged pages and the header.
+
+The same runner, server and input profiles produced the following counters.
+Each column represents two fresh runs with identical results within that build.
+The baseline above is preserved rather than relabeled as current evidence.
+
+| Profile | Operation | Baseline | Chunked checksum | Plus boxed staging |
+| --- | --- | ---: | ---: | ---: |
+| Index | Get | 180,243 | 163,380 | 163,460 |
+| Index | Replace | 625,276 | 597,171 | 589,351 |
+| Index | Key scan | 244,666 | 227,803 | 228,964 |
+| Index | Remove | 2,330,403 | 2,201,120 | 2,127,611 |
+| Journal | Get | 1,236,339 | 1,129,540 | 1,129,540 |
+| Journal | Replace | 4,003,353 | 3,789,755 | 3,063,688 |
+| Journal | Key scan | 170,608 | 159,366 | 158,985 |
+| Journal | Remove | 5,742,443 | 5,393,941 | 4,602,388 |
+| Row | Get | 68,748,732 | 62,947,860 | 62,947,860 |
+| Row | Replace | 215,655,911 | 204,048,546 | 146,834,753 |
+| Row | Key scan | 74,710 | 69,089 | 69,089 |
+| Row | Remove | 265,860,686 | 248,452,449 | 195,445,266 |
+
+Combined row replacement improves by 31.9% and removal by 26.5%. Row heap
+capacity after replacement drops from 17,367,040 to 13,893,632 bytes; stable
+capacity remains 16,908,288 bytes. This is total capacity after prior setup and
+operations, not a live allocation measurement. Current upstream row replacement
+is 124,318,141 instructions and removal 120,852,456: our mutations still cost
+more. Small upstream instruction shifts between builds (at most 74 instructions)
+also occur despite unchanged upstream source; comparisons are measurements of
+whole compiled artifacts, not perfect per-function attribution. Likewise the
+small index read/scan shifts after boxing must not be attributed to page movement.
+
+The checksum-only result shows loop overhead matters, but does not establish
+the total cost of hashing. Boxing strongly reduces mutation costs in this
+fixture; it does not isolate allocation versus copying versus index traversal.
+No integrity check, staged-write guarantee or stored byte was removed. Tests
+compare 66 zero, all-one and seeded page patterns with the original algorithm
+and reject a bit flip at each of all 4,096 page positions, including checksum
+bytes. Regular storage failure/reopen tests and upstream comparisons also pass.
+
+Intermediate evidence: `target/checksum-bench.v3qZaS/{results.csv,run.log}`;
+Wasm SHA-256
+`cb0b2e2dceec2185e2dcfd89187c949ce8b9ec82a3efdb681a2ef4b193705107`.
+Combined evidence: `target/boxed-pages-bench.M1NRYV`, including CSV, log and
+the measured Wasm; SHA-256
+`483dd63d0067e354c209830914a2e81ecc2cf26425a3dd1fc83692adf704f05b`.
+The server identity and qualification limitations are unchanged from the baseline.
+
+### Expanded fixtures and free-page construction
+
+The current runner shares its [fixture descriptors](../../crates/ic-storage-bench/src/fixtures.rs)
+between host and canister. There are 15 profiles: short index keys at 128,
+2,048 and 4,096 entries; 256-byte and maximum 16,668-byte index keys; the journal
+profile; row values of 16, 17, 4,072, 4,073, 16,384, 65,536, 1,048,576 and
+4,194,304 bytes; and 1,024 rows with maximum 262-byte keys and 4,073-byte values.
+The descriptors specify exact population and bounds; names do not assert
+identical tree height in both implementations. Upstream bound metadata remains
+the same as the earlier IcyDB-matched index, journal and row layouts.
+
+`make bench-run POCKET_IC_BIN=/absolute/path/to/admitted/pocket-ic` runs both
+engines twice from fresh installations. Each profile executes, in order: get,
+missing get, same-size replacement, key scan, value scan, shrink to one byte,
+regrow, removal, refill and insertion of a new greatest key. Scans materialize
+up to 16 entries. The one-byte index profiles intentionally make shrink/regrow
+same-size replacements. Setup uses ordered keys and repeated-byte values;
+these are not random insertion distributions or real IcyDB codecs. Replacement
+writes the same bytes. Mutations assert both returned and stored values outside
+the measured interval. The workload is sequential, not an isolated fresh tree
+for every operation; earlier operations and validation affect allocator history.
+
+Value scans now extend the output by whole slices for both engines. The first
+expanded attempt used byte-by-byte iterator flattening, which substantially
+inflated result-materialization cost: our four-row 4 MiB scan fell from
+1,781,752,911 to 322,134,408 instructions after this harness correction, without
+changing the storage code. This is not a B-tree optimization. Both figures
+include copying into an output buffer; neither is a zero-copy cursor benchmark.
+
+The production change is limited to constructing free pages. Their first
+16 bytes contain the tag and next pointer, followed by known-zero padding.
+FNV-1a on a zero byte is multiplication by its prime modulo 2^64, so a constant
+power covers the entire zero tail. Only construction uses this shortcut; reads
+still checksum all bytes. Tests compare full page bytes against ordinary sealing
+for 130 successor patterns and reject a flipped bit at every page position.
+
+With the corrected harness, 4 MiB shrink drops from 196,375,461 to 156,797,740
+instructions and removal from 195,445,228 to 155,867,505 (about 20.2% each).
+Replacement remains 146,834,731. The corresponding upstream counts are
+120,840,616, 120,840,013 and 124,318,115. The improvement does not close the gap.
+
+The following ratios are **our instructions / upstream instructions** after
+the free-page change; below 1 is cheaper, and values are rounded to two decimals.
+These are per-fixture comparisons, not a workload-weighted overall score.
+
+| Profile | Get | Replace | Remove | Value scan |
+| --- | ---: | ---: | ---: | ---: |
+| index_128 | 0.41 | 1.07 | 0.74 | 0.31 |
+| index_2048 | 0.47 | 1.34 | 1.20 | 0.36 |
+| index_4096 | 0.39 | 1.13 | 1.00 | 0.32 |
+| index_long | 1.77 | 2.46 | 1.99 | 1.87 |
+| index_max | 1.21 | 1.23 | 1.48 | 2.51 |
+| journal | 2.00 | 1.21 | 0.37 | 1.84 |
+| row_inline | 1.07 | 1.96 | 3.33 | 1.00 |
+| row_overflow | 1.54 | 4.18 | 6.07 | 6.02 |
+| row_page | 0.45 | 1.64 | 0.86 | 1.72 |
+| row_two_pages | 0.58 | 1.85 | 0.92 | 2.77 |
+| row_16k | 0.46 | 0.91 | 0.34 | 1.70 |
+| row_64k | 0.58 | 0.80 | 0.30 | 1.73 |
+| row_1m | 1.65 | 1.19 | 1.30 | 1.60 |
+| row_4m | 1.66 | 1.18 | 1.29 | 1.60 |
+| row_deep | 0.67 | 1.09 | 0.64 | 2.29 |
+
+The 17-byte fixture exposes the current 16-byte inline cutoff: just one more
+byte requires a separate 4 KiB overflow page. Long keys also require overflow
+reads during comparisons. These are concrete weaknesses of this layout; the
+matrix does not isolate all allocation, hashing and traversal costs. Mid-size
+row wins and short-key scan wins do not establish an overall advantage, and
+value scans show a different result from key-only scans. No format change or
+recovery qualification is implied by this investigation.
+
+Each attempt retained CSV, log and measured Wasm, with 600 rows and identical
+counters/result lengths between its two fresh runs:
+
+- Initial expanded harness: `target/expanded-bench.cnGYm0`, Wasm SHA-256
+  `002bc4acc26b0e2d2d35918c16cc4a42583ede61d14e5bc54f72e3eef14ed986`.
+- Corrected bulk-scan baseline: `target/expanded-bulk-bench.O8IJF5`, Wasm SHA-256
+  `92aff0536b557689c5fa8dfcc3da3891d6c644333fb145c1bd1dadeaf8ecfdf7`.
+- Free-page optimization: `target/free-page-bench.qf9NDM`, Wasm SHA-256
+  `28501b7a20a1bfbe78fbbfa7cce2ff4b899145cce0b33dc380a4346fe0e085a0`.
+
+Compiler, server and dependency selections match the earlier baseline.
+The measured build precedes lint-only literal formatting and an equivalent
+nonempty-name assertion in canister initialization. Native regular and extended
+differential checks, Rust 1.85 storage tests and native/Wasm Clippy pass; macOS,
+actual IcyDB codec mixes, random insertion profiles, bounded/reverse canister
+scans and rollback/upgrade recovery remain unqualified.

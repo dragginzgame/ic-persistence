@@ -2,11 +2,32 @@
 
 ## [0.1.3]
 
+- Expand canister comparisons to 15 fixtures and ten operations, covering
+  inline/page boundaries, long keys, tree sizes, misses, value scans and
+  shrink/regrow/refill. Assert returned values and post-mutation contents.
+- Compute newly constructed free-page checksums using their known-zero padding,
+  preserving exact stored bytes and full read verification. The expanded 4 MiB
+  fixture reduces removal from 195M to 156M instructions and shrink from 196M
+  to 157M; small overflow values and long keys remain significant weaknesses.
+- Reduce checksum loop overhead and avoid copying whole page buffers when
+  balancing mutation staging. In the canister fixture, 4 MiB replacement drops
+  from 216M to 147M instructions and removal from 266M to 195M, preserving the
+  persisted format and corruption checks; both remain more costly than upstream.
+- Add a non-published canister benchmark and IC Testkit/PocketIC runner for
+  instruction, Wasm heap-capacity and stable-capacity comparisons. Keep its host
+  dependencies separate from the Rust 1.85 storage library.
+- Record repeatable instruction results: key scans favor our tree in the tested
+  profiles, while large-row mutations cost more instructions despite less traffic.
+- Reclaim overflow pages during removal without rereading each page to free it.
+  A 4 MiB row removal drops from 12,677,120 to 8,454,144 read bytes in the native
+  fixture; API, persisted format and staged-write failure handling are unchanged.
+- Extend bound-matched comparisons through bulk shrink/regrowth, deletion and
+  refill, with audits and reopening between phases to exercise persisted reuse.
 - Compare upstream storage with IcyDB's declared key/value bounds across seven
   synthetic index, journal and row profiles, including read/write bytes, calls
   and reserved capacity. Add regular bounded-profile mutation/reopen coverage.
 - Record how upstream bound metadata changes the earlier capacity comparison;
-  actual IcyDB codecs and canister instruction costs remain unqualified.
+  actual IcyDB codecs and production subnet costs remain unqualified.
 
 ## [0.1.2] - 2026-10-16
 
