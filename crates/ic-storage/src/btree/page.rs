@@ -191,9 +191,14 @@ pub(super) fn number(page: &Page, at: usize) -> u64 {
     u64::from_le_bytes(bytes)
 }
 fn checksum(page: &Page) -> u64 {
+    checksum_with_zero_tail(page, SIZE - 8)
+}
+// Only encoders may exclude bytes they have just initialized to zero. Reads
+// always pass the entire covered region through `checksum`.
+fn checksum_with_zero_tail(page: &Page, mut end: usize) -> u64 {
     const ZERO_CHUNK_FACTOR: u64 = 0x100_0000_01b3u64.wrapping_pow(8);
-    let mut end = SIZE - 8;
-    let mut suffix_factor = 1u64;
+    let tail_chunks = u32::try_from((SIZE - 8 - end) / 8).expect("page tail length");
+    let mut suffix_factor = ZERO_CHUNK_FACTOR.wrapping_pow(tail_chunks);
     // Dense payloads pay one eight-byte check. For sparse tails, inspect larger
     // zero blocks before the final boundary, still checking every covered byte.
     if page[end - 8..end] == [0; 8] {
@@ -233,7 +238,9 @@ pub(super) fn encode_blob(next: u64, payload: &[u8]) -> Box<Page> {
         .into_boxed_slice()
         .try_into()
         .expect("fixed page length");
-    seal(&mut page);
+    let end = (16 + payload.len()).next_multiple_of(8);
+    let hash = checksum_with_zero_tail(&page, end);
+    put(&mut page, SIZE - 8, hash);
     page
 }
 pub(super) fn free(next: u64) -> Page {

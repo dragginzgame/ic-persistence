@@ -225,3 +225,16 @@ the 320,000-operation campaign, native/Wasm Clippy, formatting and links pass.
 New cases confirm that small overflow rows and 33-byte keys remain expensive.
 Evidence and artifacts are in the design; API, format and release metadata
 remain unchanged. No publication or IcyDB integration was performed.
+
+After committed source `8d124e2`, overflow encoding folds its freshly zeroed
+padding into the checksum directly; reads still inspect the entire page.
+The byte-for-byte encoding test covers all 4,073 payload lengths at three
+successor-pointer values. The final 23-fixture matrix improves 472/506 cases;
+34 increase by at most 0.042%. Nonzero-key small overflow replacements improve
+1.7–1.9%; dense large-row gains remain absent. Both candidate builds repeat
+all counters across 2,024 rows each; artifacts and hashes are in the design.
+Native Clippy caught a narrowing cast in the first candidate; the retained
+checked conversion passes. Five codec and 22 storage tests pass on Rust 1.99
+and 1.85; four upstream tests, the 320,000-operation campaign, native/Wasm
+Clippy, formatting and links pass. API, format, versions and dependencies
+remain unchanged. The current package version is still 0.1.4 with 0.1.5 notes.

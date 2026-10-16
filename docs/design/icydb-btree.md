@@ -791,3 +791,42 @@ links pass. Actual IcyDB codecs, macOS execution and full release validation
 remain outside this qualification. No dependency or release metadata changes.
 All three builds repeat instruction, capacity and result-length counters exactly
 across their two fresh runs (2,024 rows each; 6,072 rows retained in total).
+
+### Fold known-zero overflow padding during encoding
+
+Following committed source `8d124e2`, overflow encoding now supplies the first
+unused eight-byte boundary to a private checksum helper. The remaining tail was
+just initialized to zero by the encoder, so its FNV multiplier can be computed
+directly instead of scanning that padding. The shared read path still checks
+the complete covered region, including reserved bytes. No persisted byte,
+allocation ownership or failure-contract change is introduced. Dense pages
+have no omitted tail; the additional arithmetic has a small measured cost.
+The heap-encoding compatibility test now covers every payload length from zero
+through 4,072, with successor pointers zero, one and u64::MAX (12,219 cases).
+
+The baseline is `target/expanded-node-reuse.rHacqY/`, using the same 23 fixtures,
+key patterns, dependencies and PocketIC selection. Selected nonzero-key results:
+
+| Fixture / operation | Baseline instructions | Final instructions | Change |
+| --- | ---: | ---: | ---: |
+| row_overflow / replace_changed | 274,417 | 269,304 | -1.86% |
+| row_32 / replace_changed | 274,107 | 269,020 | -1.86% |
+| row_256 / replace_changed | 277,751 | 272,944 | -1.73% |
+| row_overflow / insert_new | 812,143 | 806,442 | -0.70% |
+| row_4m / replace_changed | 132,612,063 | 132,661,690 | +0.037% |
+| row_4m / insert_new | 66,593,065 | 66,620,637 | +0.041% |
+
+The initial candidate passed behavioral tests but native Clippy rejected a
+narrowing cast. The retained source uses a checked conversion. Initial artifacts
+remain in `target/known-zero-tail.RgLQKw/`, Wasm SHA-256
+`3b2c4377220c4612a0204e4cc87cc630777ff890b10c78fee08a2406f1dcca07`.
+Final artifacts are in `target/known-zero-tail-checked.RuqHHn/`, Wasm SHA-256
+`63e6344f2c4adc0caeb262156651be7570c8fff953ce14a8341ceb05a4d5235c`.
+Each directory retains `results.csv`, `run.log` and `benchmark.wasm`.
+Both candidates repeat all instruction, capacity and result-length counters
+exactly across 2,024 rows each. The final matrix improves 472 of 506 comparisons;
+34 increase by at most 0.042%, with unchanged upstream counts. It still beats
+upstream in 352 cases. Five codec and 22 storage tests pass on Rust 1.99 and
+1.85; four upstream comparisons, the 320,000-operation extended campaign,
+native/Wasm Clippy, formatting and documentation links pass. Full release,
+macOS and actual IcyDB integration qualification remain outside this run.

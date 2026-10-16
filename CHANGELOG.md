@@ -2,6 +2,11 @@
 
 ## [0.1.5]
 
+- Fold freshly initialized overflow-page padding directly into its checksum.
+  Small overflow replacements use about 1.7–1.9% fewer instructions; dense
+  large-value cases increase by at most 0.042% in the expanded matrix. Reads
+  still verify every byte, and exhaustive payload-length tests preserve the
+  exact persisted encoding.
 - Expand the canister comparison to 23 fixtures, covering root splits, the
   32/33-byte key boundary and intermediate row sizes. Reuse validated nodes
   during insertion instead of rereading them for descent: small inline-entry

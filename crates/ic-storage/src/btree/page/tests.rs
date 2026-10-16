@@ -79,7 +79,7 @@ fn zero_suffix_checksum_matches_original_at_every_boundary() {
 
 #[test]
 fn heap_blob_encoding_preserves_every_page_byte() {
-    for len in [0, 1, 16, 17, 4071, super::PAYLOAD] {
+    for len in 0..=super::PAYLOAD {
         for next in [0, 1, u64::MAX] {
             let payload = (0..len).map(|at| at.to_le_bytes()[0]).collect::<Vec<_>>();
             let mut expected = [0; SIZE];
