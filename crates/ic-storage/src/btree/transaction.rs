@@ -54,10 +54,15 @@ impl<'a, M: Memory, C: Comparator> Transaction<'a, M, C> {
         if previous[0] == page::FREE {
             return Err(Error::Corrupt);
         }
+        self.stage_free(id);
+        Ok(previous)
+    }
+    // The caller has already checked this page is in range and live in this
+    // transaction. Keep that validation separate from staging its free record.
+    fn stage_free(&mut self, id: u64) {
         let page = page::free(self.header.free);
         self.pages.insert(id, Box::new(page));
         self.header.free = id;
-        Ok(previous)
     }
     fn node(&self, id: u64) -> Result<Node, Error> {
         Node::decode(&self.read(id)?, self.header.next, self.header.config)
@@ -111,12 +116,7 @@ impl<'a, M: Memory, C: Comparator> Transaction<'a, M, C> {
         for index in (0..bytes.len().div_ceil(PAYLOAD)).rev() {
             let chunk = &bytes[index * PAYLOAD..bytes.len().min((index + 1) * PAYLOAD)];
             let id = self.allocate()?;
-            let mut page = [0; SIZE];
-            page[0] = page::BLOB;
-            page::put(&mut page, 8, next);
-            page[16..16 + chunk.len()].copy_from_slice(chunk);
-            page::seal(&mut page);
-            self.pages.insert(id, Box::new(page));
+            self.pages.insert(id, page::encode_blob(next, chunk));
             next = id;
         }
         Ok(next)
@@ -204,19 +204,17 @@ impl<'a, M: Memory, C: Comparator> Transaction<'a, M, C> {
             value.len().div_ceil(PAYLOAD)
         };
         while ids.len() > needed {
-            self.free(ids.pop().ok_or(Error::Corrupt)?)?;
+            // The complete old chain was validated above. Keep the existing
+            // reverse reclamation order without reading each page a second time.
+            self.stage_free(ids.pop().ok_or(Error::Corrupt)?);
         }
         while ids.len() < needed {
             ids.push(self.allocate()?);
         }
         for (index, id) in ids.iter().copied().enumerate() {
             let chunk = &value[index * PAYLOAD..value.len().min((index + 1) * PAYLOAD)];
-            let mut page = [0; SIZE];
-            page[0] = page::BLOB;
-            page::put(&mut page, 8, ids.get(index + 1).copied().unwrap_or(0));
-            page[16..16 + chunk.len()].copy_from_slice(chunk);
-            page::seal(&mut page);
-            self.pages.insert(id, Box::new(page));
+            let next = ids.get(index + 1).copied().unwrap_or(0);
+            self.pages.insert(id, page::encode_blob(next, chunk));
         }
         record.value = ids.first().copied().unwrap_or(0);
         record.value_len = value.len() as u64;
@@ -233,13 +231,17 @@ impl<'a, M: Memory, C: Comparator> Transaction<'a, M, C> {
         at: usize,
         value: &[u8],
     ) -> Result<Vec<u8>, Error> {
+        let original = node.entries[at];
         let previous = self.replace_value(&mut node.entries[at], value)?;
-        self.put_node(id, &node)?;
+        // Same-size overflow updates change payload pages, not their record.
+        if node.entries[at] != original {
+            self.put_node(id, &node)?;
+        }
         Ok(previous)
     }
     pub fn insert(&mut self, key: &[u8], value: &[u8]) -> Result<(), Error> {
-        let root = self.node(self.header.root)?;
-        if root.entries.len() == MAX {
+        let mut node = self.node(self.header.root)?;
+        if node.entries.len() == MAX {
             let id = self.allocate()?;
             let mut parent = Node {
                 entries: Vec::new(),
@@ -248,10 +250,10 @@ impl<'a, M: Memory, C: Comparator> Transaction<'a, M, C> {
             self.split(&mut parent, 0)?;
             self.put_node(id, &parent)?;
             self.header.root = id;
+            node = parent;
         }
         let mut id = self.header.root;
         for _ in 0..MAX_HEIGHT {
-            let mut node = self.node(id)?;
             let (mut at, found) = self.locate(&node, key)?;
             if found {
                 return Err(Error::Corrupt);
@@ -284,7 +286,8 @@ impl<'a, M: Memory, C: Comparator> Transaction<'a, M, C> {
                 node.entries.insert(at, record);
                 return self.put_node(id, &node);
             }
-            if self.node(node.children[at])?.entries.len() == MAX {
+            let mut child = self.node(node.children[at])?;
+            if child.entries.len() == MAX {
                 self.split(&mut node, at)?;
                 let comparison = self.tree.order.compare(key, &self.key(node.entries[at])?)?;
                 self.put_node(id, &node)?;
@@ -294,8 +297,10 @@ impl<'a, M: Memory, C: Comparator> Transaction<'a, M, C> {
                 if comparison == Ordering::Greater {
                     at += 1;
                 }
+                child = self.node(node.children[at])?;
             }
             id = node.children[at];
+            node = child;
         }
         Err(Error::Corrupt)
     }
@@ -444,7 +449,9 @@ impl<'a, M: Memory, C: Comparator> Transaction<'a, M, C> {
         for (id, page) in self.pages {
             self.tree.memory.write(id * SIZE as u64, page.as_slice());
         }
-        self.tree.memory.write(0, &self.header.encode());
+        if self.header != self.tree.header {
+            self.tree.memory.write(0, &self.header.encode());
+        }
         Ok(self.header)
     }
 }

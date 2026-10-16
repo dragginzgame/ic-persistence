@@ -9,6 +9,62 @@ pub struct Fixture {
 
 pub const FIXTURES: &[Fixture] = &[
     Fixture {
+        name: "index_full_root",
+        kind: 0,
+        count: 31,
+        key_len: 24,
+        value_len: 1,
+    },
+    Fixture {
+        name: "index_split_root",
+        kind: 0,
+        count: 32,
+        key_len: 24,
+        value_len: 1,
+    },
+    Fixture {
+        name: "index_key_inline",
+        kind: 0,
+        count: 128,
+        key_len: 32,
+        value_len: 1,
+    },
+    Fixture {
+        name: "index_key_overflow",
+        kind: 0,
+        count: 128,
+        key_len: 33,
+        value_len: 1,
+    },
+    Fixture {
+        name: "row_32",
+        kind: 2,
+        count: 128,
+        key_len: 25,
+        value_len: 32,
+    },
+    Fixture {
+        name: "row_256",
+        kind: 2,
+        count: 128,
+        key_len: 25,
+        value_len: 256,
+    },
+    Fixture {
+        name: "row_1k",
+        kind: 2,
+        count: 128,
+        key_len: 25,
+        value_len: 1024,
+    },
+    Fixture {
+        name: "row_8k",
+        kind: 2,
+        count: 128,
+        key_len: 25,
+        value_len: 8192,
+    },
+    Fixture {
         name: "index_128",
         kind: 0,
         count: 128,

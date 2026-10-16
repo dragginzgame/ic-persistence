@@ -539,3 +539,255 @@ measured Wasm are retained in `target/single-pass-delete.9v83Hq`, SHA-256
 Dependency, compiler, server and fixture selections are unchanged. Four checksum
 tests and 19 storage tests pass on Rust 1.99 and 1.85; four upstream tests and
 the 320,000-operation extended campaign pass on 1.99. Native/Wasm Clippy passes.
+
+### Shrink validation reuse after 0.1.4
+
+Shrinking a value used to validate/collect its complete old chain, then read
+every excess page again when putting it on the free list. Replacement now
+stages those already-validated pages directly. The complete chain, page types
+and terminating pointer are checked before reclamation; exclusive memory
+ownership prevents intervening writes. The reverse order of freeing excess
+pages is unchanged. The ordinary freeing path still checks a live page before
+calling the private staging helper. No checksum or error boundary is removed.
+
+A native regression compares shrink read bytes with one ordinary lookup; it
+failed before the change and passes afterward. It covers shrinking a 64 KiB
+value to one byte and to a shorter overflow chain with growth refused, verifies
+the returned old value, audits, reopens and checks the new value. Existing late
+corruption, failed extension, split/merge and differential coverage still passes.
+
+The benchmark now adds `replace_changed` immediately after `replace`. It changes
+each value byte from seven to eight, checks the returned old bytes and the
+stored new bytes after counters are captured, then restores sevens outside the
+measured interval. Thus unchanged-byte and changed-byte replacements are both
+covered; restoration and validation can affect later allocator history. All
+other profile, key-pattern and engine selections remain the same. There are
+now 1,320 measurements per build (11 operations); both fresh runs repeat all
+counters and result lengths exactly. The baseline uses the expanded harness
+with released 0.1.4 storage, so the shrink comparison controls for this addition.
+
+Nonzero-key shrink-to-one-byte measurements:
+
+| Original value | Released instructions | Revised instructions | Upstream |
+| --- | ---: | ---: | ---: |
+| 17 bytes | 676,272 | 652,752 | 190,618 |
+| 64 KiB | 3,071,269 | 2,231,391 | 3,946,642 |
+| 1 MiB | 39,066,678 | 25,858,221 | 30,229,281 |
+| 4 MiB | 155,648,170 | 102,600,261 | 120,853,461 |
+
+The 4 MiB shrink improves 34.1% and is 15.1% cheaper than upstream in this
+fixture. Changed-byte 4 MiB same-size replacement remains 145,687,077 versus
+124,157,534 upstream; this optimization does not address its remaining gap.
+Small overflow shrink also remains substantially more expensive than upstream.
+Other operations show tiny compiled-artifact variation; the largest measured
+increase in our other-operation counts is below 0.004%. Do not interpret such
+shifts as independent storage improvements or extrapolate a weighted workload win.
+
+Baseline CSV, log and measured Wasm: `target/shrink-baseline.wFINff`, SHA-256
+`5773d1135d7ccf957d111c5b3481016c4f5429d2ed33b40182cf407c3823d8de`.
+Optimized evidence: `target/single-pass-shrink.ti22gG`, SHA-256
+`ff550a5cb16e47e10d6d539ae68c59eb9608901420fa3d2900aecda12fbe37d3`.
+Source starts at release `60d0f01`, using its unchanged dependency selections,
+Rust 1.99, PocketIC server 16.0.0 and client 16.1.0. Four checksum tests and
+20 storage tests pass on Rust 1.99 and 1.85. Four upstream tests, the extended
+320,000-operation campaign and native/Wasm Clippy pass on 1.99. Persisted format,
+public API and the prior real-codec, macOS and recovery qualification limits
+remain unchanged.
+
+### Direct heap encoding of overflow pages
+
+The next investigation targets page construction rather than checksum coverage.
+An intermediate replacement-only experiment allocated the boxed page before
+filling it, instead of filling a stack array and then boxing it. Nonzero-key
+4 MiB changed-value replacement fell from 145,687,077 to 137,041,101 instructions.
+This supports reducing temporary-page copying, but is whole-artifact evidence,
+not an isolated count of compiled copy instructions.
+
+The retained encoder also avoids zeroing bytes that will immediately receive
+the payload. It reserves one page-sized heap buffer, appends the initialized
+header and payload, fills only the remaining tail with zeros, converts it to the
+fixed-size boxed page and seals it. Both new-chain and replacement writes use
+this encoder. Every byte is initialized before checksum calculation; no unsafe
+code or weaker validation is involved. The free-page and node encoders retain
+their existing behavior. Stored bytes and stable-page allocation order do not
+change. A native test compares every byte with the prior encoding for empty,
+one-byte, inline-boundary, nearly-full and full payloads and pointer extremes.
+
+Selected nonzero-key measurements against the preceding shrink-optimized build:
+
+| Fixture | Operation | Before | Heap encoder | Upstream |
+| --- | --- | ---: | ---: | ---: |
+| 17-byte row | Changed replacement | 663,865 | 655,289 | 190,634 |
+| 64 KiB row | Changed replacement | 2,920,127 | 2,711,456 | 3,838,432 |
+| 4 MiB row | Changed replacement | 145,687,077 | 132,826,728 | 124,157,534 |
+| 4 MiB row | Regrow | 103,873,980 | 91,013,631 | 111,520,588 |
+| 4 MiB row | New insertion | 79,478,225 | 66,626,558 | 143,052,690 |
+
+Changed 4 MiB replacement improves 8.8%, leaving a 7.0% gap above upstream;
+new insertion improves 16.2%. Small overflow replacement remains substantially
+more expensive than upstream. No instruction counts increase across the current
+matrix, but that is not a guarantee for other data, ordering or compilers.
+The unchanged harness retains its sequential-operation and synthetic-data limits.
+
+The baseline is `target/single-pass-shrink.ti22gG` above. Intermediate evidence
+is `target/heap-page-replacement.rdvKXl`, Wasm SHA-256
+`d10b2f0327cc6d28256106d9013e63f79c47abd1115afc7d01dfee8471ad616c`.
+Retained implementation evidence is `target/blob-encoder-bench.LUTuwM`, SHA-256
+`2c75841642dfa7b3cbaae8e9741416113948132c7a6dd963e3033f34fcf321aa`.
+Both attempts retain CSV, log and measured Wasm, with all 1,320 measurements
+repeating exactly within each build. Source builds on the pending 0.1.5 shrink
+work after `60d0f01`; dependency, compiler, server and fixture selections are
+unchanged. Five codec/checksum tests and 20 storage tests pass on Rust 1.99 and
+1.85; four upstream tests, the 320,000-operation campaign and native/Wasm Clippy
+pass on 1.99. The prior host, real-codec and canister recovery limits still apply.
+
+### Avoid unchanged metadata writes
+
+The next pending 0.1.5 change compares the replacement record with its prior
+fields before staging its node, and compares the final header with the tree's
+current header before publication. Same-size overflow replacement still reads
+and validates the complete old chain and stages all replacement payload pages;
+its unchanged node and header no longer need encoding or stable-memory writes.
+Identical inline replacements need no writes. Changed inline values still
+rewrite their node. Allocation, reclamation and length changes still publish
+changed metadata. All comparisons include every field, preserving the prior
+encoded bytes even for records with noncanonical reserved inline contents.
+The exclusive-memory and IC-message rollback requirements remain unchanged.
+
+Against `target/blob-encoder-bench.LUTuwM/`, with unchanged fixtures, dependencies
+and PocketIC selection, nonzero-key changed replacements measure:
+
+| Fixture | Prior instructions | New instructions | Upstream | New / upstream |
+| --- | ---: | ---: | ---: | ---: |
+| index_2048 | 500,946 | 321,836 | 441,419 | 0.73 |
+| journal | 2,710,978 | 2,333,445 | 2,522,641 | 0.93 |
+| row_overflow | 655,289 | 278,828 | 190,634 | 1.46 |
+| row_page | 713,329 | 336,868 | 491,811 | 0.68 |
+| row_64k | 2,711,456 | 2,333,814 | 3,838,432 | 0.61 |
+| row_4m | 132,826,728 | 132,616,170 | 124,157,534 | 1.07 |
+
+The full matrix uses fewer instructions than upstream in 232 of 330 cases,
+versus 201 previously; this unweighted count is not an application speedup.
+126 cases increase relative to the prior implementation, by at most 0.036%
+(234 instructions for zero-key 17-byte shrink). Upstream counts are unchanged.
+Both fresh runs repeat all instruction, capacity and result-length counters
+exactly across 1,320 measurements. Artifacts are retained under
+`target/metadata-writes-bench.dpbw0q/` (`results.csv`, `run.log`, `benchmark.wasm`);
+Wasm SHA-256 is
+`5b5f8d99f4f85c4a708b7999b5a77b22a9732dc277f61458ee834fa19063cd4a`.
+
+A new write-budget regression fails before the change and passes afterward,
+covering empty, inline and overflow replacements with backing growth refused,
+changed/identical bytes, reopening and structural audit. Five codec tests and
+21 storage tests pass on Rust 1.99 and 1.85; four regular upstream comparisons,
+the 320,000-operation extended campaign, native/Wasm Clippy, formatting and
+document links pass. No API or persisted-format change is made. Full release
+validation, macOS execution and actual IcyDB integration remain unqualified.
+
+### Larger verified zero-tail blocks
+
+The next pending 0.1.5 change folds verified zero tails in 32-byte blocks, then
+handles the remaining eight-byte boundary. An initial eight-byte check retains
+the dense-payload fast path. Every covered byte is still inspected; the FNV-1a
+arithmetic, persisted bytes and validation contract are unchanged. Existing
+exhaustive boundary, byte-corruption and original-algorithm tests cover this
+change without adding implementation-specific tests.
+
+The first experiment tested 32-byte blocks unconditionally. It improved sparse
+pages but increased dense 4 MiB reads by 0.91%; this version was not retained.
+Its two exact-repeat runs remain in `target/zero-block-bench.BBvldH/`, with Wasm
+SHA-256 `e0886d2fb875d86fdf20d5dea856fa2c3c077cf4029d176368a07eca9bd1feb2`.
+
+The retained guarded version improves all 330 instruction comparisons against
+`target/metadata-writes-bench.dpbw0q/`, by up to 6.10%, with no upstream count
+changes. The count beating upstream remains 232/330. Selected nonzero-key costs:
+
+| Fixture / operation | Prior instructions | New instructions | Reduction |
+| --- | ---: | ---: | ---: |
+| index_long / get | 255,702 | 243,194 | 4.89% |
+| index_long / scan_values | 466,948 | 443,432 | 5.04% |
+| row_overflow / get | 96,233 | 93,269 | 3.08% |
+| row_overflow / replace_changed | 278,828 | 274,417 | 1.58% |
+| row_overflow / scan_values | 427,441 | 402,772 | 5.77% |
+| row_4m / get | 62,386,709 | 62,383,991 | 0.004% |
+
+Both fresh runs repeat all instruction, capacity and result-length counters
+exactly across 1,320 rows. Final artifacts (`results.csv`, `run.log`,
+`benchmark.wasm`) are under `target/guarded-zero-block-bench.Yqe27g/`; Wasm
+SHA-256 is `bb42360ec0bd29fa32907820aa845a2dfc0051be613316bad156d41631d98a8a`.
+Fixtures, dependencies and PocketIC selection match the prior matrix.
+Five codec tests and 21 storage tests pass on Rust 1.99 and 1.85; four regular
+upstream comparisons, the 320,000-operation campaign, native/Wasm Clippy,
+formatting and links pass. Full release validation, macOS and actual IcyDB
+integration remain outside this qualification. Large dense values still need
+other improvements; this optimization principally benefits sparse pages.
+
+### Expanded boundaries and insertion node reuse
+
+The pending 0.1.5 matrix adds eight fixtures: `index_full_root` (31 entries),
+`index_split_root` (32), `index_key_inline` (32-byte keys),
+`index_key_overflow` (33-byte keys), and `row_32`, `row_256`, `row_1k`, `row_8k`
+(32, 256, 1,024 and 8,192-byte values). All but the first two use 128 entries.
+Root-boundary fixtures use 24-byte keys; new row fixtures use 25-byte keys.
+Index values remain one byte. Bounds, key patterns and operation semantics are
+unchanged. The 23 fixtures produce 506 comparisons and 2,024 raw rows per build.
+
+A fresh baseline includes the expanded harness but the prior library source.
+An inline-key borrowing experiment avoided temporary allocations in binary
+search. It improved some searches by up to 6.91%, but the newly added 8 KiB
+value scan regressed 14.90%, with heap capacity rising from 1,310,720 to
+1,441,792 bytes. Allocation history is a suspected cause, not isolated proof.
+That implementation was reverted; its measurements remain retained.
+
+The retained change reuses the root decoded for insertion's fullness check and
+carries each already-validated child into the next descent step. After a split,
+it refreshes the selected child from staged pages. No cross-operation cache,
+format change or weakening of corruption checks is introduced. A new read-budget
+test fails before the fix and passes afterward: unsplit leaf insertion uses two
+reads instead of three, and insertion through a branch uses four reads. The test
+also checks reopening and structural validity; existing split and failed-growth
+coverage and differential campaigns exercise the mutation boundaries.
+
+Across the expanded matrix, all 92 refill/new-insert cases improve (up to 17.55%);
+the other 414 instruction comparisons are unchanged, as are upstream counters.
+Selected nonzero-key new insertions:
+
+| Fixture | Baseline instructions | Final instructions | Reduction |
+| --- | ---: | ---: | ---: |
+| index_128 | 450,354 | 374,632 | 16.81% |
+| row_32 | 888,772 | 812,710 | 8.56% |
+| row_1k | 896,715 | 819,785 | 8.58% |
+| row_8k | 976,089 | 899,005 | 7.90% |
+| row_4m | 66,618,435 | 66,593,065 | 0.04% |
+
+Final cost ratios (ours/upstream) for the new fixtures with nonzero key suffixes:
+
+| Fixture | Get | Changed replacement | Value scan | New insert |
+| --- | ---: | ---: | ---: | ---: |
+| index_full_root | 0.25 | 0.95 | 0.23 | 1.13 |
+| index_split_root | 0.42 | 1.03 | 0.29 | 0.85 |
+| index_key_inline | 0.29 | 0.78 | 0.24 | 0.72 |
+| index_key_overflow | 0.77 | 1.14 | 0.86 | 2.33 |
+| row_32 | 0.93 | 1.43 | 2.68 | 4.05 |
+| row_256 | 0.93 | 1.41 | 2.63 | 3.85 |
+| row_1k | 0.55 | 1.00 | 2.53 | 1.74 |
+| row_8k | 0.44 | 0.67 | 1.45 | 0.43 |
+
+The added cases expose continuing small-overflow and key-boundary costs.
+The final matrix beats upstream in 352/506 cases; this unweighted expanded count
+must not be compared directly with the earlier 232/330 as an overall speedup.
+Three attempts retain `results.csv`, `run.log`, `benchmark.wasm` and their runner:
+
+| Attempt | Directory | Wasm SHA-256 |
+| --- | --- | --- |
+| Expanded baseline | `target/expanded-inline-baseline.Vt59ge/` | `ba0c2c5b1fcdbacc96534d5437b4ca3bf17fef110704f42d0552fb545dfcb966` |
+| Reverted inline borrowing | `target/expanded-inline-optimized.B7M4Kr/` | `33c4ad0d208db3b19d60efe70d45905efb899360bb11ddf449bd9aba4ab48549` |
+| Retained node reuse | `target/expanded-node-reuse.rHacqY/` | `925197d9fa43d832b7e336ae1e79b4464bdeab2ed1b43a0b52cd25658a0f4ac6` |
+
+Dependency and PocketIC selections match the prior qualification. Five codec
+and 22 storage tests pass on Rust 1.99 and 1.85; four upstream comparisons,
+the 320,000-operation extended campaign, native/Wasm Clippy, formatting and
+links pass. Actual IcyDB codecs, macOS execution and full release validation
+remain outside this qualification. No dependency or release metadata changes.
+All three builds repeat instruction, capacity and result-length counters exactly
+across their two fresh runs (2,024 rows each; 6,072 rows retained in total).

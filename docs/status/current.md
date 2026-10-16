@@ -31,9 +31,9 @@ needed for this coverage. This remains a synthetic comparator, not IcyDB's codec
 The accepted IcyDB transition is a hard cut without a legacy reader; retained-data
 disposition and canister qualification remain required before adoption.
 
-Cargo.toml and Cargo.lock select released 0.1.3, tagged at `5906b48` (`v0.1.3`).
-The incoming local IC Host FS update to 0.22 is preserved; current qualification
-uses its locked 0.22.1 selection and IC Metrics 0.11.5. Release metadata is untouched.
+Cargo.toml and Cargo.lock select released 0.1.4, tagged at `60d0f01` (`v0.1.4`).
+Current qualification uses IC Host FS 0.22.1 and IC Metrics 0.11.5 from that
+release's lockfile. Release metadata is untouched during implementation.
 
 Released 0.1.2 reuses the located node and reads the previous overflow value once
 during replacement. Native interface read traffic is halved for the index,
@@ -127,7 +127,7 @@ Three checksum tests and 18 regular storage tests pass on Rust 1.99 and 1.85;
 four regular upstream tests and the 320,000-operation campaign pass on 1.99.
 Native and Wasm Clippy pass. No public API or persisted format change is made.
 
-Pending 0.1.4 folds verified trailing zero chunks into the checksum using the
+Released 0.1.4 folds verified trailing zero chunks into the checksum using the
 same FNV-1a arithmetic. It still inspects all covered bytes; full nonzero payload
 pages pay one failed suffix check. The format and integrity guarantees are
 unchanged. A new test compares the original checksum at all 4,088 possible
@@ -156,3 +156,72 @@ and length, and successful removal after repairing only the injected corruption.
 Four checksum and 19 storage tests pass on Rust 1.99 and 1.85; four upstream
 tests, the 320,000-operation campaign and native/Wasm Clippy pass on 1.99.
 API, stored format and release metadata are unchanged.
+
+Pending 0.1.5 removes the second payload read during shrink. The old chain is
+fully validated and collected first, then excess pages are staged free in the
+same reverse order as before. Ordinary freeing still reads/checks the live page;
+the new staging helper is private to callers that already performed validation.
+The read-budget test fails before the fix and passes for inline and overflow
+shrink with growth refused, including returned data and reopening checks.
+
+The runner adds changed-byte replacement, asserting the old return and new
+stored bytes, then restoring common inputs outside measurement. Both fresh
+builds produce 1,320 measurements with exact repeat counts. Nonzero-key 4 MiB
+shrink falls from 155,648,170 to 102,600,261 instructions versus 120,853,461
+upstream. Before the encoder optimization below, changed-byte same-size
+replacement remained about 146M versus 124M.
+Four checksum and 20 storage tests pass on Rust 1.99 and 1.85; four upstream
+tests, the 320,000-operation campaign and native/Wasm Clippy pass on 1.99.
+No API, format, allocation ownership or package version changes are made.
+
+The 0.1.5 continuation shares one heap-buffer encoder for new and replacement
+overflow pages. It writes the header and payload directly, then zero-fills only
+the remaining tail before sealing. Byte-for-byte tests cover empty, partial and
+full payloads and pointer extremes. Nonzero-key 4 MiB changed-value replacement
+falls from 145,687,077 to 132,826,728 instructions, still above upstream's
+124,157,534. New insertion falls from 79,478,225 to 66,626,558. Both intermediate
+and final builds repeat all 1,320 measurements exactly; no instruction increases
+appear against the prior matrix. Small-value overhead remains significant.
+Five codec/checksum tests and 20 storage tests pass on Rust 1.99 and 1.85;
+four upstream tests, the 320,000-operation campaign and native/Wasm Clippy pass
+on 1.99. No unsafe code, dependencies, format or API changes were introduced.
+
+The next 0.1.5 optimization skips unchanged replacement-node and header writes.
+It still validates the full old payload before staging replacement bytes;
+changed metadata remains published under the existing failure contract.
+Nonzero-key 17-byte changed replacement falls from 655,289 to 278,828 instructions
+(still 1.46 times upstream), and 4,072-byte replacement falls from 713,329 to
+336,868 (0.68 times upstream). The matrix now beats upstream in 232/330 cases;
+126 cases increase against the prior build by at most 0.036%. Both fresh runs
+repeat all 1,320 measurements exactly; artifacts and hashes are in the design.
+The new write-budget regression fails before the fix and passes afterward.
+Five codec and 21 storage tests pass on Rust 1.99 and 1.85; four upstream tests,
+the 320,000-operation campaign and native/Wasm Clippy pass. Formatting and links
+pass. API, persisted bytes, dependency selections and release metadata are
+unchanged; large-row reads/value scans and small-value mutations still need work.
+
+A further 0.1.5 checksum optimization inspects verified zero tails in 32-byte
+blocks with an initial eight-byte guard for dense payloads. All covered bytes
+are still checked and the persisted checksum is identical. The unguarded
+experiment regressed large dense reads and was superseded; both attempts are
+retained in the design evidence. The guarded version improves all 330 measured
+cases against the prior build, up to 6.10%; nonzero-key 17-byte reads improve
+3.08% and value scans 5.77%. Dense 4 MiB gains are negligible. All 1,320 rows
+repeat exactly. Five codec and 21 storage tests pass on Rust 1.99 and 1.85;
+four upstream tests, the 320,000-operation campaign, native/Wasm Clippy,
+formatting and doc links pass. No API, format, dependency or version changes.
+
+The expanded 0.1.5 matrix now has 23 fixtures: eight additions cover 31/32-entry
+root transitions, 32/33-byte keys, and 32/256/1,024/8,192-byte rows. Each build
+produces 2,024 rows. An inline-key allocation optimization was rejected after
+the new 8 KiB value scan exposed a 14.90% regression and higher heap capacity.
+The retained insertion change reuses the already-validated root and child nodes,
+refreshing after splits. All 92 insertion/refill cases improve, up to 17.55%;
+the other 414 counts and upstream counts are unchanged. All three measured
+builds repeat exactly (6,072 rows). The new read-budget test fails before the
+fix and passes afterward, including branch descent, reopening and validation.
+Five codec and 22 storage tests pass on Rust 1.99 and 1.85; four upstream tests,
+the 320,000-operation campaign, native/Wasm Clippy, formatting and links pass.
+New cases confirm that small overflow rows and 33-byte keys remain expensive.
+Evidence and artifacts are in the design; API, format and release metadata
+remain unchanged. No publication or IcyDB integration was performed.

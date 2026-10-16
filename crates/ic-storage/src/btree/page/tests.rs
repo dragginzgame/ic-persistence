@@ -76,3 +76,20 @@ fn zero_suffix_checksum_matches_original_at_every_boundary() {
         page[at] = 0;
     }
 }
+
+#[test]
+fn heap_blob_encoding_preserves_every_page_byte() {
+    for len in [0, 1, 16, 17, 4071, super::PAYLOAD] {
+        for next in [0, 1, u64::MAX] {
+            let payload = (0..len).map(|at| at.to_le_bytes()[0]).collect::<Vec<_>>();
+            let mut expected = [0; SIZE];
+            expected[0] = super::BLOB;
+            super::put(&mut expected, 8, next);
+            expected[16..16 + len].copy_from_slice(&payload);
+            seal(&mut expected);
+            let actual = super::encode_blob(next, &payload);
+            assert_eq!(*actual, expected);
+            assert_eq!(verify(&actual), Ok(()));
+        }
+    }
+}

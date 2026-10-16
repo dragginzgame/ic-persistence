@@ -182,11 +182,12 @@ fn measure(operation: u8) -> (u128, u128, u128, u64) {
         };
         let key = key(target, state.key_len, state.dense_keys);
         let value_len = if operation == 6 { 1 } else { state.value_len };
-        let value = vec![7; value_len];
+        let fill = if operation == 10 { 8 } else { 7 };
+        let value = vec![fill; value_len];
         let before = Performance::counters();
         let result = match operation {
             0 | 4 => state.tree.get(key),
-            1 | 6 | 7 | 8 | 9 => state.tree.insert(key, value),
+            1 | 6 | 7 | 8 | 9 | 10 => state.tree.insert(key, value),
             2 => Some(state.tree.scan()),
             3 => state.tree.remove(key),
             5 => Some(state.tree.scan_values()),
@@ -209,16 +210,26 @@ fn measure(operation: u8) -> (u128, u128, u128, u64) {
             };
             assert_eq!(result.as_ref().unwrap(), &vec![7; len]);
         }
-        if matches!(operation, 1 | 3 | 6 | 7 | 8 | 9) {
+        if matches!(operation, 1 | 3 | 6 | 7 | 8 | 9 | 10) {
             let stored = state
                 .tree
                 .get(self::key(target, state.key_len, state.dense_keys));
             let expected = if operation == 3 {
                 None
             } else {
-                Some(vec![7; value_len])
+                Some(vec![fill; value_len])
             };
             assert_eq!(stored, expected);
+        }
+        // Restore the common input state outside the measured interval.
+        if operation == 10 {
+            assert_eq!(
+                state.tree.insert(
+                    self::key(target, state.key_len, state.dense_keys),
+                    vec![7; value_len]
+                ),
+                Some(vec![8; value_len])
+            );
         }
         (
             after.instructions - before.instructions,

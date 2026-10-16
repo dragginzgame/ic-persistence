@@ -648,6 +648,60 @@ fn replacing_full_root_does_not_allocate_or_split_nodes() {
 }
 
 #[test]
+fn insertion_reuses_the_validated_leaf() {
+    let memory = ObservedMemory::default();
+    let reads = memory.read_calls.clone();
+    let mut tree = BTreeMap::create(memory, Config::default(), Lexicographic).unwrap();
+    for n in 0..31 {
+        reads.set(0);
+        assert_eq!(tree.insert(&key(n), &[7]).unwrap(), None);
+        // One existence search and one mutation traversal, with no second
+        // leaf read merely to check whether it needs splitting.
+        assert_eq!(reads.get(), 2);
+    }
+    // Split the full root, then check reuse while descending through a branch.
+    assert_eq!(tree.insert(&key(31), &[7]).unwrap(), None);
+    reads.set(0);
+    assert_eq!(tree.insert(&key(32), &[7]).unwrap(), None);
+    assert_eq!(reads.get(), 4);
+    tree.validate().unwrap();
+    let tree = BTreeMap::open(tree.into_memory(), Config::default(), Lexicographic).unwrap();
+    for n in 0..33 {
+        assert_eq!(tree.get(&key(n)).unwrap(), Some(vec![7]));
+    }
+}
+
+#[test]
+fn replacement_writes_only_changed_metadata_and_payload() {
+    for length in [0, 1, 16, 17, 4072, 4073, 65536] {
+        let memory = ObservedMemory::default();
+        let calls = memory.write_calls.clone();
+        let deny = memory.deny_growth.clone();
+        let mut tree = BTreeMap::create(memory, Config::default(), Lexicographic).unwrap();
+        let original = vec![7; length];
+        tree.insert(b"row", &original).unwrap();
+        deny.set(true);
+        let changed = vec![8; length];
+        calls.set(0);
+        assert_eq!(tree.insert(b"row", &changed).unwrap(), Some(original));
+        let expected = if length <= 16 {
+            u64::from(length != 0)
+        } else {
+            length.div_ceil(4072) as u64
+        };
+        assert_eq!(calls.get(), expected, "changed value length {length}");
+        tree = BTreeMap::open(tree.into_memory(), Config::default(), Lexicographic).unwrap();
+        assert_eq!(tree.get(b"row").unwrap(), Some(changed.clone()));
+        assert_eq!(tree.len(), 1);
+        tree.validate().unwrap();
+        calls.set(0);
+        assert_eq!(tree.insert(b"row", &changed).unwrap(), Some(changed));
+        assert_eq!(calls.get(), if length <= 16 { 0 } else { expected });
+        tree.validate().unwrap();
+    }
+}
+
+#[test]
 fn failed_overflow_extension_preserves_reused_pages() {
     let memory = ObservedMemory::default();
     let backing = memory.memory.clone();
@@ -985,4 +1039,30 @@ fn late_corruption_discards_collected_removal_and_staged_pages() {
     tree.validate().unwrap();
     let tree = BTreeMap::open(tree.into_memory(), Config::default(), Lexicographic).unwrap();
     assert!(tree.is_empty());
+}
+
+#[test]
+fn shrinking_replacement_reads_each_overflow_page_once() {
+    for length in [1, 4073] {
+        let memory = ObservedMemory::default();
+        let reads = memory.reads.clone();
+        let deny_growth = memory.deny_growth.clone();
+        let mut tree = BTreeMap::create(memory, Config::default(), Lexicographic).unwrap();
+        let original = vec![9; 65536];
+        tree.insert(b"row", &original).unwrap();
+        reads.set(0);
+        assert_eq!(tree.get(b"row").unwrap(), Some(original.clone()));
+        let lookup_reads = reads.get();
+        reads.set(0);
+        deny_growth.set(true);
+        let replacement = vec![3; length];
+        assert_eq!(tree.insert(b"row", &replacement).unwrap(), Some(original));
+        assert!(
+            reads.get() <= lookup_reads,
+            "shrinking should not reread validated pages to free them"
+        );
+        tree.validate().unwrap();
+        let tree = BTreeMap::open(tree.into_memory(), Config::default(), Lexicographic).unwrap();
+        assert_eq!(tree.get(b"row").unwrap(), Some(replacement));
+    }
 }

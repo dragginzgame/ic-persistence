@@ -1,5 +1,32 @@
 # Changelog
 
+## [0.1.5]
+
+- Expand the canister comparison to 23 fixtures, covering root splits, the
+  32/33-byte key boundary and intermediate row sizes. Reuse validated nodes
+  during insertion instead of rereading them for descent: small inline-entry
+  insertion improves about 17%, and small overflow-row insertion about 8–9%.
+  Stored format, comparator behavior and failure guarantees are unchanged.
+- Inspect zero-filled checksum tails in larger blocks while retaining the dense
+  payload fast path and identical persisted checksums. The nonzero-key 17-byte
+  fixture improves a further 3.1% for reads and 5.8% for value scans; all measured
+  cases improve, with negligible gains for large dense rows.
+- Skip unchanged node and header writes during value replacement, while still
+  validating the complete old payload. Nonzero-key 17-byte changed replacements
+  drop from 655k to 279k instructions; 4,072-byte replacements drop from 713k to
+  337k, below upstream's 492k. Stored bytes and failure semantics are unchanged.
+- Encode overflow pages directly in heap buffers, filling only the unused tail
+  with zeros. In the nonzero-key 4 MiB fixture, changed-value replacement drops
+  from 146M to 133M instructions and new insertion improves 16%, with identical
+  stored page bytes. Same-size replacement remains about 7% above upstream.
+- Reuse completed payload validation when freeing excess pages during value
+  shrink, avoiding a second read while preserving the free-list order and
+  staged-write failure contract. The nonzero-key 4 MiB shrink fixture drops
+  from 156M to 103M instructions, below upstream's 121M.
+- Add changed-byte replacement to the canister matrix, validating returned and
+  stored values separately from identical-byte replacement. Same-size large-row
+  replacement still costs more than upstream in these fixtures.
+
 ## [0.1.4] - 2026-10-16
 
 - Return removed values while reclaiming their overflow pages in one validated

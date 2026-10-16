@@ -15,7 +15,7 @@ const LEAF: u8 = 3;
 const BRANCH: u8 = 4;
 pub(super) type Page = [u8; SIZE];
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Eq, PartialEq)]
 pub(super) struct Header {
     pub root: u64,
     pub len: u64,
@@ -85,7 +85,7 @@ impl Header {
     }
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Eq, PartialEq)]
 pub(super) struct Record {
     pub key: u64,
     pub key_len: u64,
@@ -194,11 +194,17 @@ fn checksum(page: &Page) -> u64 {
     const ZERO_CHUNK_FACTOR: u64 = 0x100_0000_01b3u64.wrapping_pow(8);
     let mut end = SIZE - 8;
     let mut suffix_factor = 1u64;
-    // Inspect every byte of trailing zero chunks, but fold their FNV steps
-    // together. Restrict this to the suffix so full payload pages pay one check.
-    while end >= 8 && page[end - 8..end] == [0; 8] {
-        suffix_factor = suffix_factor.wrapping_mul(ZERO_CHUNK_FACTOR);
-        end -= 8;
+    // Dense payloads pay one eight-byte check. For sparse tails, inspect larger
+    // zero blocks before the final boundary, still checking every covered byte.
+    if page[end - 8..end] == [0; 8] {
+        while end >= 32 && page[end - 32..end] == [0; 32] {
+            suffix_factor = suffix_factor.wrapping_mul(ZERO_CHUNK_FACTOR.wrapping_pow(4));
+            end -= 32;
+        }
+        while end >= 8 && page[end - 8..end] == [0; 8] {
+            suffix_factor = suffix_factor.wrapping_mul(ZERO_CHUNK_FACTOR);
+            end -= 8;
+        }
     }
     let mut hash = 0xcbf2_9ce4_8422_2325u64;
     // The covered region is a multiple of eight. Fixed-size inner iterations
@@ -212,6 +218,23 @@ fn checksum(page: &Page) -> u64 {
 }
 pub(super) fn seal(page: &mut Page) {
     put(page, SIZE - 8, checksum(page));
+}
+pub(super) fn encode_blob(next: u64, payload: &[u8]) -> Box<Page> {
+    assert!(payload.len() <= PAYLOAD);
+    // Initialize the heap buffer once: payload bytes need not be zeroed first.
+    let mut header = [0; 16];
+    header[0] = BLOB;
+    header[8..].copy_from_slice(&next.to_le_bytes());
+    let mut bytes = Vec::with_capacity(SIZE);
+    bytes.extend_from_slice(&header);
+    bytes.extend_from_slice(payload);
+    bytes.resize(SIZE, 0);
+    let mut page: Box<Page> = bytes
+        .into_boxed_slice()
+        .try_into()
+        .expect("fixed page length");
+    seal(&mut page);
+    page
 }
 pub(super) fn free(next: u64) -> Page {
     const TAIL_FACTOR: u64 = {

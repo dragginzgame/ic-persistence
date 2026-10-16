@@ -56,6 +56,7 @@ fn main() -> Result<(), Box<dyn Error>> {
                     (0u8, "get"),
                     (4, "missing_get"),
                     (1, "replace"),
+                    (10, "replace_changed"),
                     (2, "scan_keys"),
                     (5, "scan_values"),
                     (6, "shrink"),
