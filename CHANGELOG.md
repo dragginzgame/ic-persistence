@@ -1,6 +1,6 @@
 # Changelog
 
-## [0.2.0]
+## [0.2.0] - 2026-10-16
 
 - Raise the library's minimum supported Rust version from 1.85 to 1.91 at the
   maintainer's request, updating the MSRV check and Linux/macOS CI setup.
