@@ -20,7 +20,7 @@ version release-version:
 	@bash scripts/release/adapter.sh version
 
 check-doc-links:
-	perl scripts/ci/check-documentation-links.pl --root . README.md AGENTS.md CHANGELOG.md docs/status/current.md docs/upstreams.md crates/ic-storage/README.md
+	perl scripts/ci/check-documentation-links.pl --root . README.md AGENTS.md CHANGELOG.md docs/status/current.md docs/upstreams.md crates/ic-storage/README.md docs/design/icydb-btree.md
 
 check-license:
 	perl scripts/ci/check-license.pl --kind mit --file LICENSE
@@ -33,7 +33,7 @@ check-release-commands:
 	bash scripts/ci/check-release-commands.sh . make/consumer.mk make/tools.mk make/release.mk make/rust-format.mk make/execution.mk scripts/ci/check-make-execution.sh
 
 ci:
-	+bash scripts/ci/run-validation-targets.sh --fail-fast shared-tooling-check check-doc-links check-license check-pins check-release-commands fmt-check check clippy docs-check msrv package
+	+bash scripts/ci/run-validation-targets.sh --fail-fast shared-tooling-check check-doc-links check-license check-pins check-release-commands fmt-check check clippy docs-check test wasm-check msrv package
 
 release-preflight:
 	@bash scripts/release/adapter.sh preflight
@@ -53,7 +53,7 @@ release-commit-check:
 release-files:
 	@printf 'Cargo.toml\0Cargo.lock\0CHANGELOG.md\0'
 
-.PHONY: check clippy docs-check msrv package publish publish-check
+.PHONY: check clippy docs-check test wasm-check msrv package publish publish-check
 check:
 	+cargo check --workspace --all-targets --locked
 clippy:
@@ -66,3 +66,8 @@ package:
 	+cargo package -p ic-storage --locked
 publish publish-check:
 	+bash scripts/release/publish.sh "$@"
+
+test:
+	+cargo test -p ic-storage --locked
+wasm-check:
+	+cargo check -p ic-storage --target wasm32-unknown-unknown --locked

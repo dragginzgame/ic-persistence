@@ -10,7 +10,14 @@ host operations: `ic-host-fs` for bounded filesystem operations and locks,
 `ic-host-artifacts` for artifact streams, `ic-host-process` for admitted process
 execution, and `ic-host-tools` for IC host tooling. Reuse those packages when
 implementation needs their contracts instead of recreating host infrastructure.
-The scaffold currently has no runtime dependencies. Add selected compatible
+Add selected compatible
 registry versions to the root workspace dependency catalog, inherit them in
 members and commit their exact resolution in Cargo.lock. Mutable sibling paths
 are not release dependencies. Product storage contracts remain owned here.
+
+[IC Memory](https://github.com/dragginzgame/ic-memory) owns allocation governance
+and runtime memory handles. IC Storage does not create memory IDs or replace
+that authority. DFINITY's `ic-stable-structures` supplies the common Memory trait;
+IC Storage implements its own collections and incompatible persisted format.
+IcyDB owns typed key codecs, comparator semantics and application recovery; see
+[the consumer boundary](design/icydb-btree.md).

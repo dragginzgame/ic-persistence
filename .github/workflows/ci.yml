@@ -17,7 +17,7 @@ defaults:
     shell: bash
 
 jobs:
-  scaffold:
+  storage:
     strategy:
       fail-fast: false
       matrix:
@@ -30,11 +30,11 @@ jobs:
           persist-credentials: false
       - name: Prepare Rust toolchains
         run: |
-          rustup toolchain install 1.99.0 --profile minimal --component rustfmt --component clippy
+          rustup toolchain install 1.99.0 --profile minimal --component rustfmt --component clippy --target wasm32-unknown-unknown
           rustup toolchain install 1.85.0 --profile minimal
       - name: Prepare pinned tools
         run: make install-tools
       - name: Verify tools
         run: make tools-check
-      - name: Validate repository scaffold
+      - name: Validate storage library
         run: make ci

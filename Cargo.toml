@@ -7,10 +7,11 @@ version = "0.0.0"
 edition = "2024"
 rust-version = "1.85.0"
 repository = "https://github.com/dragginzgame/ic-storage"
-description = "IC Storage library scaffold; storage APIs are under development"
+description = "Page-based stable-memory B-tree storage for Internet Computer applications"
 license = "MIT"
 
 [workspace.dependencies]
+ic-stable-structures = "0.7.2"
 
 [workspace.lints.rust]
 missing_docs = "warn"

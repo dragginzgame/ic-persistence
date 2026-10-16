@@ -1,8 +1,12 @@
 # IC Storage
 
-IC Storage is a new Dragginzgame repository. It currently contains the shared
-engineering baseline, a Rust library scaffold, developer setup, CI and release infrastructure.
-Storage functionality and public APIs have not been implemented.
+IC Storage implements an independent stable-memory B-tree for Internet Computer
+applications, shaped by IcyDB's canonical-store requirements. It supports custom
+key order, large values, lazy bidirectional scans and reusable pages.
+
+Read [the package guide](crates/ic-storage/README.md) for the API and persistence
+contract, and [the IcyDB boundary](docs/design/icydb-btree.md) for consumer evidence.
+The tree has not yet been integrated into IcyDB or qualified in a live canister.
 
 ## Development
 
@@ -30,7 +34,9 @@ export PATH="$PWD/.tools/host/bin:$PWD/.tools/ic/bin:$PWD/.tools/rust/common/bin
 Focused checks include `make shared-tooling-check`, `make check-doc-links`,
 `make check-license`, `make check-pins` and `make check-release-commands`.
 `make fmt-check`, `make check`, `make clippy`, `make docs-check` and `make msrv`
-qualify the Rust scaffold. `make ci` runs the complete scaffold validation. CI selects Ubuntu 24.04 x86_64
+qualify the Rust library. `make test` runs storage tests and documentation
+examples; `make wasm-check` checks the canister compilation target.
+`make ci` runs the complete repository validation. CI selects Ubuntu 24.04 x86_64
 and macOS 15 arm64. Native hosted validation is pending the initial push;
 local Linux checks do not establish macOS qualification.
 
@@ -50,7 +56,7 @@ at its annotated release tag, `make publish-check` performs a crates.io dry run
 and `make publish` uploads `ic-storage` using the caller's Cargo credentials.
 Publication attempts retain evidence under `target/publication`; inspect and
 reconcile an interrupted attempt before retrying. Publication remains separate
-from release/tag delivery. The current crate is an empty scaffold.
+from release/tag delivery.
 
 ## License
 
