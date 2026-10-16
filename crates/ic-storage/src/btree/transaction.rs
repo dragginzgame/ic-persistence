@@ -163,6 +163,65 @@ impl<'a, M: Memory, C: Comparator> Transaction<'a, M, C> {
         parent.children.insert(at + 1, right_id);
         Ok(())
     }
+    fn replace_value(&mut self, record: &mut Record, value: &[u8]) -> Result<(), Error> {
+        let mut ids = Vec::new();
+        let mut id = record.value;
+        let mut remaining = record.value_len;
+        if id != 0 {
+            while remaining != 0 {
+                let page = self.read(id)?;
+                if page[0] != page::BLOB {
+                    return Err(Error::Corrupt);
+                }
+                ids.push(id);
+                id = page::number(&page, 8);
+                remaining = remaining.saturating_sub(PAYLOAD as u64);
+            }
+            if id != 0 {
+                return Err(Error::Corrupt);
+            }
+        }
+        let needed = if value.len() <= 16 {
+            0
+        } else {
+            value.len().div_ceil(PAYLOAD)
+        };
+        while ids.len() > needed {
+            self.free(ids.pop().ok_or(Error::Corrupt)?)?;
+        }
+        while ids.len() < needed {
+            ids.push(self.allocate()?);
+        }
+        for (index, id) in ids.iter().copied().enumerate() {
+            let chunk = &value[index * PAYLOAD..value.len().min((index + 1) * PAYLOAD)];
+            let mut page = [0; SIZE];
+            page[0] = page::BLOB;
+            page::put(&mut page, 8, ids.get(index + 1).copied().unwrap_or(0));
+            page[16..16 + chunk.len()].copy_from_slice(chunk);
+            page::seal(&mut page);
+            self.pages.insert(id, page);
+        }
+        record.value = ids.first().copied().unwrap_or(0);
+        record.value_len = value.len() as u64;
+        record.value_inline = [0; 16];
+        if needed == 0 {
+            record.value_inline[..value.len()].copy_from_slice(value);
+        }
+        Ok(())
+    }
+    pub fn replace(&mut self, key: &[u8], value: &[u8]) -> Result<(), Error> {
+        let mut id = self.header.root;
+        for _ in 0..MAX_HEIGHT {
+            let mut node = self.node(id)?;
+            let (at, found) = self.locate(&node, key)?;
+            if found {
+                self.replace_value(&mut node.entries[at], value)?;
+                return self.put_node(id, &node);
+            }
+            id = *node.children.get(at).ok_or(Error::Corrupt)?;
+        }
+        Err(Error::Corrupt)
+    }
     pub fn insert(&mut self, key: &[u8], value: &[u8]) -> Result<(), Error> {
         let root = self.node(self.header.root)?;
         if root.entries.len() == MAX {
@@ -180,20 +239,7 @@ impl<'a, M: Memory, C: Comparator> Transaction<'a, M, C> {
             let mut node = self.node(id)?;
             let (mut at, found) = self.locate(&node, key)?;
             if found {
-                let old = node.entries[at];
-                let value_id = if value.len() <= 16 {
-                    0
-                } else {
-                    self.store_blob(value)?
-                };
-                node.entries[at].value_inline = [0; 16];
-                if value.len() <= 16 {
-                    node.entries[at].value_inline[..value.len()].copy_from_slice(value);
-                }
-                self.free_blob(old.value, old.value_len)?;
-                node.entries[at].value = value_id;
-                node.entries[at].value_len = value.len() as u64;
-                return self.put_node(id, &node);
+                return Err(Error::Corrupt);
             }
             if node.children.is_empty() {
                 let mut key_inline = [0; 32];
@@ -228,7 +274,7 @@ impl<'a, M: Memory, C: Comparator> Transaction<'a, M, C> {
                 let comparison = self.tree.order.compare(key, &self.key(node.entries[at])?)?;
                 self.put_node(id, &node)?;
                 if comparison == Ordering::Equal {
-                    continue;
+                    return Err(Error::Corrupt);
                 }
                 if comparison == Ordering::Greater {
                     at += 1;

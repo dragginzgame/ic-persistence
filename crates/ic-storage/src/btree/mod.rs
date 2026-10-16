@@ -213,8 +213,10 @@ impl<M: Memory, C: Comparator> BTreeMap<M, C> {
         }
         let previous = self.get(key)?;
         let mut tx = Transaction::new(self);
-        tx.insert(key, value)?;
-        if previous.is_none() {
+        if previous.is_some() {
+            tx.replace(key, value)?;
+        } else {
+            tx.insert(key, value)?;
             tx.header.len = tx.header.len.checked_add(1).ok_or(Error::Capacity)?;
         }
         self.header = tx.commit()?;

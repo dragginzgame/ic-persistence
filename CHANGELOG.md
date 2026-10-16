@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.1]
+
+- Replacing a stored value reuses its overflow pages and leaves tree topology
+  unchanged. Same-size or shrinking updates no longer need a second payload's
+  worth of capacity; failed growth still preserves the existing data.
+- Qualify semantic encoded-key ordering through multi-level tree mutations,
+  mixed inline/overflow payloads, bounded bidirectional scans and reopening.
+
 ## [0.1.0]
 
 - Establish the repository with the Dragginzgame engineering baseline, pinned

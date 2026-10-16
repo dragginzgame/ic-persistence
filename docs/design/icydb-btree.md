@@ -34,8 +34,10 @@ The format uses 4096-byte pages, a checksummed header, 31-entry tree nodes,
 separate chains. Fixed node fanout bounds node decoding independently of a
 4 MiB row. Mutations rewrite touched nodes and changed payloads; deletes borrow
 or merge and recycle pages. Range cursors retain bounded search paths and do
-not load overflow values until requested. Replacement can temporarily need both
-old and new payload space before freeing the old chain.
+not load overflow values until requested. Replacement preserves tree topology
+and rewrites the existing value chain through mutation staging. It frees surplus
+pages when shrinking and allocates only extra pages when growing. Returned
+capacity errors preserve all existing bytes, including reused payload pages.
 
 The format has its own magic and never claims compatibility with DFINITY B-tree
 pages. IcyDB adoption requires its own comparator/codec adapter, propagation of
@@ -43,3 +45,9 @@ fallible operations through overlay and recovery boundaries, a retained-data
 transition decision, native/PocketIC qualification and workload benchmarks.
 These are integration acceptance requirements, not claims established by this
 repository's native model tests or Wasm compilation.
+
+The accepted transition is a hard cut: IcyDB will use this tree without a legacy
+reader or dual-format path. This does not authorize discarding retained data;
+the application must still choose and qualify its rebuild/import or explicit
+reset before switching memory regions. The upstream Memory interface remains
+the shared substrate after the cut.

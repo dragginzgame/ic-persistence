@@ -172,6 +172,91 @@ impl Comparator for Framed {
         Ok(decode(left)?.cmp(&decode(right)?))
     }
 }
+
+fn framed_key(payload: &[u8]) -> Vec<u8> {
+    let mut encoded = vec![u8::try_from(payload.len()).unwrap()];
+    encoded.extend_from_slice(payload);
+    encoded
+}
+
+#[test]
+fn semantic_order_survives_mutations_ranges_and_reopening() {
+    let config = Config::default();
+    let mut tree = BTreeMap::create(VectorMemory::default(), config, Framed).unwrap();
+    // Model keys contain decoded components, independent of the stored framing.
+    let mut model = Model::new();
+    let keys = (0..700)
+        .map(|n| format!("{n}{}", "x".repeat(n % 70)).into_bytes())
+        .collect::<Vec<_>>();
+    for (n, payload) in keys.iter().enumerate() {
+        let value = vec![u8::try_from(n % 251).unwrap(); [1, 16, 17, 4073, 9000][n % 5]];
+        assert_eq!(
+            tree.insert(&framed_key(payload), &value).unwrap(),
+            model.insert(payload.clone(), value)
+        );
+    }
+    // Mutate every key in a coprime permutation, including internal separators
+    // and overflow keys. Replacements cross inline and overflow boundaries.
+    for round in 0..=keys.len() {
+        if round % 100 == 0 {
+            tree.validate().unwrap();
+            tree = BTreeMap::open(tree.into_memory(), config, Framed).unwrap();
+            assert_eq!(tree.len(), model.len() as u64);
+            let actual = tree
+                .iter()
+                .map(|entry| {
+                    let (encoded, value) = entry.unwrap().into_pair().unwrap();
+                    (encoded[1..].to_vec(), value)
+                })
+                .collect::<Vec<_>>();
+            assert_eq!(actual, model.clone().into_iter().collect::<Vec<_>>());
+
+            // Wire order disagrees with semantic order for these endpoints.
+            let lower = framed_key(b"100xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx");
+            let upper = framed_key(b"9");
+            assert!(lower > upper);
+            let mut expected = model
+                .iter()
+                .filter(|(key, _)| key.as_slice() >= &lower[1..] && key.as_slice() < &upper[1..]);
+            let mut range = tree
+                .range(Bound::Included(&lower), Bound::Excluded(&upper))
+                .unwrap();
+            while let Some((key, value)) = expected.next() {
+                let entry = range.next().unwrap().unwrap();
+                assert_eq!(&entry.key()[1..], key);
+                assert_eq!(&entry.value().unwrap(), value);
+                if let Some((key, value)) = expected.next_back() {
+                    let entry = range.next_back().unwrap().unwrap();
+                    assert_eq!(&entry.key()[1..], key);
+                    assert_eq!(&entry.value().unwrap(), value);
+                }
+            }
+            assert!(range.next().is_none());
+            assert!(range.next_back().is_none());
+        }
+        if round == keys.len() {
+            break;
+        }
+        let payload = &keys[(round * 109) % keys.len()];
+        let encoded = framed_key(payload);
+        if round % 3 == 0 {
+            let value = vec![0x7e; if round % 2 == 0 { 0 } else { 8192 }];
+            assert_eq!(
+                tree.insert(&encoded, &value).unwrap(),
+                model.insert(payload.clone(), value)
+            );
+        } else {
+            assert_eq!(tree.remove(&encoded).unwrap(), model.remove(payload));
+        }
+    }
+    for (payload, value) in model {
+        assert_eq!(tree.remove(&framed_key(&payload)).unwrap(), Some(value));
+    }
+    tree.validate().unwrap();
+    let tree = BTreeMap::open(tree.into_memory(), config, Framed).unwrap();
+    assert!(tree.is_empty());
+    assert!(tree.iter().next_back().is_none());
+}
 #[test]
 fn semantic_key_order_differs_from_wire_order() {
     let mut tree = BTreeMap::create(VectorMemory::default(), Config::default(), Framed).unwrap();
@@ -379,4 +464,64 @@ fn iterator_errors_once_and_creation_failure_is_non_destructive() {
     assert!(matches!(range.next(), Some(Err(Error::Corrupt))));
     assert!(range.next_back().is_none());
     assert!(range.next().is_none());
+}
+
+#[test]
+fn replacements_reuse_payload_capacity_across_inline_boundaries() {
+    let memory = ObservedMemory::default();
+    let deny = memory.deny_growth.clone();
+    let mut tree = BTreeMap::create(memory, Config::default(), Lexicographic).unwrap();
+    let mut previous = vec![1; 128 * 1024];
+    tree.insert(b"row", &previous).unwrap();
+    let capacity = tree.memory_bytes();
+    deny.set(true);
+    for (round, size) in [128 * 1024, 120 * 1024, 4072, 4073, 17, 16, 0, 128 * 1024]
+        .into_iter()
+        .enumerate()
+    {
+        let value = vec![u8::try_from(round + 2).unwrap(); size];
+        assert_eq!(tree.insert(b"row", &value).unwrap(), Some(previous));
+        assert_eq!(tree.get(b"row").unwrap(), Some(value.clone()));
+        assert_eq!(tree.len(), 1);
+        assert_eq!(tree.memory_bytes(), capacity);
+        tree.validate().unwrap();
+        tree = BTreeMap::open(tree.into_memory(), Config::default(), Lexicographic).unwrap();
+        previous = value;
+    }
+}
+
+#[test]
+fn replacing_full_root_does_not_allocate_or_split_nodes() {
+    let memory = ObservedMemory::default();
+    let backing = memory.memory.clone();
+    let mut tree = BTreeMap::create(memory, Config::default(), Lexicographic).unwrap();
+    for n in 0..31 {
+        tree.insert(&key(n), &[0]).unwrap();
+    }
+    // The persisted header contains root, allocator and entry-count state.
+    let header = backing.borrow()[..4096].to_vec();
+    for n in 0..31 {
+        assert_eq!(tree.insert(&key(n), &[1]).unwrap(), Some(vec![0]));
+        assert_eq!(backing.borrow()[..4096], header);
+    }
+    tree.validate().unwrap();
+}
+
+#[test]
+fn failed_overflow_extension_preserves_reused_pages() {
+    let memory = ObservedMemory::default();
+    let backing = memory.memory.clone();
+    let deny = memory.deny_growth.clone();
+    let mut tree = BTreeMap::create(memory, Config::default(), Lexicographic).unwrap();
+    let original = vec![7; 128 * 1024];
+    tree.insert(b"row", &original).unwrap();
+    let before = backing.borrow().clone();
+    deny.set(true);
+    assert_eq!(
+        tree.insert(b"row", &vec![9; 1024 * 1024]),
+        Err(Error::Capacity)
+    );
+    assert_eq!(*backing.borrow(), before);
+    assert_eq!(tree.get(b"row").unwrap(), Some(original));
+    tree.validate().unwrap();
 }

@@ -42,10 +42,8 @@ local Linux checks do not establish macOS qualification.
 
 ## Releases
 
-`make version` reads the root Cargo workspace version. The initial `0.0.0` is unpublished, with an
-undated `0.1.0` entry in [CHANGELOG.md](CHANGELOG.md).
-After the initial scaffold is committed and pushed, an authorized
-`make release-minor` prepares the initial release. Subsequent releases use
+`make version` reads the root Cargo workspace version. The pending `0.1.1`
+changes are recorded in [CHANGELOG.md](CHANGELOG.md). Authorized releases use
 `make release-patch`, `make release-minor` or `make release-major` according to
 the change. These commands validate, update metadata, commit, push and tag
 through the [shared release contract](docs/releases.md), targeting `origin/main`.

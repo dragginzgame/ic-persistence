@@ -35,6 +35,9 @@ Keys up to 32 bytes and values up to 16 bytes are inline in tree nodes. Larger
 payloads use checksummed chains. Nodes have at most 31 entries, with split,
 borrow, merge and root-shrink operations. Deleted nodes and payload pages return
 to a persisted free list; stable memory's physical capacity does not shrink.
+Replacing an existing value preserves tree topology and reuses its overflow
+pages. Shrinking frees excess pages; growing allocates only the extra pages
+needed. Same-size and shrinking replacements do not require backing growth.
 Default limits accept keys up to 128 KiB and values up to 4 MiB. Callers select
 and retain exact limits when creating/opening a store. Values are opaque bytes;
 application codecs remain responsible for their meaning and validation.
