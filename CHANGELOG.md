@@ -2,6 +2,8 @@
 
 ## [0.1.1]
 
+- Synchronize the local Cargo lockfile identity with the current 0.1.0 manifest
+  so locked release preflight can run without changing dependency selections.
 - Replacing a stored value reuses its overflow pages and leaves tree topology
   unchanged. Same-size or shrinking updates no longer need a second payload's
   worth of capacity; failed growth still preserves the existing data.
