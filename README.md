@@ -3,6 +3,10 @@
 IC Storage implements an independent stable-memory B-tree for Internet Computer
 applications, shaped by IcyDB's canonical-store requirements. It supports custom
 key order, large values, lazy bidirectional scans and reusable pages.
+It also wraps upstream stable collections in `ic_storage::adapter`. All public
+collections consume IC Memory runtime handles; memory extraction is not exposed.
+See [allocation ownership limits](docs/upstreams.md#collection-ownership-boundary)
+for the outstanding exclusive-lease requirement.
 
 Read [the package guide](crates/ic-storage/README.md) for the API and persistence
 contract, and [the IcyDB boundary](docs/design/icydb-btree.md) for consumer evidence.

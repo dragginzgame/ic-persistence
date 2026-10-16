@@ -2,9 +2,12 @@
 #![cfg(target_arch = "wasm32")]
 mod fixtures;
 mod workloads;
-use ic_stable_structures::{
-    BTreeMap as Upstream, DefaultMemoryImpl as Memory, Storable, storable::Bound,
+use ic_memory::{
+    GenericAllocationPolicy, MemoryAllocationPool, MemoryAuthority, MemoryRequest, MemoryRuntime,
+    RuntimeMemory, SchemaMetadata, SealedDeclarationSnapshot,
+    ic_stable_structures::DefaultMemoryImpl as Memory,
 };
+use ic_storage::adapter::{StableBTreeMap as Upstream, Storable, storable::Bound};
 use ic_storage::{BTreeMap, Config, Lexicographic};
 use ic_testkit::performance::Performance;
 use std::{borrow::Cow, cell::RefCell};
@@ -122,6 +125,22 @@ fn key(n: u64, len: usize, dense: bool) -> Vec<u8> {
     bytes[..8].copy_from_slice(&n.to_be_bytes());
     bytes
 }
+fn governed_memory() -> RuntimeMemory<Memory> {
+    let pool = MemoryAllocationPool::new(
+        vec![MemoryAuthority::new("bench", "bench.").unwrap()],
+        vec![],
+    )
+    .unwrap();
+    let declarations = SealedDeclarationSnapshot::new(vec![
+        MemoryRequest::new("bench", "bench.tree.v1", SchemaMetadata::default()).unwrap(),
+    ])
+    .unwrap();
+    let mut runtime = MemoryRuntime::new(Memory::default()).unwrap();
+    runtime
+        .bootstrap(&declarations, &pool, &GenericAllocationPolicy)
+        .unwrap();
+    runtime.open_memory("bench.tree.v1").unwrap()
+}
 #[ic_cdk::init]
 fn init(engine: u8, profile: u8, dense_keys: bool) {
     assert!(engine <= 1);
@@ -132,7 +151,7 @@ fn init(engine: u8, profile: u8, dense_keys: bool) {
     let fixture = &fixtures::FIXTURES[usize::from(profile)];
     assert_ne!(fixture.name, "");
     let (count, key_len, value_len) = (fixture.count, fixture.key_len, fixture.value_len);
-    let memory = Memory::default();
+    let memory = governed_memory();
     let tree = if engine == 0 {
         Tree::Ours(BTreeMap::create(memory, Config::default(), Lexicographic).unwrap())
     } else {

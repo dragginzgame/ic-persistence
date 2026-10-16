@@ -18,7 +18,10 @@ are not release dependencies. Product storage contracts remain owned here.
 [IC Memory](https://github.com/dragginzgame/ic-memory) owns allocation governance
 and runtime memory handles. IC Storage does not create memory IDs or replace
 that authority. DFINITY's `ic-stable-structures` supplies the common Memory trait;
-IC Storage implements its own collections and incompatible persisted format.
+IC Storage implements its own B-tree and incompatible persisted format, and
+wraps upstream collections through `ic_storage::adapter`. Both infrastructure
+crates may depend on upstream privately. Application and benchmark collection
+code uses IC Storage; runtime bootstrap uses IC Memory.
 IcyDB owns typed key codecs, comparator semantics and application recovery; see
 [the consumer boundary](design/icydb-btree.md).
 
@@ -26,7 +29,7 @@ IcyDB owns typed key codecs, comparator semantics and application recovery; see
 counters, typed simulator calls and the managed PocketIC server lifecycle used by
 `ic-storage-bench`. Its native runner uses IC Host FS for bounded artifact reads
 and hashes. These dependencies belong to the non-published benchmark package;
-the `ic-storage` library still depends only on the shared Memory substrate.
+the `ic-storage` library depends on IC Memory and the upstream substrate.
 
 ## Benchmark dependency resolution
 
@@ -69,3 +72,28 @@ checks with exact repeats. Its Wasm SHA-256 is
 both attempts retain their native runner, lockfile, Wasm, CSV and log. This is
 Linux qualification; macOS CI is updated but not executed locally. Formatting,
 dependency pins and documentation links pass; the full release gate is not run.
+
+## Collection ownership boundary
+
+IC Storage consumes IC Memory; IC Memory must never depend on IC Storage.
+Public collection wrappers accept `RuntimeMemory` and expose neither their
+inner collection nor memory extraction. Generic backing memory is retained for
+runtime infrastructure and qualification. This is a breaking consumer API cut;
+IcyDB must obtain admitted handles and use the storage facade for collections.
+Existing upstream formats remain upstream formats; our tree's format is unchanged.
+
+The dependency guard permits the direct substrate dependency only in this
+workspace's `ic-storage` package, including renamed dependency declarations.
+It is a local guard, not a claim that other repositories have been migrated.
+
+Exclusive ownership remains an IC Memory prerequisite. The published 0.44
+runtime and inspected sibling source both permit cloned/repeated handles.
+The authority must issue a non-cloneable allocation lease, reject a second live
+open with a typed error, and release the lease on drop (including failed
+collection construction). A log needs two distinct leases. Bootstrap and raw
+backing access must not furnish an alternate mutable route to a leased region;
+multiple runtime owners over one backing also need an explicit restriction.
+IC Storage must consume that released capability when available. A downstream
+registry cannot enforce this across other runtime callers and is not added.
+The sibling has active runtime changes; this task does not modify that checkout
+or claim the unreleased ownership guarantee.

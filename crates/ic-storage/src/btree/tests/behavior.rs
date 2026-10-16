@@ -1,6 +1,8 @@
 //! Consumer-level differential, persistence, range and failure tests.
+use crate::btree::BTreeMap;
+use crate::substrate as ic_stable_structures;
+use crate::{Comparator, Config, Error, Lexicographic, Memory};
 use ic_stable_structures::VectorMemory;
-use ic_storage::{BTreeMap, Comparator, Config, Error, Lexicographic, Memory};
 use std::{cell::Cell, cmp::Ordering, collections::BTreeMap as Model, ops::Bound, rc::Rc};
 
 type Tree = BTreeMap<VectorMemory>;

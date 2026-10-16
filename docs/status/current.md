@@ -1,5 +1,24 @@
 # Current handoff
 
+Released source is 0.2.0; the pending breaking API batch is 0.3.0. Public custom
+and upstream collections now use explicit wrappers consuming IC Memory 0.44
+runtime handles. No raw inner collection, Deref or memory extraction is exposed.
+IC Storage privately depends on both IC Memory and ic-stable-structures; the
+benchmark uses the storage adapter. The local dependency guard permits the
+substrate only in the infrastructure library. Package versions are unchanged.
+
+Allocation admission is enforced by the handle type; exclusivity is not yet
+enforced by IC Memory. The exact upstream prerequisite and dirty sibling
+boundary are recorded in [upstream ownership](../upstreams.md#collection-ownership-boundary).
+IcyDB adoption, exclusive leases and governed-memory performance measurements
+remain outstanding. Prior benchmark numbers used different memory plumbing.
+Focused qualification: both public adapter tests pass on Rust 1.91; six
+compile-fail examples and the valid documentation example pass. Native library
+and Wasm benchmark Clippy, all-target MSRV checking, warning-free Rustdoc,
+formatting, links and dependency pins pass. The dependency guard rejects a
+renamed consumer import. Full release validation was not run.
+The earlier handoff paragraphs below retain historical qualification.
+
 The maintainer has selected Rust 1.91 as the library MSRV. The root manifest,
 `make msrv`, README and Linux/macOS CI setup now agree on 1.91.0; development
 and the benchmark retain Rust 1.99. Normal targeted resolution now selects
@@ -52,8 +71,8 @@ B-tree source, dependency selections and package versions are unchanged.
 The repository implements its own stable-memory B-tree in `crates/ic-storage`.
 It supports custom encoded-key order, inline small payloads, overflow chains,
 page reuse, fallible operations, lazy bidirectional ranges and structural audit.
-The `ic-stable-structures` dependency supplies the Memory interface only; its
-collection implementation is not used. IC Memory remains the allocation owner.
+The custom engine uses the upstream Memory interface; the adapter separately
+uses upstream collection implementations. IC Memory remains the allocation owner.
 
 Read [the IcyDB boundary](../design/icydb-btree.md) and
 [the package contract](../../crates/ic-storage/README.md) before changing the

@@ -17,7 +17,7 @@ IcyDB itself is not modified by this implementation.
 | `ordered_overlay.rs` | Ordered canonical/live merge | Lazy entries; consumer adapts fallible traversal |
 | `journal/store.rs` | Sequence/chunk keys, 64 KiB chunks | Byte keys and variable-sized values |
 | `schema/store.rs`, `integrity/progress_store.rs` | Durable control records and membership | Opaque values and contains_key |
-| `ic-memory::RuntimeMemory` | Existing allocation owner | Same Memory trait; no new memory manager |
+| `ic-memory::RuntimeMemory` | Existing allocation owner | Governed RuntimeMemory required; no new memory manager |
 
 IcyDB's index comparator compares decoded kind, index identity, component count,
 components and primary-key suffix. Comparing its length-prefixed byte envelopes
@@ -60,7 +60,7 @@ the shared substrate after the cut.
 Run the opt-in synthetic workload with:
 
 ```sh
-cargo test --locked --test btree workload_memory_traffic -- --ignored --nocapture
+cargo test --locked --lib workload_memory_traffic -- --ignored --nocapture
 ```
 
 It counts bytes and calls to Memory read/write methods and reports reserved

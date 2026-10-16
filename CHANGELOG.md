@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.3.0] - Unreleased
+
+- Require IC Memory runtime handles for public collections. Replace generic
+  public engine access with an explicit wrapper and remove memory extraction.
+- Add governed wrappers for upstream maps, sets, cells, vectors, heaps and logs,
+  with supported codecs and borrowed iterators through `ic_storage::adapter`.
+  Persisted formats and upstream failure behavior remain unchanged.
+- Allow private substrate dependencies in storage infrastructure only; check
+  workspace consumers for direct dependencies, including renamed imports.
+- Move raw-memory differential tests behind the private engine and qualify
+  public reopening plus compile-time rejection of collection bypasses.
+  Exclusive leases still require IC Memory support; no exclusivity is claimed.
+
 ## [0.2.0] - 2026-10-16
 
 - Raise the library's minimum supported Rust version from 1.85 to 1.91 at the

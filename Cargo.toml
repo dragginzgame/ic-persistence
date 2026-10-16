@@ -15,6 +15,7 @@ license = "MIT"
 candid = "0.10.38"
 ic-cdk = "0.20.3"
 ic-host-fs = "0.23"
+ic-memory = "0.44"
 ic-stable-structures = "0.7.2"
 ic-storage = { path = "crates/ic-storage" }
 ic-testkit = "0.49"

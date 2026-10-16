@@ -2,6 +2,8 @@
 
 mod cursor;
 mod page;
+#[cfg(test)]
+mod tests;
 mod transaction;
 
 pub use cursor::{Entry, Range};

@@ -18,7 +18,7 @@ ic-host-fs = { workspace = true }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 ic-cdk = { workspace = true }
-ic-stable-structures = { workspace = true }
+ic-memory = { workspace = true }
 ic-storage = { workspace = true }
 
 [lints]

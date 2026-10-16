@@ -1,6 +1,8 @@
 //! Differential qualification against DFINITY 0.7.2 and an independent heap model.
+use crate::btree::BTreeMap;
+use crate::substrate as ic_stable_structures;
+use crate::{Comparator, Config, Error};
 use ic_stable_structures::{BTreeMap as Upstream, Storable, VectorMemory, storable};
-use ic_storage::{BTreeMap, Comparator, Config, Error};
 use std::{borrow::Cow, cmp::Ordering, collections::BTreeMap as Model, ops::Bound};
 
 // Ord uses decoded bytes; the wire length prefix deliberately changes byte order.

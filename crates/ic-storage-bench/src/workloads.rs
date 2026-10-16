@@ -1,5 +1,5 @@
 //! Source-informed canonical-store workloads; not an `IcyDB` codec or overlay.
-use super::{Bytes, Memory, Tree, Upstream};
+use super::{Bytes, Tree, Upstream};
 use ic_storage::{BTreeMap, Config, Lexicographic};
 use ic_testkit::performance::Performance;
 use std::{cell::RefCell, collections::BTreeMap as Model, ops::Bound};
@@ -16,7 +16,7 @@ thread_local! { static STATE: RefCell<Option<State>> = const { RefCell::new(None
 pub fn init(engine: u8, profile: usize) {
     assert!(engine <= 1 && profile < 2);
     let index = profile == 1;
-    let memory = Memory::default();
+    let memory = super::governed_memory();
     let tree = match (engine, index) {
         (0, _) => Tree::Ours(BTreeMap::create(memory, Config::default(), Lexicographic).unwrap()),
         (_, true) => Tree::Index(Upstream::new(memory)),

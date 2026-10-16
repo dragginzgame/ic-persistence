@@ -5,7 +5,7 @@ include make/consumer.mk
 export YQ := $(CURDIR)/.tools/host/bin/yq
 release-patch release-minor release-major release-resume: export IC_STORAGE_RELEASE_PREPARE := 1
 
-.PHONY: help version check-doc-links check-license check-pins check-release-commands ci
+.PHONY: help version check-doc-links check-license check-pins check-storage-boundary check-release-commands ci
 .PHONY: release-version release-preflight release-verify release-prepare-version
 .PHONY: release-prepared-check release-files release-commit-check release-committed-check
 .PHONY: release-tagged-check release-push-check
@@ -29,11 +29,14 @@ check-license:
 check-pins:
 	bash scripts/ci/check-dependency-pins.sh --consumer "$(CURDIR)" --cargo-inheritance
 
+check-storage-boundary:
+	bash scripts/ci/check-storage-boundary.sh
+
 check-release-commands:
 	bash scripts/ci/check-release-commands.sh . make/consumer.mk make/tools.mk make/release.mk make/rust-format.mk make/execution.mk scripts/ci/check-make-execution.sh
 
 ci:
-	+bash scripts/ci/run-validation-targets.sh --fail-fast shared-tooling-check check-doc-links check-license check-pins check-release-commands fmt-check check clippy docs-check test wasm-check msrv package
+	+bash scripts/ci/run-validation-targets.sh --fail-fast shared-tooling-check check-doc-links check-license check-pins check-storage-boundary check-release-commands fmt-check check clippy docs-check test wasm-check msrv package
 
 release-preflight:
 	@bash scripts/release/adapter.sh preflight
