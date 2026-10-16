@@ -1,6 +1,6 @@
 # Changelog
 
-## [0.1.2]
+## [0.1.2] - 2026-10-16
 
 - Add direct differential tests against ic-stable-structures 0.7.2 and a heap
   model, including seeded mutation campaigns, semantic key ordering, range
