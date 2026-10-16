@@ -1,6 +1,6 @@
 # Changelog
 
-## [0.1.5]
+## [0.1.5] - 2026-10-16
 
 - Fold freshly initialized overflow-page padding directly into its checksum.
   Small overflow replacements use about 1.7–1.9% fewer instructions; dense
