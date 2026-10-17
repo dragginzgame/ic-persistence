@@ -6,6 +6,7 @@
   locked/offline Cargo metadata observation in release tooling.
 - Adopt Shared Tooling 0.23.0, including ICP CLI 1.7.0, catalog-owned CI
   validation-tool selection and the reviewed artifact uploader.
+- Explain conflicting release metadata with its source commit and recovery action.
 
 [Detailed notes](docs/changelog/0.48.md#0481)
 

@@ -813,7 +813,12 @@ impl<E: Execute> Repository<E> {
             let actual = self.text(&path, revision)?;
             require(
                 actual == expected || partial && actual == original,
-                &format!("{path} differs from the saved release edit"),
+                &format!(
+                    "{path} does not match the admitted release bytes for source {}. \
+                     For a new release, commit intended source edits first; git add alone is insufficient. \
+                     For recovery, preserve the saved plan and reconcile the conflicting file",
+                    selection.source
+                ),
             )?;
             if actual != original {
                 expected_changes.push(path);

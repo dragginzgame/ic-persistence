@@ -1504,6 +1504,47 @@ fn empty_numbered_notes_prepare_without_weakening_release_identity() {
 
 #[test]
 fn shared_note_finalization_preserves_history_and_refuses_conflicting_targets() {
+    for path in ["CHANGELOG.md", "docs/changelog/0.13.md"] {
+        let fixture = Fixture::new();
+        let edited = format!(
+            "{}\nAdditional reviewed notes.\n",
+            fixture.repo.exec.state.borrow().source[path]
+        );
+        fs::write(fixture.repo.root.join(path), &edited).unwrap();
+        for staged in [false, true] {
+            fixture.repo.exec.state.borrow_mut().staged = staged;
+            let error = fixture
+                .repo
+                .preflight(&fixture.selection)
+                .unwrap_err()
+                .to_string();
+            assert!(error.starts_with(&format!(
+                "{path} does not match the admitted release bytes for source source"
+            )));
+            assert!(error.contains("git add alone is insufficient"));
+            assert_eq!(
+                fs::read_to_string(fixture.repo.root.join(path)).unwrap(),
+                edited
+            );
+            assert!(!fixture.repo.exec.state.borrow().calls.iter().any(|call| {
+                matches!(
+                    call[0].as_str(),
+                    "make" | "cargo" | "write" | "stream-write"
+                )
+            }));
+        }
+        // Substitute committing the notes into the selected source. No real
+        // commit, staging or release effects are performed by this fixture.
+        fixture
+            .repo
+            .exec
+            .state
+            .borrow_mut()
+            .source
+            .insert(path.to_owned(), edited);
+        fixture.repo.preflight(&fixture.selection).unwrap();
+    }
+
     for notes in [
         "##\t[0.13.0]  \n\nChanges.\n\n## [0.12.3] - 2026-10-04\nHistory",
         "## [0.13.0]",
