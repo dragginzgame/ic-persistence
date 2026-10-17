@@ -1,6 +1,6 @@
 # Changelog
 
-## [0.3.1]
+## [0.3.1] - 2026-10-17
 
 - Remove the membership preflight from deletion. Missing-key transactions
   discard speculative balancing without publishing changes; misses beneath
