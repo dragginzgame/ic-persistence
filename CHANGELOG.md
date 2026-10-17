@@ -1,6 +1,6 @@
 # Changelog
 
-## [0.48.1]
+## [0.48.1] - 2026-10-17
 
 - Adopt IC Build 0.16 with the aligned Host 0.27.1 family and reuse its bounded,
   locked/offline Cargo metadata observation in release tooling.
