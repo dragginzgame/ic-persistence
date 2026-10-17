@@ -1,6 +1,6 @@
 # Changelog
 
-## [0.5.2]
+## [0.5.2] - 2026-10-17
 
 - Remove the private B-tree engine, custom-format tests and comparison benchmark,
   including its build targets and benchmark-only dependencies. Archive the design
