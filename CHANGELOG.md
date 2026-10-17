@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.48.1]
+
+- Adopt IC Build 0.15 with the aligned Host 0.26 family and reuse its bounded,
+  locked/offline Cargo metadata observation in release tooling.
+
+[Detailed notes](docs/changelog/0.48.md#0481)
+
 ## [0.48.0] - 2026-10-17
 
 - **Breaking fixture API:** require bounded Cell creation/reopening and fallible
