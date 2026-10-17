@@ -1,6 +1,6 @@
 # Changelog
 
-## [0.4.0]
+## [0.4.0] - 2026-10-17
 
 - Adapt the benchmark runner to IC Testkit 0.51's explicit call principals and
   installation specification, retaining anonymous calls and bounded replies.
