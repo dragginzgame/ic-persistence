@@ -1,8 +1,8 @@
 //! Supported upstream collections with governed memory and an explicit API.
 //!
 //! Constructors preserve upstream initialization, panic and persisted-format
-//! contracts. Mutations are not our custom tree's staged transactions. These
-//! wrappers expose neither raw memory nor unrestricted upstream collections.
+//! contracts. These wrappers expose neither raw memory nor unrestricted
+//! upstream collections.
 //! Use distinct admitted allocations and drop collections before reopening.
 //! IC Memory 0.46 enforces one live lease per allocation within each runtime;
 //! hosts retain exclusive custody of the backing across runtimes.
@@ -10,6 +10,9 @@ use crate::substrate::{self, DefaultMemoryImpl, Memory};
 use ic_memory::RuntimeMemory;
 use std::ops::RangeBounds;
 pub use substrate::{Storable, storable};
+
+#[cfg(all(test, not(target_arch = "wasm32")))]
+mod tests;
 
 /// Governed upstream `BTreeMap`; initialization and failures follow upstream contracts.
 pub struct StableBTreeMap<K: Storable + Ord + Clone, V: Storable, M: Memory = DefaultMemoryImpl> {

@@ -1,15 +1,20 @@
 # Private page-based B-tree
 
+> Historical record retained after removal of the private B-tree. Commands,
+> APIs and ownership statements below describe the retired implementation.
+> See the [archive context](README.md) and [current ownership](../../upstreams.md).
+
 The independent B-tree is private implementation work. It is compiled for
 library qualification tests and, from the same source, the unpublished canister
 benchmark. No Cargo feature exposes it to downstream crates. IcyDB and Canic
 continue to use the governed upstream collections in `ic_storage::adapter`.
 Public adoption requires a separate API decision and consumer qualification.
 
-The private governed wrapper still consumes an exclusive IC Memory runtime
+The private tree alias fixes its backing to an exclusive IC Memory runtime
 handle. Its engine, configuration, comparator, errors, entries and ranges are
 not exported from the crate root or the adapter. Generic memory access remains
 an internal fault-injection and differential-testing facility.
+Backing extraction is private to the engine's native qualification tests.
 
 Keys up to 32 bytes and values up to 16 bytes are inline in tree nodes. Larger
 payloads use checksummed chains. Nodes have at most 31 entries, with split,
@@ -23,6 +28,9 @@ during its overflow-chain traversal, avoiding a second search and payload read.
 Default limits accept keys up to 128 KiB and values up to 4 MiB. Callers select
 and retain exact limits when creating/opening a store. Values are opaque bytes;
 application codecs remain responsible for their meaning and validation.
+The page codec owns inline-versus-overflow payload decoding. Committed reads,
+transaction reads and key ownership auditing supply their own page readers;
+transactions prefer staged pages and audits claim each overflow page once.
 
 Custom `Comparator` implementations own encoding-aware order. Their 16-byte
 identity is persisted and checked on open. Ordering must remain deterministic,

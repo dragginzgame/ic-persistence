@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.5.2]
+
+- Remove the private B-tree engine, custom-format tests and comparison benchmark,
+  including its build targets and benchmark-only dependencies. Archive the design
+  and performance research. Public upstream collection adapters remain supported.
+- Keep governed collection lease/reopen coverage with IC Memory's published
+  fixture bootstrap; production allocation authority remains with IC Memory.
+
 ## [0.5.1] - 2026-10-17
 
 - Adopt Shared Tooling 0.23.0 and consolidate the dependency-boundary checker into

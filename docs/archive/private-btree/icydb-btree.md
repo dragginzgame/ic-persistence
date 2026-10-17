@@ -1,5 +1,9 @@
 # IcyDB-driven B-tree boundary
 
+> Historical record retained after removal of the private B-tree. Commands,
+> APIs and ownership statements below describe the retired implementation.
+> See the [archive context](README.md) and [current ownership](../../upstreams.md).
+
 The custom tree is private qualification work, not a supported consumer API.
 The table below describes its internal capability and planned IcyDB integration;
 applications currently use the governed upstream adapter. See the
@@ -349,7 +353,7 @@ The server identity and qualification limitations are unchanged from the baselin
 
 ### Expanded fixtures and free-page construction
 
-The current runner shares its [fixture descriptors](../../crates/ic-storage-bench/src/fixtures.rs)
+The current runner shares its [fixture descriptors](https://github.com/dragginzgame/ic-storage/blob/3183e896f2a43be2380425d98200bf15af1b4e92/crates/ic-storage-bench/src/fixtures.rs)
 between host and canister. There are 15 profiles: short index keys at 128,
 2,048 and 4,096 entries; 256-byte and maximum 16,668-byte index keys; the journal
 profile; row values of 16, 17, 4,072, 4,073, 16,384, 65,536, 1,048,576 and

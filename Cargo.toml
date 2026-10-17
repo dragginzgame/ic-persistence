@@ -1,5 +1,5 @@
 [workspace]
-members = ["crates/ic-storage", "crates/ic-storage-bench"]
+members = ["crates/ic-storage"]
 default-members = ["crates/ic-storage"]
 resolver = "3"
 
@@ -8,24 +8,14 @@ version = "0.5.1"
 edition = "2024"
 rust-version = "1.91.0"
 repository = "https://github.com/dragginzgame/ic-storage"
-description = "Page-based stable-memory B-tree storage for Internet Computer applications"
+description = "Governed stable collections for Internet Computer applications"
 license = "MIT"
 
 [workspace.dependencies]
-# Benchmark-only transport for init arguments and PocketIC requests/replies.
-# The published ic-storage library has no direct or transitive Candid dependency;
-# workspace entries select versions and do not add dependencies to every member.
-candid = "0.10.38"
-ic-cdk = "0.20.3"
-# Native benchmark artifact identities, computed from the bytes installed.
-ic-host-artifacts = "0.27"
-ic-host-fs = "0.27"
+# Allocation authority and exclusive runtime handles.
 ic-memory = "0.48"
+# Private collection substrate; consumers use ic_storage::adapter.
 ic-stable-structures = "0.7.2"
-ic-storage = { path = "crates/ic-storage" }
-ic-testkit = "0.52"
-# Benchmark runner only: bounded Candid reply decoding.
-ic-testkit-candid = "0.52"
 
 [workspace.lints.rust]
 missing_docs = "warn"

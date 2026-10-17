@@ -1,5 +1,9 @@
 # Canonical-store workload investigation
 
+> Historical record retained after removal of the private B-tree. Commands,
+> APIs and ownership statements below describe the retired implementation.
+> See the [archive context](README.md) and [current ownership](../../upstreams.md).
+
 The initial investigation starts from IC Storage
 `654a2d706982fe7433b7ce432fe1e86592766a4e` (released 0.1.6), with the benchmark
 additions in this working tree. It initially left production storage code
@@ -268,7 +272,7 @@ pass the mixed-workload model assertions. After rejection, `page.rs` matches its
 incoming contents byte-for-byte, the rebuilt Wasm matches the baseline hash,
 and the retained library passes its locked Rust 1.85 check. No new production
 change, dependency update, release or IcyDB modification is retained by this
-allocation investigation. See [dependency ownership](../upstreams.md#benchmark-dependency-resolution)
+allocation investigation. See [dependency ownership](upstreams.md#benchmark-dependency-resolution)
 for the separate ICU/time inspection.
 
 

@@ -13,5 +13,8 @@ publish = ["crates-io"]
 ic-memory.workspace = true
 ic-stable-structures.workspace = true
 
+[dev-dependencies]
+ic-memory = { workspace = true, features = ["test-support"] }
+
 [lints]
 workspace = true

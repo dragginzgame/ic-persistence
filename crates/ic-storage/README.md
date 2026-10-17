@@ -66,11 +66,8 @@ fn duplicate(memory: ic_memory::RuntimeMemory<ic_memory::DefaultMemoryImpl>) {
 }
 ```
 
-The independent page-based B-tree is private qualification work. It is available
-only to this repository's tests and unpublished benchmark, with no downstream
-feature escape hatch. Its format is incompatible with upstream B-tree bytes;
-this change does not replace existing stores or reinterpret their allocations.
-Future adoption requires separate API, recovery and performance qualification.
+The former independent B-tree implementation has been removed. Its format is
+incompatible with upstream collections; the adapter must not reopen those bytes.
 
 ```compile_fail
 use ic_storage::{BTreeMap, Comparator, Config, Entry, Error, Lexicographic, Range};

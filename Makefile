@@ -21,7 +21,7 @@ version release-version:
 	@bash scripts/release/adapter.sh version
 
 check-doc-links:
-	perl scripts/ci/check-documentation-links.pl --root . README.md AGENTS.md CHANGELOG.md docs/status/current.md docs/upstreams.md crates/ic-storage/README.md docs/design/icydb-btree.md docs/design/experimental-btree.md docs/design/canonical-workloads.md
+	perl scripts/ci/check-documentation-links.pl --root . README.md AGENTS.md CHANGELOG.md docs/status/current.md docs/upstreams.md crates/ic-storage/README.md docs/archive/private-btree/README.md docs/archive/private-btree/icydb-btree.md docs/archive/private-btree/experimental-btree.md docs/archive/private-btree/canonical-workloads.md docs/archive/private-btree/handoff.md docs/archive/private-btree/upstreams.md
 
 check-license:
 	perl scripts/ci/check-license.pl --kind mit --file LICENSE
@@ -75,11 +75,3 @@ test:
 	+cargo test -p ic-storage --locked
 wasm-check:
 	+cargo check -p ic-storage --target wasm32-unknown-unknown --locked
-	+cargo check -p ic-storage-bench --lib --target wasm32-unknown-unknown --locked
-
-.PHONY: bench-build bench-run
-bench-build:
-	+cargo build -p ic-storage-bench --lib --release --target wasm32-unknown-unknown --locked
-bench-run: bench-build
-	@test -n "$(POCKET_IC_BIN)" || { echo 'Set POCKET_IC_BIN to an admitted PocketIC 16.x server'; exit 2; }
-	+cargo run -p ic-storage-bench --bin ic-storage-bench --release --locked -- "$(POCKET_IC_BIN)" "target/wasm32-unknown-unknown/release/ic_storage_bench.wasm"
