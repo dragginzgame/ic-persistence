@@ -1,6 +1,6 @@
 # Changelog
 
-## [0.5.1]
+## [0.5.1] - 2026-10-17
 
 - Adopt Shared Tooling 0.23.0 and consolidate the dependency-boundary checker into
   the root snapshot. Common setup prepares host and Cargo tools; IC executables
