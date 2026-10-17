@@ -20,7 +20,7 @@ version release-version:
 	@bash scripts/release/adapter.sh version
 
 check-doc-links:
-	perl scripts/ci/check-documentation-links.pl --root . README.md AGENTS.md CHANGELOG.md docs/status/current.md docs/upstreams.md crates/ic-storage/README.md docs/design/icydb-btree.md docs/design/canonical-workloads.md
+	perl scripts/ci/check-documentation-links.pl --root . README.md AGENTS.md CHANGELOG.md docs/status/current.md docs/upstreams.md crates/ic-storage/README.md docs/design/icydb-btree.md docs/design/experimental-btree.md docs/design/canonical-workloads.md
 
 check-license:
 	perl scripts/ci/check-license.pl --kind mit --file LICENSE

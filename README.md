@@ -1,16 +1,15 @@
 # IC Storage
 
-IC Storage implements an independent stable-memory B-tree for Internet Computer
-applications, shaped by IcyDB's canonical-store requirements. It supports custom
-key order, large values, lazy bidirectional scans and reusable pages.
-It also wraps upstream stable collections in `ic_storage::adapter`. All public
-collections consume IC Memory runtime handles; memory extraction is not exposed.
-See [allocation ownership limits](docs/upstreams.md#collection-ownership-boundary)
-for the outstanding exclusive-lease requirement.
+IC Storage exposes governed stable collections through `ic_storage::adapter`.
+All public collections consume IC Memory runtime handles; memory extraction is
+not exposed. They retain the upstream stable structures' persisted formats.
 
-Read [the package guide](crates/ic-storage/README.md) for the API and persistence
-contract, and [the IcyDB boundary](docs/design/icydb-btree.md) for consumer evidence.
-The tree has not yet been integrated into IcyDB or qualified in a live canister.
+The independent page-based B-tree remains private to qualification tests and the
+unpublished benchmark. No downstream API or feature exposes it, and no Canic or
+IcyDB store is switched to its format. See [the private format contract](docs/design/experimental-btree.md)
+and [the IcyDB requirements](docs/design/icydb-btree.md) for its implementation
+and eventual adoption criteria. Read [the package guide](crates/ic-storage/README.md)
+for the supported adapter and allocation ownership boundary.
 
 ## Development
 
@@ -60,7 +59,7 @@ local Linux checks do not establish macOS qualification.
 
 ## Releases
 
-`make version` reads the root Cargo workspace version. The pending `0.1.3`
+`make version` reads the root Cargo workspace version. The pending `0.5.0`
 changes are recorded in [CHANGELOG.md](CHANGELOG.md). Authorized releases use
 `make release-patch`, `make release-minor` or `make release-major` according to
 the change. These commands validate, update metadata, commit, push and tag

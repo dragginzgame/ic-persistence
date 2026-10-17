@@ -1,15 +1,17 @@
 //! Non-published canister probe; each installation owns one fresh memory region.
 #![cfg(target_arch = "wasm32")]
+#[path = "../../ic-storage/src/experimental.rs"]
+mod experimental;
 mod fixtures;
 mod protocol;
 use protocol::{MatrixOperation, SCAN_LIMIT, SEED_MAX_BATCH, WORKLOAD_PROFILES};
 mod upstream;
 mod workloads;
+use experimental::{BTreeMap, Config, Lexicographic};
 use ic_memory::{
     DefaultMemoryImpl as Memory, GenericAllocationPolicy, MemoryAllocationPool, MemoryAuthority,
     MemoryRequest, MemoryRuntime, RuntimeMemory, SealedDeclarationSnapshot,
 };
-use ic_storage::{BTreeMap, Config, Lexicographic};
 use ic_testkit::performance::Performance;
 use std::cell::RefCell;
 use upstream::Map as Upstream;

@@ -1,5 +1,5 @@
+use super::Memory;
 use super::{Config, Error};
-use crate::Memory;
 
 #[cfg(test)]
 mod tests;

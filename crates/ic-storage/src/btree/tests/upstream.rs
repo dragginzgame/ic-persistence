@@ -1,7 +1,7 @@
 //! Differential qualification against DFINITY 0.7.2 and an independent heap model.
-use crate::btree::BTreeMap;
+use super::super::BTreeMap;
+use super::super::{Comparator, Config, Error};
 use crate::substrate as ic_stable_structures;
-use crate::{Comparator, Config, Error};
 use ic_stable_structures::{BTreeMap as Upstream, Storable, VectorMemory, storable};
 use std::{borrow::Cow, cmp::Ordering, collections::BTreeMap as Model, ops::Bound};
 

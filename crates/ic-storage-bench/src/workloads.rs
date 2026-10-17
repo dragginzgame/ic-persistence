@@ -9,7 +9,7 @@ use super::{
         WORKLOAD_ROUNDS, WORKLOAD_SEED_BATCH, WorkloadOperation,
     },
 };
-use ic_storage::{BTreeMap, Config, Lexicographic};
+use crate::experimental::{BTreeMap, Config, Lexicographic};
 use ic_testkit::performance::Performance;
 use std::{cell::RefCell, collections::BTreeMap as Model, ops::Bound};
 

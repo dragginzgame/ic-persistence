@@ -1,7 +1,7 @@
 //! Consumer-level differential, persistence, range and failure tests.
-use crate::btree::BTreeMap;
+use super::super::BTreeMap;
+use super::super::{Comparator, Config, Error, Lexicographic, Memory};
 use crate::substrate as ic_stable_structures;
-use crate::{Comparator, Config, Error, Lexicographic, Memory};
 use ic_stable_structures::VectorMemory;
 use std::{cell::Cell, cmp::Ordering, collections::BTreeMap as Model, ops::Bound, rc::Rc};
 
@@ -609,7 +609,7 @@ fn iterator_errors_once_and_creation_failure_is_non_destructive() {
 
 #[test]
 fn unbounded_cursors_reject_cycles_and_fuse_in_both_directions() {
-    use crate::btree::page::{MAX_HEIGHT, SIZE};
+    use super::super::page::{MAX_HEIGHT, SIZE};
 
     let memory = ObservedMemory::default();
     let mut tree = BTreeMap::create(memory.clone(), Config::default(), Lexicographic).unwrap();
@@ -1159,7 +1159,7 @@ fn overflow_key_corruption_preserves_published_bytes() {
 
 #[test]
 fn validation_reads_each_live_or_free_page_once() {
-    use crate::btree::page::SIZE;
+    use super::super::page::SIZE;
 
     for length in [0, 32, 33, 4072, 4073, 16668] {
         let memory = ObservedMemory::default();
@@ -1182,7 +1182,7 @@ fn validation_reads_each_live_or_free_page_once() {
 
 #[test]
 fn validation_rejects_shared_key_value_pages() {
-    use crate::btree::page::SIZE;
+    use super::super::page::SIZE;
 
     let memory = ObservedMemory::default();
     let mut tree = BTreeMap::create(memory.clone(), Config::default(), Lexicographic).unwrap();

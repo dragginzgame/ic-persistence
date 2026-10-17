@@ -1,5 +1,23 @@
 # Current handoff
 
+The independent B-tree is now private to library qualification tests and the
+unpublished benchmark. Its seven custom types are no longer exported at the
+crate root or through the adapter. The benchmark compiles the same private
+source directly; no downstream feature enables it. Canic and IcyDB contain no
+custom-tree imports in the inspected checkouts, and their supported collection
+surface remains the governed upstream adapter. The former external governed
+collection tests now run inside the library so custom-tree checks remain private.
+The package guide documents the public adapter; the detailed private format
+contract lives in [the design guide](../design/experimental-btree.md). Pending
+notes select 0.5.0 for the API removal; package versions remain 0.4.0. Focused qualification passes: 41 regular library tests (four opt-in campaigns
+remain ignored), eight Rustdoc examples including private-export refusals,
+native library/test and Wasm benchmark Clippy, the Wasm library test-harness
+build, and all three governed collection tests on Rust 1.91. Host-only memory
+and runtime fixtures stay excluded from that canister harness. Incoming manifest/lock updates to IC Memory 0.48 and Host
+0.26 are preserved and used for the final checks. No engine algorithm, format,
+package version, index or integration-branch change is made by this batch;
+no instruction benchmark or full release gate is rerun.
+
 The benchmark runner now follows the selected IC Testkit 0.51 API. Both seed
 calls pass an explicit anonymous principal; installation constructs InstallSpec
 with the prior Wasm/init bytes, cycle top-up and unset sender/label. Measurement

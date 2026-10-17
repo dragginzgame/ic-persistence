@@ -1,5 +1,10 @@
 # IcyDB-driven B-tree boundary
 
+The custom tree is private qualification work, not a supported consumer API.
+The table below describes its internal capability and planned IcyDB integration;
+applications currently use the governed upstream adapter. See the
+[private format contract](experimental-btree.md).
+
 The [canonical-store investigation](canonical-workloads.md) traces newer committed
 IcyDB codecs, adds mixed workloads, and records isolated layout/read-cost experiments.
 
@@ -49,8 +54,8 @@ transition decision, native/PocketIC qualification and workload benchmarks.
 These are integration acceptance requirements, not claims established by this
 repository's native model tests or Wasm compilation.
 
-The accepted transition is a hard cut: IcyDB will use this tree without a legacy
-reader or dual-format path. This does not authorize discarding retained data;
+If the private tree is adopted, the accepted transition is a hard cut without a
+legacy reader or dual-format path. This does not authorize discarding retained data;
 the application must still choose and qualify its rebuild/import or explicit
 reset before switching memory regions. The upstream Memory interface remains
 the shared substrate after the cut.

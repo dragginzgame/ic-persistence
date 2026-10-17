@@ -1,6 +1,7 @@
-//! Public custom-tree boundary. Allocation admission is supplied by IC Memory.
-use crate::substrate::DefaultMemoryImpl;
-use crate::{Comparator, Config, Entry, Error, Lexicographic, Memory, Range, btree};
+//! Private custom-tree boundary. Allocation admission is supplied by IC Memory.
+use super::{
+    Comparator, Config, DefaultMemoryImpl, Entry, Error, Lexicographic, Memory, Range, btree,
+};
 use ic_memory::RuntimeMemory;
 use std::ops::Bound;
 
@@ -90,3 +91,7 @@ impl<'a, M: Memory, C: Comparator> IntoIterator for &'a BTreeMap<M, C> {
         self.iter()
     }
 }
+
+#[cfg(all(test, not(target_arch = "wasm32")))]
+#[path = "governed/tests.rs"]
+mod tests;

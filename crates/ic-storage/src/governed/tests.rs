@@ -1,9 +1,10 @@
 //! Public collection adapters require committed IC Memory allocations.
+use super::super::{BTreeMap, Config, Error, Lexicographic};
+use crate::adapter::*;
 use ic_memory::{
     GenericAllocationPolicy, MemoryAllocationPool, MemoryAuthority, MemoryRequest, MemoryRuntime,
     RuntimeOpenError, SealedDeclarationSnapshot, VectorMemory,
 };
-use ic_storage::{BTreeMap, Config, Lexicographic, adapter::*};
 
 fn runtime(backing: VectorMemory) -> MemoryRuntime<VectorMemory> {
     let pool =
@@ -137,7 +138,7 @@ fn upstream_and_custom_formats_are_not_interchangeable() {
             Config::default(),
             Lexicographic
         ),
-        Err(ic_storage::Error::Format)
+        Err(Error::Format)
     ));
 }
 
@@ -153,7 +154,7 @@ fn constructor_errors_release_allocation_leases() {
             },
             Lexicographic,
         ),
-        Err(ic_storage::Error::Configuration)
+        Err(Error::Configuration)
     ));
     let tree = BTreeMap::create(
         runtime.open_memory("test.tree.v1").unwrap(),
@@ -175,7 +176,7 @@ fn constructor_errors_release_allocation_leases() {
             },
             Lexicographic
         ),
-        Err(ic_storage::Error::Configuration)
+        Err(Error::Configuration)
     ));
     let tree = BTreeMap::open(
         runtime.open_memory("test.tree.v1").unwrap(),

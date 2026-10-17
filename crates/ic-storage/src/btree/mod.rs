@@ -4,7 +4,7 @@ mod audit;
 mod cursor;
 mod page;
 mod search;
-#[cfg(test)]
+#[cfg(all(test, not(target_arch = "wasm32")))]
 mod tests;
 mod transaction;
 
@@ -13,7 +13,7 @@ use page::{Header, Node, Record};
 use std::{cmp::Ordering, fmt, ops::Bound};
 use transaction::Transaction;
 
-use crate::Memory;
+use super::Memory;
 
 /// A rejected operation. Returned errors never publish a partial mutation.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]

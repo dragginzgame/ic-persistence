@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.5.0]
+
+- **Breaking API:** keep the independent B-tree private to repository tests and
+  the unpublished benchmark. Remove `BTreeMap`, `Comparator`, `Config`, `Entry`,
+  `Error`, `Lexicographic` and `Range` from the crate root and adapter. Consumers
+  use the governed upstream `adapter::StableBTreeMap`; its format is unchanged.
+  This is not a data conversion: existing custom-tree bytes must not be opened
+  as an upstream map. Future custom-tree adoption requires separate qualification.
+- Compile the benchmark from the same private source without exposing a Cargo
+  feature. Retain governed-handle, failure, format and differential tests.
+
 ## [0.4.0] - 2026-10-17
 
 - Adapt the benchmark runner to IC Testkit 0.51's explicit call principals and

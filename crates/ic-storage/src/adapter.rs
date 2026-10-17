@@ -7,7 +7,6 @@
 //! IC Memory 0.46 enforces one live lease per allocation within each runtime;
 //! hosts retain exclusive custody of the backing across runtimes.
 use crate::substrate::{self, DefaultMemoryImpl, Memory};
-pub use crate::{BTreeMap, Comparator, Config, Entry, Error, Lexicographic, Range};
 use ic_memory::RuntimeMemory;
 use std::ops::RangeBounds;
 pub use substrate::{Storable, storable};
