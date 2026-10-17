@@ -23,6 +23,8 @@ Review the preview, then repeat without `--preview`. Without an explicit complet
 `--entrypoint` set, existing and transferred entrypoints are unioned. Every
 transferred record is proved against its recorded source commit, hash and mode;
 edited, forged, staged, aliased or unavailable inputs refuse before publication.
+The recorded revision must itself be a commit object. Tree or annotated-tag
+object IDs and failed Git type observations cannot establish that identity.
 The root must match the actual prior layout; it is never inferred from the
 manifest's directory. The source remote must match the destination owner.
 
@@ -561,9 +563,9 @@ Select fixtures according to their documented effects and local authority rather
 than editing vendored tests or invoking an unauthorized broader suite.
 Pinning adoption also requires the checker and its jq module, prepared Git/jq/yq
 tools (and Cargo for Rust workspaces), a CI/release invocation, and consumer-owned
-qualification for locked builds and external inputs. Consumers may also vendor
-`scripts/ci/install-ci-tool.sh` (selecting `yq`) and the checksum
-helper; choose and record their own reviewed version and platform digests.
+qualification for locked builds and external inputs. Prepare YQ through the
+common host bundle with `make install-host-tools` and `make host-tools-check`;
+its reviewed version and platform digests live in the selected tool catalog.
 Resolve existing exceptions under the
 [pinning policy](../rules/dependency-pinning.md) before claiming adoption.
 
@@ -737,7 +739,7 @@ The current contract has no parser-only host mode or optional ripgrep/cloc flags
 Remove `--with-ripgrep`/`--with-cloc` from direct callers, including custom CI and
 evidence checks. Retain historical documents as historical evidence.
 
-Every aggregate now includes the three Cargo tools after host and IC setup,
+Every aggregate includes the three Cargo tools after host setup,
 including in non-Rust repositories. Remove redundant Rust aggregate prerequisites.
 Move additional product setup/check prerequisites into `LOCAL_TOOL_INSTALL_TARGETS`
 and `LOCAL_TOOL_CHECK_TARGETS` in matching order, as shown in
@@ -803,13 +805,16 @@ recipes only after testing their actual callers and hook, following the
 Rust toolchain. Shared Tooling itself selects `CLOC_REPORT` and `CLOC_ROOT` before
 the include to summarize sibling workspaces; consumers normally use the defaults.
 Installing the raw cloc executable alone does not add these Make commands.
-The optional `make cloc-tooling` scans sibling CI and tooling, including non-Rust repositories;
-`CLOC_PARENT` selects its parent directory. It needs Git, cloc and core Perl
-modules, with no Cargo dependency or consumer command execution. Run it from
-Shared Tooling by default. A consumer that intentionally needs its own command
-can explicitly select `scripts/dev/cloc-tooling.pl`; existing selections continue
-to work. Without that file the target explains where to run or adopt the report,
-and never invokes another checkout implicitly.
+In Shared Tooling, `make cloc-tooling` scans sibling CI and tooling, including
+non-Rust repositories; `CLOC_PARENT` selects its parent directory. It needs Git,
+cloc and core Perl modules, with no Cargo dependency or consumer command execution.
+As of 0.16.0, the common consumer include no longer exports this fleet command or
+its `CLOC_PARENT` input. Move Make/CI/help callers to the central command before
+refreshing, and refresh `test-tool-commands.sh` too if it is selected. Consumers
+that deliberately select `scripts/dev/cloc-tooling.pl` can
+invoke `perl scripts/dev/cloc-tooling.pl PARENT` directly from their reviewed
+snapshot. The reporter and its snapshot contract remain available; no command
+implicitly invokes another checkout.
 
 The report includes each recorded `version@revision` and complete declared-file
 integrity, with separate identities for multiple bundles. Missing versions remain
@@ -833,15 +838,15 @@ and tested in Shared Tooling.
 Review pins against existing qualified versions before activation. A local
 exception uses its own explicitly selected matrix outside the snapshot; remove
 superseded pin ownership rather than maintaining two independent selections.
-Update local setup/CI callers to use `.tools/host/bin` and `.tools/ic/bin`, plus
-`.tools/rust/common/bin` when adopting the Cargo-installed set; CI
+Update local setup/CI callers to use `.tools/host/bin` and
+`.tools/rust/common/bin`, plus `.tools/ic/bin` for explicitly selected IC tools; CI
 must invoke the same Make installation/check targets and put these paths on its
 own PATH after explicit setup. Document the shell export for direct interactive commands;
 installation and Make exports do not change the user's terminal PATH. Remove
 separate package-manager jq/yq/ripgrep/cloc selections and preserve one owner
 for each tool pin.
-The existing single-yq installer remains available to consumers that need only
-that standalone parser; it accepts caller-owned pins rather than defining them.
+YQ belongs to the common host bundle; the standalone CI installer no longer
+accepts `yq`.
 Document the [system bootstrap prerequisites](local-setup.md#bootstrap-prerequisites)
 and retain product-specific
 alignment checks. Retire duplicated installer bodies once callers have moved;
@@ -853,7 +858,9 @@ claim deployment or PocketIC client/server compatibility from `--version` alone.
 Snapshot integrity and consumer adoption remain separate from upstream fixtures.
 
 The Rust setup action is an independent entrypoint:
-`.github/actions/prepare-rust-toolchains/action.yml`. It has no helper dependencies.
+`.github/actions/prepare-rust-toolchains/action.yml`. Its declared companion is
+`scripts/dev/prepare-rust-toolchain.sh`; the canonical exporter includes that
+helper automatically when selecting or refreshing the action.
 Select `docs/rust-toolchains.md` too for its [caller contract](rust-toolchains.md).
 
 The evidence archiver can be adopted independently as
@@ -907,6 +914,10 @@ TOOL is respectively `actionlint`, `gitleaks`, `shellcheck`, `sccache` or `yq`.
 Keep existing `--version`, `--sha256` and `--install-dir` arguments and local pins.
 There are no forwarding aliases in 0.11.
 
+As of 0.16.0, every invocation must include `--install-dir`; an environment-only
+destination or the former home-directory default is no longer accepted. Update
+callers before refreshing the command and its selected installer fixture.
+
 Before refresh, replace each recorded wrapper entrypoint with
 `scripts/ci/install-ci-tool.sh` in the reviewed selection. Pass the complete new
 root set with repeated `--entrypoint` arguments; `--add-entrypoint` alone retains
@@ -915,3 +926,27 @@ snapshot-owned wrappers; preserve modified or consumer-owned files for review.
 Refresh `test-installers.sh` too if selected, then qualify the same installer
 failure cases and each declared native host. No storage layout or tool upgrade
 is part of this command change.
+
+
+## Cargo dependency boundaries
+
+Adopt `scripts/ci/check-cargo-dependency-boundaries.sh` as a snapshot entrypoint
+and run it with `--consumer /absolute/repository/path`. The checker uses locked,
+offline Cargo metadata; prepare the selected toolchain and lockfile first. It
+requires Perl with JSON::PP. Policy lives in `ci/cargo-dependency-boundaries.json`:
+
+```json
+[
+  {"dependency": "ic-stable-structures", "allowed_packages": ["ic-storage"]}
+]
+```
+
+Each rule restricts a canonical dependency package name to the listed workspace
+packages. An empty allowed list bans that dependency everywhere in the workspace.
+Renames do not bypass the rule. Normal, build, development and target-specific
+direct dependencies are included. Transitive dependencies are not restricted.
+Malformed rules, repeated dependency rules or allowed packages, and unknown
+fields fail closed before Cargo runs. The selected consumer must be the workspace
+root with a regular `Cargo.toml`; failed or incomplete Cargo output and mismatched
+workspace identity refuse before any success report. This opt-in policy is
+separate from version pinning; consumers choose their own ownership rules.

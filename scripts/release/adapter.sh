@@ -2,6 +2,7 @@
 set -euo pipefail
 operation="${1:-}"
 [[ $# -eq 1 ]] || exit 2
+bash scripts/ci/check-release-delivery.sh ci/release-delivery.txt "${RELEASE_DELIVERY:-direct}"
 prepare="${IC_STORAGE_RELEASE_PREPARE:-0}"
 unset IC_STORAGE_RELEASE_PREPARE
 case "$operation" in
@@ -13,7 +14,7 @@ case "$operation" in
         awk -v version="${RELEASE_VERSION:?}" -v previous="$current" -v date="${RELEASE_DATE:?}" \
             -f scripts/ci/finalize-release-changelog.awk CHANGELOG.md > /dev/null
         bash scripts/ci/cargo-release-preflight.sh "$PWD" "$prepare" \
-            --pin ci/tool-versions.env --pin ci/ic-tools.tsv \
+            --pin ci/tool-versions.env \
             --check tools-check --prepare install-tools --prepare tools-check
         ;;
     prepare)

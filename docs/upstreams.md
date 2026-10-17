@@ -30,9 +30,10 @@ counters, typed simulator calls and the managed PocketIC server lifecycle used b
 `ic-storage-bench`. Its native runner uses IC Host FS for bounded artifact reads
 and server-file hashing, and IC Host Artifacts for hashing the loaded Wasm bytes.
 The reported Wasm identity therefore describes the bytes passed to installation
-without a second pathname read. IC Host Artifacts 0.24 was already selected
-transitively and is now declared directly for the native runner; no selected
-version changes. These dependencies belong to the non-published benchmark package;
+without a second pathname read. The native runner directly selects IC Host
+Artifacts and FS 0.27, locked to 0.27.1. IC Testkit 0.52 retains its own compatible
+Host 0.26 dependencies; the runner does not construct or downcast those Host error
+types across versions. These dependencies belong to the non-published benchmark package;
 the `ic-storage` library depends on IC Memory and the upstream substrate.
 
 ## Benchmark dependency resolution
@@ -122,24 +123,16 @@ of this native decoding dependency.
 
 ## Dependency-boundary helper adoption
 
-The generic checker is contributed in
-[Shared Tooling PR #257](https://github.com/dragginzgame/shared-tooling/pull/257).
-The separate snapshot in `tools/dependency-boundaries/` pins contribution commit
-`eb04376623a8995b2301d7cc80723a2a3f3e5b8e`; the main baseline snapshot is unchanged.
-This is an unmerged contribution pin, not a claim that the helper has shipped in
-Shared Tooling 0.17.2 (the source checkout's current package version).
-`make check-storage-boundary` verifies the bundle before running the shared
-checker with local policy `ci/cargo-dependency-boundaries.json`. The former
-local shell/Perl implementation is removed. Rules cover canonical names of
-normal, build, dev and target-specific direct dependencies, including renames.
-
-The bundle was produced by the canonical `refresh-consumer.sh` exporter in a
-scratch Git root and copied intact beneath `tools/dependency-boundaries/`.
-Future refreshes must likewise use the exporter and preserve the recorded file
-hashes and modes; never edit the exported helper or integrity companions here.
-Only the helper and its integrity companions are adopted, avoiding unrelated
-changes to the main baseline. Upstream owns its rejection/schema fixtures;
-this consumer checks its real Cargo metadata and snapshot integrity.
+The generic checker from
+[Shared Tooling PR #257](https://github.com/dragginzgame/shared-tooling/pull/257)
+is now included in the root Shared Tooling 0.23.0 snapshot. The canonical
+exporter's snapshot takeover verified and retired the separate contribution
+bundle and its receipt. Future refreshes use only the root manifest.
+`make check-storage-boundary` runs the shared checker with consumer-owned policy
+`ci/cargo-dependency-boundaries.json`. Rules cover canonical names of normal,
+build, dev and target-specific direct dependencies, including renames. Upstream
+owns rejection/schema fixtures; this consumer checks its real Cargo metadata
+and root snapshot integrity.
 
 
 ## Fixture-runtime contribution

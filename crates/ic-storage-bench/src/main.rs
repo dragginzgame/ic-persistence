@@ -37,8 +37,14 @@ fn main() -> Result<(), Box<dyn Error>> {
         "server: {:?}",
         ic_host_fs::read::hash_file(Path::new(&args[0]), 512 * 1024 * 1024)?
     );
-    let server =
-        PocketIcStartupConfig::spawn(&args[0], Duration::from_secs(30)).start_managed_server()?;
+    let server = PocketIcStartupConfig::Spawn {
+        server_binary: Path::new(&args[0]).into(),
+        timeout: Duration::from_secs(30),
+        server_hard_ttl: None,
+        server_idle_ttl: None,
+        server_output_files: None,
+    }
+    .start_managed_server()?;
     println!("run,engine,profile,operation,instructions,heap_bytes,stable_bytes,result_bytes");
     if args.len() == 3 {
         return run_workloads(server.url(), &wasm);

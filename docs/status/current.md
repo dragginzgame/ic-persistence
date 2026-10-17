@@ -1,5 +1,24 @@
 # Current handoff
 
+Adopt Shared Tooling 0.23.0 at
+`0b351cd2ba2bcd8927b783a5fec89afc8013f708`. The canonical exporter consolidates
+the dependency-boundary contribution into the root snapshot and retires its
+separate bundle and receipt. The local Cargo allowlist remains authoritative.
+Direct release delivery is declared once in `ci/release-delivery.txt` and checked
+by Make and the standalone adapter. Common setup and release tool preflight now
+select host/Cargo tools; the benchmark still receives an explicit PocketIC binary.
+Incoming Host Artifacts/FS 0.27 and Testkit/Candid 0.52 selections are preserved,
+locked to Host 0.27.1 and Testkit 0.52.0. Adapt the runner to Testkit's explicit
+Spawn configuration, retaining its 30-second timeout and unset TTL/output options.
+Host 0.26.2 remains an independent Testkit dependency. Focused setup/offline,
+snapshot, documentation-link, license, pin, boundary, release-command and format
+checks pass. Unsupported PR delivery is refused before effects by both adapters.
+Native benchmark all-target Clippy, the host protocol test, benchmark Wasm
+compilation and the Rust 1.91 library check pass. The GitHub description now
+identifies the public governed collections and private B-tree qualification.
+Pending notes select 0.5.1; package versions, Git index and refs are unchanged.
+The full release gate, simulator benchmarks and macOS checks are not rerun.
+
 The independent B-tree is now private to library qualification tests and the
 unpublished benchmark. Its seven custom types are no longer exported at the
 crate root or through the adapter. The benchmark compiles the same private

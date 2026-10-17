@@ -14,7 +14,7 @@ for the supported adapter and allocation ownership boundary.
 ## Development
 
 The reviewed [Shared Tooling snapshot](.shared-tooling.snapshot) pins version
-0.15.4 at commit `879eb2b021522252a67e908dbc217a0f4efb2a6f`.
+0.23.0 at commit `0b351cd2ba2bcd8927b783a5fec89afc8013f708`.
 Read [AGENTS.md](AGENTS.md) for local contributor instructions and
 [the setup guide](docs/local-setup.md) for Linux/macOS prerequisites.
 Rust 1.99.0 is the development toolchain. The Rust 2024 library lives in
@@ -42,10 +42,14 @@ make install-hooks
 make help
 ```
 
+Common setup prepares host and Cargo tools. IC executable installation is optional;
+the benchmark takes an explicitly supplied PocketIC server rather than selecting
+one from the shared IC tool bundle.
+
 Make selects the repository's tools automatically. For direct shell use:
 
 ```sh
-export PATH="$PWD/.tools/host/bin:$PWD/.tools/ic/bin:$PWD/.tools/rust/common/bin:$PATH"
+export PATH="$PWD/.tools/host/bin:$PWD/.tools/rust/common/bin:$PATH"
 ```
 
 Focused checks include `make shared-tooling-check`, `make check-doc-links`,

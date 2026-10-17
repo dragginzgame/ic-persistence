@@ -194,12 +194,17 @@ because they erase that independent evidence. Safe `MAKEFLAGS` selections,
 parallel execution and ordinary release variables remain supported.
 Set `SHARED_TOOLING_ROOT` for runtime runner routing to a nested reviewed snapshot;
 consumer target-specific overrides still apply to recipes.
-Keep delivery admission and metadata adapters local. Attach existing admission
-prerequisites to the four entrypoints and export cache-preparation selections
+Keep supported delivery choices and metadata adapters local. A consumer that
+supports a subset of `direct`/`pr` sets `RELEASE_DELIVERY_POLICY` before the include
+to one regular data file, with one supported mode per line. Make admission and
+standalone adapters share `check-release-delivery.sh`; see the
+[policy contract](make-interface.md).
+The canonical hook roster includes PR delivery's `release-merged-preflight`.
+Attach additional product admission prerequisites to the four entrypoints and export cache-preparation selections
 with target-specific variables; do not replace the shared recipes. For example:
 
 ```makefile
-release-patch release-minor release-major release-resume: release-delivery-check
+release-patch release-minor release-major release-resume: local-release-preflight
 release-patch release-minor release-major release-resume: export MY_RELEASE_CACHE_PREPARE := 1
 ```
 
@@ -207,7 +212,8 @@ Preserve any consumer post-run reconciliation when adopting; a prerequisites-onl
 conversion does not reproduce an operation that previously followed the runner.
 The include does not select PR delivery, add validation or metadata adapters,
 publish packages, or clean artifacts. Keep those contracts explicit. Include
-`make/release.mk`, `make/execution.mk` and `scripts/ci/check-make-execution.sh`
+`make/release.mk`, `make/execution.mk`, `scripts/ci/check-make-execution.sh`
+and `scripts/ci/check-release-delivery.sh`
 in the extra inputs to `check-release-commands.sh` when testing
 an adopting Makefile with the runner at `scripts/ci/run-release.sh`. That smoke
 checker binds `SHARED_TOOLING_ROOT` to its disposable checkout, overriding parent
@@ -591,7 +597,8 @@ deleting duplicate scenarios or extracting test support:
 | Allowed release files, metadata changes, independent locks/package sets | Consumer adapter fixture | Use actual selections and verify unrelated staged/unstaged input refusal. |
 | Receipt identity, selected older `RELEASE_COMMIT`, tag/evidence binding | Consumer adapter fixture | Preserve negative identity and payload tests across recovery. |
 | Failed preparation restoration and product-specific side effects | Consumer adapter fixture | Prove its own transaction and retained evidence. |
-| Publication eligibility and registry behavior | Consumer publication fixture | Keep separate from the branch/tag release proof. |
+| Shared publication-helper source, tag, destination and registry admission | Shared publication fixture, including real local Git | Keep actual adapter refusal before upload; do not duplicate the generic eligibility matrix. |
+| Consumer publication selection and upload recovery | Consumer publication fixture | Prove exact package/registry arguments, upload status and refusal to repeat an already-present version; keep separate from branch/tag release proof. |
 
 For IC Backup and IC Blob Storage, map local assertions to these obligations
 before removing runner-only scenarios. Their receipt and package/lock checks
@@ -691,6 +698,10 @@ Undated numbered sections at or below that version remain history. One pending
 numbered section must agree with the target; competing candidates or a target
 already dated differently are conflicts. The selected numbered candidate must
 be the first release heading; `Draft` and misplaced candidates are rejected.
+The pending spelling is `## [X.Y.Z]`, without ` - Unreleased`. Unsupported
+suffixes are refused with the source line and expected selected heading before
+any candidate output is emitted; conflicting dates and duplicate or misplaced
+candidates remain separate diagnostic causes.
 With no candidate, the first release heading must identify the saved previous
 version; the helper then inserts the selected heading without inventing content.
 
@@ -749,6 +760,13 @@ boundaries. Shared Tooling's metadata fixture reuses existing history without
 creating commits and exercises the actual adapter's failed-log retention.
 
 ## Pure workspace-version rendering
+
+IC Build owns the proposed replacement editor in
+[PR #56 — Own Cargo release candidate editing](https://github.com/dragginzgame/ic-build/pull/56).
+The current helpers below remain supported until reviewed publication and
+consumer adoption permit their deletion;
+[#273 — Adopt the released IC Build editor](https://github.com/dragginzgame/shared-tooling/issues/273)
+records the tested caller cut and publication boundary.
 
 `scripts/ci/render-cargo-workspace-version.pl SOURCE PREVIOUS CANDIDATE [WORKSPACE_INPUT_JSON]` emits
 the complete candidate manifest without changing the source. It recognizes one

@@ -1,6 +1,7 @@
 .DEFAULT_GOAL := help
 SHARED_TOOLING_RUST := 1
 export RELEASE_DELIVERY := direct
+export RELEASE_DELIVERY_POLICY := $(CURDIR)/ci/release-delivery.txt
 include make/consumer.mk
 export YQ := $(CURDIR)/.tools/host/bin/yq
 release-patch release-minor release-major release-resume: export IC_STORAGE_RELEASE_PREPARE := 1
@@ -30,11 +31,10 @@ check-pins:
 	bash scripts/ci/check-dependency-pins.sh --consumer "$(CURDIR)" --cargo-inheritance
 
 check-storage-boundary:
-	bash tools/dependency-boundaries/scripts/ci/verify-shared-tooling-snapshot.sh --consumer "$(CURDIR)/tools/dependency-boundaries"
-	bash tools/dependency-boundaries/scripts/ci/check-cargo-dependency-boundaries.sh --consumer "$(CURDIR)"
+	bash scripts/ci/check-cargo-dependency-boundaries.sh --consumer "$(CURDIR)"
 
 check-release-commands:
-	bash scripts/ci/check-release-commands.sh . make/consumer.mk make/tools.mk make/release.mk make/rust-format.mk make/execution.mk scripts/ci/check-make-execution.sh
+	bash scripts/ci/check-release-commands.sh . make/consumer.mk make/tools.mk make/release.mk make/rust-format.mk make/execution.mk scripts/ci/check-make-execution.sh scripts/ci/check-release-delivery.sh ci/release-delivery.txt
 
 ci:
 	+bash scripts/ci/run-validation-targets.sh --fail-fast shared-tooling-check check-doc-links check-license check-pins check-storage-boundary check-release-commands fmt-check check clippy docs-check test wasm-check msrv package

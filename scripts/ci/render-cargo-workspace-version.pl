@@ -1,6 +1,10 @@
 #!/usr/bin/env perl
+# Shared companions: scripts/ci/StableVersion.pm
 use strict;
 use warnings;
+use FindBin qw($RealBin);
+use lib $RealBin;
+use StableVersion qw(stable);
 use JSON::PP qw(decode_json);
 use Cwd qw(abs_path);
 use File::Basename qw(dirname);
@@ -30,7 +34,7 @@ sub identity_path {
 my ($path, $previous, $candidate, $workspace_input) = @ARGV;
 my $semver = qr/(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)/;
 for ($previous, $candidate) {
-    /\A$semver\z/ or die "expected canonical stable version\n";
+    stable($_) or die "expected canonical stable version\n";
 }
 -f $path && !-l $path or die "manifest must be a regular file\n";
 open my $input, '<', $path or die "$path: $!\n";

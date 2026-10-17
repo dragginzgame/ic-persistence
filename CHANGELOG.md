@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.5.1]
+
+- Adopt Shared Tooling 0.23.0 and consolidate the dependency-boundary checker into
+  the root snapshot. Common setup prepares host and Cargo tools; IC executables
+  are optional product selections. Retain direct release delivery through the
+  shared policy admission helper.
+- Adopt IC Host Artifacts/FS 0.27.1 for the native benchmark and adapt startup to
+  the selected IC Testkit 0.52 explicit server configuration. Preserve benchmark
+  timeouts, server options and measurement protocols.
+
 ## [0.5.0] - 2026-10-17
 
 - **Breaking API:** keep the independent B-tree private to repository tests and
