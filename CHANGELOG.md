@@ -2,6 +2,8 @@
 
 ## [0.4.0]
 
+- Adapt the benchmark runner to IC Testkit 0.51's explicit call principals and
+  installation specification, retaining anonymous calls and bounded replies.
 - Validate overflow keys in one pass while retaining page ownership and
   corruption checks; reuse endpoint descent for unbounded cursor seeks.
 - Hash the benchmark's loaded Wasm bytes with IC Host Artifacts rather than

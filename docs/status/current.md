@@ -1,5 +1,16 @@
 # Current handoff
 
+The benchmark runner now follows the selected IC Testkit 0.51 API. Both seed
+calls pass an explicit anonymous principal; installation constructs InstallSpec
+with the prior Wasm/init bytes, cycle top-up and unset sender/label. Measurement
+calls and reply limits are unchanged. This resolves the five native compiler
+errors in the 20261017T101544Z release validation attempt.
+Focused benchmark all-target checking, native/Wasm Clippy and the host protocol
+test pass with the incoming dependency selections (IC Memory 0.47, IC Host
+Artifacts/FS 0.25 and IC Testkit/Candid 0.51). No manifest, lockfile, package
+version or Git index/ref changes are made. The full release gate and simulator
+benchmarks are not rerun for this API repair. Earlier evidence follows.
+
 The latest 0.4.0 cleanup reads overflow keys once during ownership auditing,
 shares unbounded cursor descent and hashes the benchmark's loaded Wasm bytes.
 IC Host Artifacts 0.24 becomes an explicit native runner dependency; no selected
