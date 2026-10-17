@@ -73,6 +73,10 @@ major/minor or major/minor/patch selection only after both observations succeed;
 failed parsers preserve their status without publishing a floor. It does not
 validate the complete Cargo manifest or dependencies. Consumers own subsequent
 compiler checks, target policy, Rustup auto-install policy and explicit overrides.
+Both policy forms require exactly one JSON object from the TOML parser. Empty,
+multiple or malformed observations refuse before a floor is published or Rustup
+is invoked, including observations with a valid first or last document
+([#270 — Reject ambiguous Rust bootstrap policy observations](https://github.com/dragginzgame/shared-tooling/issues/270)).
 The setup entrypoint delegates its workspace projection to this reader; snapshot
 selection automatically carries that companion.
 

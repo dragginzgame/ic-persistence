@@ -761,6 +761,13 @@ creating commits and exercises the actual adapter's failed-log retention.
 
 ## Pure workspace-version rendering
 
+IC Build owns the proposed replacement editor in
+[PR #56 — Own Cargo release candidate editing](https://github.com/dragginzgame/ic-build/pull/56).
+The current helpers below remain supported until reviewed publication and
+consumer adoption permit their deletion;
+[#273 — Adopt the released IC Build editor](https://github.com/dragginzgame/shared-tooling/issues/273)
+records the tested caller cut and publication boundary.
+
 `scripts/ci/render-cargo-workspace-version.pl SOURCE PREVIOUS CANDIDATE [WORKSPACE_INPUT_JSON]` emits
 the complete candidate manifest without changing the source. It recognizes one
 literal bare `workspace.package` table and one double-quoted stable version,

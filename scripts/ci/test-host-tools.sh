@@ -31,6 +31,7 @@ export HOST_TOOLS_FIXTURE="$fixture"
 cat > "$fixture/bin/uname" <<'SCRIPT'
 #!/usr/bin/env bash
 case "$1" in -s) echo "${TEST_OS:-Linux}" ;; -m) echo "${TEST_ARCH:-x86_64}" ;; esac
+[[ "$1" != "${TEST_UNAME_FAILURE:-}" ]] || exit 79
 SCRIPT
 cat > "$fixture/bin/curl" <<'SCRIPT'
 #!/usr/bin/env bash
@@ -108,6 +109,11 @@ install() {
     bash "$ROOT/scripts/dev/install-host-tools.sh" --consumer "$consumer" --versions "$pins" "$@" >> "$fixture/install.log" 2>&1
 }
 refuse() { if "$@" > "$fixture/refusal.log" 2>&1; then echo 'host-tool refusal failed' >&2; exit 1; fi; }
+for observer in -s -m; do
+    status=0
+    TEST_UNAME_FAILURE="$observer" install > "$fixture/observer.log" 2>&1 || status=$?
+    [[ "$status" == 79 && ! -e "$consumer/.tools" && ! -e "$consumer/store" ]] || exit 1
+done
 refuse install --check
 [[ ! -e "$consumer/.tools" && ! -e "$fixture/downloads" ]] || exit 1
 grep -F "tool=jq expected=1.8.2 path=$consumer/.tools/host/bin/jq reason=missing-bundle" "$fixture/install.log"
@@ -161,7 +167,7 @@ original="$(readlink "$consumer/.tools/host")"
 # The direct installer uses its snapshot even with an obsolete consumer catalog.
 snapshot="$fixture/snapshot"
 mkdir -p "$snapshot/scripts/dev" "$snapshot/scripts/ci" "$snapshot/ci" "$consumer/ci"
-cp "$ROOT/scripts/dev/install-host-tools.sh" "$ROOT/scripts/dev/tool-store.sh" "$snapshot/scripts/dev/"
+cp "$ROOT/scripts/dev/"{install-host-tools.sh,tool-store.sh,host-platform.sh} "$snapshot/scripts/dev/"
 cp "$ROOT/scripts/ci/"{verify-file-checksum.sh,tool-catalog-records.pl} "$snapshot/scripts/ci/"
 cp "$pins" "$snapshot/ci/tool-versions.env"
 printf 'exit 99\n' > "$consumer/ci/tool-versions.env"

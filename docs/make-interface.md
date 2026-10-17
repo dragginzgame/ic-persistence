@@ -199,12 +199,12 @@ their admitted `.tools/ic/bin` separately. Consumers own compiler setup,
 Make's ordered local extensions, caches and product gates. The action requires
 an existing checkout, `RUNNER_TEMP` and `GITHUB_PATH`; it does not select a compiler.
 
-`bash scripts/ci/prepare-make-fixture.sh SOURCE EXISTING-FIXTURE` copies the common
-Make includes and execution/formatting runners into a disposable consumer. It
-preserves modes and unrelated files, rejects missing inputs or symlink outputs
-before copying, and preserves copy failures. It invokes no Make, Git, installer
-or release command. Callers keep the Makefile, catalogs, leaf stubs, assertions
-and fixture retention; this is a test skeleton, not a complete consumer export.
+Use `bash scripts/ci/prepare-script-fixture.sh SOURCE EXISTING-FIXTURE ROOT...`
+for Make fixtures too. Select `make/consumer.mk` for the consumer interface,
+`make/tools.mk` for tool aggregates or `make/release.mk` for release routing.
+Their declared companions supply the complete closure. Apply local Makefiles,
+catalogs and leaf stubs after preparation; callers retain assertions and evidence.
+The former `prepare-make-fixture.sh` command is removed.
 
 ## Reusing fixture exit qualification
 

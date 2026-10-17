@@ -722,7 +722,7 @@ impl<E: Execute> Repository<E> {
             // and the hash of the exact bytes parsed by the observer.
             configuration.insert(
                 format!("config:{}", file.path.display()),
-                Sha256Digest::from_bytes(file.sha256).to_string(),
+                file.sha256.to_string(),
             );
         }
         Ok(configuration)

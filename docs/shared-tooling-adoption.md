@@ -8,7 +8,7 @@ Historical shared-version descriptions do not override that selected policy
 or establish new native qualification. Code paths are repository-relative.
 
 The existing tooling snapshot at revision
-`3f87ddc1a0c1616775b2114c42a4adee7376c9b1` (Shared 0.20.0) is recorded in
+`0b351cd2ba2bcd8927b783a5fec89afc8013f708` (Shared 0.23.0) is recorded in
 [.shared-tooling.snapshot](../.shared-tooling.snapshot). It identifies the vendored
 files, hashes and executable modes, including the adopted policy.
 Keep its provenance accurate and never edit vendored files in place. Do not
@@ -25,8 +25,8 @@ stable stores. The local [agent instructions](../AGENTS.md#stable-memory-governa
 record that boundary alongside the [allocation safety contract](../SAFETY.md).
 The common rule from
 [PR #251 — Require IC Memory governance for production stable stores](https://github.com/dragginzgame/shared-tooling/pull/251)
-is now adopted in the recorded Shared 0.20.0 baseline. Policy adoption does not
-establish consumer implementation or qualification.
+was adopted with Shared 0.20.0 and remains in the current baseline. Policy
+adoption does not establish consumer implementation or qualification.
 
 IC Storage 0.3 exposes governed collection wrappers consuming `RuntimeMemory`;
 its generic engine remains private. Memory's 0.46 cut added exclusive
@@ -39,8 +39,25 @@ format or dependency selection and does not establish consumer qualification.
 
 ## Recorded snapshot adoption
 
-The current selection has 71 explicit roots and 105 payloads from committed
-Shared 0.20.0 at `3f87ddc1a0c1616775b2114c42a4adee7376c9b1`.
+The current selection has 71 explicit roots and 106 payloads from committed
+Shared 0.23.0 at `0b351cd2ba2bcd8927b783a5fec89afc8013f708`.
+The canonical preview/refresh used a clean isolated checkout of that exact
+revision. The only new required companion is the shared read-only host-platform
+observer. Host/Cargo catalogs, toolchains and prepared Cargo build policy stay
+unchanged; the IC catalog selects ICP CLI 1.7.0 with reviewed per-host digests.
+IC setup and offline admission remain explicit consumer targets, preserving
+retained bundles. CI's actionlint/ShellCheck setup now uses the executing
+installer's validated catalog instead of sourcing and repeating individual pins.
+
+The retired publication/debt, frozen Blob and semantic Wasm qualification
+commands are not selected or called by Memory. Their owner transfers do not
+remove a Memory proof; product IO/upgrade checks and canonical source/tag/version
+observers remain selected. Frontend recognition changes do not affect Memory's
+Rust-only formatter roster. No optional producer workflow or regression matrix
+is added. The matching Host 0.27.1 / IC Build 0.16.0 catalog and lock are already
+selected in the incoming commit and are qualified without further upgrades.
+
+The preceding 0.20.0 selection had 71 roots and 105 payloads.
 Memory no longer dispatches or vendors the generic Shared runner, parser,
 installer, common Make, formatter-prerequisite, LOC and checksum regression
 matrices. Canonical selection retirement removes twelve fixture roots and two

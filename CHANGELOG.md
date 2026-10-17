@@ -2,8 +2,10 @@
 
 ## [0.48.1]
 
-- Adopt IC Build 0.15 with the aligned Host 0.26 family and reuse its bounded,
+- Adopt IC Build 0.16 with the aligned Host 0.27.1 family and reuse its bounded,
   locked/offline Cargo metadata observation in release tooling.
+- Adopt Shared Tooling 0.23.0, including ICP CLI 1.7.0, catalog-owned CI
+  validation-tool selection and the reviewed artifact uploader.
 
 [Detailed notes](docs/changelog/0.48.md#0481)
 

@@ -235,8 +235,10 @@ native execution qualifies that host.
 ## Cargo installation assessment
 
 The separate manually triggered `cargo-install-qualification.yml` workflow
-qualifies Cargo's registry binary/example mechanics on the same three native
-hosts. It records the prepared Cargo/Rust compiler identity and retains failed-build
+qualifies Cargo's common registry binary mechanics on the same three native
+hosts. Blob owns the frozen published-example case through
+[its native assessment](https://github.com/dragginzgame/ic-blob-storage/pull/80).
+It records the prepared Cargo/Rust compiler identity and retains failed-build
 evidence. The workflow leaves build duration to the GitHub Actions defaults.
 It does not extend the default portable gate or establish a new consumer installer
 contract. See the
@@ -260,13 +262,12 @@ The IC toolset additionally provisions and checks native executables on all
 three CI hosts above. Offline fixtures exercise digest/version refusals, retained
 failed and interrupted setup, and atomic activation using substituted payloads;
 only the separate native installation step qualifies actual upstream binaries.
-After preparing the pinned Node runtime, the native jobs also run
-`scripts/ci/qualify-wasm-opt.sh` against that installed IC set. Its retained
-Wasm inputs/outputs exercise `-O3`, `-Os` and `-Oz` through Node's WebAssembly
-engine, including integer branches and an IC-style reply import. Evidence lives
-under `portable-fixtures/wasm-opt` for ordinary failure collection. This small
-smoke does not qualify consumer canister builds or deployment; those remain
-with the product owner.
+Semantic optimizer qualification lives in
+[IC Build](https://github.com/dragginzgame/ic-build/pull/62), whose native matrix
+exercises `-O3`, `-Os` and `-Oz` through retained artifact transactions and the
+transferred Wasm execution oracle. Shared retains archive, executable and
+installation/reuse qualification. Product canister and deployment checks remain
+with their owners.
 Each native job also selects host/IC and common Cargo tools in a second disposable
 checkout with downloads disabled and verifies identical physical installations.
 The portable fixtures cover different selections, corrupt payloads,
@@ -336,3 +337,43 @@ pass is not hosted upload evidence: qualification requires the matching run's
 successful download/verification on Linux and both macOS hosts.
 The full IC set currently excludes Linux ARM64 because its Quill release has
 no matching ARM64 asset. No translation or source build is substituted silently.
+
+## Snapshot export measurements
+
+Shared Tooling's manual [Snapshot refresh comparison workflow](https://github.com/dragginzgame/shared-tooling/blob/main/.github/workflows/snapshot-performance.yml)
+supplies comparable repeated native observations for
+[#219 — Reduce repeated snapshot work](https://github.com/dragginzgame/shared-tooling/issues/219).
+Select full lowercase commit SHAs for the before exporter, after exporter and
+one payload shared by both. Both exporter revisions must support the three fixed
+entrypoints: snapshot refresh, Rust-tool installation and release runner. The
+workflow needs those commits in the fetched repository history; it installs no
+tools and runs no release or full portable gate.
+The two runner-local integrity helpers are frozen with the common payload, so
+only the exporter blob varies. Both exporters must support those helper inputs.
+
+On each host, one warmup pair precedes six measurement pairs with alternating
+execution order. Each export starts with a fresh consumer and the same selected
+Bash/Git/checksum tools. Monotonic timings exclude checkout, consumer setup and
+verification. Every consumer passes snapshot verification, and paired receipts
+and payloads must match. `identities.txt` records commit/blob and host/tool
+identities; `samples.tsv` keeps raw ordered observations. Failed attempts retain
+logs and inputs and cannot produce `complete.txt`.
+
+The workflow packages selected observations, runner files and consumer trees
+through the canonical archiver before upload. Hidden snapshot receipts survive
+the archive round trip; source clones and Git stores are excluded. Successful
+packaging retains the archive, SHA-256 and packaging/command logs for both
+complete and incomplete measurement attempts.
+A packaging failure remains a job failure and retains any partial archive;
+it does not reconstruct a missing measurement completion receipt.
+
+From a Shared Tooling checkout, the same comparison can run locally through
+`bash scripts/distribution/measure-snapshot-refresh.sh BEFORE AFTER PAYLOAD NEW-DIRECTORY`.
+The payload supplies both runners' integrity helpers and, when present, their
+shared companion reader; its blob is recorded with the other frozen helpers.
+Select a payload containing that reader when measuring exporters that require
+it. Historical payloads remain suitable for their self-contained exporters.
+Use an absent evidence directory beneath an existing parent, with no CR/LF in
+either path. Evidence is retained on success and failure. The bounded export
+workload does not establish a whole-suite speedup; compare repeated samples
+within each host and retain the distinct Linux/macOS observations.

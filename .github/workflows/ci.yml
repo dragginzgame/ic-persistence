@@ -26,16 +26,9 @@ jobs:
       - name: Install exact validation tools
         shell: bash
         run: |
-          source ci/tool-versions.env
           tool_dir="$RUNNER_TEMP/ic-memory-tools"
-          actionlint_bin="$(bash scripts/ci/install-ci-tool.sh actionlint \
-            --version "$SHARED_TOOLING_ACTIONLINT_VERSION" \
-            --sha256 "$SHARED_TOOLING_ACTIONLINT_SHA256_LINUX_AMD64" \
-            --install-dir "$tool_dir")"
-          shellcheck_bin="$(bash scripts/ci/install-ci-tool.sh shellcheck \
-            --version "$SHARED_TOOLING_SHELLCHECK_VERSION" \
-            --sha256 "$SHARED_TOOLING_SHELLCHECK_SHA256_LINUX_X86_64" \
-            --install-dir "$tool_dir")"
+          actionlint_bin="$(bash scripts/ci/install-ci-tool.sh actionlint --install-dir "$tool_dir")"
+          shellcheck_bin="$(bash scripts/ci/install-ci-tool.sh shellcheck --install-dir "$tool_dir")"
           {
             echo "ACTIONLINT_BIN=$actionlint_bin"
             echo "SHELLCHECK_BIN=$shellcheck_bin"
@@ -162,7 +155,7 @@ jobs:
         run: bash scripts/ci/test-failure-evidence.sh "$RUNNER_TEMP/ic-memory-fixtures/native-upload"
       - name: Upload native failure-evidence archive
         id: evidence-upload
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # reviewed Shared Tooling pin, v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # reviewed Shared Tooling pin, v7.0.2
         with:
           name: native-failure-evidence-${{ matrix.os }}-${{ github.run_attempt }}
           path: ${{ steps.evidence.outputs.path }}
@@ -200,7 +193,7 @@ jobs:
           fi
       - name: Retain failed validation and installer evidence
         if: ${{ failure() && steps.failure-evidence.outputs.path != '' }}
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # reviewed Shared Tooling pin, v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # reviewed Shared Tooling pin, v7.0.2
         with:
           name: validation-failure-${{ matrix.os }}
           path: ${{ steps.failure-evidence.outputs.path }}
@@ -298,7 +291,7 @@ jobs:
           fi
       - name: Retain failed runtime qualification
         if: ${{ failure() && steps.failure-evidence.outputs.path != '' }}
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # reviewed Shared Tooling pin, v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # reviewed Shared Tooling pin, v7.0.2
         with:
           name: runtime-failure-${{ matrix.os }}
           path: ${{ steps.failure-evidence.outputs.path }}
@@ -347,7 +340,7 @@ jobs:
         run: cargo check --locked --offline --all-targets --features test-support 2>&1 | tee "$RUNNER_TEMP/msrv.log"
       - name: Retain failed MSRV diagnostics
         if: failure()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # reviewed Shared Tooling pin, v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # reviewed Shared Tooling pin, v7.0.2
         with:
           name: msrv-failure-${{ matrix.os }}
           path: ${{ runner.temp }}/msrv.log

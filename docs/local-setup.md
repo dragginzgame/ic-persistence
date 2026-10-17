@@ -240,7 +240,7 @@ Host and IC setup attempt both lock releases on exit, even if checkout cleanup
 fails. An installation failure keeps its original status and retained candidate;
 a cleanup-only failure also returns nonzero. Inspect any remaining lock before
 retrying, even when the selected bundle was successfully activated.
-Explicit host and IC asset downloads use curl's transient retry classification,
+Explicit host, IC and CI asset downloads use curl's transient retry classification,
 with at most three retries, a two-second delay and a 60-second retry-start window.
 Each attempt keeps its 15-second connection and 300-second transfer limits;
 an attempt already in flight can finish after the retry window. Permanent HTTP
@@ -322,6 +322,8 @@ add a successful exact-version probe after byte admission. Shared host tools
 
 The common setup holds `.tools/rust/common.lock`, prepares all three selections, then
 atomically selects a retained `common-set.*` directory through the `common` link.
+The catalog reader owns the common roster and stable-version admission; setup
+projects those admitted records directly into executable selections.
 Its `bin` contains only the three selected slot links. A partial failure leaves
 the previous complete set active; rerunning setup reuses completed slots. Offline
 checks refuse missing selections, locks, changed receipts/bytes and redirected
@@ -526,12 +528,16 @@ to be prepared already. Explicit online qualification may omit
 builds and logs on both success and failure. Relative evidence paths resolve from
 the caller's working directory independently of `CDPATH`; existing roots are
 refused before tool probes. It never cleans or changes an existing installation.
-The fixture selects published `ic-blob-storage 0.15.1`'s
-`prepare_upload` example and the existing reviewed cargo-sort version. Those are
-assessment inputs, not defaults for consumer applications. Both use the debug
-profile for the direct Cargo assessment. The production installer is then
-exercised with the debug example and release binary, including offline reuse and
-changed-byte refusal. No product MSRV or Canic CLI selection is qualified by this fixture.
+The common fixture selects the reviewed cargo-sort version, using the debug
+profile for direct Cargo assessment and release for the shared production
+installer, including offline reuse and changed-byte refusal. Product compiler
+floors and application CLI selections remain consumer-owned.
+
+The frozen published Blob example assessment moves to
+[IC Blob Storage PR #80 — Own frozen published-example installation qualification](https://github.com/dragginzgame/ic-blob-storage/pull/80).
+Integrate that owner before adopting this snapshot. Its Linux and both native
+macOS jobs retain the former example-installation proof
+([#280 — Retire frozen Blob example assessment after native owner qualification](https://github.com/dragginzgame/shared-tooling/issues/280)).
 
 It checks Cargo receipt package/registry/version/target/profile identity, offline
 reuse, missing-target refusal, concurrent offline installation and preservation
