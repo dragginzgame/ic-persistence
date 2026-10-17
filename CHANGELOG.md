@@ -1,6 +1,6 @@
 # Changelog
 
-## [0.5.0]
+## [0.5.0] - 2026-10-17
 
 - **Breaking API:** keep the independent B-tree private to repository tests and
   the unpublished benchmark. Remove `BTreeMap`, `Comparator`, `Config`, `Entry`,
