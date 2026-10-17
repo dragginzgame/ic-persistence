@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.3.1]
+
+- Remove the membership preflight from deletion. Missing-key transactions
+  discard speculative balancing without publishing changes; misses beneath
+  minimum-size children can perform more reads.
+- Reuse IC Testkit installation and one fresh-instance setup path across
+  both benchmark suites, retaining independent memory per comparison.
+- Replace the local dependency-boundary parser with a revision-pinned Shared
+  Tooling helper and a consumer-owned package allowlist.
+
 ## [0.3.0] - 2026-10-16
 
 - Adopt IC Memory 0.45 allocation requests and IC Testkit 0.50 caller-selected

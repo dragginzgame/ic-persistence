@@ -398,7 +398,7 @@ impl<'a, M: Memory, C: Comparator> Transaction<'a, M, C> {
         }
         Err(Error::Corrupt)
     }
-    fn delete(&mut self, id: u64, key: &[u8], depth: usize) -> Result<Record, Error> {
+    fn delete(&mut self, id: u64, key: &[u8], depth: usize) -> Result<Option<Record>, Error> {
         if depth >= MAX_HEIGHT {
             return Err(Error::Corrupt);
         }
@@ -411,28 +411,35 @@ impl<'a, M: Memory, C: Comparator> Transaction<'a, M, C> {
                 node.entries.remove(at);
             } else if self.node(node.children[at])?.entries.len() >= DEGREE {
                 let replacement = self.extreme(node.children[at], true)?;
-                self.delete(node.children[at], &self.key(replacement)?, depth + 1)?;
+                self.delete(node.children[at], &self.key(replacement)?, depth + 1)?
+                    .ok_or(Error::Corrupt)?;
                 node.entries[at] = replacement;
             } else if self.node(node.children[at + 1])?.entries.len() >= DEGREE {
                 let replacement = self.extreme(node.children[at + 1], false)?;
-                self.delete(node.children[at + 1], &self.key(replacement)?, depth + 1)?;
+                self.delete(node.children[at + 1], &self.key(replacement)?, depth + 1)?
+                    .ok_or(Error::Corrupt)?;
                 node.entries[at] = replacement;
             } else {
                 let child = self.merge(&mut node, at)?;
-                self.delete(child, key, depth + 1)?;
+                self.delete(child, key, depth + 1)?.ok_or(Error::Corrupt)?;
             }
         } else {
             if node.children.is_empty() {
-                return Err(Error::Corrupt);
+                return Ok(None);
             }
             let child = self.prepare_child(&mut node, at)?;
-            removed = self.delete(child, key, depth + 1)?;
+            let Some(record) = self.delete(child, key, depth + 1)? else {
+                return Ok(None);
+            };
+            removed = record;
         }
         self.put_node(id, &node)?;
-        Ok(removed)
+        Ok(Some(removed))
     }
-    pub fn remove(&mut self, key: &[u8]) -> Result<Vec<u8>, Error> {
-        let removed = self.delete(self.header.root, key, 0)?;
+    pub fn remove(&mut self, key: &[u8]) -> Result<Option<Vec<u8>>, Error> {
+        let Some(removed) = self.delete(self.header.root, key, 0)? else {
+            return Ok(None);
+        };
         self.free_blob(removed.key, removed.key_len, None)?;
         let len = usize::try_from(removed.value_len).map_err(|_| Error::Corrupt)?;
         let mut previous = Vec::with_capacity(len);
@@ -446,7 +453,7 @@ impl<'a, M: Memory, C: Comparator> Transaction<'a, M, C> {
             self.free(self.header.root)?;
             self.header.root = root.children[0];
         }
-        Ok(previous)
+        Ok(Some(previous))
     }
     pub fn commit(self) -> Result<Header, Error> {
         let bytes = self

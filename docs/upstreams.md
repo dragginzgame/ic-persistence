@@ -111,3 +111,25 @@ are primitive booleans or four integer counters, never stored row payloads.
 These limits are qualified by the governed mixed-workload run; they do not change
 canister measurement regions or storage formats. Runtime libraries remain free
 of this native decoding dependency.
+
+
+## Dependency-boundary helper adoption
+
+The generic checker is contributed in
+[Shared Tooling PR #257](https://github.com/dragginzgame/shared-tooling/pull/257).
+The separate snapshot in `tools/dependency-boundaries/` pins contribution commit
+`eb04376623a8995b2301d7cc80723a2a3f3e5b8e`; the main baseline snapshot is unchanged.
+This is an unmerged contribution pin, not a claim that the helper has shipped in
+Shared Tooling 0.17.2 (the source checkout's current package version).
+`make check-storage-boundary` verifies the bundle before running the shared
+checker with local policy `ci/cargo-dependency-boundaries.json`. The former
+local shell/Perl implementation is removed. Rules cover canonical names of
+normal, build, dev and target-specific direct dependencies, including renames.
+
+The bundle was produced by the canonical `refresh-consumer.sh` exporter in a
+scratch Git root and copied intact beneath `tools/dependency-boundaries/`.
+Future refreshes must likewise use the exporter and preserve the recorded file
+hashes and modes; never edit the exported helper or integrity companions here.
+Only the helper and its integrity companions are adopted, avoiding unrelated
+changes to the main baseline. Upstream owns its rejection/schema fixtures;
+this consumer checks its real Cargo metadata and snapshot integrity.

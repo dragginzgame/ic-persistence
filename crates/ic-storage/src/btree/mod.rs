@@ -232,11 +232,12 @@ impl<M: Memory, C: Comparator> BTreeMap<M, C> {
     /// # Errors
     /// Rejects malformed keys and observed corruption without publishing changes.
     pub fn remove(&mut self, key: &[u8]) -> Result<Option<Vec<u8>>, Error> {
-        if !self.contains_key(key)? {
-            return Ok(None);
-        }
+        self.check_key(key)?;
         let mut tx = Transaction::new(self);
-        let previous = tx.remove(key)?;
+        let Some(previous) = tx.remove(key)? else {
+            // Any speculative balancing remains private to the discarded transaction.
+            return Ok(None);
+        };
         tx.header.len = tx.header.len.checked_sub(1).ok_or(Error::Corrupt)?;
         self.header = tx.commit()?;
         Ok(Some(previous))

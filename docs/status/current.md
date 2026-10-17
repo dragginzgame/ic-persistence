@@ -1,5 +1,26 @@
 # Current handoff
 
+Released source is now 0.3.0 (`af1f181`); pending work is 0.3.1. Deletion now
+uses one transactional search; misses discard all staged balancing and leave
+bytes untouched. A successful single-leaf deletion uses one read instead of
+two. A missing key beneath minimum-size children uses six reads rather than
+the old two-read membership check. This is a known miss-path tradeoff.
+Both benchmark modes share fresh-instance setup and IC Testkit installation.
+The local dependency parser is replaced by the separately pinned upstream
+helper described in [upstream ownership](../upstreams.md#dependency-boundary-helper-adoption).
+The incoming Cargo.lock change is preserved; no package versions are changed.
+Both benchmark modes compile, and the mixed mode passes 256 measurements with
+exact repeats and model checks. Current instruction totals are 0.9194 times
+upstream for mixed rows and 1.6444 for mixed indexes; details and retained
+artifacts are in [the workload report](../design/canonical-workloads.md#single-search-deletion-and-shared-installation).
+Native library tests, library/runner Clippy, formatting, pins, snapshot integrity
+and local dependency-boundary checks pass. The 320,000-operation differential
+campaign and the deletion regression on Rust 1.91 also pass; Wasm Clippy passes.
+The upstream checker passes its
+focused rejection fixtures and ShellCheck. No full release gate is run.
+
+Earlier handoff evidence follows.
+
 Released source is 0.2.0; the pending breaking API batch is 0.3.0. Public custom
 and upstream collections now use explicit wrappers consuming IC Memory 0.45
 runtime handles. No raw inner collection, Deref or memory extraction is exposed.

@@ -30,7 +30,8 @@ check-pins:
 	bash scripts/ci/check-dependency-pins.sh --consumer "$(CURDIR)" --cargo-inheritance
 
 check-storage-boundary:
-	bash scripts/ci/check-storage-boundary.sh
+	bash tools/dependency-boundaries/scripts/ci/verify-shared-tooling-snapshot.sh --consumer "$(CURDIR)/tools/dependency-boundaries"
+	bash tools/dependency-boundaries/scripts/ci/check-cargo-dependency-boundaries.sh --consumer "$(CURDIR)"
 
 check-release-commands:
 	bash scripts/ci/check-release-commands.sh . make/consumer.mk make/tools.mk make/release.mk make/rust-format.mk make/execution.mk scripts/ci/check-make-execution.sh

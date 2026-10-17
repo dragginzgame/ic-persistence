@@ -1128,3 +1128,40 @@ fn overflow_key_corruption_preserves_published_bytes() {
         tree.validate().unwrap();
     }
 }
+
+#[test]
+fn deletion_searches_once_and_discards_balancing_on_a_miss() {
+    let memory = ObservedMemory::default();
+    let reads = memory.read_calls.clone();
+    let writes = memory.write_calls.clone();
+    let backing = memory.memory.clone();
+    let mut tree = BTreeMap::create(memory, Config::default(), Lexicographic).unwrap();
+    tree.insert(&key(0), &[7]).unwrap();
+    reads.set(0);
+    assert_eq!(tree.remove(&key(0)).unwrap(), Some(vec![7]));
+    assert_eq!(reads.get(), 1, "deletion must not preflight membership");
+    for n in 0..32 {
+        tree.insert(&key(n), &[7]).unwrap();
+    }
+    tree.remove(&key(31)).unwrap();
+    // Two minimum-size children: descent for an absent key stages a merge.
+    let before = backing.borrow().clone();
+    reads.set(0);
+    assert!(!tree.contains_key(&key(999)).unwrap());
+    let preflight_reads = reads.get();
+    reads.set(0);
+    writes.set(0);
+    assert_eq!(tree.remove(&key(999)).unwrap(), None);
+    eprintln!(
+        "minimum-child miss: membership={preflight_reads} reads, transactional={} reads",
+        reads.get()
+    );
+    assert_eq!(writes.get(), 0);
+    assert_eq!(*backing.borrow(), before);
+    assert_eq!(tree.len(), 31);
+    tree.validate().unwrap();
+    let tree = BTreeMap::open(tree.into_memory(), Config::default(), Lexicographic).unwrap();
+    for n in 0..31 {
+        assert_eq!(tree.get(&key(n)).unwrap(), Some(vec![7]));
+    }
+}

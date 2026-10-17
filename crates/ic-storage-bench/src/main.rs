@@ -1,6 +1,9 @@
 //! Run the canister probe against an explicitly supplied, pre-admitted server.
 mod fixtures;
-use ic_testkit::pic::{CandidCallExt, PocketIcBuilder, PocketIcStartupConfig, update_candid_args};
+use ic_testkit::pic::{
+    CandidCallExt, CanisterInstallExt, InstallSpec, PocketIc, PocketIcBuilder,
+    PocketIcStartupConfig, update_candid_args,
+};
 use ic_testkit_candid::DecodeLimits;
 use std::{error::Error, path::Path, time::Duration};
 // Replies contain only a bool or four integer counters, never stored payloads.
@@ -42,18 +45,7 @@ fn main() -> Result<(), Box<dyn Error>> {
             let batch = (524_288 / (fixture.key_len + fixture.value_len)).clamp(1, 32) as u64;
             assert!(fixture.count <= 2048 * batch && fixture.kind <= 2);
             for engine in 0u8..=1 {
-                let pic = PocketIcBuilder::new()
-                    .with_server_url(server.url().parse()?)
-                    .with_application_subnet()
-                    .build();
-                let id = pic.create_canister();
-                pic.add_cycles(id, 100_000_000_000_000);
-                pic.install_canister(
-                    id,
-                    wasm.clone(),
-                    candid::encode_args((engine, profile, dense_keys))?,
-                    None,
-                );
+                let (pic, id) = fresh_canister(server.url(), &wasm, engine, profile, dense_keys)?;
                 let mut seeded = false;
                 for _ in 0..2048 {
                     if pic.update_candid::<bool, _>(id, "seed", (batch,), REPLY_LIMITS)? {
@@ -100,19 +92,8 @@ fn run_workloads(server: &str, wasm: &[u8]) -> Result<(), Box<dyn Error>> {
     for run in 0..2 {
         for (profile, name) in ["mixed_rows", "mixed_index"].iter().enumerate() {
             for engine in 0u8..=1 {
-                let pic = PocketIcBuilder::new()
-                    .with_server_url(server.parse()?)
-                    .with_application_subnet()
-                    .build();
-                let id = pic.create_canister();
-                pic.add_cycles(id, 100_000_000_000_000);
                 let profile = u8::try_from(fixtures::FIXTURES.len() + profile)?;
-                pic.install_canister(
-                    id,
-                    wasm.to_vec(),
-                    candid::encode_args((engine, profile, false))?,
-                    None,
-                );
+                let (pic, id) = fresh_canister(server, wasm, engine, profile, false)?;
                 for batch in 0..32 {
                     let done =
                         pic.update_candid::<bool, _>(id, "workload_seed", (), REPLY_LIMITS)?;
@@ -150,4 +131,24 @@ fn run_workloads(server: &str, wasm: &[u8]) -> Result<(), Box<dyn Error>> {
         }
     }
     Ok(())
+}
+
+// Each comparison owns fresh memory and an independent simulator instance.
+fn fresh_canister(
+    server: &str,
+    wasm: &[u8],
+    engine: u8,
+    profile: u8,
+    dense_keys: bool,
+) -> Result<(PocketIc, candid::Principal), Box<dyn Error>> {
+    let pic = PocketIcBuilder::new()
+        .with_server_url(server.parse()?)
+        .with_application_subnet()
+        .build();
+    let id = pic.try_create_and_install(InstallSpec::new(
+        wasm.to_vec(),
+        candid::encode_args((engine, profile, dense_keys))?,
+        100_000_000_000_000,
+    ))?;
+    Ok((pic, id))
 }

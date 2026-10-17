@@ -298,3 +298,34 @@ Attempt `target/governed-memory045.by7rDA/` retains `runner`, `benchmark.wasm`,
 `45d3b6319f04ef8e5d6fdbdd9195f8924a77f64da2bd0b55a1c2c3e1d8bd90d3`.
 The native runner's finite Candid limits admit every boolean and counter reply.
 The older full fixture matrix was not rerun for this focused adoption.
+
+
+## Single-search deletion and shared installation
+
+Pending 0.3.1 removes the preliminary membership search from deletion. The
+transaction returns absence explicitly and is discarded without committing any
+speculative merge/free-list updates. The regression fixture confirms one backing
+read for successful single-leaf deletion (previously two), and byte-for-byte
+preservation after a miss that stages a merge. The same minimum-child miss uses
+six reads versus the previous two-read membership preflight: this optimization
+favours successful deletion and is not a universal reduction in read traffic.
+
+Both benchmark modes now share fresh-instance creation and use IC Testkit's
+`InstallSpec`/`try_create_and_install`. No snapshot reuse, seed-budget change or
+measurement-region change is introduced. The mixed-workload attempt retains
+256 measurements with exact instruction/capacity/result-length repeats and
+matching engine result sizes; all existing in-canister model checks pass.
+
+| Workload | Our instructions | Upstream instructions | Ours/upstream |
+| --- | ---: | ---: | ---: |
+| Mixed rows | 313,148,947 | 340,590,375 | 0.9194 |
+| Mixed index | 187,936,678 | 114,285,849 | 1.6444 |
+
+Totals cover one fresh run, all four rounds and eight operations. The incoming
+lockfile changes are preserved; this is current-build qualification rather than
+an isolated same-lockfile before/after performance attribution. Index performance
+still trails upstream. The full older fixture matrix was not rerun.
+
+Artifacts live in `target/simplified-delete.lPIlSb/`: `runner`, `benchmark.wasm`,
+`Cargo.lock`, `workloads.csv`, `workloads.log`. Wasm SHA-256:
+`fa9569f630bfe826f5174cc39bc6e474cc313a699f09f0136ccfba837b45b8f3`.
