@@ -1,6 +1,6 @@
 # Changelog
 
-## [0.5.3]
+## [0.5.3] - 2026-10-18
 
 - Support map capacity reservation, map clearing and vector reset while retaining
   exclusive allocation leases. Ordinary reservation refusal returns the unchanged
