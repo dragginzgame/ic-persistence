@@ -14,11 +14,21 @@ runtimes because lease tracking does not coordinate aliased independent runtimes
 
 DFINITY's `ic-stable-structures` owns the collection implementations and persisted
 formats wrapped by `ic_storage::adapter`. Only the infrastructure package depends
-directly on the substrate. Applications use the supported adapter and obtain
-admitted allocations through IC Memory. Public wrappers expose neither raw memory,
-collection extraction nor unrestricted upstream collections. The dependency
-checker applies consumer-owned policy in `ci/cargo-dependency-boundaries.json`;
-its implementation is included in the root Shared Tooling snapshot.
+directly on the substrate. Consumers of this package use the supported adapter
+and obtain admitted allocations through IC Memory. Public wrappers expose neither
+raw memory, collection extraction nor unrestricted upstream collections. The only
+public Rust module is `ic_storage::adapter`; its collection wrappers, iterator
+aliases, error and codec re-exports are the supported integration surface.
+The exported `Memory` trait supports generic bounds, not allocation authority.
+`BoundedCell` checks declared encoding bounds around the upstream cell; record
+schemas, decoding semantics and recovery remain consumer-owned. Map reservation
+accepts caller-owned page budgets and makes no node-layout entry-capacity promise.
+
+The dependency checker applies consumer-owned policy in
+`ci/cargo-dependency-boundaries.json`; its implementation is included in the root
+Shared Tooling snapshot. It checks this workspace's dependency declarations, not
+sibling adoption or runtime handle construction. The adapter constructors enforce
+the handle boundary; collection lease and reopen tests qualify that integration.
 
 IcyDB owns application codecs, comparator semantics, schema authority and
 application recovery. The former independent B-tree and its benchmark have been
@@ -33,7 +43,9 @@ The adapter's lease and reopening tests use published IC Memory 0.48's
 selects backing, owner, namespace, stable keys and default 128-page bucket geometry.
 IC Memory owns ordinary admission and ledger bootstrap. The fixture feature is
 selected only through the library's dev dependency; production builds use the
-ordinary IC Memory dependency.
+ordinary IC Memory dependency. These tests exercise collection ownership of
+leases and persisted round trips. Declaration validation, allocation placement
+and ledger recovery remain IC Memory's implementation and test responsibilities.
 
 ## Host operations
 

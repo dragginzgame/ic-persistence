@@ -1,34 +1,72 @@
 # Current handoff
 
-The maintainer retired the private B-tree in favor of a different plan. Its
-engine, custom-format qualification tests, private aliases and unpublished
-comparison benchmark have been removed. The workspace now contains only the
-governed upstream collection library. Benchmark targets and benchmark-only
-dependencies are removed.
-The supported adapter still consumes IC Memory runtime handles and preserves
-upstream persisted formats. No replacement engine is implemented by this batch.
+The workspace contains the `ic-storage` governed collection adapter only.
+IC Memory owns allocation, runtime bootstrap and exclusive leases; upstream
+`ic-stable-structures` owns collection algorithms and persisted formats. IcyDB
+owns application codecs and recovery. See [current ownership](../upstreams.md).
 
-The adapter's allocation lease and reopening test is retained under
-`src/adapter/tests.rs`, using published IC Memory 0.48 fixture support only as a
-dev dependency. The former engine's design documents, performance investigation,
-previous handoff and ownership notes are retained in the
-[historical archive](../archive/private-btree/README.md). Existing build artifacts,
-benchmark results and release failure evidence are untouched. Custom-format bytes
-are not reinterpreted as upstream collections.
+The engine and benchmark retirement is committed in `d4a4f6f`, followed by release
+`0.5.2` at `009412d`. Their [archived research](../archive/private-btree/README.md)
+and retained artifacts remain historical evidence, not active implementation
+requirements. No reader converts retired custom-format bytes into upstream data.
 
-Pending notes select 0.5.2. Package versions, Git index and refs remain
-maintainer-owned. Shared Tooling remains at the reviewed 0.23.0 snapshot. The
-current package description reflects the governed collection surface.
+The [root changelog](../../CHANGELOG.md) owns pending numbered notes. Package
+versions, the Git index and release refs remain maintainer-owned. Shared Tooling
+remains at the reviewed 0.23.0 snapshot. No sibling checkout is edited by this pass.
 
-The adapter test passes on Rust 1.99 and 1.91; all eight Rustdoc examples pass.
-Native all-target Clippy, warning-free Rustdoc, Wasm compilation, formatting,
-documentation links, dependency boundaries and release-command checks pass.
-The lockfile shrinks from 297 packages to 22 without changing retained package
-versions or checksums. Package source listing excludes retired engine/benchmark
-files. The coordinated release graph contains only the library.
+The ownership cleanup removes obsolete private-engine import probes and a test
+of IC Memory's standalone unknown-key policy. Adapter tests retain persisted
+round trips and exclusive-lease retention, reservation, clearing and reset.
+The dependency-pin check now passes in this checkout: the retired benchmark
+manifest is no longer tracked, so no staging workaround is needed.
 
-Dependency-pin validation passes on an isolated copy of the final source with
-its own index. In the real checkout the canonical checker refuses the removed
-benchmark manifest until its deletion is staged; the maintainer-owned index is
-untouched. Full release CI and macOS checks are not run locally. No retained
-data or old build/benchmark evidence is deleted.
+Focused native build, strict Clippy, warning-free Rustdoc, Wasm compilation,
+Rust 1.91 tests and documentation examples pass. Snapshot, formatting, pin,
+license, dependency-boundary, documentation-link and release-command checks pass.
+Full release CI, clean-source package verification and macOS execution are not
+run by this cleanup.
+
+## Pending 0.5.3 adapter completion
+
+The current batch incorporates the supported adapter work from PRs #2, #3 and
+#10 against the post-retirement library. `Memory` and `Bound` expose the exact
+upstream interfaces without granting allocation authority. `BoundedCell` enforces
+declared encoding bounds before writes and retained-value decoding, while the
+application retains record schemas and recovery policy. Map clearing uses the
+single `clear` name; consumers of the proposed `clear_new` method must use it.
+
+Issue #11 is addressed by consuming page reservation and `allocated_pages`:
+both return the collection while retaining its sole allocation lease. The
+reservation contract is an absolute virtual page extent, not guaranteed entry
+capacity. Callers own and qualify byte/page budgets; upstream node-layout
+constants are not a supported entry-reservation guarantee. Controlled backing
+refusal proves unchanged bytes/accounting, retry, insertion and cold reopening.
+Seven unit tests and six Rustdoc examples pass, including on Rust 1.91; strict
+Clippy, warning-free Rustdoc and Wasm compilation pass. Full release CI and
+native macOS execution have not qualified this pending batch.
+
+Issue #12 still requires an upstream discard-value primitive. The selected
+substrate's returning mutations materialize the old value; dropping it in a
+new facade method would not eliminate that work. No fork, second map, or custom
+tree is introduced as a workaround, and no performance gain is claimed.
+
+## Fleet composition follow-through
+
+These notes retain the preceding composition work; remote PR status and consumer
+release readiness have not been requalified by this repository-only cleanup.
+
+The adapter now supports consuming map reservation and vector reset, plus
+in-place map clearing, while retaining the exclusive allocation lease. These
+operations cover Canic's receipt preallocation and blob-payload reset needs
+without exporting raw memory or managers. The pending numbered notes are 0.5.3;
+package versions and the Git index are untouched. Native tests, strict native
+lint, Rust 1.91 tests, Rustdoc boundary examples and Wasm compilation pass.
+
+The explicit runtime handoff is prepared in [Canic #595](https://github.com/dragginzgame/canic/pull/595)
+and [IcyDB #376](https://github.com/dragginzgame/icydb/pull/376), with consumer
+adoption in [IC Crates #7](https://github.com/dragginzgame/ic-crates/pull/7). The paired
+upstream Memory 0.44 sources pass a disposable composition test using one shared
+runtime identity. This is not qualification of IC Crates' released graph.
+Canic's adapter migration still needs a committed base for its pending Memory
+0.48 adoption and the supported adapter operations; its normal dirty checkout
+is preserved. No raw collection bridge is claimed removed yet.

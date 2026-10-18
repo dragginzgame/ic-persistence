@@ -4,12 +4,15 @@
 //! contracts. These wrappers expose neither raw memory nor unrestricted
 //! upstream collections.
 //! Use distinct admitted allocations and drop collections before reopening.
-//! IC Memory 0.46 enforces one live lease per allocation within each runtime;
+//! IC Memory enforces one live lease per allocation within each runtime;
 //! hosts retain exclusive custody of the backing across runtimes.
-use crate::substrate::{self, DefaultMemoryImpl, Memory};
+use crate::substrate::{self, DefaultMemoryImpl};
 use ic_memory::RuntimeMemory;
-use std::ops::RangeBounds;
-pub use substrate::{Storable, storable};
+use std::{borrow::Cow, ops::RangeBounds};
+/// Exact substrate interfaces for backing bounds and record codecs.
+/// Implementing `Memory` grants no allocation authority; constructors require
+/// committed `RuntimeMemory` leases.
+pub use substrate::{Memory, Storable, storable, storable::Bound};
 
 #[cfg(all(test, not(target_arch = "wasm32")))]
 mod tests;
@@ -36,6 +39,39 @@ impl<K: Storable + Ord + Clone, V: Storable, M: Memory> StableBTreeMap<K, V, M> 
         Self {
             inner: substrate::BTreeMap::load(memory),
         }
+    }
+    /// Clear entries while retaining this allocation's exclusive lease.
+    pub fn clear(&mut self) {
+        self.inner.clear_new();
+    }
+    /// Reserve a minimum virtual extent without exposing or duplicating the lease.
+    ///
+    /// Returns the map on both success and ordinary growth refusal. Entries are
+    /// preserved; reloading the upstream header refreshes its cached allocator.
+    /// Backing traps retain the upstream panic contract.
+    ///
+    /// `minimum` is an absolute virtual extent in 65,536-byte Wasm pages, not an
+    /// entry count or additional pages. Existing extents never shrink. A request
+    /// already covered performs no growth or writes. This reserves backing only:
+    /// it does not promise that any particular number or encoding of entries fits.
+    /// Callers own their byte/page budget and must qualify it for their codecs;
+    /// upstream node-layout constants are not a supported capacity contract.
+    pub fn reserve_pages(self, minimum: u64) -> (Self, Result<(), ic_memory::RuntimeGrowError>) {
+        let memory = self.inner.into_memory();
+        let additional = minimum.saturating_sub(memory.size());
+        let result = memory.grow(additional).map(|_| ());
+        (Self::load(memory), result)
+    }
+    /// Observe the virtual extent in 65,536-byte pages while retaining the lease.
+    ///
+    /// Consumes and returns the map because upstream exposes memory only through
+    /// ownership transfer. Reloading reads the header without writing or growing.
+    /// This is allocated extent, not free space or guaranteed entry capacity.
+    #[must_use]
+    pub fn allocated_pages(self) -> (Self, u64) {
+        let memory = self.inner.into_memory();
+        let pages = memory.size();
+        (Self::load(memory), pages)
     }
     /// Delegates to upstream `BTreeMap::insert` with the governed allocation.
     pub fn insert(&mut self, key: K, value: V) -> Option<V> {
@@ -228,6 +264,12 @@ impl<T: Storable, M: Memory> StableVec<T, M> {
     pub fn pop(&self) -> Option<T> {
         self.inner.pop()
     }
+    /// Reset to an empty vector while retaining this allocation's exclusive lease.
+    /// Existing payload bytes follow upstream `Vec::new` semantics.
+    #[must_use]
+    pub fn reset(self) -> Self {
+        Self::new(self.inner.into_memory())
+    }
     /// Delegates to upstream `Vec::len` with the governed allocation.
     pub fn len(&self) -> u64 {
         self.inner.len()
@@ -368,5 +410,67 @@ impl<'a, T: Storable, M: Memory> IntoIterator for &'a StableLog<T, M> {
     type IntoIter = LogIter<'a, T, M>;
     fn into_iter(self) -> Self::IntoIter {
         self.iter()
+    }
+}
+/// A stable cell whose writes enforce the record's declared `Storable` bound.
+pub struct BoundedCell<T: Storable, M: Memory = DefaultMemoryImpl> {
+    cell: substrate::Cell<BoundedValue<T>, RuntimeMemory<M>>,
+}
+
+impl<T: Storable, M: Memory> BoundedCell<T, M> {
+    /// Open a current cell or initialize a fresh bounded record.
+    ///
+    /// # Panics
+    /// Panics for unbounded records or encodings that violate the declared bound.
+    #[must_use]
+    pub fn init(memory: RuntimeMemory<M>, value: T) -> Self {
+        assert!(matches!(T::BOUND, Bound::Bounded { .. }));
+        Self {
+            cell: substrate::Cell::init(memory, BoundedValue(value)),
+        }
+    }
+
+    /// Read the cached current record without serializing or cloning it.
+    #[must_use]
+    pub fn get(&self) -> &T {
+        &self.cell.get().0
+    }
+
+    /// Validate and persist a complete replacement, returning the prior record.
+    ///
+    /// # Panics
+    /// Panics before writing if the encoding violates its declared bound.
+    pub fn set(&mut self, value: T) -> T {
+        self.cell.set(BoundedValue(value)).0
+    }
+}
+
+struct BoundedValue<T>(T);
+
+impl<T: Storable> Storable for BoundedValue<T> {
+    const BOUND: Bound = T::BOUND;
+
+    fn to_bytes(&self) -> Cow<'_, [u8]> {
+        self.0.to_bytes_checked()
+    }
+
+    fn into_bytes(self) -> Vec<u8> {
+        self.0.into_bytes_checked()
+    }
+
+    fn from_bytes(bytes: Cow<'_, [u8]>) -> Self {
+        let Bound::Bounded {
+            max_size,
+            is_fixed_size,
+        } = T::BOUND
+        else {
+            unreachable!("bounded cell record must declare a bound");
+        };
+        if is_fixed_size {
+            assert_eq!(bytes.len(), max_size as usize);
+        } else {
+            assert!(bytes.len() <= max_size as usize);
+        }
+        Self(T::from_bytes(bytes))
     }
 }

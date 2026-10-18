@@ -1,5 +1,23 @@
 # Changelog
 
+## [0.5.3]
+
+- Support map capacity reservation, map clearing and vector reset while retaining
+  exclusive allocation leases. Ordinary reservation refusal returns the unchanged
+  map and typed IC Memory error; consuming page observation exposes the virtual
+  extent without raw-memory access. Reservation uses caller-owned page budgets,
+  not a guaranteed entry count. Addresses [#11](https://github.com/dragginzgame/ic-storage/issues/11)
+  and the clear operation proposed in [#3](https://github.com/dragginzgame/ic-storage/pull/3).
+- Export exact `Memory` and `Bound` interfaces for generic backing and codec
+  declarations; constructors still require committed runtime handles. Add
+  `BoundedCell` with maximum/exact encoding checks before writes and retained-value
+  decoding, preserving upstream bytes. Incorporates
+  [#2](https://github.com/dragginzgame/ic-storage/pull/2) and
+  [#10](https://github.com/dragginzgame/ic-storage/pull/10).
+- Remove retired-engine import probes and leave allocation-policy testing with
+  IC Memory; retain adapter lease and persisted round-trip qualification.
+  Clarify current ownership and retire obsolete pre-removal handoff instructions.
+
 ## [0.5.2] - 2026-10-17
 
 - Remove the private B-tree engine, custom-format tests and comparison benchmark,

@@ -14,7 +14,7 @@ release-patch release-minor release-major release-resume: export IC_STORAGE_RELE
 help:
 	@echo "Setup: install-tools; offline verification: tools-check"
 	@echo "Focused: shared-tooling-check, check-doc-links, check-license, check-pins, check-release-commands"
-	@echo "Complete scaffold gate: ci; current version: version"
+	@echo "Complete library gate: ci; current version: version"
 	@echo "Authorized releases: release-patch, release-minor, release-major; recovery: release-resume VERSION=x.y.z"
 
 version release-version:
