@@ -17,8 +17,9 @@ read -r digest < "$fixture/archive.sha256"
 bash "$ROOT/scripts/ci/verify-file-checksum.sh" sha256 "$digest" "$2"
 unpacked="$(mktemp -d "$fixture/unpacked.XXXXXX")"
 tar -xzf "$2" -C "$unpacked"
-retained=("$unpacked/ic-memory-fixtures"/host-tools-test.*/Linux:x86_64/store/host-*/set.*/bin/yq)
-[[ ${#retained[@]} == 1 && -x "${retained[0]}" ]] || exit 1
+read -r retained < "$fixture/installer-retained-path"
+[[ -x "$unpacked/$retained" && ! -L "$unpacked/$retained" ]] || exit 1
+cmp "$temp_root/$retained" "$unpacked/$retained"
 for path in tools-setup.log tools-check.log dependencies.log validation.log \
     runtime-host-setup.log runtime-host-check.log runtime-ic-setup.log runtime-ic-check.log \
     runtime-setup.log runtime.log formatting.failure; do

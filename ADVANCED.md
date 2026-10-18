@@ -110,7 +110,8 @@ ledger generation only when the sealed snapshot, host allocation pool and
 `RuntimeBootstrapPolicy::runtime_bootstrap_identity()` match the established
 bootstrap binding. Independently sealed snapshots with equal canonical contents
 also match. A changed snapshot, pool or policy identity returns a typed error
-without evaluating policy or touching the ledger. A different runtime always
+without replaying admission or allocation validation or touching the ledger.
+The policy identity is evaluated once for the binding check. A different runtime always
 inspects its own ledger memory. No public reset API is provided; constructing a
 new runtime is the correct way to own a new backing memory.
 
@@ -123,7 +124,7 @@ namespaces can share an owner. Additional physical exclusions retain custody
 for unmanaged users. Namespace grants do not reserve numeric subranges.
 
 The runtime checks current namespace ownership and physical eligibility before
-applying custom `AllocationPolicy`. New keys receive the lowest unused pool ID
+applying the host's `RuntimeBootstrapPolicy`. New keys receive the lowest unused pool ID
 in canonical key order. Known keys retain their IDs; changed eligibility causes
 rejection, never relocation. Every retained ledger state occupies its ID.
 A populated pool ID without a ledger record causes `UnmanagedAllocation`;

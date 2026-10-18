@@ -377,6 +377,13 @@ fn repeated_bootstrap_accepts_independently_sealed_equivalent_declarations() {
     );
     assert_eq!(policy.0.get(), policy_calls);
     assert_eq!(
+        runtime
+            .verify_bootstrap(&equivalent, &pool(), &policy)
+            .unwrap(),
+        generation
+    );
+    assert_eq!(policy.0.get(), policy_calls);
+    assert_eq!(
         runtime.ledger_record_from_memory().expect("ledger after"),
         ledger_before
     );
@@ -401,6 +408,10 @@ fn repeated_bootstrap_is_bound_to_declarations_and_policy_identity() {
     assert!(matches!(
         policy_error,
         super::RuntimeBootstrapError::PolicyIdentityMismatch { .. }
+    ));
+    assert!(matches!(
+        runtime.verify_bootstrap(&declarations, &pool(), &IdentityPolicy::new([2; 32])),
+        Err(super::RuntimeBootstrapError::PolicyIdentityMismatch { .. })
     ));
 
     let alternate_declarations = SealedDeclarationSnapshot::new(vec![

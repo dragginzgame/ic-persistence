@@ -19,17 +19,16 @@ fn package_retention_refuses_a_replaced_fifo_without_a_writer() {
             source,
             cleanup_error: None,
         } = error
-            .downcast_ref::<ic_host_fs::durable::NamedWriteError<std::io::Error>>()
+            .downcast_ref::<ic_host_fs::durable::NamedWriteError<ic_host_artifacts::artifact::CopyError>>()
             .unwrap()
         else {
             panic!("expected clean producer refusal");
         };
         assert!(matches!(
-            source
-                .get_ref()
-                .unwrap()
-                .downcast_ref::<ic_host_artifacts::artifact::ArtifactError>(),
-            Some(ic_host_artifacts::artifact::ArtifactError::NotRegularFile)
+            source,
+            ic_host_artifacts::artifact::CopyError::Input(
+                ic_host_artifacts::artifact::ArtifactError::NotRegularFile
+            )
         ));
         let digest = Sha256Digest::compute(b"package bytes").to_string();
         assert!(!fixture.repo.retained_package(&digest).unwrap().exists());
@@ -492,10 +491,14 @@ fn durable_publication_replaces_complete_files_and_preserves_rejected_targets() 
     let target = fixture.repo.root.join("durable/release.json");
     Processes.write_bytes(&target, b"original receipt").unwrap();
     let mut original = fs::File::open(&target).unwrap();
+    let source = fixture.repo.root.join("complete-source");
+    fs::write(&source, b"complete replacement").unwrap();
     Processes
-        .write_with(&target, |file| {
-            std::io::Write::write_all(file, b"complete replacement")
-        })
+        .copy_verified(
+            &source,
+            &target,
+            Sha256Digest::compute(b"complete replacement"),
+        )
         .unwrap();
     assert_eq!(fs::read(&target).unwrap(), b"complete replacement");
     let mut original_bytes = Vec::new();
@@ -513,19 +516,18 @@ fn durable_publication_replaces_complete_files_and_preserves_rejected_targets() 
     };
     let before = entries();
     let error = Processes
-        .write_with(&target, |file| {
-            std::io::Write::write_all(file, b"partial replacement")?;
-            Err(std::io::Error::from(std::io::ErrorKind::PermissionDenied))
-        })
+        .copy_verified(&source, &target, Sha256Digest::compute(b"different bytes"))
         .unwrap_err();
     assert!(matches!(
         error
-            .downcast_ref::<ic_host_fs::durable::NamedWriteError<std::io::Error>>()
+            .downcast_ref::<ic_host_fs::durable::NamedWriteError<ic_host_artifacts::artifact::CopyError>>()
             .unwrap(),
         ic_host_fs::durable::NamedWriteError::Producer {
             source,
             cleanup_error: None,
-        } if source.kind() == std::io::ErrorKind::PermissionDenied
+        } if matches!(source, ic_host_artifacts::artifact::CopyError::Input(
+            ic_host_artifacts::artifact::ArtifactError::DigestMismatch { .. }
+        ))
     ));
     assert_eq!(fs::read(&target).unwrap(), b"complete replacement");
     assert_eq!(entries(), before);
@@ -625,11 +627,7 @@ impl Execute for Substitute {
         self.write_bytes(path, &serde_json::to_vec_pretty(value)?)
     }
 
-    fn write_with(
-        &self,
-        path: &Path,
-        write: impl FnOnce(&mut fs::File) -> std::io::Result<()>,
-    ) -> Result<()> {
+    fn copy_verified(&self, source: &Path, path: &Path, expected: Sha256Digest) -> Result<()> {
         let phase = {
             let mut state = self.state.borrow_mut();
             state
@@ -655,7 +653,7 @@ impl Execute for Substitute {
         if phase.as_deref() == Some("archive-before") {
             return Err("fixture failure before archive publication".into());
         }
-        Processes.write_with(path, write)?;
+        Processes.copy_verified(source, path, expected)?;
         if phase.as_deref() == Some("archive-after") {
             return Err("fixture failure after archive publication".into());
         }
@@ -2376,17 +2374,16 @@ fn archive_copy_refuses_a_directory_and_preserves_unpublished_state() {
         source: actual,
         cleanup_error: None,
     } = error
-        .downcast_ref::<ic_host_fs::durable::NamedWriteError<std::io::Error>>()
+        .downcast_ref::<ic_host_fs::durable::NamedWriteError<ic_host_artifacts::artifact::CopyError>>()
         .unwrap()
     else {
         panic!("archive read failure must retain its producer error before publication");
     };
     assert!(matches!(
-        actual
-            .get_ref()
-            .unwrap()
-            .downcast_ref::<ic_host_artifacts::artifact::ArtifactError>(),
-        Some(ic_host_artifacts::artifact::ArtifactError::NotRegularFile)
+        actual,
+        ic_host_artifacts::artifact::CopyError::Input(
+            ic_host_artifacts::artifact::ArtifactError::NotRegularFile
+        )
     ));
     assert!(!retained.exists());
     assert_eq!(fs::read(&foreign).unwrap(), b"unrelated evidence");

@@ -222,13 +222,17 @@ impl<M: Memory> MemoryRuntime<M> {
         pool: &crate::MemoryAllocationPool,
         policy: &P,
     ) -> Result<u64, RuntimeBootstrapError<P::Error>> {
-        let policy_identity = policy.runtime_bootstrap_identity();
         match &self.lifecycle {
             RuntimeLifecycle::Unbootstrapped => {
-                self.bootstrap_unbootstrapped(declarations, pool, policy, policy_identity)?;
+                self.bootstrap_unbootstrapped(
+                    declarations,
+                    pool,
+                    policy,
+                    policy.runtime_bootstrap_identity(),
+                )?;
             }
-            RuntimeLifecycle::Bootstrapped { binding, .. } => {
-                binding.validate(declarations, pool, &policy_identity)?;
+            RuntimeLifecycle::Bootstrapped { .. } => {
+                return self.verify_bootstrap(declarations, pool, policy);
             }
         }
         match &self.lifecycle {
@@ -237,6 +241,32 @@ impl<M: Memory> MemoryRuntime<M> {
                 unreachable!("successful bootstrap publishes committed allocations")
             }
         }
+    }
+
+    /// Verify the exact host bootstrap binding through a shared runtime reference.
+    ///
+    /// Returns the established generation only when declarations, pool and the
+    /// policy identity match. Evaluates the policy identity once, but never runs
+    /// admission or allocation validation, reads backing memory, writes, grows,
+    /// or opens an allocation. An unbootstrapped runtime is refused rather than
+    /// initialized. Hosts may share one committed runtime through `Rc` without
+    /// reconstructing its binding checks or attempting mutable bootstrap again.
+    pub fn verify_bootstrap<P: RuntimeBootstrapPolicy>(
+        &self,
+        declarations: &SealedDeclarationSnapshot,
+        pool: &crate::MemoryAllocationPool,
+        policy: &P,
+    ) -> Result<u64, RuntimeBootstrapError<P::Error>> {
+        let RuntimeLifecycle::Bootstrapped {
+            binding,
+            generation,
+            ..
+        } = &self.lifecycle
+        else {
+            return Err(RuntimeBootstrapError::NotBootstrapped);
+        };
+        binding.validate(declarations, pool, &policy.runtime_bootstrap_identity())?;
+        Ok(*generation)
     }
 
     fn validate_pool_custody(

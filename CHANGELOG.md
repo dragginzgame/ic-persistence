@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.48.2]
+
+- Verify an exact bootstrap binding through a shared runtime reference, allowing
+  hosts to retain one runtime without duplicating policy checks or replaying setup.
+- Keep installer regression fixtures at Shared Tooling; qualify Memory's failure
+  evidence directly against the installer and clarify current ownership boundaries.
+- Delegate verified release-archive copying to the selected Host filesystem API,
+  retaining independent archive integrity and retry checks ([#92](https://github.com/dragginzgame/ic-memory/issues/92)).
+
+[Detailed notes](docs/changelog/0.48.md#0482)
+
 ## [0.48.1] - 2026-10-17
 
 - Adopt IC Build 0.16 with the aligned Host 0.27.1 family and reuse its bounded,

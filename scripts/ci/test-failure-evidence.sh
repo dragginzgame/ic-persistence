@@ -52,17 +52,66 @@ temp_root="$fixture/temp"
 repository_root="$fixture/repository"
 export SHARED_TOOLING_STORE="$fixture/shared-store"
 
-# Retain this producer fixture for one named consumer proof: the real host
-# installer refusal must survive Memory's collector/archive round trip. Forced
-# version failure stops it before the general producer matrix; all effects are
-# substituted. Native installed-tool admission remains in tools-check and CI.
-if TMPDIR="$temp_root/ic-memory-fixtures" TEST_VERSION_STATUS=9 \
-    bash "$ROOT/scripts/ci/test-host-tools.sh" > "$temp_root/tools-setup.log" 2>&1; then
+# Exercise the public installer directly. Shared owns its regression matrix;
+# Memory owns preservation of this actual refusal and its failed candidate.
+installer_fixture="$temp_root/ic-memory-fixtures/host-admission"
+mkdir -p "$installer_fixture/bin" "$installer_fixture/consumer"
+cat > "$installer_fixture/probe" <<'PROBE'
+#!/usr/bin/env bash
+echo 'controlled version-probe failure' >&2
+exit 9
+PROBE
+chmod 755 "$installer_fixture/probe"
+rg_records="$(perl "$ROOT/scripts/ci/tool-catalog-records.pl" host "$ROOT/ci/tool-versions.env" RIPGREP)"
+IFS=$'\t' read -r _ rg_version _ _ <<< "$rg_records"
+rg_member="ripgrep-$rg_version-x86_64-unknown-linux-musl/rg"
+mkdir -p "$installer_fixture/${rg_member%/*}"
+cp "$installer_fixture/probe" "$installer_fixture/$rg_member"
+tar -czf "$installer_fixture/ripgrep.tar.gz" -C "$installer_fixture" "$rg_member"
+probe_digest="$(bash "$ROOT/scripts/ci/verify-file-checksum.sh" --print sha256 "$installer_fixture/probe")"
+archive_digest="$(bash "$ROOT/scripts/ci/verify-file-checksum.sh" --print sha256 "$installer_fixture/ripgrep.tar.gz")"
+awk -v probe="$probe_digest" -v archive="$archive_digest" '
+    /^export SHARED_TOOLING_(JQ|YQ|CLOC)_SHA256/ { sub(/=.*/, "=" probe) }
+    /^export SHARED_TOOLING_RIPGREP_SHA256/ { sub(/=.*/, "=" archive) }
+    { print }
+' "$ROOT/ci/tool-versions.env" > "$installer_fixture/pins.env"
+cat > "$installer_fixture/bin/uname" <<'UNAME'
+#!/usr/bin/env bash
+case "$1" in -s) echo Linux ;; -m) echo x86_64 ;; *) exit 2 ;; esac
+UNAME
+cat > "$installer_fixture/bin/curl" <<'CURL'
+#!/usr/bin/env bash
+set -euo pipefail
+output="" url=""
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        -o) output="$2"; shift 2 ;;
+        https://*) url="$1"; shift ;;
+        *) shift ;;
+    esac
+done
+case "$url" in
+    *.tar.gz) cp "$INSTALLER_FIXTURE/ripgrep.tar.gz" "$output" ;;
+    *) cp "$INSTALLER_FIXTURE/probe" "$output" ;;
+esac
+CURL
+chmod 755 "$installer_fixture/bin/"*
+if INSTALLER_FIXTURE="$installer_fixture" PATH="$installer_fixture/bin:$PATH" \
+    SHARED_TOOLING_STORE="$installer_fixture/store" \
+    bash "$ROOT/scripts/dev/install-host-tools.sh" --consumer "$installer_fixture/consumer" \
+        --versions "$installer_fixture/pins.env" > "$temp_root/tools-setup.log" 2>&1; then
     echo 'expected the controlled host-tool failure' >&2; exit 1
 else
     status=$?
 fi
 [[ "$status" == 1 ]] || exit 1
+grep -F 'version-probe-failed(exit=9)' "$temp_root/tools-setup.log" > /dev/null
+[[ ! -e "$installer_fixture/consumer/.tools/host" && ! -L "$installer_fixture/consumer/.tools/host" ]] || exit 1
+retained_candidates=("$installer_fixture"/store/host-*/set.*/bin/yq)
+[[ ${#retained_candidates[@]} == 1 && -x "${retained_candidates[0]}" ]] || exit 1
+cmp "$installer_fixture/probe" "${retained_candidates[0]}"
+# The oracle is outside the upload; do not reconstruct a producer fixture path.
+printf '%s\n' "${retained_candidates[0]#"$temp_root/"}" > "$fixture/installer-retained-path"
 printf 'original_status=%s\n' "$status" > "$temp_root/validation.log"
 printf 'selected dependency diagnostics\n' > "$temp_root/dependencies.log"
 printf 'runtime setup failure\n' > "$temp_root/runtime-setup.log"

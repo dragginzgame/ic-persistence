@@ -46,7 +46,7 @@ RETENTION_ASSERTION_EVENTS="$fixture/assertion-events" TMPDIR="$fixture" \
     > "$fixture/assertion.log" 2>&1 || status=$?
 [[ "$status" == 1 && "$(cat "$fixture/assertion-events")" == called ]] || exit 1
 # macOS and callers may select a temporary root through a directory alias.
-# Run the complete round trip so an earlier, unintended host-fixture failure
+# Run the complete round trip so an earlier, unintended fixture failure
 # cannot masquerade as the controlled installed-tool failure.
 mkdir "$fixture/physical-temp"
 ln -s physical-temp "$fixture/aliased-temp"

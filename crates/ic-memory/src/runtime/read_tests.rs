@@ -8,6 +8,73 @@ use std::{
 
 const PAGE: u64 = 65_536;
 
+#[test]
+fn shared_bootstrap_verification_never_touches_backing_or_releases_leases() {
+    use crate::{
+        GenericAllocationPolicy, MemoryAllocationPool, MemoryAuthority, RuntimeBootstrapError,
+    };
+    use std::rc::Rc;
+
+    let mut runtime = runtime(1);
+    let declarations = super::tests::declarations();
+    let pool = MemoryAllocationPool::new(
+        vec![MemoryAuthority::new("runtime_tests", "runtime_tests.").unwrap()],
+        vec![],
+    )
+    .unwrap();
+    assert!(matches!(
+        runtime.verify_bootstrap(&declarations, &pool, &GenericAllocationPolicy),
+        Err(RuntimeBootstrapError::NotBootstrapped)
+    ));
+    let generation = runtime
+        .bootstrap(&declarations, &pool, &GenericAllocationPolicy)
+        .unwrap();
+    let runtime = Rc::new(runtime);
+    let consumer = Rc::clone(&runtime);
+    let lease = runtime.open_memory("runtime_tests.rows.v1").unwrap();
+    let backing = &runtime.growth.backing;
+    let before = (
+        backing.safe_reads.get(),
+        backing.unsafe_reads.borrow().len(),
+        backing.writes.get(),
+        backing.grows.get(),
+    );
+    assert_eq!(
+        consumer
+            .verify_bootstrap(&declarations, &pool, &GenericAllocationPolicy)
+            .unwrap(),
+        generation
+    );
+    let changed = MemoryAllocationPool::new(pool.authorities().to_vec(), vec![200]).unwrap();
+    assert!(matches!(
+        consumer.verify_bootstrap(&declarations, &changed, &GenericAllocationPolicy),
+        Err(RuntimeBootstrapError::AllocationPoolMismatch)
+    ));
+    assert!(matches!(
+        consumer.verify_bootstrap(
+            &crate::SealedDeclarationSnapshot::new(vec![]).unwrap(),
+            &pool,
+            &GenericAllocationPolicy
+        ),
+        Err(RuntimeBootstrapError::DeclarationSnapshotMismatch)
+    ));
+    assert!(matches!(
+        consumer.open_memory("runtime_tests.rows.v1"),
+        Err(super::RuntimeOpenError::AlreadyOpen { .. })
+    ));
+    assert_eq!(
+        (
+            backing.safe_reads.get(),
+            backing.unsafe_reads.borrow().len(),
+            backing.writes.get(),
+            backing.grows.get(),
+        ),
+        before
+    );
+    drop(lease);
+    assert!(consumer.open_memory("runtime_tests.rows.v1").is_ok());
+}
+
 #[derive(Default)]
 struct ObservedMemory {
     memory: VectorMemory,

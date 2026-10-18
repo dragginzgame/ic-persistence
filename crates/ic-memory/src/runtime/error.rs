@@ -83,6 +83,9 @@ pub enum RuntimeConstructionError {
 #[non_exhaustive]
 #[derive(Debug, thiserror::Error)]
 pub enum RuntimeBootstrapError<P> {
+    /// Read-only bootstrap verification requires a committed runtime.
+    #[error("ic-memory runtime has not completed bootstrap validation")]
+    NotBootstrapped,
     /// A known-only historical selection failed before commitment.
     #[error(transparent)]
     Admission(#[from] super::BootstrapAdmissionError),

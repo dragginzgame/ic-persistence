@@ -17,6 +17,8 @@ distinguish current integration guidance from historical engineering evidence.
   policies, host allocation pools, recovery, and manual bootstrap.
 - [Safety invariants](../SAFETY.md) defines the properties that implementation
   changes must preserve.
+- [Implementation ownership](ownership.md) identifies the runtime, collection,
+  host-tooling and consumer integration boundaries.
 - [Host support and qualification](host-support.md) declares native prerequisites,
   supported macOS hosts, and qualification gaps.
 

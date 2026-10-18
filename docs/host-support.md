@@ -32,7 +32,7 @@ when recording release qualification; retain failed runs and their limitations.
 
 ## Prerequisites
 
-Pending 0.40 requires Rust 1.91.0 for the native IC Build metadata dependency.
+The current library declares Rust 1.91.0, including its native IC Build metadata dependency.
 The older matrix evidence above retains its original Rust 1.88.0 identity;
 current-source Rust 1.91 native CI acceptance must be recorded separately.
 

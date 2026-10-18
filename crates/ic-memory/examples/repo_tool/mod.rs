@@ -12,9 +12,9 @@ use ic_build::cargo::{
     observation::{CargoMetadataSpec, observe_metadata},
     selection::CargoFeatureSelection,
 };
-use ic_host_artifacts::artifact::{Sha256Digest, copy_reader};
+use ic_host_artifacts::artifact::Sha256Digest;
 use ic_host_fs::durable::{PublicationMode, WriteOptions};
-use ic_host_fs::read::{hash_file, open_regular_file};
+use ic_host_fs::read::hash_file;
 use ic_host_process::tool::{
     CompletedExecution, OutputLimit, OutputLimits, ToolError, capture_command,
 };
@@ -186,16 +186,9 @@ trait Execute {
         )?)
     }
 
-    fn write_with(
-        &self,
-        path: &Path,
-        write: impl FnOnce(&mut fs::File) -> std::io::Result<()>,
-    ) -> Result<()> {
-        Ok(ic_host_fs::durable::write_with(
-            path,
-            REPLACE_FILE_OPTIONS,
-            write,
-        )?)
+    fn copy_verified(&self, source: &Path, path: &Path, expected: Sha256Digest) -> Result<()> {
+        ic_host_fs::durable::copy_verified(source, path, expected, u64::MAX, REPLACE_FILE_OPTIONS)?;
+        Ok(())
     }
 }
 
@@ -660,16 +653,8 @@ impl<E: Execute> Repository<E> {
         let digest = Self::sha256(&package)?;
         let retained = self.retained_package(&digest)?;
         if !retained.exists() {
-            self.exec.write_with(&retained, |staging| {
-                let source = open_regular_file(&package).map_err(std::io::Error::from)?;
-                let copied = copy_reader(source, staging, u64::MAX)?;
-                if copied.sha256.to_string() != digest {
-                    return Err(std::io::Error::other(
-                        "package changed while retaining evidence",
-                    ));
-                }
-                Ok(())
-            })?;
+            self.exec
+                .copy_verified(&package, &retained, digest.parse()?)?;
         }
         require(
             Self::sha256(&retained)? == digest,

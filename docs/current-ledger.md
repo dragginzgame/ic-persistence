@@ -46,8 +46,10 @@ remains a separate boundary. Diagnostics do not grant allocation authority.
 ## Host configuration and component adoption
 
 Components contribute `MemoryRequest::new(authority, key)` and use the host's
-committed runtime. Warm binding and adoption check keys, current owner grants,
-policy token and the canonical allocation pool. Hosts supply a 32-byte token
+committed runtime. Exact warm host verification checks the complete declarations,
+canonical allocation pool and policy identity. Component `verify_authority`
+checks only its required keys and their current host-assigned owners; it does not
+reassert the host's policy or grants. Hosts supply a 32-byte token
 identifying all policy semantics/configuration and prepare fallible policy setup
 before bootstrap. Labels, versions and token derivation stay with the host; Memory
 compares the complete bytes without allocating a policy name. This token is not
