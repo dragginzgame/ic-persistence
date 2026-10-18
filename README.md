@@ -1,8 +1,9 @@
 # IC Storage
 
 IC Storage exposes governed stable collections through `ic_storage::adapter`.
-All public collections consume IC Memory runtime handles; memory extraction is
-not exposed. Collections retain the upstream stable structures' persisted formats.
+All public collections require IC Memory runtime handles; memory extraction is
+not exposed. Governed region views support retained trees sharing an allocation
+with application frames. Collections retain the upstream stable structures' persisted formats.
 Read the [package guide](crates/ic-storage/README.md) for the supported API and
 allocation ownership boundary.
 

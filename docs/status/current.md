@@ -14,6 +14,32 @@ The [root changelog](../../CHANGELOG.md) owns pending numbered notes. Package
 versions, the Git index and release refs remain maintainer-owned. Shared Tooling
 remains at the reviewed 0.23.0 snapshot. No sibling checkout is edited by this pass.
 
+## Governed retained regions: pending 0.5.4
+
+`BTreeMapRegion` retains an existing shared runtime lease and opens the exact
+upstream tree region for each operation. Bounded framing reads precede the
+consumer's retained-data admission; namespace key scans return owned snapshots.
+Initialization refuses nonempty regions, and reservation reports region-limit
+or typed IC Memory refusal without changing retained bytes or accounting.
+The [package guide](../../crates/ic-storage/README.md#retained-trees-inside-a-shared-allocation)
+describes IcyDB's page-257 integration and application-owned framing, namespace
+and capacity checks. The implementation addresses
+[#15 — Support retained governed collection regions sharing one control allocation](https://github.com/dragginzgame/ic-storage/issues/15).
+
+The three focused region tests pass natively and on Rust 1.91 with the locked
+IC Memory 0.48.0 graph. They also pass in a disposable copy selecting published
+IC Memory 0.48.2, without changing this workspace's lockfile. Tests seed the
+existing upstream restricted tree, interleave namespace mutations, cold reopen,
+retain adjacent frames, reject malformed framing/unknown namespaces, and verify
+growth refusal, retry and exclusive-lease release. Strict package Clippy, Wasm
+compilation, ten documentation examples, formatting, documentation links and
+the dependency boundary pass. This is adapter qualification, not a live canister
+upgrade or IcyDB adoption. Full release CI and native macOS remain unrun.
+
+Release 0.5.3 is committed at `249da24992da229464b809d44ffed7f5ab8d4bae`;
+0.5.4 is an additive pending change. The following sections retain the preceding
+0.5.3 implementation and composition evidence.
+
 The ownership cleanup removes obsolete private-engine import probes and a test
 of IC Memory's standalone unknown-key policy. Adapter tests retain persisted
 round trips and exclusive-lease retention, reservation, clearing and reset.
@@ -26,9 +52,9 @@ license, dependency-boundary, documentation-link and release-command checks pass
 Full release CI, clean-source package verification and macOS execution are not
 run by this cleanup.
 
-## Pending 0.5.3 adapter completion
+## Published 0.5.3 adapter completion
 
-The current batch incorporates the supported adapter work from PRs #2, #3 and
+Release 0.5.3 incorporates the supported adapter work from PRs #2, #3 and
 #10 against the post-retirement library. `Memory` and `Bound` expose the exact
 upstream interfaces without granting allocation authority. `BoundedCell` enforces
 declared encoding bounds before writes and retained-value decoding, while the
@@ -43,7 +69,7 @@ constants are not a supported entry-reservation guarantee. Controlled backing
 refusal proves unchanged bytes/accounting, retry, insertion and cold reopening.
 Seven unit tests and six Rustdoc examples pass, including on Rust 1.91; strict
 Clippy, warning-free Rustdoc and Wasm compilation pass. Full release CI and
-native macOS execution have not qualified this pending batch.
+native macOS execution were not qualified by that focused adapter pass.
 
 Issue #12 still requires an upstream discard-value primitive. The selected
 substrate's returning mutations materialize the old value; dropping it in a
@@ -58,8 +84,8 @@ release readiness have not been requalified by this repository-only cleanup.
 The adapter now supports consuming map reservation and vector reset, plus
 in-place map clearing, while retaining the exclusive allocation lease. These
 operations cover Canic's receipt preallocation and blob-payload reset needs
-without exporting raw memory or managers. The pending numbered notes are 0.5.3;
-package versions and the Git index are untouched. Native tests, strict native
+without exporting raw memory or managers. These operations shipped in 0.5.3.
+Native tests, strict native
 lint, Rust 1.91 tests, Rustdoc boundary examples and Wasm compilation pass.
 
 The explicit runtime handoff is prepared in [Canic #595](https://github.com/dragginzgame/canic/pull/595)

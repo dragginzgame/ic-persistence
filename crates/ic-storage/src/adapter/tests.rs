@@ -5,6 +5,8 @@ use ic_memory::{
 };
 use std::{cell::Cell, rc::Rc};
 
+mod regions;
+
 #[derive(Clone)]
 struct ControlledMemory {
     backing: VectorMemory,

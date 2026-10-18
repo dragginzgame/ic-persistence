@@ -3,7 +3,9 @@
 //! Constructors preserve upstream initialization, panic and persisted-format
 //! contracts. These wrappers expose neither raw memory nor unrestricted
 //! upstream collections.
-//! Use distinct admitted allocations and drop collections before reopening.
+//! Use distinct admitted allocations for owning collections. Region views retain
+//! a shared lease for disjoint application frames and reload roots per operation.
+//! Drop collections and all shared lease owners before reopening.
 //! IC Memory enforces one live lease per allocation within each runtime;
 //! hosts retain exclusive custody of the backing across runtimes.
 use crate::substrate::{self, DefaultMemoryImpl};
@@ -16,6 +18,9 @@ pub use substrate::{Memory, Storable, storable, storable::Bound};
 
 #[cfg(all(test, not(target_arch = "wasm32")))]
 mod tests;
+
+mod region;
+pub use region::{BTreeMapRegion, RegionGrowError};
 
 /// Governed upstream `BTreeMap`; initialization and failures follow upstream contracts.
 pub struct StableBTreeMap<K: Storable + Ord + Clone, V: Storable, M: Memory = DefaultMemoryImpl> {

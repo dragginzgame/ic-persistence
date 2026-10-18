@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.5.4]
+
+- Add governed B-tree region views for retained trees sharing an allocation with
+  application frames. Views retain one runtime lease, reload roots per operation,
+  support bounded framing inspection and preserve upstream collection bytes.
+  Region reservation refuses excess capacity without changing retained bytes.
+  Addresses [#15 — Support retained governed collection regions sharing one control allocation](https://github.com/dragginzgame/ic-storage/issues/15).
+
 ## [0.5.3] - 2026-10-18
 
 - Support map capacity reservation, map clearing and vector reset while retaining

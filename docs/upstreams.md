@@ -24,6 +24,14 @@ The exported `Memory` trait supports generic bounds, not allocation authority.
 schemas, decoding semantics and recovery remain consumer-owned. Map reservation
 accepts caller-owned page budgets and makes no node-layout entry-capacity promise.
 
+`BTreeMapRegion` retains an existing `Rc<RuntimeMemory>` for an exact range inside
+that allocation. IC Storage owns bounded region IO and operation-local upstream
+tree loading; it neither assigns another allocation nor exports a raw-memory
+constructor. The application owns disjoint frame access, framing/namespace
+admission and capacity budgets. All views retain the same lease and reload roots
+per operation; ordered key scans return owned snapshots. No IC Memory API or
+dependency change is needed. See the [retained-tree guide](../crates/ic-storage/README.md#retained-trees-inside-a-shared-allocation).
+
 The dependency checker applies consumer-owned policy in
 `ci/cargo-dependency-boundaries.json`; its implementation is included in the root
 Shared Tooling snapshot. It checks this workspace's dependency declarations, not

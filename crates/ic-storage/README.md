@@ -3,7 +3,8 @@
 Governed stable collections for Internet Computer applications. The supported
 public surface is `ic_storage::adapter`: `StableBTreeMap`, `StableBTreeSet`,
 `StableCell`, `BoundedCell`, `StableVec`, `StableMinHeap`, `StableLog`, their supported
-iterators, `LogWriteError`, `Memory`, `Storable`, `Bound` and `storable`. These wrappers preserve upstream
+iterators, `BTreeMapRegion`, `RegionGrowError`, `LogWriteError`, `Memory`, `Storable`,
+`Bound` and `storable`. These wrappers preserve upstream
 `ic-stable-structures` formats, initialization behavior and failure contracts.
 Consumers use the adapter rather than depending directly on the substrate.
 
@@ -64,6 +65,86 @@ invalid retained values refuse opening without rewriting bytes or leaking leases
 It preserves upstream cell bytes and initialization behavior, including initializing
 empty memory or memory without the cell magic. Applications retain codec, schema
 and recovery ownership; ordinary `StableCell` retains upstream's unchecked bounds.
+
+## Retained trees inside a shared allocation
+
+`BTreeMapRegion<K, V, M>` accepts an `Rc<RuntimeMemory<M>>` and an absolute,
+half-open allocation-page range. It retains the original lease alongside the
+application's disjoint frame owner. Construction performs no IO and grants no
+new allocation authority. The view implements neither `Memory` nor raw extraction.
+Every collection operation reloads the current root and allocator. `keys_range`
+returns an owned, ordered snapshot, so application/checkpoint views can interleave
+mutations without keeping stale roots or iterators. Applications choose and enforce
+their namespace ranges; `len` counts the whole physical tree.
+
+For `IcyDB`'s retained control layout, select `257..4_194_304`. Bytes have exactly
+the upstream `RestrictedMemory` offset and B-tree format. Keep the existing
+commit/boot/startup frame access through the same lease below page 257. No data
+copy, allocation reassignment or migration is required for this upstream layout.
+This interface does not support the retired independent tree format.
+
+```rust
+use ic_memory::RuntimeMemory;
+use ic_storage::adapter::{BTreeMapRegion, Memory};
+use std::rc::Rc;
+
+fn inspect_control<M: Memory>(
+    lease: Rc<RuntimeMemory<M>>,
+) -> Result<Option<Vec<u8>>, &'static str> {
+    let view = BTreeMapRegion::<[u8; 33], Vec<u8>, M>::new(lease, 257..4_194_304);
+    if view.allocated_pages() == 0 {
+        return Ok(None);
+    }
+    // Preserve the consumer's bounded checks before infallible tree loading.
+    let mut frame = [0; 4];
+    view.read(0, &mut frame);
+    if frame != *b"BTR\x02" {
+        return Err("invalid retained tree framing");
+    }
+    view.read(52, &mut frame);
+    if frame != *b"BTA\x01" {
+        return Err("invalid retained allocator framing");
+    }
+    // The consumer must still validate this header's schema/CRC, namespaces
+    // and record limits before accepting the control store.
+    Ok(view.get(&[0; 33]))
+}
+```
+
+Use `initialize` only on a zero-page region; it refuses nonempty memory without
+writing. Retained trees require admission followed by ordinary view operations.
+The application keeps its existing semantic-header, namespace and capacity checks.
+Malformed retained framing must return its corruption error before loading; the
+view does not catch upstream panics or implement application recovery.
+
+`read` checks the entire relative span against the allocated region before IO.
+`reserve_pages` takes a relative minimum page extent and returns `RegionGrowError`
+for region limits or typed IC Memory growth refusal. A rejected reservation
+preserves bytes and allocation accounting; a satisfied request performs no IO.
+Initialize empty regions before reserving. Reservation is a caller-qualified byte
+budget, with no entry-capacity or transactional-insert guarantee. Collection IO
+and growth stay within the selected region, including when adjacent frames exist.
+Do not mutate tree bytes through the retained lease or reenter collection access
+from record codecs. Drop all views and the caller's last `Rc` to release the lease.
+
+```compile_fail
+use ic_memory::VectorMemory;
+use ic_storage::adapter::BTreeMapRegion;
+use std::rc::Rc;
+let _ = BTreeMapRegion::<u64, u64>::new(Rc::new(VectorMemory::default()), 0..8);
+```
+
+```compile_fail
+fn extract(view: ic_storage::adapter::BTreeMapRegion<u64, u64>) {
+    let _ = view.into_memory();
+}
+```
+
+```compile_fail
+fn raw(view: ic_storage::adapter::BTreeMapRegion<u64, u64>) {
+    let _ = ic_storage::adapter::Memory::size(&view);
+}
+```
 
 ```compile_fail
 use ic_storage::adapter::{MemoryManager, DefaultMemoryImpl};
