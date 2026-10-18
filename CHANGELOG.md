@@ -1,6 +1,6 @@
 # Changelog
 
-## [0.5.4]
+## [0.5.4] - 2026-10-18
 
 - Add governed B-tree region views for retained trees sharing an allocation with
   application frames. Views retain one runtime lease, reload roots per operation,
