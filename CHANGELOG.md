@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.5.5]
+
+- Select Rust 1.99.1 for development and Linux/macOS CI, keeping the library's
+  Rust 1.91 minimum unchanged. Addresses
+  [#14 — Qualify Rust 1.99.1 as the development compiler](https://github.com/dragginzgame/ic-storage/issues/14).
+
 ## [0.5.4] - 2026-10-18
 
 - Add governed B-tree region views for retained trees sharing an allocation with

@@ -30,7 +30,7 @@ jobs:
           persist-credentials: false
       - name: Prepare Rust toolchains
         run: |
-          rustup toolchain install 1.99.0 --profile minimal --component rustfmt --component clippy --target wasm32-unknown-unknown
+          rustup toolchain install 1.99.1 --profile minimal --component rustfmt --component clippy --target wasm32-unknown-unknown
           rustup toolchain install 1.91.0 --profile minimal
       - name: Prepare pinned tools
         run: make install-tools
