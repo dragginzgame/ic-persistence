@@ -1,6 +1,6 @@
 # Changelog
 
-## [0.48.2]
+## [0.48.2] - 2026-10-18
 
 - Verify an exact bootstrap binding through a shared runtime reference, allowing
   hosts to retain one runtime without duplicating policy checks or replaying setup.
