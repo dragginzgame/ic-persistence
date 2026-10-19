@@ -90,9 +90,9 @@ dependencies = [
 
 [[package]]
 name = "base64"
-version = "0.13.1"
+version = "0.22.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9e1b586273c5702936fe7b7d6896644d8be71e6314cfe09d3167c95f712589e8"
+checksum = "72b3254f16251a8381aa12e40e3c4d2f0199f8c6508fbecb9d91f575e0fbb8c6"
 
 [[package]]
 name = "base64"
@@ -709,6 +709,16 @@ dependencies = [
 name = "ic-memory-runtime-qualification"
 version = "0.0.0"
 dependencies = [
+ "ic-platform",
+]
+
+[[package]]
+name = "ic-platform"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5cbe790c3b8625663d14e6ffea5af3163db658d6bd5f4f351769080837062fc5"
+dependencies = [
+ "ic_principal",
  "pocket-ic",
 ]
 
@@ -1156,12 +1166,12 @@ checksum = "f6b464fbc74e149a392436b17d523f769e057cb6877f6a5c4618bc6f11800548"
 
 [[package]]
 name = "pocket-ic"
-version = "16.0.0"
+version = "16.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "882559a1eea632f42b10a408d1f06f9c72a36fec6b0b9daa2eed0095a6fef593"
+checksum = "85135917c845e8fc132f5eca3a0a8cbab696477a5fee3c2dda168a0797f81e1c"
 dependencies = [
  "backon",
- "base64 0.13.1",
+ "base64 0.22.1",
  "candid",
  "flate2",
  "hex",
@@ -1184,7 +1194,6 @@ dependencies = [
  "tracing",
  "tracing-appender",
  "tracing-subscriber",
- "wslpath",
 ]
 
 [[package]]
@@ -2465,12 +2474,6 @@ name = "writeable"
 version = "0.6.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3ad82d2a33cdc9674dc7465672f271e096168fcdbe0f799d9e6db8c5892679dc"
-
-[[package]]
-name = "wslpath"
-version = "0.0.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "04a2ecdf2cc4d33a6a93d71bcfbc00bb1f635cdb8029a2cc0709204a045ec7a3"
 
 [[package]]
 name = "yoke"

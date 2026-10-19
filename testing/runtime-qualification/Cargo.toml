@@ -11,5 +11,5 @@ rust-version = "1.88.0"
 license = "MIT"
 
 [workspace.dependencies]
-# Paired caller-owned server API; see ../../AGENTS.md#dependency-exceptions.
-pocket-ic = "=16.0.0"
+# Native client boundary; Testkit retains server selection and lifecycle.
+ic-platform = { version = "0.2", default-features = false, features = ["pocket-ic"] }

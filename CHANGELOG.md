@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.49.1]
+
+- Consume IC Platform 0.2's native PocketIC interface in installed qualification,
+  aligning the client with the selected 16.1.0 server outside the library graph.
+
+[Detailed notes](docs/changelog/0.49.md#0491)
+
 ## [0.49.0] - 2026-10-19
 
 - Remove Ciborium from the library graph, using serde_cbor while preserving current

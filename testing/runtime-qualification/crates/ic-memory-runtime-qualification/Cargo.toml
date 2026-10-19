@@ -7,4 +7,4 @@ publish = false
 license.workspace = true
 
 [dependencies]
-pocket-ic.workspace = true
+ic-platform.workspace = true

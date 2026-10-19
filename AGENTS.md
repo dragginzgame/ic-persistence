@@ -130,18 +130,18 @@ merging or upgrading the two measured dependency graphs.
 
 ## Dependency exceptions
 
-Registry requirements remain compatible ranges, except for two qualified
-protocol boundaries recorded exactly in
+Registry requirements remain compatible ranges, except for the qualified
+substrate protocol boundary recorded exactly in
 [ci/dependency-pinning-exceptions.json](ci/dependency-pinning-exceptions.json).
 `ic-stable-structures = "=0.7.2"` owns the manager/Cell layouts inspected by
 `runtime/layout.rs` and `stable_cell.rs`; a change requires layout, corruption,
-growth and installed IO/upgrade qualification. `pocket-ic = "=16.0.0"` is scoped
-to the independent qualification workspace. The client pin remains unchanged;
-Testkit 0.25.4 owns the reviewed 16.1.0 server selection. Changing that pair
-requires repeating installed qualification; historical 16.0.0 server evidence
-cannot qualify the new pairing. These are existing
-maintainer-selected boundaries, not new dependency selections. Keep both
-lockfiles, sources, features and toolchains unchanged during pinning adoption.
+growth and installed IO/upgrade qualification. The independent qualification
+workspace consumes PocketIC through IC Platform's optional native client
+boundary; its lockfile selects client 16.1.0. Testkit 0.25.4 owns the reviewed
+16.1.0 server selection. Changing that pair requires repeating installed
+qualification; historical 16.0.0 client/server evidence cannot qualify the new
+pairing. Keep both lockfiles, sources, features and toolchains unchanged during
+pinning-only adoption.
 
 ## Rust Item Documentation Style
 

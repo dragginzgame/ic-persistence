@@ -38,7 +38,7 @@ See [advanced integration](../ADVANCED.md) and [the composed host example](../cr
 | `ic-host-fs`, `ic-host-process`, `ic-host-artifacts` | Native publication, bounded processes, file observation and artifact hashing/copying used by repo-tool. These are native-only development dependencies. |
 | `ic-build` | Available Cargo metadata/configuration observation and lock projection admission used by repo-tool. Memory retains release intent, command recipes, budgets and source/package custody. |
 | Shared Tooling snapshot | Common engineering rules, setup, formatting, release orchestration and archive primitives. Consumer selection and integration checks stay local. |
-| Testkit CLI / PocketIC | Explicit server preparation and lifecycle; the independent runtime runner consumes the selected PocketIC client and supplied Wasm. |
+| IC Platform / Testkit CLI | Platform supplies the optional native PocketIC client identities; Testkit owns explicit server preparation and lifecycle. The independent runtime runner consumes that client and supplied Wasm. |
 
 The library's normal dependencies are the substrate, Serde, serde_cbor and
 Thiserror. Host tooling does not enter the canister graph. The independent

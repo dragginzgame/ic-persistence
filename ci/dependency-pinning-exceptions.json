@@ -6,13 +6,5 @@
     "value": "=0.7.2",
     "reason": "The runtime validates the manager and Cell durable layouts and qualifies IO against this exact upstream protocol boundary.",
     "evidence": "AGENTS.md#dependency-exceptions"
-  },
-  {
-    "rule": "cargo-exact",
-    "file": "testing/runtime-qualification/Cargo.toml",
-    "subject": "pocket-ic",
-    "value": "=16.0.0",
-    "reason": "The independent qualification client is paired with Testkit's reviewed PocketIC 16.1.0 server; changing this pair requires installed IO/upgrade qualification.",
-    "evidence": "AGENTS.md#dependency-exceptions"
   }
 ]

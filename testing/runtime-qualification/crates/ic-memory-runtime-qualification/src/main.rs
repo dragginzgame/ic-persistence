@@ -1,5 +1,5 @@
 //! Explicit installed qualification of the supplied current-graph fixture.
-use pocket_ic::{ErrorCode, PocketIcBuilder, RejectResponse};
+use ic_platform::pocket_ic::{ErrorCode, PocketIcBuilder, RejectResponse};
 use std::{env, fs, time::Duration};
 
 fn assert_trap(error: RejectResponse) {

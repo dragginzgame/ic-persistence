@@ -6,8 +6,10 @@ The package keeps PocketIC dependencies out of
 the library's normal graph. It installs the supplied
 [`wasm-io-qualification`](../../crates/ic-memory/examples/wasm_io_qualification.rs) fixture in a
 caller-owned server selected by IC Testkit. It never starts or downloads a server.
-The client remains locked to PocketIC 16.0.0; Testkit owns its reviewed server
-selection separately. Prepare it explicitly with `make install-runtime-server`,
+IC Platform 0.2's optional native `pocket-ic` interface supplies the client,
+locked to PocketIC 16.1.0; Testkit owns its reviewed 16.1.0 server selection
+separately. Platform adds no lifecycle wrapper or alternate client. Prepare the
+server explicitly with `make install-runtime-server`,
 check it offline with `make runtime-server-check`, and prepare the selected IC
 tools with `make install-ic-tools` before running `make test-runtime`.
 The latter builds the supplied fixture and runner offline, then qualifies the

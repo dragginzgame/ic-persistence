@@ -1,5 +1,22 @@
 # Runtime IO and maintainer improvements qualification
 
+## IC Platform 0.2 client boundary — 2026-10-19
+
+The pending 0.49.1 runner consumes registry IC Platform 0.2.0, archive source
+`c7da516aef66d1f3623c85aa7cf304c17a5877d5`, with only its `pocket-ic` feature.
+It exposes the upstream client; the independent lockfile selects PocketIC
+16.1.0. Testkit CLI 0.25.4 still selects and manages server 16.1.0. The library
+and supplied Wasm source, stable-memory substrate and stored formats are unchanged.
+
+Locked metadata, all-target runner checking, strict Clippy and the actual Rust
+1.88 check pass on Linux, along with formatting and dependency admission.
+The prepared server's offline admission passes. These are not installed IO,
+upgrade or rollback acceptance for the new client/server pair; that qualification
+requires its separate authorization and remains pending, including native macOS.
+Source/cache and compile logs are retained under
+`/tmp/ic-memory-platform020.2hd8jkvq/`. Earlier receipts below retain their
+original client/server identities.
+
 ## Binaryen 133 current-fixture qualification
 
 On 2026-10-10, local Linux qualification of the uncommitted **0.35.3** candidate

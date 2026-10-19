@@ -149,12 +149,13 @@ Wasm, input hashes and all optimizer/server/runtime logs remain under
 `target/qualification/runtime/`, including failures. Normal library builds and
 their Wasm budgets remain unoptimized. The runner consumes
 `IC_TESTKIT_POCKET_IC_URL`; it never downloads or
-spawns a server. The PocketIC client remains locked to 16.0.0; Testkit selects
-server 16.1.0. This new pairing requires installed IO/upgrade qualification on
-Linux and both macOS hosts, supplied by the separate runtime CI jobs. Historical
-16.0.0 server results remain scoped to their original inputs. Failed CLI setup,
-server attempts and runtime logs remain available; no old bundle is converted
-or deleted. Library and release gates do not acquire this server dependency.
+spawns a server. IC Platform 0.2's native PocketIC boundary supplies the locked
+16.1.0 client; Testkit selects server 16.1.0. This pairing requires installed
+IO/upgrade qualification on Linux and both macOS hosts, supplied by the separate
+runtime CI jobs. Historical 16.0.0 client/server results remain scoped to their
+original inputs. Failed CLI setup, server attempts and runtime logs remain
+available; no old bundle is converted or deleted. Library and release gates do
+not acquire this server dependency.
 
 `make cloc` reports the root library workspace by default using locked, offline
 Cargo metadata; it neither builds nor installs tools. Select the independent
