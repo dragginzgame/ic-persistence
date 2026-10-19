@@ -1,6 +1,6 @@
 # Changelog
 
-## [0.49.0]
+## [0.49.0] - 2026-10-19
 
 - Remove Ciborium from the library graph, using serde_cbor while preserving current
   ledger and snapshot bytes, recovery bounds and checksums.
