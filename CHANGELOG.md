@@ -1,6 +1,6 @@
 # Changelog
 
-## [0.5.7]
+## [0.5.7] - 2026-10-19
 
 - Prepare and verify the release metadata editor alongside common tools during
   authorized release setup, including after compiler changes. Check-only
