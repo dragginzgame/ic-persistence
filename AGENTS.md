@@ -42,6 +42,9 @@ Releases use the local Cargo adapter and shared metadata helpers and direct deli
 `origin/main`. The shared contribution and release authorization rules apply.
 `make publish-check` and `make publish` require clean source at an annotated
 release tag. Publication uses the shared attempt runner and crates.io.
-Before release preflight, explicitly run `make install-release-tools`;
-`make release-tools-check` verifies the selected published metadata editor offline.
+Authorized release preparation installs and checks the selected metadata editor
+alongside common tools. Standalone preflight remains check-only;
+`make install-release-tools` explicitly prepares the editor outside a release.
+`make release-tools-check` verifies it offline, and `make test-release-preflight`
+qualifies the local preparation/check boundary with substituted tool effects.
 Host scope and current qualification limits are documented in [README.md](README.md).

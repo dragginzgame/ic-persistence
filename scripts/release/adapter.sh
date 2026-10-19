@@ -14,9 +14,10 @@ case "$operation" in
         awk -v version="${RELEASE_VERSION:?}" -v previous="$current" -v date="${RELEASE_DATE:?}" \
             -f scripts/ci/finalize-release-changelog.awk CHANGELOG.md > /dev/null
         bash scripts/ci/cargo-release-preflight.sh "$PWD" "$prepare" \
-            --pin ci/tool-versions.env \
-            --check tools-check --prepare install-tools --prepare tools-check
-        bash scripts/release/editor.sh --check > /dev/null
+            --pin ci/tool-versions.env --pin scripts/release/editor.sh \
+            --check tools-check --check release-tools-check \
+            --prepare install-tools --prepare install-release-tools \
+            --prepare tools-check --prepare release-tools-check
         ;;
     prepare)
         bash scripts/ci/check-release-source.sh --allow Cargo.toml --allow Cargo.lock --allow CHANGELOG.md

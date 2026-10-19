@@ -14,6 +14,53 @@ The [root changelog](../../CHANGELOG.md) owns pending numbered notes. Package
 versions, the Git index and release refs remain maintainer-owned. Shared Tooling
 is recorded in the root snapshot. No sibling checkout is edited by this pass.
 
+## Release preflight completion: pending 0.5.7
+
+The checkout is released 0.5.6 at `a8a9c99`. Its incoming changelog explanation
+is preserved. Authorized release preparation now installs the metadata editor
+alongside common tools, then checks both. Standalone preflight remains offline
+and check-only. The preflight binds the editor selector as well as the common
+catalog against drift during setup. No release, version change or Git index/ref
+mutation is part of this fix.
+
+`make test-release-preflight` exercises the actual local adapter and shared
+preflight dispatcher with substituted Git, Cargo and tool effects. Six cases
+cover fresh setup, prepared offline admission, missing/stale editor refusal,
+compiler-change repair and failed installation without metadata changes.
+The focused gate joins `check-release-commands`. Native Linux fixture checks,
+ShellCheck, snapshot integrity, pins, declaration boundaries and documentation
+links pass. Full CI, a live release and native macOS remain unrun.
+
+Platform's concurrent [PR #32](https://github.com/dragginzgame/ic-platform/pull/32)
+now supplies the interface tracked by
+[Platform #30](https://github.com/dragginzgame/ic-platform/issues/30).
+An overlapping isolated draft was stopped in favor of the existing contribution.
+Review identified missing codec exports: Storage currently exposes the full
+upstream `storable` namespace, so adopting only `Bound`/`Storable` would remove
+existing public codec names. A focused compatibility patch and original-type
+assertions are prepared separately; producer integration/publication still
+precedes ordinary Storage adoption. The actual library declarations, private
+substrate alias and lock selection remain unchanged here.
+The [compatibility review](https://github.com/dragginzgame/ic-platform/pull/32#issuecomment-6268357398)
+contains the exact export completion. The actual PR plus that patch passes its
+two native Rust 1.88 identity/consumer tests, strict selected Clippy and Rust 1.91
+Wasm compilation. An import-only Storage 0.5.6 source copy against the actual PR
+plus that patch passes all ten adapter tests and Wasm checking on Rust 1.91 with
+published Memory 0.48.2. This is source qualification, not ordinary adoption.
+Evidence and the patch remain under
+`/tmp/ic-storage-next-improvements.BJsY3o/`.
+
+[Issue #12](https://github.com/dragginzgame/ic-storage/issues/12) remains blocked
+on a released discard primitive. Latest upstream remains 0.7.2; open upstream
+[PR #440](https://github.com/dfinity/stable-structures/pull/440) at `3531464`
+contains a genuine internal replacement that skips reading the displaced lazy
+value, but does not supply discard removal. No returning-wrapper workaround,
+fork, dependency update or performance claim is added. Consumer IC instruction,
+cycle and Wasm measurements require a supplying accepted/released implementation.
+
+The following adoption/qualification sections retain their original source-bound
+history; their earlier pending states are not the current checkout status.
+
 ## Shared Tooling 0.25.0 adoption: pending 0.5.5
 
 The root snapshot now selects committed source

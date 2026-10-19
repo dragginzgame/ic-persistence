@@ -7,7 +7,7 @@ export YQ := $(CURDIR)/.tools/host/bin/yq
 release-patch release-minor release-major release-resume: export IC_STORAGE_RELEASE_PREPARE := 1
 
 .PHONY: help version check-doc-links check-license check-pins check-storage-boundary check-release-commands ci
-.PHONY: install-release-tools release-tools-check
+.PHONY: install-release-tools release-tools-check test-release-preflight
 .PHONY: release-version release-preflight release-verify release-prepare-version
 .PHONY: release-prepared-check release-files release-commit-check release-committed-check
 .PHONY: release-tagged-check release-push-check
@@ -41,7 +41,10 @@ check-pins:
 check-storage-boundary:
 	bash scripts/ci/check-cargo-dependency-boundaries.sh --consumer "$(CURDIR)"
 
-check-release-commands:
+test-release-preflight:
+	+bash scripts/release/test-preflight.sh
+
+check-release-commands: test-release-preflight
 	bash scripts/ci/check-release-commands.sh . make/consumer.mk make/tools.mk make/release.mk make/rust-format.mk make/execution.mk scripts/ci/check-make-execution.sh scripts/ci/check-release-delivery.sh ci/release-delivery.txt
 
 ci:

@@ -44,9 +44,11 @@ implementation.
 
 Authorized releases use `make release-patch`, `make release-minor` or
 `make release-major`; `make release-resume VERSION=x.y.z` resumes the exact
-recorded candidate. First run `make install-release-tools` to prepare the selected
-published IC Build 0.18.0 metadata editor; `make release-tools-check` verifies it
-offline. Release preparation supplies its absolute path and a 1 MiB per-document
+recorded candidate. Authorized release preparation installs and checks the selected
+published IC Build 0.18.0 metadata editor alongside common tools. Separate setup
+uses `make install-release-tools`; `make release-tools-check` verifies it offline.
+Read-only preflight checks never install tools. Release preparation supplies the
+editor's absolute path and a 1 MiB per-document
 input limit to Shared Tooling. This host tool is separate from library dependencies
 and common development setup. Publication uses `make publish-check` and `make publish`
 from clean source at an annotated release tag. See [the release contract](docs/releases.md).

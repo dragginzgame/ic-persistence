@@ -1,6 +1,16 @@
 # Changelog
 
+## [0.5.7]
+
+- Prepare and verify the release metadata editor alongside common tools during
+  authorized release setup, including after compiler changes. Check-only
+  preflight stays offline and never installs tools; failed setup stops before
+  validation or version preparation.
+
 ## [0.5.6] - 2026-10-19
+
+- Tooling-only release following a release-tooling setup error. No library API,
+  runtime behavior or stored-format changes.
 
 ## [0.5.5] - 2026-10-19
 
