@@ -1,6 +1,6 @@
 # Changelog
 
-## [0.5.5]
+## [0.5.5] - 2026-10-19
 
 - Adopt Shared Tooling 0.25.0, including grouped dependency formatting and
   transactional release metadata preparation through published IC Build 0.18.0.
