@@ -40,7 +40,7 @@ See [advanced integration](../ADVANCED.md) and [the composed host example](../cr
 | Shared Tooling snapshot | Common engineering rules, setup, formatting, release orchestration and archive primitives. Consumer selection and integration checks stay local. |
 | Testkit CLI / PocketIC | Explicit server preparation and lifecycle; the independent runtime runner consumes the selected PocketIC client and supplied Wasm. |
 
-The library's normal dependencies are the substrate, Serde, Ciborium and
+The library's normal dependencies are the substrate, Serde, serde_cbor and
 Thiserror. Host tooling does not enter the canister graph. The independent
 [qualification workspace](../testing/runtime-qualification/Cargo.toml) deliberately
 keeps its host-only PocketIC graph and lockfile outside normal library gates.

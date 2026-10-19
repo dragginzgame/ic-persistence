@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.49.0]
+
+- Remove Ciborium from the library graph, using serde_cbor while preserving current
+  ledger and snapshot bytes, recovery bounds and checksums.
+- **Breaking error API:** decoder failures now expose serde_cbor errors; update
+  callers that name or downcast the former Ciborium error type.
+
+[Detailed notes](docs/changelog/0.49.md#0490)
+
 ## [0.48.2] - 2026-10-18
 
 - Verify an exact bootstrap binding through a shared runtime reference, allowing

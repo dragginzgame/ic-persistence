@@ -24,7 +24,7 @@ fn committed_bindings_serialize_checked_key_and_slot() {
         })
     );
     let mut bytes = Vec::new();
-    ciborium::into_writer(declaration, &mut bytes).unwrap();
+    serde_cbor::to_writer(&mut bytes, declaration).unwrap();
     assert_eq!(bytes, b"\xa2\x6astable_key\x6bapp.rows.v1\x64slot\x0a");
 }
 
@@ -40,8 +40,8 @@ fn diagnostic_metadata_accepts_printable_ascii_through_the_byte_limit() {
         let json = serde_json::json!({"authority":value,"key_prefix":"app."});
         assert_eq!(serde_json::to_value(&grant).unwrap(), json);
         let mut bytes = Vec::new();
-        ciborium::into_writer(&grant, &mut bytes).unwrap();
-        let wire: serde_json::Value = ciborium::from_reader(bytes.as_slice()).unwrap();
+        serde_cbor::to_writer(&mut bytes, &grant).unwrap();
+        let wire: serde_json::Value = serde_cbor::from_reader(bytes.as_slice()).unwrap();
         assert_eq!(wire, json);
         #[cfg(feature = "test-support")]
         {
@@ -50,7 +50,7 @@ fn diagnostic_metadata_accepts_printable_ascii_through_the_byte_limit() {
                 grant
             );
             assert_eq!(
-                ciborium::from_reader::<MemoryAuthority, _>(bytes.as_slice()).unwrap(),
+                serde_cbor::from_reader::<MemoryAuthority, _>(bytes.as_slice()).unwrap(),
                 grant
             );
         }
@@ -100,8 +100,8 @@ fn authority_decode_rejects_invalid_metadata_before_pool_assembly() {
     ] {
         assert!(serde_json::from_value::<MemoryAuthority>(grant.clone()).is_err());
         let mut bytes = Vec::new();
-        ciborium::into_writer(&grant, &mut bytes).unwrap();
-        assert!(ciborium::from_reader::<MemoryAuthority, _>(bytes.as_slice()).is_err());
+        serde_cbor::to_writer(&mut bytes, &grant).unwrap();
+        assert!(serde_cbor::from_reader::<MemoryAuthority, _>(bytes.as_slice()).is_err());
         assert!(
             serde_json::from_value::<MemoryAllocationPool>(
                 serde_json::json!({"authorities":[grant],"excluded_ids":[]})

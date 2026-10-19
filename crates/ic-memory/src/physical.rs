@@ -440,15 +440,15 @@ mod tests {
     fn payload_uses_bounded_binary_bytes() {
         let record = CommittedGenerationBytes::new(7, vec![0, 24, 255]);
         let bytes = crate::test_cbor::to_vec(&record).unwrap();
-        let value: ciborium::Value = crate::cbor::from_slice_exact(&bytes).unwrap();
-        let ciborium::Value::Map(fields) = value else {
+        let value: serde_cbor::Value = crate::cbor::from_slice_exact(&bytes).unwrap();
+        let serde_cbor::Value::Map(fields) = value else {
             panic!("record map")
         };
         let (_, payload) = fields
             .iter()
-            .find(|(key, _)| key.as_text() == Some("payload"))
+            .find(|(key, _)| matches!(key, serde_cbor::Value::Text(text) if text == "payload"))
             .unwrap();
-        assert_eq!(*payload, ciborium::Value::Bytes(vec![0, 24, 255]));
+        assert_eq!(*payload, serde_cbor::Value::Bytes(vec![0, 24, 255]));
         assert_eq!(
             crate::cbor::from_slice_exact::<CommittedGenerationBytes>(&bytes).unwrap(),
             record

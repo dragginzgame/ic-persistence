@@ -313,7 +313,7 @@ mod tests {
 
     fn value_map_mut(
         value: &mut crate::test_cbor::Value,
-    ) -> &mut Vec<(crate::test_cbor::Value, crate::test_cbor::Value)> {
+    ) -> &mut std::collections::BTreeMap<crate::test_cbor::Value, crate::test_cbor::Value> {
         let crate::test_cbor::Value::Map(map) = value else {
             panic!("expected CBOR map");
         };
@@ -368,7 +368,7 @@ mod tests {
         for value in [
             Value::Null,
             Value::Integer(1.into()),
-            Value::Map(vec![]),
+            Value::Map(std::collections::BTreeMap::new()),
             Value::Text(String::new()),
             Value::Bytes(vec![]),
         ] {
@@ -384,10 +384,10 @@ mod tests {
         let record = value_array_mut(records)
             .first_mut()
             .expect("allocation record");
-        value_map_mut(record).push((
+        value_map_mut(record).insert(
             crate::test_cbor::Value::Text("future_record_field".to_string()),
             crate::test_cbor::Value::Bool(true),
-        ));
+        );
 
         let err = decode_mutated_ledger(value);
 
@@ -402,7 +402,8 @@ mod tests {
             (Value::Text("current".to_string()), Value::Null),
             (Value::Text("future_field".to_string()), Value::Bool(true)),
         ];
-        let bytes = crate::test_cbor::to_vec(&Value::Map(map)).expect("unknown-field store");
+        let bytes = crate::test_cbor::to_vec(&Value::Map(map.into_iter().collect()))
+            .expect("unknown-field store");
 
         let err = crate::test_cbor::from_slice::<LedgerCommitStore>(&bytes)
             .expect_err("unknown store field must fail closed");

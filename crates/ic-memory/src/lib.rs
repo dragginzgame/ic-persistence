@@ -97,24 +97,20 @@ mod validation;
 mod test_cbor {
     use serde::{Serialize, de::DeserializeOwned};
 
-    pub use ciborium::Value;
+    pub use serde_cbor::Value;
 
-    pub fn to_vec<T: Serialize>(
-        value: &T,
-    ) -> Result<Vec<u8>, ciborium::ser::Error<std::io::Error>> {
+    pub fn to_vec<T: Serialize>(value: &T) -> Result<Vec<u8>, serde_cbor::Error> {
         let mut bytes = Vec::new();
-        ciborium::into_writer(value, &mut bytes)?;
+        serde_cbor::to_writer(&mut bytes, value)?;
         Ok(bytes)
     }
 
-    pub fn from_slice<T: DeserializeOwned>(
-        bytes: &[u8],
-    ) -> Result<T, ciborium::de::Error<std::io::Error>> {
+    pub fn from_slice<T: DeserializeOwned>(bytes: &[u8]) -> Result<T, serde_cbor::Error> {
         crate::cbor::from_slice_exact(bytes)
     }
 
-    pub fn to_value<T: Serialize>(value: T) -> Result<Value, ciborium::value::Error> {
-        Value::serialized(&value)
+    pub fn to_value<T: Serialize>(value: T) -> Result<Value, serde_cbor::Error> {
+        serde_cbor::value::to_value(value)
     }
 
     pub fn hex_fixture(contents: &str) -> Vec<u8> {

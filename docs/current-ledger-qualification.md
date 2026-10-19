@@ -1,7 +1,7 @@
 # Current ownership ledger qualification
 
-The pending 0.48 state-free `ICMKEY01` cut and its source-bound evidence are
-recorded in [the current release notes](changelog/0.48.md). Sections below retain
+The 0.48 state-free `ICMKEY01` cut and its source-bound evidence are
+recorded in [the 0.48 release notes](changelog/0.48.md). Sections below retain
 their original source/format qualification; older lifecycle-state and stored-format
 results do not qualify this cut or establish retained-image compatibility.
 
@@ -11,6 +11,66 @@ declared 0.26.2. Later reviews and experiments identify their own source below.
 These are local Linux source, behavior and footprint observations; they do not
 establish publication or retained-installation qualification. The
 [current contract](current-ledger.md) owns consumer API and deployment requirements.
+
+## 0.49 CBOR backend replacement (2026-10-19)
+
+The baseline is `a72722c`, the maintainer's Host 0.29 / Build 0.21 dependency
+update atop released `7594a26` (0.48.2). The library replaces Ciborium 0.2.2 with
+serde_cbor 0.11.2 under the maintainer's selected IC-stack alignment. The
+independent qualification graph already selects that version through
+`ic-transport-types 0.49.2` and PocketIC 16.0.0. That host graph does not establish
+how much code a particular canister will share.
+
+Unrelated selected dependencies, package metadata and the independent runtime
+lockfile remain unchanged. The own package version is still 0.48.2 while the
+pending 0.49 minor changes the public decoder-error type. The current stored
+format, marker and fixtures are preserved, requiring no retained-image reset.
+The maintained source/normal-build graph contains neither Ciborium nor another
+alternative codec selection.
+
+Seventeen temporary cross-codec vectors verify exact writer bytes and decoding
+in both directions at empty/full allocation sets, collection/integer widths,
+maximum key length and protected snapshots. The production reader still rejects
+excessive byte/text/nesting/count advertisements before allocation and delegates
+exact typed consumption to serde_cbor. Current wire fixture bytes are unchanged.
+The comparison's Ciborium dependency is outside both maintained workspaces.
+
+Matched Rust 1.99.0 `wasm-size` builds use the same profile and exports:
+
+| Probe | Before bytes | After bytes | Delta |
+| --- | ---: | ---: | ---: |
+| Core | 152,908 | 237,994 | +85,086 |
+| Diagnostics | 158,875 | 247,553 | +88,678 |
+| Admission | 156,600 | 241,641 | +85,041 |
+| Runtime integration | 157,183 | 244,024 | +86,841 |
+| IO fixture | 165,381 | 256,997 | +91,616 |
+| IO / Binaryen O3 | 148,716 | 232,792 | +84,076 |
+| IO / Binaryen Os | 148,451 | 232,390 | +83,939 |
+| IO / Binaryen Oz | 148,147 | 228,628 | +80,481 |
+
+These are standalone Memory fixture increases. The older controlled
+[codec comparison](audits/wasm-codec-size-2026-07-14.md) also found serde_cbor
+larger, at its own inputs. Neither result establishes the total delta in an
+application that already uses serde_cbor. No whole-canister size saving is claimed.
+
+Prepared Testkit 0.25.4 / PocketIC 16.1.0 server qualification passes fresh
+installation, same-codec upgrade, invalid-IO rollback, post-persistence upgrade
+trap, geometry refusal and clean retry on original/O3/Os/Oz artifacts. A temporary
+runner changes only initial installation to the captured Ciborium artifact;
+all four old-to-new upgrades and failure/retry cases pass with retained mappings
+and payload markers. This proves current CBOR compatibility, not compatibility
+with formats retired before 0.48 or deployed application adoption.
+
+All nine valid-IO instruction rows match before/after for each optimization.
+These operations do not measure codec/cold-bootstrap instruction costs; total
+cycles and composed-application size remain unmeasured. Native macOS and full
+release gates are outside this focused Linux qualification.
+
+Final comparison logs/driver are under `/tmp/ic-memory-serde-cbor.6fETha/`.
+The baseline source and artifacts remain under `/tmp/ic-memory-cbor-removal.XI7N8A/`
+and `target/qualification/runtime/attempt.dEyeBb/`; the final installed artifacts
+and checksums are `target/qualification/runtime/attempt.vDqXRz/`. No tool
+installation, application reset or publication occurred.
 
 ## Deferred IC Wire review (2026-10-16)
 

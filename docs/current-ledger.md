@@ -33,6 +33,14 @@ checksum-bound. The opaque payload is a byte string. Logical recovery takes its
 `current_generation` from the checked header rather than decoding another
 counter. JSON is diagnostic output, not an alternate snapshot input.
 
+The pending 0.49 codec replacement uses serde_cbor with the same current bytes and
+fixtures. It does not change `ICMKEY01`, map/array shapes, integer widths, opaque
+byte strings or checksum inputs, and requires no retained-image retirement.
+Memory still checks byte, text, nesting and collection bounds before allocation
+and requires exact consumption. Public decoder errors now carry
+`serde_cbor::Error` rather than Ciborium errors; callers
+that inspect the source type must update when adopting 0.49.
+
 Recovery checks the marker/checksum, bounded record-array CBOR and ownership
 integrity. Present invalid or incompatible state
 cannot initialize genesis or fall back to another generation. Publication checks

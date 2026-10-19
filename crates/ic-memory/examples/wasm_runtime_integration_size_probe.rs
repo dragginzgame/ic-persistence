@@ -71,7 +71,7 @@ pub extern "C" fn ic_memory_wasm_runtime_integration_size_probe_summary() -> u32
             let slot = slot.try_borrow().ok()?;
             let summary = slot.as_ref()?.memory_allocation_summary().ok()?;
             let mut bytes = Vec::new();
-            ciborium::into_writer(&summary, &mut bytes).ok()?;
+            serde_cbor::to_writer(&mut bytes, &summary).ok()?;
             u32::try_from(bytes.len()).ok()
         })
         .unwrap_or(u32::MAX)

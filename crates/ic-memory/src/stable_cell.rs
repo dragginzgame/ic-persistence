@@ -47,6 +47,11 @@ pub enum StableCellPayloadError {
 /// StableCellLedgerError
 ///
 /// Stable-cell ledger record validation failure.
+///
+/// Record errors retain the CBOR decoder's typed source. Ledger recovery and
+/// allocation integrity remain separate checks after decoding.
+///
+
 #[non_exhaustive]
 #[derive(Debug, Error)]
 pub enum StableCellLedgerError {
@@ -55,7 +60,7 @@ pub enum StableCellLedgerError {
     Payload(#[from] StableCellPayloadError),
     /// Stable-cell value bytes are not a valid ledger record.
     #[error("stable-cell ledger record decode failed: {0}")]
-    Record(#[source] ciborium::de::Error<std::io::Error>),
+    Record(#[source] serde_cbor::Error),
 }
 
 /// Decode the raw value payload from an `ic-stable-structures::Cell` memory.
@@ -123,7 +128,7 @@ pub fn stable_cell_payload_length<M: Memory>(
 /// validates protected commit recovery before trusting any ledger payload.
 pub fn decode_stable_cell_commit_store(
     bytes: &[u8],
-) -> Result<LedgerCommitStore, ciborium::de::Error<std::io::Error>> {
+) -> Result<LedgerCommitStore, serde_cbor::Error> {
     crate::cbor::from_slice_exact(bytes)
 }
 
@@ -168,7 +173,7 @@ impl EncodedLedgerRecord {
             Vec::with_capacity(capacity),
             crate::constants::MAX_LEDGER_RECORD_BYTES,
         );
-        if let Err(error) = ciborium::into_writer(record, &mut buffer) {
+        if let Err(error) = serde_cbor::to_writer(&mut buffer, record) {
             if buffer.attempted_len > crate::constants::MAX_LEDGER_RECORD_BYTES {
                 return Err(buffer.attempted_len);
             }
@@ -335,7 +340,7 @@ mod tests {
         else {
             panic!("commit store map");
         };
-        map.push((Value::Text("future_field".to_string()), Value::Bool(true)));
+        map.insert(Value::Text("future_field".to_string()), Value::Bool(true));
         let bytes = crate::test_cbor::to_vec(&Value::Map(map)).expect("unknown-field stable cell");
 
         let err = decode_stable_cell_commit_store(&bytes)

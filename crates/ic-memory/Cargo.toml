@@ -24,9 +24,9 @@ ic-host-process.workspace = true
 test-support = []
 
 [dependencies]
-ciborium.workspace = true
 ic-stable-structures.workspace = true
 serde.workspace = true
+serde_cbor.workspace = true
 thiserror.workspace = true
 
 [dev-dependencies]

@@ -1,4 +1,7 @@
-use serde::{Deserialize, Deserializer, de::DeserializeOwned};
+use serde::{
+    Deserialize, Deserializer,
+    de::{DeserializeOwned, Error as _},
+};
 
 /// Deserialize an explicitly present optional field.
 ///
@@ -14,33 +17,18 @@ where
 }
 
 /// Deserialize exactly one CBOR value and reject any trailing bytes.
-pub fn from_slice_exact<T: DeserializeOwned>(
-    bytes: &[u8],
-) -> Result<T, ciborium::de::Error<std::io::Error>> {
+pub fn from_slice_exact<T: DeserializeOwned>(bytes: &[u8]) -> Result<T, serde_cbor::Error> {
     preflight(bytes)?;
-    let mut reader = bytes;
-    let value = ciborium::from_reader(&mut reader)?;
-    let consumed = bytes.len() - reader.len();
-    if consumed != bytes.len() {
-        return Err(ciborium::de::Error::semantic(
-            consumed,
-            "trailing bytes after CBOR value",
-        ));
-    }
-    Ok(value)
+    serde_cbor::from_slice(bytes)
 }
 
 // Allocation-free syntax walk. Reject advertised lengths before serde can use
 // them as allocation hints; bound recursion independently of the codec.
-fn preflight(bytes: &[u8]) -> Result<(), ciborium::de::Error<std::io::Error>> {
-    fn invalid() -> ciborium::de::Error<std::io::Error> {
-        ciborium::de::Error::semantic(0, "CBOR ledger size, nesting or structural bound exceeded")
+fn preflight(bytes: &[u8]) -> Result<(), serde_cbor::Error> {
+    fn invalid() -> serde_cbor::Error {
+        serde_cbor::Error::custom("CBOR ledger size, nesting or structural bound exceeded")
     }
-    fn value(
-        bytes: &[u8],
-        pos: &mut usize,
-        depth: usize,
-    ) -> Result<(), ciborium::de::Error<std::io::Error>> {
+    fn value(bytes: &[u8], pos: &mut usize, depth: usize) -> Result<(), serde_cbor::Error> {
         if depth > crate::constants::MAX_LEDGER_NESTING {
             return Err(invalid());
         }
@@ -103,10 +91,7 @@ fn preflight(bytes: &[u8]) -> Result<(), ciborium::de::Error<std::io::Error>> {
     let mut pos = 0;
     value(bytes, &mut pos, 0)?;
     if pos != bytes.len() {
-        return Err(ciborium::de::Error::semantic(
-            pos,
-            "trailing bytes after CBOR value",
-        ));
+        return Err(serde_cbor::Error::custom("trailing bytes after CBOR value"));
     }
     Ok(())
 }
@@ -211,18 +196,21 @@ mod tests {
         for len in [0, 1, crate::constants::DIAGNOSTIC_STRING_MAX_BYTES] {
             let text = "x".repeat(len);
             let mut bytes = Vec::new();
-            ciborium::into_writer(&text, &mut bytes).unwrap();
+            serde_cbor::to_writer(&mut bytes, &text).unwrap();
             assert_eq!(from_slice_exact::<String>(&bytes).unwrap(), text);
         }
 
         // Opaque payloads can contain larger logical text: their independent
         // ledger decode must reject it, not the enclosing record preflight.
         let mut text = Vec::new();
-        ciborium::into_writer(&"x".repeat(257), &mut text).unwrap();
-        let value = ciborium::Value::Bytes(text);
+        serde_cbor::to_writer(&mut text, &"x".repeat(257)).unwrap();
+        let value = serde_cbor::Value::Bytes(text);
         let mut bytes = Vec::new();
-        ciborium::into_writer(&value, &mut bytes).unwrap();
-        assert_eq!(from_slice_exact::<ciborium::Value>(&bytes).unwrap(), value);
+        serde_cbor::to_writer(&mut bytes, &value).unwrap();
+        assert_eq!(
+            from_slice_exact::<serde_cbor::Value>(&bytes).unwrap(),
+            value
+        );
     }
 
     #[test]
@@ -241,7 +229,7 @@ mod tests {
         for count in 0..=4 {
             let values: Vec<u16> = (0..count).collect();
             let mut bytes = Vec::new();
-            ciborium::into_writer(&values, &mut bytes).unwrap();
+            serde_cbor::to_writer(&mut bytes, &values).unwrap();
             let result = from_slice_exact::<Values>(&bytes);
             if count <= 3 {
                 assert_eq!(result.unwrap(), Values(values));

@@ -5,16 +5,16 @@ pub(super) fn encode_ledger(
 ) -> Result<Vec<u8>, super::LedgerIntegrityError> {
     let mut writer =
         crate::bounded_writer::BoundedWriter::new(Vec::new(), crate::constants::MAX_LEDGER_BYTES);
-    match ciborium::into_writer(ledger.records(), &mut writer) {
+    match serde_cbor::to_writer(&mut writer, &ledger.records()) {
         Ok(()) => Ok(writer.bytes),
-        Err(ciborium::ser::Error::Io(err)) if err.kind() == std::io::ErrorKind::WriteZero => {
+        Err(_) if writer.attempted_len > crate::constants::MAX_LEDGER_BYTES => {
             Err(super::LedgerIntegrityError::LimitExceeded {
                 resource: "ledger bytes",
                 limit: crate::constants::MAX_LEDGER_BYTES,
             })
         }
-        Err(ciborium::ser::Error::Io(_) | ciborium::ser::Error::Value(_)) => {
-            panic!("allocation ledger serialization failed")
+        Err(error) => {
+            panic!("allocation ledger serialization failed: {error}")
         }
     }
 }
@@ -31,7 +31,7 @@ pub(super) fn decode_ledger(
         Vec<super::AllocationRecord>,
     );
 
-    // Ciborium can present byte strings as sequences; only arrays are this wire shape.
+    // Only definite arrays are the logical record wire shape.
     if bytes.first().is_none_or(|byte| byte >> 5 != 4) {
         return Err("ledger payload must be a CBOR record array".to_string());
     }
@@ -93,7 +93,7 @@ mod tests {
                 records: Vec::new(),
             };
             let mut payload = Vec::new();
-            ciborium::into_writer(ledger.records(), &mut payload).unwrap();
+            serde_cbor::to_writer(&mut payload, &ledger.records()).unwrap();
             let expected = payload;
             assert_eq!(encode_ledger(&ledger).unwrap(), expected);
         }

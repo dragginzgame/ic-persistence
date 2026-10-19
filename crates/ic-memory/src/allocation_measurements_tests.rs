@@ -158,7 +158,7 @@ fn key_text_store(text_bytes: usize) -> LedgerCommitStore {
     dto[0]["stable_key"] =
         serde_json::Value::String(format!("app.{}.v1", "x".repeat(text_bytes - 7)));
     let mut payload = Vec::new();
-    ciborium::into_writer(&dto, &mut payload).unwrap();
+    serde_cbor::to_writer(&mut payload, &dto).unwrap();
     let mut physical = crate::LedgerCommitStore::default();
     physical.commit_payload_at_generation(1, payload).unwrap();
     physical

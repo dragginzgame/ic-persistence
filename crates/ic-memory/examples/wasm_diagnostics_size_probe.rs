@@ -41,7 +41,7 @@ pub extern "C" fn ic_memory_wasm_diagnostics_size_probe_export() -> u32 {
             let runtime = slot.as_ref()?;
             let report = runtime.diagnostic_export().ok()?;
             let mut bytes = Vec::new();
-            ciborium::into_writer(&report, &mut bytes).ok()?;
+            serde_cbor::to_writer(&mut bytes, &report).ok()?;
             u32::try_from(bytes.len()).ok()
         })
         .unwrap_or(u32::MAX)
@@ -55,7 +55,7 @@ pub extern "C" fn ic_memory_wasm_diagnostics_size_probe_allocations() -> u32 {
             let runtime = slot.as_ref()?;
             let report = runtime.memory_allocations().ok()?;
             let mut bytes = Vec::new();
-            ciborium::into_writer(&report, &mut bytes).ok()?;
+            serde_cbor::to_writer(&mut bytes, &report).ok()?;
             u32::try_from(bytes.len()).ok()
         })
         .unwrap_or(u32::MAX)
