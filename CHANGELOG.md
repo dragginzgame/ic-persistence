@@ -1,5 +1,7 @@
 # Changelog
 
+## [0.5.6] - 2026-10-19
+
 ## [0.5.5] - 2026-10-19
 
 - Adopt Shared Tooling 0.25.0, including grouped dependency formatting and
