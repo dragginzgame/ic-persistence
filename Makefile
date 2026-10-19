@@ -7,6 +7,7 @@ export YQ := $(CURDIR)/.tools/host/bin/yq
 release-patch release-minor release-major release-resume: export IC_STORAGE_RELEASE_PREPARE := 1
 
 .PHONY: help version check-doc-links check-license check-pins check-storage-boundary check-release-commands ci
+.PHONY: install-release-tools release-tools-check
 .PHONY: release-version release-preflight release-verify release-prepare-version
 .PHONY: release-prepared-check release-files release-commit-check release-committed-check
 .PHONY: release-tagged-check release-push-check
@@ -15,10 +16,17 @@ help:
 	@echo "Setup: install-tools; offline verification: tools-check"
 	@echo "Focused: shared-tooling-check, check-doc-links, check-license, check-pins, check-release-commands"
 	@echo "Complete library gate: ci; current version: version"
+	@echo "Release editor setup: install-release-tools; offline verification: release-tools-check"
 	@echo "Authorized releases: release-patch, release-minor, release-major; recovery: release-resume VERSION=x.y.z"
 
 version release-version:
 	@bash scripts/release/adapter.sh version
+
+install-release-tools:
+	+bash scripts/release/editor.sh
+
+release-tools-check:
+	+bash scripts/release/editor.sh --check > /dev/null
 
 check-doc-links:
 	perl scripts/ci/check-documentation-links.pl --root . README.md AGENTS.md CHANGELOG.md docs/status/current.md docs/upstreams.md crates/ic-storage/README.md docs/archive/private-btree/README.md docs/archive/private-btree/icydb-btree.md docs/archive/private-btree/experimental-btree.md docs/archive/private-btree/canonical-workloads.md docs/archive/private-btree/handoff.md docs/archive/private-btree/upstreams.md

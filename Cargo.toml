@@ -12,10 +12,12 @@ description = "Governed stable collections for Internet Computer applications"
 license = "MIT"
 
 [workspace.dependencies]
-# Allocation authority and exclusive runtime handles.
+# Production dependencies
 ic-memory = "0.48"
-# Private collection substrate; consumers use ic_storage::adapter.
 ic-stable-structures = "0.7.2"
+
+# Tests and tooling only
+# Both catalog entries are also used by the production library.
 
 [workspace.lints.rust]
 missing_docs = "warn"

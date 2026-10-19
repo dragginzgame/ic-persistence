@@ -13,7 +13,7 @@ and performance investigation is retained as [historical research](docs/archive/
 ## Development
 
 The reviewed [Shared Tooling snapshot](.shared-tooling.snapshot) pins version
-0.23.0 at commit `0b351cd2ba2bcd8927b783a5fec89afc8013f708`.
+0.25.0 at commit `2a79f5f93383f3d2a8a38d65406c7d52c2f77913`.
 Read [AGENTS.md](AGENTS.md) for local contributor instructions and
 [the setup guide](docs/local-setup.md) for Linux/macOS prerequisites.
 Rust 1.99.0 is the development toolchain. The Rust 2024 library lives in
@@ -44,7 +44,11 @@ implementation.
 
 Authorized releases use `make release-patch`, `make release-minor` or
 `make release-major`; `make release-resume VERSION=x.y.z` resumes the exact
-recorded candidate. Publication uses `make publish-check` and `make publish`
+recorded candidate. First run `make install-release-tools` to prepare the selected
+published IC Build 0.18.0 metadata editor; `make release-tools-check` verifies it
+offline. Release preparation supplies its absolute path and a 1 MiB per-document
+input limit to Shared Tooling. This host tool is separate from library dependencies
+and common development setup. Publication uses `make publish-check` and `make publish`
 from clean source at an annotated release tag. See [the release contract](docs/releases.md).
 
 Licensed under MIT; see LICENSE.

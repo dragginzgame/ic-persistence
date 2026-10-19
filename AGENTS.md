@@ -24,6 +24,10 @@ memory/manager constructors. `ic-storage::adapter` owns the supported collection
 and codec surface; IC Memory owns allocation authority. Both infrastructure
 packages may use the substrate privately.
 `make check-storage-boundary` checks workspace dependency declarations.
+The existing direct substrate edge is migration debt under the adopted Platform
+policy, tracked in [Platform #30](https://github.com/dragginzgame/ic-platform/issues/30).
+Do not add direct IC dependencies or change collection type identities to work
+around the missing Platform interface; this is not a policy exception.
 
 Use the shared [validation cadence](DRAGGINZGAME.md#validation-and-evidence).
 Focused setup checks are `make shared-tooling-check`, `make check-doc-links`,
@@ -38,4 +42,6 @@ Releases use the local Cargo adapter and shared metadata helpers and direct deli
 `origin/main`. The shared contribution and release authorization rules apply.
 `make publish-check` and `make publish` require clean source at an annotated
 release tag. Publication uses the shared attempt runner and crates.io.
+Before release preflight, explicitly run `make install-release-tools`;
+`make release-tools-check` verifies the selected published metadata editor offline.
 Host scope and current qualification limits are documented in [README.md](README.md).

@@ -12,7 +12,48 @@ requirements. No reader converts retired custom-format bytes into upstream data.
 
 The [root changelog](../../CHANGELOG.md) owns pending numbered notes. Package
 versions, the Git index and release refs remain maintainer-owned. Shared Tooling
-remains at the reviewed 0.23.0 snapshot. No sibling checkout is edited by this pass.
+is recorded in the root snapshot. No sibling checkout is edited by this pass.
+
+## Shared Tooling 0.25.0 adoption: pending 0.5.5
+
+The root snapshot now selects committed source
+`2a79f5f93383f3d2a8a38d65406c7d52c2f77913`, matching Shared Tooling's observed
+remote main. The canonical exporter installs its 104-file closure and retires
+the two superseded Perl Cargo editors. Common setup no longer selects the unused
+Candid extractor; retained tool installations are preserved. Both dependency
+catalog entries are production dependencies, including IC Memory's test usage;
+there are no exclusively test/tooling catalog entries.
+
+Grouped Cargo formatting and release ordering share one policy. Release candidate
+rendering uses published IC Build 0.18.0, with explicit
+`make install-release-tools` setup and an offline `make release-tools-check`.
+The local adapter supplies the admitted absolute executable path and a 1 MiB
+per-document input bound; Shared Tooling owns the preparation transaction.
+
+The stricter external-IC dependency rule cannot yet be fully implemented:
+[Platform #30](https://github.com/dragginzgame/ic-platform/issues/30) owns the
+missing stable-structures interface. Existing direct substrate access is recorded
+migration debt, not an approved exception or a claim of full policy compliance.
+The workspace declaration boundary remains active. There are no test-only
+catalog entries to exclude from this library's production graph, and this library
+has no deployment entrypoint. Consumer deployments retain their own graph gates.
+
+The incoming IC Memory 0.48.2 lockfile selection is preserved. This adoption
+changes no library code, collection formats, package versions or Git index/refs.
+The checkout remains based on 0.5.4 and behind the two already-observed main
+commits; this pass does not integrate their compiler-selection change.
+
+Focused Linux qualification on Rust 1.99.0 passes snapshot integrity, prepared
+common/release tools, stable grouped formatting and unsorted-group refusal,
+pins, license, declaration boundary, documentation links and release dispatch.
+The actual released editor prepares and validates a disposable 0.5.5 candidate,
+preserves external lock selections and refuses an undersized input allowance
+without changing the fixture's files. Selected-commit checking independently
+admits 0.5.4 while the working tree has pending notes. Shell syntax, ShellCheck
+and diff checks pass. Evidence is retained at
+`/tmp/ic-storage-shared-adoption.bNJJTv/`. No full suite, release execution,
+installed-IC or native macOS qualification ran; no library behavior changed.
+The following sections retain their original source-bound qualification history.
 
 ## Governed retained regions: pending 0.5.4
 

@@ -24,6 +24,14 @@ The exported `Memory` trait supports generic bounds, not allocation authority.
 schemas, decoding semantics and recovery remain consumer-owned. Map reservation
 accepts caller-owned page budgets and makes no node-layout entry-capacity promise.
 
+Shared Tooling 0.25's external-IC dependency policy requires the substrate to pass
+through Platform. Platform currently exposes no stable-structures interface;
+[#30 — Expose stable-structures substrate identities for governed IC Storage](https://github.com/dragginzgame/ic-platform/issues/30)
+owns that prerequisite. The existing direct edge remains migration debt, not an
+approved exception. Adoption must retain exact substrate types shared with
+IC Memory and preserved collection bytes; no replacement implementation or
+application-facing API migration is justified by this tooling refresh.
+
 `BTreeMapRegion` retains an existing `Rc<RuntimeMemory>` for an exact range inside
 that allocation. IC Storage owns bounded region IO and operation-local upstream
 tree loading; it neither assigns another allocation nor exports a raw-memory
@@ -63,3 +71,9 @@ workspace's only host-helper and IC Testkit consumer, so its dependencies have
 been removed. Reuse those owners if a future implementation needs their contracts.
 Select compatible registry versions in the root workspace catalog and inherit
 them in members; mutable sibling paths are not release dependencies.
+
+Release metadata rendering uses the published IC Build 0.18.0 executable selected
+by `scripts/release/editor.sh`, independently of the library dependency graph.
+`make install-release-tools` prepares it explicitly; checks only admit an existing
+installation. The local adapter passes its absolute path and a 1 MiB per-document
+input allowance to Shared Tooling, which owns candidate custody and restoration.

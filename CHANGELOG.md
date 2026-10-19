@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.5.5]
+
+- Adopt Shared Tooling 0.25.0, including grouped dependency formatting and
+  transactional release metadata preparation through published IC Build 0.18.0.
+  Run `make install-release-tools` before release preflight; ordinary development
+  setup no longer selects the unused Candid extractor. Library APIs, collection
+  formats and dependency selections are unchanged by this adoption.
+
 ## [0.5.4] - 2026-10-18
 
 - Add governed B-tree region views for retained trees sharing an allocation with

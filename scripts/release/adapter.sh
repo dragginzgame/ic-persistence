@@ -16,19 +16,24 @@ case "$operation" in
         bash scripts/ci/cargo-release-preflight.sh "$PWD" "$prepare" \
             --pin ci/tool-versions.env \
             --check tools-check --prepare install-tools --prepare tools-check
+        bash scripts/release/editor.sh --check > /dev/null
         ;;
     prepare)
         bash scripts/ci/check-release-source.sh --allow Cargo.toml --allow Cargo.lock --allow CHANGELOG.md
         current="$(bash scripts/ci/read-cargo-workspace-version.sh --stable Cargo.toml)"
         if [[ "$current" == "${RELEASE_VERSION:?}" ]]; then
-            bash scripts/ci/cargo-release-metadata.sh check ic-storage
+            bash scripts/ci/cargo-release-metadata.sh check ic-storage --manifest-order-grouped
         else
+            CARGO_RELEASE_METADATA_EDITOR="$(bash scripts/release/editor.sh --check)"
+            export CARGO_RELEASE_METADATA_EDITOR
+            # Bounds each manifest/lock input; current documents are under 8 KiB.
+            export CARGO_RELEASE_METADATA_MAX_BYTES=1048576
             bash scripts/ci/cargo-release-metadata.sh prepare ic-storage
         fi
         ;;
     check|commit-check)
         bash scripts/ci/check-release-source.sh --allow Cargo.toml --allow Cargo.lock --allow CHANGELOG.md
-        bash scripts/ci/cargo-release-metadata.sh check ic-storage
+        bash scripts/ci/cargo-release-metadata.sh check ic-storage --manifest-order-grouped
         if [[ "$operation" == commit-check ]]; then
             [[ -z "${RELEASE_COMMIT:-}" ]] || exit 1
             git diff --quiet -- Cargo.toml Cargo.lock CHANGELOG.md
