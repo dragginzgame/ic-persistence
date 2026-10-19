@@ -16,7 +16,7 @@ The reviewed [Shared Tooling snapshot](.shared-tooling.snapshot) pins version
 0.25.0 at commit `2a79f5f93383f3d2a8a38d65406c7d52c2f77913`.
 Read [AGENTS.md](AGENTS.md) for local contributor instructions and
 [the setup guide](docs/local-setup.md) for Linux/macOS prerequisites.
-Rust 1.99.0 is the development toolchain. The Rust 2024 library lives in
+Rust 1.99.1 is the development toolchain. The Rust 2024 library lives in
 `crates/ic-storage`, inherits root workspace metadata, and supports Rust 1.91.0.
 See [upstream ownership](docs/upstreams.md) for dependency responsibilities.
 

@@ -55,7 +55,14 @@ and diff checks pass. Evidence is retained at
 installed-IC or native macOS qualification ran; no library behavior changed.
 The following sections retain their original source-bound qualification history.
 
-## Governed retained regions: pending 0.5.4
+## Development compiler
+
+The development selector and explicit Linux/macOS CI installation use Rust
+1.99.1. The library's Rust 1.91 minimum and dependency lock remain unchanged.
+The root changelog collects this compatible contributor-tooling update under
+0.5.5; package versions and release refs remain maintainer-owned.
+
+## Governed retained regions: published 0.5.4
 
 `BTreeMapRegion` retains an existing shared runtime lease and opens the exact
 upstream tree region for each operation. Bounded framing reads precede the
@@ -77,9 +84,9 @@ compilation, ten documentation examples, formatting, documentation links and
 the dependency boundary pass. This is adapter qualification, not a live canister
 upgrade or IcyDB adoption. Full release CI and native macOS remain unrun.
 
-Release 0.5.3 is committed at `249da24992da229464b809d44ffed7f5ab8d4bae`;
-0.5.4 is an additive pending change. The following sections retain the preceding
-0.5.3 implementation and composition evidence.
+Release 0.5.3 is committed at `249da24992da229464b809d44ffed7f5ab8d4bae`.
+The additive region interface shipped in 0.5.4 at `26a6390`. The following sections
+retain the preceding 0.5.3 implementation and composition evidence.
 
 The ownership cleanup removes obsolete private-engine import probes and a test
 of IC Memory's standalone unknown-key policy. Adapter tests retain persisted

@@ -7,6 +7,9 @@
   Run `make install-release-tools` before release preflight; ordinary development
   setup no longer selects the unused Candid extractor. Library APIs, collection
   formats and dependency selections are unchanged by this adoption.
+- Select Rust 1.99.1 for development and Linux/macOS CI, keeping the library's
+  Rust 1.91 minimum unchanged. Addresses
+  [#14 — Qualify Rust 1.99.1 as the development compiler](https://github.com/dragginzgame/ic-storage/issues/14).
 
 ## [0.5.4] - 2026-10-18
 
