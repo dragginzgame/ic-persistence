@@ -1,6 +1,6 @@
 # Changelog
 
-## [0.49.1]
+## [0.49.1] - 2026-10-19
 
 - Consume IC Platform 0.2's native PocketIC interface in installed qualification,
   aligning the client with the selected 16.1.0 server outside the library graph.
