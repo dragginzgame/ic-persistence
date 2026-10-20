@@ -2,6 +2,7 @@
 
 ## [0.50.1]
 
+- Run release-tool tests once during validation, removing their duplicate serial run.
 - Identify publication registry requests to crates.io so they are not rejected
   for curl's generic User-Agent; report the crate, version and HTTP status when
   observation fails. [Detailed notes](docs/changelog/0.50.md#0501).

@@ -167,7 +167,8 @@ validate-toolchain:
 	+cargo +$(VALIDATION_TOOLCHAIN) clippy --workspace --locked --offline --all-targets -- -D warnings
 	$(MAKE) --no-print-directory check-production-graph check-pins check-storage-boundary check-license check-doc-links test-release-adapters
 	$(MAKE) --no-print-directory test-tools test-tooling test-hooks fmt-check test-fixture-cell test-package-admission
-	+cargo +$(VALIDATION_TOOLCHAIN) test --workspace --locked --offline -- --test-threads=1
+	# test-tooling already ran the repo-tool fixtures in parallel; keep product tests serial.
+	+cargo +$(VALIDATION_TOOLCHAIN) test --workspace --locked --offline -- --test-threads=1 --skip repo_tool::tests::
 	+RUSTDOCFLAGS='-D warnings' cargo +$(VALIDATION_TOOLCHAIN) doc --workspace --locked --offline --no-deps
 	+cargo +$(VALIDATION_TOOLCHAIN) check --workspace --locked --offline --target wasm32-unknown-unknown --tests
 	$(MAKE) --no-print-directory wasm-size
