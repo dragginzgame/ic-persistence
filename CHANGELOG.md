@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.50.1]
+
+- Identify publication registry requests to crates.io so they are not rejected
+  for curl's generic User-Agent; report the crate, version and HTTP status when
+  observation fails. [Detailed notes](docs/changelog/0.50.md#0501).
+
 ## [0.50.0] - 2026-10-20
 
 - Consolidate Memory and Storage as IC Persistence while preserving both crate

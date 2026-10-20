@@ -1622,6 +1622,8 @@ impl<E: Execute> Repository<E> {
                 "--silent",
                 "--show-error",
                 "--location",
+                "--user-agent",
+                "ic-persistence-release (https://github.com/dragginzgame/ic-persistence)",
                 "--max-time",
                 "60",
                 "--write-out",
@@ -1637,7 +1639,9 @@ impl<E: Execute> Repository<E> {
         }
         require(
             status == "200",
-            "registry observation failed; publication was not retried",
+            &format!(
+                "registry observation failed for {name} {version} (HTTP {status}); publication was not retried"
+            ),
         )?;
         let record: serde_json::Value = serde_json::from_str(body)?;
         let record = &record["version"];
