@@ -1,0 +1,121 @@
+diff --git a/AGENTS.md b/AGENTS.md
+index d4bd519..159059f 100644
+--- a/AGENTS.md
++++ b/AGENTS.md
+@@ -31,7 +31,7 @@ Rust checks are `make fmt-check`, `make check`, `make clippy`,
+ `make docs-check`, `make test`, `make wasm-check` and `make msrv`. `make ci` is the complete repository gate. Shared Tooling owns tests of the exported helpers.
+ 
+ Common setup and release commands come from `make/consumer.mk`.
+-The pending implementation batch is `0.4.0`; release metadata remains maintainer-owned.
++The pending implementation batch is `0.4.1`; release metadata remains maintainer-owned.
+ Releases use the local Cargo adapter and shared metadata helpers and direct delivery to
+ `origin/main`. The shared contribution and release authorization rules apply.
+ `make publish-check` and `make publish` require clean source at an annotated
+diff --git a/CHANGELOG.md b/CHANGELOG.md
+index 85c6403..ad7383b 100644
+--- a/CHANGELOG.md
++++ b/CHANGELOG.md
+@@ -1,5 +1,11 @@
+ # Changelog
+ 
++## [0.4.1]
++
++- Export the exact `Memory` trait and codec `Bound` through `adapter`, alongside
++  `Storable`. Generic backing bounds and codec declarations stay behind Storage;
++  collection constructors still require exclusive runtime allocation leases.
++
+ ## [0.4.0] - 2026-10-17
+ 
+ - Adapt the benchmark runner to IC Testkit 0.51's explicit call principals and
+diff --git a/crates/ic-storage-bench/src/upstream.rs b/crates/ic-storage-bench/src/upstream.rs
+index 28cae58..7d72ec8 100644
+--- a/crates/ic-storage-bench/src/upstream.rs
++++ b/crates/ic-storage-bench/src/upstream.rs
+@@ -1,7 +1,7 @@
+ //! Shared upstream operations; codec bounds remain distinct for each fixture.
+ use super::{Memory, protocol::SCAN_LIMIT};
+ use ic_memory::RuntimeMemory;
+-use ic_storage::adapter::{StableBTreeMap, Storable, storable::Bound};
++use ic_storage::adapter::{Bound, StableBTreeMap, Storable};
+ use std::borrow::Cow;
+ 
+ #[derive(Clone, Eq, PartialEq, Ord, PartialOrd)]
+diff --git a/crates/ic-storage/README.md b/crates/ic-storage/README.md
+index a568f80..030af2e 100644
+--- a/crates/ic-storage/README.md
++++ b/crates/ic-storage/README.md
+@@ -40,11 +40,13 @@ collection-memory implementation. Allocation authority and IDs belong to IC Memo
+ 
+ `ic_storage::adapter` also exports our types, upstream `StableBTreeMap`,
+ `StableBTreeSet`, `StableCell`, `StableVec`, `StableMinHeap`, `StableLog`, their
+-supported iterator types, `LogWriteError`, `Storable` and `storable`. Upstream
+-collection wrappers require runtime handles too and preserve their existing formats and
++supported iterator types, `LogWriteError`, `Memory`, `Storable`, `Bound` and
++`storable`. Upstream collection wrappers require runtime handles too and preserve
++their existing formats and
+ failure contracts. They do not inherit our custom tree's staged-write behavior.
+-No raw `Memory` trait, backing constructors, memory manager or unrestricted
+-upstream module is exported. Runtime bootstrap remains the application's IC
++The `Memory` trait supports generic backing bounds and grants no allocation
++authority. No backing constructors, memory manager or unrestricted upstream
++module is exported. Runtime bootstrap remains the application's IC
+ Memory infrastructure boundary; ordinary collection code uses this adapter.
+ 
+ Arbitrary backing memory is rejected by both collection surfaces:
+@@ -64,7 +66,7 @@ let _ = StableBTreeMap::<u64, u64>::new(VectorMemory::default());
+ Raw substrate access is not an application-facing storage API:
+ 
+ ```compile_fail
+-use ic_storage::adapter::{Memory, MemoryManager, DefaultMemoryImpl};
++use ic_storage::adapter::{MemoryManager, DefaultMemoryImpl};
+ ```
+ 
+ Collection wrappers keep their inner structures private. They implement no
+diff --git a/crates/ic-storage/src/adapter.rs b/crates/ic-storage/src/adapter.rs
+index ddf6086..05727ac 100644
+--- a/crates/ic-storage/src/adapter.rs
++++ b/crates/ic-storage/src/adapter.rs
+@@ -6,11 +6,14 @@
+ //! Use distinct admitted allocations and drop collections before reopening.
+ //! IC Memory 0.46 enforces one live lease per allocation within each runtime;
+ //! hosts retain exclusive custody of the backing across runtimes.
+-use crate::substrate::{self, DefaultMemoryImpl, Memory};
++use crate::substrate::{self, DefaultMemoryImpl};
+ pub use crate::{BTreeMap, Comparator, Config, Entry, Error, Lexicographic, Range};
+ use ic_memory::RuntimeMemory;
+ use std::ops::RangeBounds;
+-pub use substrate::{Storable, storable};
++/// Exact substrate interfaces for generic bounds and collection codecs.
++/// Implementing `Memory` does not grant allocation authority: collection
++/// constructors still require an admitted `RuntimeMemory` handle.
++pub use substrate::{Memory, Storable, storable, storable::Bound};
+ 
+ /// Governed upstream `BTreeMap`; initialization and failures follow upstream contracts.
+ pub struct StableBTreeMap<K: Storable + Ord + Clone, V: Storable, M: Memory = DefaultMemoryImpl> {
+diff --git a/crates/ic-storage/tests/adapter.rs b/crates/ic-storage/tests/adapter.rs
+index e795c53..81609b3 100644
+--- a/crates/ic-storage/tests/adapter.rs
++++ b/crates/ic-storage/tests/adapter.rs
+@@ -5,7 +5,7 @@ use ic_memory::{
+ };
+ use ic_storage::{BTreeMap, Config, Lexicographic, adapter::*};
+ 
+-fn runtime(backing: VectorMemory) -> MemoryRuntime<VectorMemory> {
++fn runtime<M: Memory>(backing: M) -> MemoryRuntime<M> {
+     let pool =
+         MemoryAllocationPool::new(vec![MemoryAuthority::new("test", "test.").unwrap()], vec![])
+             .unwrap();
+@@ -33,6 +33,13 @@ fn runtime(backing: VectorMemory) -> MemoryRuntime<VectorMemory> {
+ 
+ #[test]
+ fn collections_reopen_through_committed_runtime_allocations() {
++    assert!(matches!(
++        <u64 as Storable>::BOUND,
++        Bound::Bounded {
++            max_size: 8,
++            is_fixed_size: true,
++        }
++    ));
+     let backing = VectorMemory::default();
+     let runtime = runtime(backing.clone());
+     assert!(matches!(

@@ -1,0 +1,69 @@
+diff --git a/.github/workflows/ci.yml b/.github/workflows/ci.yml
+index 94879e3..548728a 100644
+--- a/.github/workflows/ci.yml
++++ b/.github/workflows/ci.yml
+@@ -114,10 +114,6 @@ jobs:
+             perl -MCwd=abs_path -e 'my ($a,$b)=map {abs_path($_)} @ARGV; exit(defined($a) && defined($b) && $a eq $b ? 0 : 1)' \
+               ".tools/rust/common/bin/$tool" "$sharing/consumer/.tools/rust/common/bin/$tool"
+           done
+-      - name: Check both workspaces without changing files
+-        run: make fmt-check
+-      - name: Exercise hook isolation on the native host
+-        run: CDPATH="$PWD" make test-hooks
+       - name: Prepare tracked dependency inputs
+         shell: bash
+         run: |
+diff --git a/CHANGELOG.md b/CHANGELOG.md
+index 7c1765a..d0856d9 100644
+--- a/CHANGELOG.md
++++ b/CHANGELOG.md
+@@ -1,5 +1,15 @@
+ # Changelog
+ 
++## [0.37.1]
++
++### Fixed
++
++- Run formatting and hook qualification once per native CI host, retaining both
++  workspace checks and CDPATH isolation
++  ([#88 — Avoid repeated formatting and hook fixtures](https://github.com/dragginzgame/ic-memory/issues/88)).
++
++[Detailed notes](docs/changelog/0.37.md)
++
+ ## [0.37.0] - 2026-10-14
+ 
+ - **Breaking:** detailed allocation reports contain `summary` and `memories`;
+diff --git a/Makefile b/Makefile
+index c29894f..20fc917 100644
+--- a/Makefile
++++ b/Makefile
+@@ -128,8 +128,8 @@ test-release-adapters:
+ 	bash scripts/ci/test-release-adapters.sh
+ 
+ test-hooks: format-tools-check
+-	+RUSTUP_AUTO_INSTALL=0 CARGO_NET_OFFLINE=true bash scripts/ci/test-format-tools.sh
+-	+RUSTUP_AUTO_INSTALL=0 CARGO_NET_OFFLINE=true bash scripts/ci/test-git-hooks.sh
++	+CDPATH="$(CURDIR)" RUSTUP_AUTO_INSTALL=0 CARGO_NET_OFFLINE=true bash scripts/ci/test-format-tools.sh
++	+CDPATH="$(CURDIR)" RUSTUP_AUTO_INSTALL=0 CARGO_NET_OFFLINE=true bash scripts/ci/test-git-hooks.sh
+ 
+ test:
+ 	+cargo +$(VALIDATION_TOOLCHAIN) test --locked --offline -- --test-threads=1
+diff --git a/docs/changelog/0.37.md b/docs/changelog/0.37.md
+index 1868010..8560feb 100644
+--- a/docs/changelog/0.37.md
++++ b/docs/changelog/0.37.md
+@@ -1,5 +1,14 @@
+ # 0.37 release notes
+ 
++## [0.37.1]
++
++Native CI delegates formatting and hook fixtures to `validate-toolchain` once
++instead of running them again as standalone steps. `test-hooks` supplies the
++deliberate CDPATH context for formatter and hook isolation tests. Both maintained
++workspaces, release validation and the native host matrix retain their coverage.
++Library APIs and Wasm artifacts are unchanged
++([#88 — Avoid repeated formatting and hook fixtures](https://github.com/dragginzgame/ic-memory/issues/88)).
++
+ ## [0.37.0] - 2026-10-14
+ 
+ Retained package copying uses Host 0.17.9's regular-file descriptor admission.

@@ -1,0 +1,279 @@
+diff --git a/AGENTS.md b/AGENTS.md
+index d4bd519..159059f 100644
+--- a/AGENTS.md
++++ b/AGENTS.md
+@@ -31,7 +31,7 @@ Rust checks are `make fmt-check`, `make check`, `make clippy`,
+ `make docs-check`, `make test`, `make wasm-check` and `make msrv`. `make ci` is the complete repository gate. Shared Tooling owns tests of the exported helpers.
+ 
+ Common setup and release commands come from `make/consumer.mk`.
+-The pending implementation batch is `0.4.0`; release metadata remains maintainer-owned.
++The pending implementation batch is `0.4.1`; release metadata remains maintainer-owned.
+ Releases use the local Cargo adapter and shared metadata helpers and direct delivery to
+ `origin/main`. The shared contribution and release authorization rules apply.
+ `make publish-check` and `make publish` require clean source at an annotated
+diff --git a/CHANGELOG.md b/CHANGELOG.md
+index 85c6403..1124108 100644
+--- a/CHANGELOG.md
++++ b/CHANGELOG.md
+@@ -1,5 +1,12 @@
+ # Changelog
+ 
++## [0.4.1] - Unreleased
++
++- Add a governed bounded stable-cell adapter. Encodings are checked before writes
++  and on decode; rejected maximum/exact-size replacements preserve stored bytes
++  and cached values. Retained invalid records refuse opening without rewriting
++  bytes or retaining their allocation lease.
++
+ ## [0.4.0] - 2026-10-17
+ 
+ - Adapt the benchmark runner to IC Testkit 0.51's explicit call principals and
+diff --git a/crates/ic-storage/README.md b/crates/ic-storage/README.md
+index a568f80..0a34595 100644
+--- a/crates/ic-storage/README.md
++++ b/crates/ic-storage/README.md
+@@ -39,7 +39,7 @@ the remaining generic `M` identifies the runtime's backing, not an arbitrary
+ collection-memory implementation. Allocation authority and IDs belong to IC Memory.
+ 
+ `ic_storage::adapter` also exports our types, upstream `StableBTreeMap`,
+-`StableBTreeSet`, `StableCell`, `StableVec`, `StableMinHeap`, `StableLog`, their
++`StableBTreeSet`, `StableCell`, `BoundedCell`, `StableVec`, `StableMinHeap`, `StableLog`, their
+ supported iterator types, `LogWriteError`, `Storable` and `storable`. Upstream
+ collection wrappers require runtime handles too and preserve their existing formats and
+ failure contracts. They do not inherit our custom tree's staged-write behavior.
+@@ -47,6 +47,16 @@ No raw `Memory` trait, backing constructors, memory manager or unrestricted
+ upstream module is exported. Runtime bootstrap remains the application's IC
+ Memory infrastructure boundary; ordinary collection code uses this adapter.
+ 
++`adapter::BoundedCell` adds declared `Storable` bound checks around the upstream
++cell format. It supports `init`, `get` and `set`, rejects unbounded types, and
++checks maximum/exact encoded sizes before writes and before decoding retained
++bytes. Returned records and optional envelopes remain the application's codec.
++A rejected replacement leaves bytes and the cached record unchanged; an invalid
++retained value refuses opening without rewriting it and releases its lease.
++Upstream cell initialization behavior still applies, including initialization
++when memory is empty or does not contain the upstream cell magic. This is not a
++custom-tree transaction, schema migration or recovery policy.
++
+ Arbitrary backing memory is rejected by both collection surfaces:
+ 
+ ```compile_fail
+diff --git a/crates/ic-storage/src/adapter.rs b/crates/ic-storage/src/adapter.rs
+index ddf6086..19b3cd0 100644
+--- a/crates/ic-storage/src/adapter.rs
++++ b/crates/ic-storage/src/adapter.rs
+@@ -9,7 +9,8 @@
+ use crate::substrate::{self, DefaultMemoryImpl, Memory};
+ pub use crate::{BTreeMap, Comparator, Config, Entry, Error, Lexicographic, Range};
+ use ic_memory::RuntimeMemory;
+-use std::ops::RangeBounds;
++use std::{borrow::Cow, ops::RangeBounds};
++use substrate::storable::Bound;
+ pub use substrate::{Storable, storable};
+ 
+ /// Governed upstream `BTreeMap`; initialization and failures follow upstream contracts.
+@@ -368,3 +369,66 @@ impl<'a, T: Storable, M: Memory> IntoIterator for &'a StableLog<T, M> {
+         self.iter()
+     }
+ }
++
++/// A stable cell whose writes enforce the record's declared `Storable` bound.
++pub struct BoundedCell<T: Storable, M: Memory = DefaultMemoryImpl> {
++    cell: substrate::Cell<BoundedValue<T>, RuntimeMemory<M>>,
++}
++
++impl<T: Storable, M: Memory> BoundedCell<T, M> {
++    /// Open a current cell or initialize a fresh bounded record.
++    ///
++    /// # Panics
++    /// Panics for unbounded records or encodings that violate the declared bound.
++    #[must_use]
++    pub fn init(memory: RuntimeMemory<M>, value: T) -> Self {
++        assert!(matches!(T::BOUND, Bound::Bounded { .. }));
++        Self {
++            cell: substrate::Cell::init(memory, BoundedValue(value)),
++        }
++    }
++
++    /// Read the cached current record without serializing or cloning it.
++    #[must_use]
++    pub fn get(&self) -> &T {
++        &self.cell.get().0
++    }
++
++    /// Validate and persist a complete replacement, returning the prior record.
++    ///
++    /// # Panics
++    /// Panics before writing if the encoding violates its declared bound.
++    pub fn set(&mut self, value: T) -> T {
++        self.cell.set(BoundedValue(value)).0
++    }
++}
++
++struct BoundedValue<T>(T);
++
++impl<T: Storable> Storable for BoundedValue<T> {
++    const BOUND: Bound = T::BOUND;
++
++    fn to_bytes(&self) -> Cow<'_, [u8]> {
++        self.0.to_bytes_checked()
++    }
++
++    fn into_bytes(self) -> Vec<u8> {
++        self.0.into_bytes_checked()
++    }
++
++    fn from_bytes(bytes: Cow<'_, [u8]>) -> Self {
++        let Bound::Bounded {
++            max_size,
++            is_fixed_size,
++        } = T::BOUND
++        else {
++            unreachable!("bounded cell record must declare a bound");
++        };
++        if is_fixed_size {
++            assert_eq!(bytes.len(), max_size as usize);
++        } else {
++            assert!(bytes.len() <= max_size as usize);
++        }
++        Self(T::from_bytes(bytes))
++    }
++}
+diff --git a/crates/ic-storage/tests/adapter.rs b/crates/ic-storage/tests/adapter.rs
+index e795c53..e5ab058 100644
+--- a/crates/ic-storage/tests/adapter.rs
++++ b/crates/ic-storage/tests/adapter.rs
+@@ -185,3 +185,133 @@ fn constructor_errors_release_allocation_leases() {
+     .unwrap();
+     assert!(tree.is_empty());
+ }
++
++use ic_storage::adapter::storable::Bound;
++use std::borrow::Cow;
++#[derive(Clone, Debug, Eq, PartialEq)]
++struct Record<const FIXED: bool = false>(Vec<u8>);
++
++impl<const FIXED: bool> Storable for Record<FIXED> {
++    const BOUND: Bound = Bound::Bounded {
++        max_size: 4,
++        is_fixed_size: FIXED,
++    };
++    fn to_bytes(&self) -> Cow<'_, [u8]> {
++        Cow::Borrowed(&self.0)
++    }
++    fn into_bytes(self) -> Vec<u8> {
++        self.0
++    }
++    fn from_bytes(bytes: Cow<[u8]>) -> Self {
++        Self(bytes.into_owned())
++    }
++}
++
++#[test]
++fn bounded_cell_rejects_oversize_without_mutation_and_reopens() {
++    let backing = VectorMemory::default();
++    let runtime = runtime(backing.clone());
++    let mut cell = BoundedCell::init(runtime.open_memory("test.cell.v1").unwrap(), None::<Record>);
++    cell.set(Some(Record(vec![7; 4])));
++    let before = backing.borrow().clone();
++    let failed = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
++        cell.set(Some(Record(vec![8; 5])));
++    }));
++    assert!(failed.is_err());
++    assert_eq!(*backing.borrow(), before);
++    assert_eq!(cell.get(), &Some(Record(vec![7; 4])));
++    assert!(matches!(
++        runtime.open_memory("test.cell.v1"),
++        Err(RuntimeOpenError::AlreadyOpen { .. })
++    ));
++    drop(cell);
++    drop(runtime);
++    let runtime = self::runtime(backing);
++    let mut cell = BoundedCell::init(runtime.open_memory("test.cell.v1").unwrap(), None::<Record>);
++    assert_eq!(cell.get(), &Some(Record(vec![7; 4])));
++    cell.set(None);
++    drop(cell);
++    let cell = BoundedCell::init(runtime.open_memory("test.cell.v1").unwrap(), None::<Record>);
++    assert!(cell.get().is_none());
++}
++
++#[test]
++fn bounded_cell_rejects_unbounded_types_and_oversized_initial_values() {
++    let backing = VectorMemory::default();
++    let runtime = runtime(backing.clone());
++    let before = backing.borrow().clone();
++    for unbounded in [true, false] {
++        let rejected = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
++            let memory = runtime.open_memory("test.cell.v1").unwrap();
++            if unbounded {
++                let _ = BoundedCell::init(memory, Vec::<u8>::new());
++            } else {
++                let _ = BoundedCell::init(memory, Record::<false>(vec![1; 5]));
++            }
++        }));
++        assert!(rejected.is_err());
++        assert_eq!(*backing.borrow(), before);
++    }
++}
++
++#[test]
++fn bounded_cell_rejects_short_and_long_fixed_replacements_before_writing() {
++    let backing = VectorMemory::default();
++    let runtime = runtime(backing.clone());
++    let mut cell = BoundedCell::init(
++        runtime.open_memory("test.cell.v1").unwrap(),
++        Record::<true>(vec![7; 4]),
++    );
++    let before = backing.borrow().clone();
++    for length in [0, 3, 5] {
++        let rejected = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
++            cell.set(Record(vec![8; length]));
++        }));
++        assert!(rejected.is_err());
++        assert_eq!(*backing.borrow(), before);
++        assert_eq!(cell.get(), &Record(vec![7; 4]));
++    }
++    assert_eq!(cell.set(Record(vec![9; 4])), Record(vec![7; 4]));
++    drop(cell);
++    let reopened = BoundedCell::init(
++        runtime.open_memory("test.cell.v1").unwrap(),
++        Record::<true>(vec![0; 4]),
++    );
++    assert_eq!(reopened.get(), &Record(vec![9; 4]));
++}
++
++#[test]
++fn bounded_cell_validates_retained_bytes_without_rewriting_or_leaking_lease() {
++    let backing = VectorMemory::default();
++    let runtime = runtime(backing.clone());
++    for fixed in [false, true] {
++        for length in [0, 3, 4, 5] {
++            let bytes = vec![7; length];
++            // Produce existing upstream cell bytes through the supported adapter.
++            let existing =
++                StableCell::new(runtime.open_memory("test.cell.v1").unwrap(), bytes.clone());
++            drop(existing);
++            let before = backing.borrow().clone();
++            let opened = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
++                let memory = runtime.open_memory("test.cell.v1").unwrap();
++                if fixed {
++                    let cell = BoundedCell::init(memory, Record::<true>(vec![0; 4]));
++                    assert_eq!(cell.get().0, bytes);
++                } else {
++                    let cell = BoundedCell::init(memory, Record::<false>(vec![]));
++                    assert_eq!(cell.get().0, bytes);
++                }
++            }));
++            assert_eq!(
++                opened.is_ok(),
++                if fixed { length == 4 } else { length <= 4 }
++            );
++            assert_eq!(*backing.borrow(), before);
++            let existing = StableCell::init(
++                runtime.open_memory("test.cell.v1").unwrap(),
++                Vec::<u8>::new(),
++            );
++            assert_eq!(existing.get(), &bytes);
++        }
++    }
++}

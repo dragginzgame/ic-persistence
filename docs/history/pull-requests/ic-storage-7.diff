@@ -1,0 +1,186 @@
+diff --git a/AGENTS.md b/AGENTS.md
+index d4bd519..159059f 100644
+--- a/AGENTS.md
++++ b/AGENTS.md
+@@ -31,7 +31,7 @@ Rust checks are `make fmt-check`, `make check`, `make clippy`,
+ `make docs-check`, `make test`, `make wasm-check` and `make msrv`. `make ci` is the complete repository gate. Shared Tooling owns tests of the exported helpers.
+ 
+ Common setup and release commands come from `make/consumer.mk`.
+-The pending implementation batch is `0.4.0`; release metadata remains maintainer-owned.
++The pending implementation batch is `0.4.1`; release metadata remains maintainer-owned.
+ Releases use the local Cargo adapter and shared metadata helpers and direct delivery to
+ `origin/main`. The shared contribution and release authorization rules apply.
+ `make publish-check` and `make publish` require clean source at an annotated
+diff --git a/CHANGELOG.md b/CHANGELOG.md
+index 85c6403..64b9912 100644
+--- a/CHANGELOG.md
++++ b/CHANGELOG.md
+@@ -1,5 +1,11 @@
+ # Changelog
+ 
++## [0.4.1]
++
++- Reclaim merged nodes and collapsed roots using their validated transaction
++  state, avoiding a redundant page read/copy before staging the free record.
++  Preserve corruption refusal, discarded failed mutations and the V1 format.
++
+ ## [0.4.0] - 2026-10-17
+ 
+ - Adapt the benchmark runner to IC Testkit 0.51's explicit call principals and
+diff --git a/crates/ic-storage/src/btree/tests/behavior.rs b/crates/ic-storage/src/btree/tests/behavior.rs
+index cddcbd5..f645320 100644
+--- a/crates/ic-storage/src/btree/tests/behavior.rs
++++ b/crates/ic-storage/src/btree/tests/behavior.rs
+@@ -1238,6 +1238,53 @@ fn deletion_searches_once_and_discards_balancing_on_a_miss() {
+     }
+ }
+ 
++#[test]
++fn merging_deletion_reuses_validated_reclaimed_nodes() {
++    use crate::btree::page::SIZE;
++
++    let memory = ObservedMemory::default();
++    let mut tree = BTreeMap::create(memory.clone(), Config::default(), Lexicographic).unwrap();
++    for n in 0..32 {
++        tree.insert(&key(n), &[7]).unwrap();
++    }
++    tree.remove(&key(31)).unwrap();
++    let root = tree.node(tree.header.root).unwrap();
++    assert_eq!(root.entries.len(), 1);
++    assert_eq!(root.children.len(), 2);
++
++    // Corrupt the sibling that must be decoded before merge reclamation.
++    let right_offset = root.children[1] * SIZE as u64;
++    let mut original = [0; SIZE];
++    memory.memory.read(right_offset, &mut original);
++    memory.memory.write(right_offset + 100, &[0xff]);
++    let before = memory.memory.borrow().clone();
++    memory.write_calls.set(0);
++    assert_eq!(tree.remove(&key(15)), Err(Error::Corrupt));
++    assert_eq!(memory.write_calls.get(), 0);
++    assert_eq!(*memory.memory.borrow(), before);
++    memory.memory.write(right_offset, &original);
++
++    // Removing the separator merges both minimum-size children and collapses
++    // the root. The live sibling must not be read again just to mark it free.
++    memory.read_calls.set(0);
++    assert_eq!(tree.remove(&key(15)).unwrap(), Some(vec![7]));
++    assert_eq!(memory.read_calls.get(), 5);
++    assert_eq!(tree.node(tree.header.root).unwrap().children, []);
++    tree.validate().unwrap();
++    let tree = BTreeMap::open(tree.into_memory(), Config::default(), Lexicographic).unwrap();
++    assert_eq!(tree.len(), 30);
++    for n in 0..32 {
++        assert_eq!(
++            tree.get(&key(n)).unwrap(),
++            if n == 15 || n == 31 {
++                None
++            } else {
++                Some(vec![7])
++            }
++        );
++    }
++}
++
+ struct ValidationCount(Rc<Cell<u64>>);
+ impl Comparator for ValidationCount {
+     const IDENTITY: [u8; 16] = *b"validation-count";
+diff --git a/crates/ic-storage/src/btree/transaction.rs b/crates/ic-storage/src/btree/transaction.rs
+index 5d258a1..f39fe58 100644
+--- a/crates/ic-storage/src/btree/transaction.rs
++++ b/crates/ic-storage/src/btree/transaction.rs
+@@ -47,10 +47,6 @@ impl<'a, M: Memory, C: Comparator> Transaction<'a, M, C> {
+         }
+         Ok(id)
+     }
+-    fn free(&mut self, id: u64) -> Result<(), Error> {
+-        let mut page = [0; SIZE];
+-        self.free_into(id, &mut page)
+-    }
+     // Keep the validated prior bytes in the caller's buffer for chain traversal.
+     fn free_into(&mut self, id: u64, previous: &mut Page) -> Result<(), Error> {
+         if id == 0 || id >= self.header.next {
+@@ -287,7 +283,7 @@ impl<'a, M: Memory, C: Comparator> Transaction<'a, M, C> {
+         left.entries.extend(right.entries);
+         left.children.extend(right.children);
+         self.put_node(left_id, &left)?;
+-        self.free(right_id)?;
++        self.stage_free(right_id);
+         Ok(left_id)
+     }
+     fn prepare_child(&mut self, parent: &mut Node, at: usize) -> Result<u64, Error> {
+@@ -404,7 +400,7 @@ impl<'a, M: Memory, C: Comparator> Transaction<'a, M, C> {
+         }
+         let root = self.node(self.header.root)?;
+         if root.entries.is_empty() && !root.children.is_empty() {
+-            self.free(self.header.root)?;
++            self.stage_free(self.header.root);
+             self.header.root = root.children[0];
+         }
+         Ok(Some(previous))
+diff --git a/docs/design/canonical-workloads.md b/docs/design/canonical-workloads.md
+index 26aea63..52acd89 100644
+--- a/docs/design/canonical-workloads.md
++++ b/docs/design/canonical-workloads.md
+@@ -528,3 +528,39 @@ not rerun for this batch. An initial sandbox attempt failed to bind the local
+ server; its failure CSV/log are retained separately from the successful run.
+ Combined Wasm SHA-256:
+ `634e2a1156d5bc787d9ac9188ee4220cab5a68f769bf9f0a10d24a6139038af1`.
++
++## Validated node reclamation
++
++The 0.4.1 patch stages free records for already decoded merge siblings and
++collapsed roots without reading them again. Overflow reclamation retains its
++validated page buffer and separate checks. A merging/root-collapse regression
++fails at six page reads on 0.4.0 and passes at five after the change. Corrupt
++sibling bytes still refuse deletion without writes; successful deletion audits
++and reopens with all other records intact. The V1 format is unchanged.
++
++All 39 regular storage tests, three public adapter tests, native/Wasm Clippy
++and the Rust 1.91 regression pass. The 320,000-operation extended differential
++campaign against upstream and the heap model passes. Full release CI is not run.
++
++Fresh baseline and engine-only builds use identical Cargo.lock selections,
++Rust 1.99, IC Memory 0.47, IC Testkit 0.51 and PocketIC server 16.0.0/client 16.1.0
++on Linux. Both builds pass 2,024 matrix and 256 mixed measurements, with exact
++repeats and unchanged heap/stable capacities and result sizes. Paired engines
++return matching result sizes; mixed operations also check their heap model.
++
++| Mixed workload | Our baseline | Our engine patch | Change |
++| --- | ---: | ---: | ---: |
++| Rows | 314,067,143 | 314,042,756 | -0.0078% |
++| Index | 186,990,419 | 186,970,602 | -0.0106% |
++
++Upstream totals remain 341,486,075 for rows and 114,279,492 for indexes. Of our
++506 matrix cases, 42 improve, 460 are unchanged and four increase. The best is
++row_inline/remove (-4.3108%); the worst is index_full_root/remove (+0.0128%).
++Our count beating upstream remains 381/506. These are synthetic fixtures, not
++deployed IcyDB codec or recovery qualification.
++
++Artifacts are retained at `target/reclamation-benchmark.sjh5wqb7/`, beneath
++`baseline/` and `engine/`, with runner, Wasm, lockfile and both CSV/log suites.
++`baseline-to-engine.csv` and `.json` retain comparisons. Wasm SHA-256:
++baseline `456e6a8990a04b41b4583d78c49dadcb6ba57abe856d25717d1a1b7b8aa244f2`;
++engine `484e55e15c63e68b7e4ef36a81cd88f48dd5285c07c70c33a88667031788fd28`.
+diff --git a/docs/status/current.md b/docs/status/current.md
+index b688486..b29018d 100644
+--- a/docs/status/current.md
++++ b/docs/status/current.md
+@@ -1,5 +1,17 @@
+ # Current handoff
+ 
++Pending 0.4.1 reclaims merged nodes and collapsed roots directly from validated
++transaction state. The removed free wrapper no longer rereads their pages.
++A regression first fails at six reads on 0.4.0, then passes at five; it also
++rejects a corrupt merge sibling without writes and verifies reopening after
++root collapse. All 39 regular library tests, three adapter tests, native/Wasm
++Clippy and the new regression on Rust 1.91 pass. The 320,000-operation extended
++differential campaign passes. Both benchmark suites pass with exact repeats,
++unchanged capacities/results and small mixed instruction improvements; see
++[the comparison](../design/canonical-workloads.md#validated-node-reclamation).
++The pending patch changes neither the API nor persisted format. Package versions
++remain 0.4.0; full release validation is not run. Earlier evidence follows.
++
+ The benchmark runner now follows the selected IC Testkit 0.51 API. Both seed
+ calls pass an explicit anonymous principal; installation constructs InstallSpec
+ with the prior Wasm/init bytes, cycle top-up and unset sender/label. Measurement

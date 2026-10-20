@@ -4,7 +4,7 @@
         lint-tooling test-hooks test-tooling test-fixture-cell validate validate-toolchain wasm-size \
         install-runtime-server runtime-server-check test-runtime \
         install-release-tools release-tools-check \
-        test-release-adapters \
+        test-release-adapters test-package-admission \
         release-version release-preflight release-verify release-prepare-version \
         release-prepared-check release-files release-commit-check release-committed-check \
         release-tagged-check release-push-check qualify-release package publish publish-dry-run
@@ -136,6 +136,9 @@ test-release-adapters:
 	bash scripts/ci/test-release-adapters.sh
 	bash scripts/ci/test-consolidated-bootstrap.sh
 
+test-package-admission:
+	bash scripts/ci/test-package-admission.sh
+
 test-hooks: format-tools-check
 	+CDPATH="$(CURDIR)" RUSTUP_AUTO_INSTALL=0 CARGO_NET_OFFLINE=true bash scripts/ci/test-git-hooks.sh
 
@@ -163,7 +166,7 @@ validate-toolchain:
 	$(MAKE) --no-print-directory shared-tooling-check tools-check format-tools-check
 	+cargo +$(VALIDATION_TOOLCHAIN) clippy --workspace --locked --offline --all-targets -- -D warnings
 	$(MAKE) --no-print-directory check-production-graph check-pins check-storage-boundary check-license check-doc-links test-release-adapters
-	$(MAKE) --no-print-directory test-tools test-tooling test-hooks fmt-check test-fixture-cell
+	$(MAKE) --no-print-directory test-tools test-tooling test-hooks fmt-check test-fixture-cell test-package-admission
 	+cargo +$(VALIDATION_TOOLCHAIN) test --workspace --locked --offline -- --test-threads=1
 	+RUSTDOCFLAGS='-D warnings' cargo +$(VALIDATION_TOOLCHAIN) doc --workspace --locked --offline --no-deps
 	+cargo +$(VALIDATION_TOOLCHAIN) check --workspace --locked --offline --target wasm32-unknown-unknown --tests

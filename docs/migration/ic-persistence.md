@@ -120,14 +120,21 @@ and checks the shared lease type; it does not claim a live registry publication.
    with collaborator-only PR creation and the description “Allocation governance
    and governed stable collections for Internet Computer canisters; publishes
    ic-memory and ic-storage.” Publish the consolidated history to its `main`;
-   keep original repositories and historical issue/evidence URLs intact.
-4. Move the consolidated checkout to `/home/adam/projects/ic-persistence` when
-   convenient. Original Memory/Storage directories and ignored evidence remain
-   intact until the maintainer explicitly disposes of them.
+   retain historical evidence through the retirement records below.
+4. The consolidated checkout is now `/home/adam/projects/ic-persistence`.
+   The maintainer subsequently authorized retirement of both original checkouts
+   and GitHub repositories. Both local checkouts were removed after verified
+   backup. All 121 issues now belong to IC Persistence; the
+   [issue map](../history/issue-transfers.json) and
+   [comment map](../history/comment-transfers.json) preserve their references.
+   All 23 PRs have [complete exports](../history/pull-requests/README.md).
+   Backups are retained at
+   `/home/adam/projects/ic-persistence-retirement-2026-10-20/`.
+   GitHub deletion remains pending because the CLI token lacks `delete_repo`.
 5. Explicitly release 0.50.0 from reviewed clean main, then publish. The publisher
    verifies both receipts and registry checksums, uploads Memory first, confirms
    it before Storage, and resumes by skipping only checksum-matching versions.
    Keep all saved plans, logs and qualified archives if either publication fails.
-6. Coordinate downstream dependency alignment, PR disposition, branch protection,
-   repository links and eventual Storage repository archival separately. None of
-   those remote or downstream actions is included in this local migration.
+6. Coordinate downstream dependency alignment and branch protection separately.
+   The three formerly open PRs are superseded by the consolidated implementation;
+   their original review histories and states remain in the PR exports.

@@ -1,0 +1,1212 @@
+[
+  {
+    "old_url": "https://github.com/dragginzgame/ic-memory/issues/2",
+    "new": {
+      "id": "I_kwDOVRIKCM8AAAABYl4_Ig",
+      "number": 1,
+      "url": "https://github.com/dragginzgame/ic-persistence/issues/1",
+      "state": "CLOSED",
+      "title": "Support key-only memory declarations and committed opens through the existing allocation ledger"
+    }
+  },
+  {
+    "old_url": "https://github.com/dragginzgame/ic-memory/issues/3",
+    "new": {
+      "id": "I_kwDOVRIKCM8AAAABYl5Aag",
+      "number": 2,
+      "url": "https://github.com/dragginzgame/ic-persistence/issues/2",
+      "state": "CLOSED",
+      "title": "Qualify and bound allocation-ledger recovery before payload allocation and decoding"
+    }
+  },
+  {
+    "old_url": "https://github.com/dragginzgame/ic-memory/issues/4",
+    "new": {
+      "id": "I_kwDOVRIKCM8AAAABYl5Buw",
+      "number": 3,
+      "url": "https://github.com/dragginzgame/ic-persistence/issues/3",
+      "state": "CLOSED",
+      "title": "Clarify and test authorized access to omitted allocations during consumer lifecycle reconciliation"
+    }
+  },
+  {
+    "old_url": "https://github.com/dragginzgame/ic-memory/issues/5",
+    "new": {
+      "id": "I_kwDOVRIKCM8AAAABYl5C5A",
+      "number": 4,
+      "url": "https://github.com/dragginzgame/ic-persistence/issues/4",
+      "state": "CLOSED",
+      "title": "Design recovered-metadata admission within bootstrap for automatic historical declaration completion"
+    }
+  },
+  {
+    "old_url": "https://github.com/dragginzgame/ic-memory/issues/6",
+    "new": {
+      "id": "I_kwDOVRIKCM8AAAABYl5Dyg",
+      "number": 5,
+      "url": "https://github.com/dragginzgame/ic-persistence/issues/5",
+      "state": "CLOSED",
+      "title": "Reduce redundant request construction and snapshot rebuilding in logical bootstrap"
+    }
+  },
+  {
+    "old_url": "https://github.com/dragginzgame/ic-memory/issues/7",
+    "new": {
+      "id": "I_kwDOVRIKCM8AAAABYl5FBw",
+      "number": 6,
+      "url": "https://github.com/dragginzgame/ic-persistence/issues/6",
+      "state": "CLOSED",
+      "title": "Encode opaque ledger payloads as bounded CBOR byte strings to reduce bootstrap instruction cost"
+    }
+  },
+  {
+    "old_url": "https://github.com/dragginzgame/ic-memory/issues/8",
+    "new": {
+      "id": "I_kwDOVRIKCM8AAAABYl5Gxw",
+      "number": 7,
+      "url": "https://github.com/dragginzgame/ic-persistence/issues/7",
+      "state": "CLOSED",
+      "title": "Keep diagnostic tests on typed codes and qualify narrow lint expectations"
+    }
+  },
+  {
+    "old_url": "https://github.com/dragginzgame/ic-memory/issues/9",
+    "new": {
+      "id": "I_kwDOVRIKCM8AAAABYl5INA",
+      "number": 8,
+      "url": "https://github.com/dragginzgame/ic-persistence/issues/8",
+      "state": "CLOSED",
+      "title": "Return a typed construction error when fresh-manager metadata growth is refused"
+    }
+  },
+  {
+    "old_url": "https://github.com/dragginzgame/ic-memory/issues/10",
+    "new": {
+      "id": "I_kwDOVRIKCM8AAAABYl5KDg",
+      "number": 9,
+      "url": "https://github.com/dragginzgame/ic-persistence/issues/9",
+      "state": "CLOSED",
+      "title": "Adopt one common release workflow including release-major"
+    }
+  },
+  {
+    "old_url": "https://github.com/dragginzgame/ic-memory/issues/11",
+    "new": {
+      "id": "I_kwDOVRIKCM8AAAABYl5MLg",
+      "number": 10,
+      "url": "https://github.com/dragginzgame/ic-persistence/issues/10",
+      "state": "CLOSED",
+      "title": "Adopt shared audit methods and retain product-specific overlays"
+    }
+  },
+  {
+    "old_url": "https://github.com/dragginzgame/ic-memory/issues/12",
+    "new": {
+      "id": "I_kwDOVRIKCM8AAAABYl5OSA",
+      "number": 11,
+      "url": "https://github.com/dragginzgame/ic-persistence/issues/11",
+      "state": "CLOSED",
+      "title": "Adopt common repository-local IC tools, including Quill"
+    }
+  },
+  {
+    "old_url": "https://github.com/dragginzgame/ic-memory/issues/13",
+    "new": {
+      "id": "I_kwDOVRIKCM8AAAABYl5PdQ",
+      "number": 12,
+      "url": "https://github.com/dragginzgame/ic-persistence/issues/12",
+      "state": "CLOSED",
+      "title": "Adopt shared Cargo inheritance checks and applicable metadata helpers"
+    }
+  },
+  {
+    "old_url": "https://github.com/dragginzgame/ic-memory/issues/14",
+    "new": {
+      "id": "I_kwDOVRIKCM8AAAABYl5QWA",
+      "number": 13,
+      "url": "https://github.com/dragginzgame/ic-persistence/issues/13",
+      "state": "CLOSED",
+      "title": "Adopt shared formatter prerequisites and consistent Cargo sorting"
+    }
+  },
+  {
+    "old_url": "https://github.com/dragginzgame/ic-memory/issues/15",
+    "new": {
+      "id": "I_kwDOVRIKCM8AAAABYl5R1g",
+      "number": 14,
+      "url": "https://github.com/dragginzgame/ic-persistence/issues/14",
+      "state": "CLOSED",
+      "title": "Retain failed consumer release-fixture evidence"
+    }
+  },
+  {
+    "old_url": "https://github.com/dragginzgame/ic-memory/issues/16",
+    "new": {
+      "id": "I_kwDOVRIKCM8AAAABYl5TDA",
+      "number": 15,
+      "url": "https://github.com/dragginzgame/ic-persistence/issues/15",
+      "state": "CLOSED",
+      "title": "Remove repo_tool's duplicated atomic writer using ic-host-fs"
+    }
+  },
+  {
+    "old_url": "https://github.com/dragginzgame/ic-memory/issues/17",
+    "new": {
+      "id": "I_kwDOVRIKCM8AAAABYl5U0A",
+      "number": 16,
+      "url": "https://github.com/dragginzgame/ic-persistence/issues/16",
+      "state": "CLOSED",
+      "title": "Adopt and confirm the shared local-fix and owning-repository issue policy"
+    }
+  },
+  {
+    "old_url": "https://github.com/dragginzgame/ic-memory/issues/18",
+    "new": {
+      "id": "I_kwDOVRIKCM8AAAABYl5Wew",
+      "number": 17,
+      "url": "https://github.com/dragginzgame/ic-persistence/issues/17",
+      "state": "CLOSED",
+      "title": "Adopt shared release destination and snapshot integrity fixes"
+    }
+  },
+  {
+    "old_url": "https://github.com/dragginzgame/ic-memory/issues/19",
+    "new": {
+      "id": "I_kwDOVRIKCM8AAAABYl5XZw",
+      "number": 18,
+      "url": "https://github.com/dragginzgame/ic-persistence/issues/18",
+      "state": "CLOSED",
+      "title": "Move root packages into crates/ while preserving the qualification workspace"
+    }
+  },
+  {
+    "old_url": "https://github.com/dragginzgame/ic-memory/issues/20",
+    "new": {
+      "id": "I_kwDOVRIKCM8AAAABYl5Ypw",
+      "number": 19,
+      "url": "https://github.com/dragginzgame/ic-persistence/issues/19",
+      "state": "CLOSED",
+      "title": "Adopt Shared Tooling 0.1.14 Make execution guard"
+    }
+  },
+  {
+    "old_url": "https://github.com/dragginzgame/ic-memory/issues/21",
+    "new": {
+      "id": "I_kwDOVRIKCM8AAAABYl5aaQ",
+      "number": 20,
+      "url": "https://github.com/dragginzgame/ic-persistence/issues/20",
+      "state": "CLOSED",
+      "title": "Adopt shared common tool commands, pinned cloc and reviewed reporting fixes"
+    }
+  },
+  {
+    "old_url": "https://github.com/dragginzgame/ic-memory/issues/22",
+    "new": {
+      "id": "I_kwDOVRIKCM8AAAABYl5cGA",
+      "number": 21,
+      "url": "https://github.com/dragginzgame/ic-persistence/issues/21",
+      "state": "CLOSED",
+      "title": "Delegate retained package archive staging to ic-host-fs"
+    }
+  },
+  {
+    "old_url": "https://github.com/dragginzgame/ic-memory/issues/23",
+    "new": {
+      "id": "I_kwDOVRIKCM8AAAABYl5dQQ",
+      "number": 22,
+      "url": "https://github.com/dragginzgame/ic-persistence/issues/22",
+      "state": "CLOSED",
+      "title": "Adopt isolated LOC fixtures and remove consumer distribution coupling"
+    }
+  },
+  {
+    "old_url": "https://github.com/dragginzgame/ic-memory/issues/24",
+    "new": {
+      "id": "I_kwDOVRIKCM8AAAABYl5ebw",
+      "number": 23,
+      "url": "https://github.com/dragginzgame/ic-persistence/issues/23",
+      "state": "CLOSED",
+      "title": "Adopt authorized agent commits and PR delivery rules"
+    }
+  },
+  {
+    "old_url": "https://github.com/dragginzgame/ic-memory/issues/25",
+    "new": {
+      "id": "I_kwDOVRIKCM8AAAABYl5fnQ",
+      "number": 24,
+      "url": "https://github.com/dragginzgame/ic-persistence/issues/24",
+      "state": "CLOSED",
+      "title": "Adopt shared direct-release integrity checks after hooks and on completed resume"
+    }
+  },
+  {
+    "old_url": "https://github.com/dragginzgame/ic-memory/issues/26",
+    "new": {
+      "id": "I_kwDOVRIKCM8AAAABYl5g1Q",
+      "number": 25,
+      "url": "https://github.com/dragginzgame/ic-persistence/issues/25",
+      "state": "CLOSED",
+      "title": "Adopt Shared Tooling 0.1.23 release-integrity checks"
+    }
+  },
+  {
+    "old_url": "https://github.com/dragginzgame/ic-memory/issues/27",
+    "new": {
+      "id": "I_kwDOVRIKCM8AAAABYl5h7A",
+      "number": 26,
+      "url": "https://github.com/dragginzgame/ic-persistence/issues/26",
+      "state": "CLOSED",
+      "title": "Stream release receipts through the existing shared typed durable writer"
+    }
+  },
+  {
+    "old_url": "https://github.com/dragginzgame/ic-memory/issues/28",
+    "new": {
+      "id": "I_kwDOVRIKCM8AAAABYl5i_Q",
+      "number": 27,
+      "url": "https://github.com/dragginzgame/ic-persistence/issues/27",
+      "state": "CLOSED",
+      "title": "Archive retained host-tool fixtures before CI upload"
+    }
+  },
+  {
+    "old_url": "https://github.com/dragginzgame/ic-memory/issues/29",
+    "new": {
+      "id": "I_kwDOVRIKCM8AAAABYl5kNA",
+      "number": 28,
+      "url": "https://github.com/dragginzgame/ic-persistence/issues/28",
+      "state": "CLOSED",
+      "title": "Adopt Shared Tooling 0.1.27 compact evidence and consolidate snapshots"
+    }
+  },
+  {
+    "old_url": "https://github.com/dragginzgame/ic-memory/issues/30",
+    "new": {
+      "id": "I_kwDOVRIKCM8AAAABYl5mNg",
+      "number": 29,
+      "url": "https://github.com/dragginzgame/ic-persistence/issues/29",
+      "state": "CLOSED",
+      "title": "Complete CDPATH-safe hook qualification and installer adoption"
+    }
+  },
+  {
+    "old_url": "https://github.com/dragginzgame/ic-memory/issues/31",
+    "new": {
+      "id": "I_kwDOVRIKCM8AAAABYl5nsA",
+      "number": 30,
+      "url": "https://github.com/dragginzgame/ic-persistence/issues/30",
+      "state": "CLOSED",
+      "title": "Show changed paths when clean-source admission fails"
+    }
+  },
+  {
+    "old_url": "https://github.com/dragginzgame/ic-memory/issues/32",
+    "new": {
+      "id": "I_kwDOVRIKCM8AAAABYl5o8w",
+      "number": 31,
+      "url": "https://github.com/dragginzgame/ic-persistence/issues/31",
+      "state": "CLOSED",
+      "title": "Restore the published composed-host example link after workspace relocation"
+    }
+  },
+  {
+    "old_url": "https://github.com/dragginzgame/ic-memory/issues/33",
+    "new": {
+      "id": "I_kwDOVRIKCM8AAAABYl5qNg",
+      "number": 32,
+      "url": "https://github.com/dragginzgame/ic-persistence/issues/32",
+      "state": "CLOSED",
+      "title": "Preserve each main commit\u2019s queued and running native qualification"
+    }
+  },
+  {
+    "old_url": "https://github.com/dragginzgame/ic-memory/issues/34",
+    "new": {
+      "id": "I_kwDOVRIKCM8AAAABYl5rVQ",
+      "number": 33,
+      "url": "https://github.com/dragginzgame/ic-persistence/issues/33",
+      "state": "CLOSED",
+      "title": "Retire unused fleet reporters and their tests from the consumer snapshot"
+    }
+  },
+  {
+    "old_url": "https://github.com/dragginzgame/ic-memory/issues/35",
+    "new": {
+      "id": "I_kwDOVRIKCM8AAAABYl5sZw",
+      "number": 34,
+      "url": "https://github.com/dragginzgame/ic-persistence/issues/34",
+      "state": "CLOSED",
+      "title": "Explain missing dependency cache before release adapter bootstrap"
+    }
+  },
+  {
+    "old_url": "https://github.com/dragginzgame/ic-memory/issues/36",
+    "new": {
+      "id": "I_kwDOVRIKCM8AAAABYl5tkA",
+      "number": 35,
+      "url": "https://github.com/dragginzgame/ic-persistence/issues/35",
+      "state": "CLOSED",
+      "title": "Preserve preparation errors and finish independent metadata restoration after rollback failures"
+    }
+  },
+  {
+    "old_url": "https://github.com/dragginzgame/ic-memory/issues/37",
+    "new": {
+      "id": "I_kwDOVRIKCM8AAAABYl5uqA",
+      "number": 36,
+      "url": "https://github.com/dragginzgame/ic-persistence/issues/36",
+      "state": "CLOSED",
+      "title": "Keep retained release-fixture paths from blocking later test runs"
+    }
+  },
+  {
+    "old_url": "https://github.com/dragginzgame/ic-memory/issues/38",
+    "new": {
+      "id": "I_kwDOVRIKCM8AAAABYl5v-w",
+      "number": 37,
+      "url": "https://github.com/dragginzgame/ic-persistence/issues/37",
+      "state": "CLOSED",
+      "title": "Adopt Shared 0.2.1 and transfer Memory runtime server setup to Testkit"
+    }
+  },
+  {
+    "old_url": "https://github.com/dragginzgame/ic-memory/issues/39",
+    "new": {
+      "id": "I_kwDOVRIKCM8AAAABYl5xdA",
+      "number": 38,
+      "url": "https://github.com/dragginzgame/ic-persistence/issues/38",
+      "state": "CLOSED",
+      "title": "Preserve untouched metadata identity and permissions during failed preparation"
+    }
+  },
+  {
+    "old_url": "https://github.com/dragginzgame/ic-memory/issues/40",
+    "new": {
+      "id": "I_kwDOVRIKCM8AAAABYl5yvA",
+      "number": 39,
+      "url": "https://github.com/dragginzgame/ic-persistence/issues/39",
+      "state": "CLOSED",
+      "title": "Keep empty note prose from blocking valid release preparation"
+    }
+  },
+  {
+    "old_url": "https://github.com/dragginzgame/ic-memory/issues/41",
+    "new": {
+      "id": "I_kwDOVRIKCM8AAAABYl5z5A",
+      "number": 40,
+      "url": "https://github.com/dragginzgame/ic-persistence/issues/40",
+      "state": "CLOSED",
+      "title": "Bind annotated tag identity across package publication checks"
+    }
+  },
+  {
+    "old_url": "https://github.com/dragginzgame/ic-memory/issues/42",
+    "new": {
+      "id": "I_kwDOVRIKCM8AAAABYl50zQ",
+      "number": 41,
+      "url": "https://github.com/dragginzgame/ic-persistence/issues/41",
+      "state": "CLOSED",
+      "title": "Adopt Shared 0.2.6 standard release Make routing"
+    }
+  },
+  {
+    "old_url": "https://github.com/dragginzgame/ic-memory/issues/43",
+    "new": {
+      "id": "I_kwDOVRIKCM8AAAABYl52EA",
+      "number": 42,
+      "url": "https://github.com/dragginzgame/ic-persistence/issues/42",
+      "state": "CLOSED",
+      "title": "Preserve literal Cargo target paths during repo-tool recovery bootstrap"
+    }
+  },
+  {
+    "old_url": "https://github.com/dragginzgame/ic-memory/issues/44",
+    "new": {
+      "id": "I_kwDOVRIKCM8AAAABYl53GA",
+      "number": 43,
+      "url": "https://github.com/dragginzgame/ic-persistence/issues/43",
+      "state": "CLOSED",
+      "title": "Hard cut to host-wide allocation pooling and coordinate downstream composition"
+    }
+  },
+  {
+    "old_url": "https://github.com/dragginzgame/ic-memory/issues/45",
+    "new": {
+      "id": "I_kwDOVRIKCM8AAAABYl54qw",
+      "number": 44,
+      "url": "https://github.com/dragginzgame/ic-persistence/issues/44",
+      "state": "CLOSED",
+      "title": "Restore GNU Make 3.81 parsing while preserving forced release policies"
+    }
+  },
+  {
+    "old_url": "https://github.com/dragginzgame/ic-memory/issues/46",
+    "new": {
+      "id": "I_kwDOVRIKCM8AAAABYl556A",
+      "number": 45,
+      "url": "https://github.com/dragginzgame/ic-persistence/issues/45",
+      "state": "CLOSED",
+      "title": "Migrate repo-tool publication boundary to Host 0.10"
+    }
+  },
+  {
+    "old_url": "https://github.com/dragginzgame/ic-memory/issues/47",
+    "new": {
+      "id": "I_kwDOVRIKCM8AAAABYl562A",
+      "number": 46,
+      "url": "https://github.com/dragginzgame/ic-persistence/issues/46",
+      "state": "CLOSED",
+      "title": "Refuse unsafe Make modes hidden by explicit MAKEFLAGS replacement"
+    }
+  },
+  {
+    "old_url": "https://github.com/dragginzgame/ic-memory/issues/48",
+    "new": {
+      "id": "I_kwDOVRIKCM8AAAABYl574g",
+      "number": 47,
+      "url": "https://github.com/dragginzgame/ic-persistence/issues/47",
+      "state": "CLOSED",
+      "title": "Adopt concise formatting output and retained failure logs"
+    }
+  },
+  {
+    "old_url": "https://github.com/dragginzgame/ic-memory/issues/49",
+    "new": {
+      "id": "I_kwDOVRIKCM8AAAABYl59BA",
+      "number": 48,
+      "url": "https://github.com/dragginzgame/ic-persistence/issues/48",
+      "state": "CLOSED",
+      "title": "Make README dependency examples advisory during release preparation"
+    }
+  },
+  {
+    "old_url": "https://github.com/dragginzgame/ic-memory/issues/50",
+    "new": {
+      "id": "I_kwDOVRIKCM8AAAABYl5-uQ",
+      "number": 49,
+      "url": "https://github.com/dragginzgame/ic-persistence/issues/49",
+      "state": "CLOSED",
+      "title": "Adopt Shared Tooling 0.3.0 complete common toolset"
+    }
+  },
+  {
+    "old_url": "https://github.com/dragginzgame/ic-memory/issues/51",
+    "new": {
+      "id": "I_kwDOVRIKCM8AAAABYl5_9A",
+      "number": 50,
+      "url": "https://github.com/dragginzgame/ic-persistence/issues/50",
+      "state": "CLOSED",
+      "title": "Adopt Shared Tooling 0.3.1 setup prerequisite checks and diagnostics"
+    }
+  },
+  {
+    "old_url": "https://github.com/dragginzgame/ic-memory/issues/52",
+    "new": {
+      "id": "I_kwDOVRIKCM8AAAABYl6BFg",
+      "number": 51,
+      "url": "https://github.com/dragginzgame/ic-persistence/issues/51",
+      "state": "CLOSED",
+      "title": "Preserve Cargo jobserver access and fail incomplete tooling fixtures"
+    }
+  },
+  {
+    "old_url": "https://github.com/dragginzgame/ic-memory/issues/53",
+    "new": {
+      "id": "I_kwDOVRIKCM8AAAABYl6CJA",
+      "number": 52,
+      "url": "https://github.com/dragginzgame/ic-persistence/issues/52",
+      "state": "CLOSED",
+      "title": "Qualify Binaryen 133 runtime Wasm and adopt Shared Tooling 0.3.4"
+    }
+  },
+  {
+    "old_url": "https://github.com/dragginzgame/ic-memory/issues/54",
+    "new": {
+      "id": "I_kwDOVRIKCM8AAAABYl6DGw",
+      "number": 53,
+      "url": "https://github.com/dragginzgame/ic-persistence/issues/53",
+      "state": "CLOSED",
+      "title": "Adopt canonical fix for failed Git tree observations in formatting hook"
+    }
+  },
+  {
+    "old_url": "https://github.com/dragginzgame/ic-memory/issues/55",
+    "new": {
+      "id": "I_kwDOVRIKCM8AAAABYl6EPA",
+      "number": 54,
+      "url": "https://github.com/dragginzgame/ic-persistence/issues/54",
+      "state": "CLOSED",
+      "title": "Enforce portable fixture and evidence assertions on Bash 3.2"
+    }
+  },
+  {
+    "old_url": "https://github.com/dragginzgame/ic-memory/issues/56",
+    "new": {
+      "id": "I_kwDOVRIKCM8AAAABYl6Fhw",
+      "number": 55,
+      "url": "https://github.com/dragginzgame/ic-persistence/issues/55",
+      "state": "CLOSED",
+      "title": "Preserve failed MSRV observations before validation compiler dispatch"
+    }
+  },
+  {
+    "old_url": "https://github.com/dragginzgame/ic-memory/issues/57",
+    "new": {
+      "id": "I_kwDOVRIKCM8AAAABYl6Glw",
+      "number": 56,
+      "url": "https://github.com/dragginzgame/ic-persistence/issues/56",
+      "state": "CLOSED",
+      "title": "Qualify failure-evidence round trips through aliased temporary roots"
+    }
+  },
+  {
+    "old_url": "https://github.com/dragginzgame/ic-memory/issues/58",
+    "new": {
+      "id": "I_kwDOVRIKCM8AAAABYl6HrA",
+      "number": 57,
+      "url": "https://github.com/dragginzgame/ic-persistence/issues/57",
+      "state": "CLOSED",
+      "title": "Use shared note finalization instead of blocking releases on heading formatting"
+    }
+  },
+  {
+    "old_url": "https://github.com/dragginzgame/ic-memory/issues/59",
+    "new": {
+      "id": "I_kwDOVRIKCM8AAAABYl6IsQ",
+      "number": 58,
+      "url": "https://github.com/dragginzgame/ic-persistence/issues/58",
+      "state": "CLOSED",
+      "title": "Adopt Shared Tooling 0.4 Rust installation and PATH hard cut"
+    }
+  },
+  {
+    "old_url": "https://github.com/dragginzgame/ic-memory/issues/60",
+    "new": {
+      "id": "I_kwDOVRIKCM8AAAABYl6J5Q",
+      "number": 59,
+      "url": "https://github.com/dragginzgame/ic-persistence/issues/59",
+      "state": "CLOSED",
+      "title": "Adopt Shared Tooling 0.5 shared host/IC storage and retain selected evidence"
+    }
+  },
+  {
+    "old_url": "https://github.com/dragginzgame/ic-memory/issues/61",
+    "new": {
+      "id": "I_kwDOVRIKCM8AAAABYl6K7w",
+      "number": 60,
+      "url": "https://github.com/dragginzgame/ic-persistence/issues/60",
+      "state": "CLOSED",
+      "title": "Preserve product failure evidence when shared-store selection fails"
+    }
+  },
+  {
+    "old_url": "https://github.com/dragginzgame/ic-memory/issues/62",
+    "new": {
+      "id": "I_kwDOVRIKCM8AAAABYl6MFw",
+      "number": 61,
+      "url": "https://github.com/dragginzgame/ic-persistence/issues/61",
+      "state": "CLOSED",
+      "title": "Qualify current shared tooling adoption and native evidence"
+    }
+  },
+  {
+    "old_url": "https://github.com/dragginzgame/ic-memory/issues/63",
+    "new": {
+      "id": "I_kwDOVRIKCM8AAAABYl6NVQ",
+      "number": 62,
+      "url": "https://github.com/dragginzgame/ic-persistence/issues/62",
+      "state": "CLOSED",
+      "title": "Correct PocketIC exception rationale for the selected Testkit server"
+    }
+  },
+  {
+    "old_url": "https://github.com/dragginzgame/ic-memory/issues/64",
+    "new": {
+      "id": "I_kwDOVRIKCM8AAAABYl6OQg",
+      "number": 63,
+      "url": "https://github.com/dragginzgame/ic-persistence/issues/63",
+      "state": "CLOSED",
+      "title": "Reduce AGENTS.md adoption history while preserving explicit local exceptions"
+    }
+  },
+  {
+    "old_url": "https://github.com/dragginzgame/ic-memory/issues/65",
+    "new": {
+      "id": "I_kwDOVRIKCM8AAAABYl6PEQ",
+      "number": 64,
+      "url": "https://github.com/dragginzgame/ic-persistence/issues/64",
+      "state": "CLOSED",
+      "title": "Retain superseded prepared receipts during committed-source release restart"
+    }
+  },
+  {
+    "old_url": "https://github.com/dragginzgame/ic-memory/issues/66",
+    "new": {
+      "id": "I_kwDOVRIKCM8AAAABYl6QJg",
+      "number": 65,
+      "url": "https://github.com/dragginzgame/ic-persistence/issues/65",
+      "state": "CLOSED",
+      "title": "Exercise actual prerequisite failure in release-adapter fixtures without recipe overrides"
+    }
+  },
+  {
+    "old_url": "https://github.com/dragginzgame/ic-memory/issues/67",
+    "new": {
+      "id": "I_kwDOVRIKCM8AAAABYl6RUg",
+      "number": 66,
+      "url": "https://github.com/dragginzgame/ic-persistence/issues/66",
+      "state": "CLOSED",
+      "title": "Require regular shared failure payloads after archive upload/download"
+    }
+  },
+  {
+    "old_url": "https://github.com/dragginzgame/ic-memory/issues/68",
+    "new": {
+      "id": "I_kwDOVRIKCM8AAAABYl6SRQ",
+      "number": 67,
+      "url": "https://github.com/dragginzgame/ic-persistence/issues/67",
+      "state": "CLOSED",
+      "title": "Use ASCII whitespace validation for bounded stable keys to reduce Wasm size"
+    }
+  },
+  {
+    "old_url": "https://github.com/dragginzgame/ic-memory/issues/69",
+    "new": {
+      "id": "I_kwDOVRIKCM8AAAABYl6TVw",
+      "number": 68,
+      "url": "https://github.com/dragginzgame/ic-persistence/issues/68",
+      "state": "CLOSED",
+      "title": "Evaluate sorted borrowed keys for bounded uniqueness checks to reduce Wasm size"
+    }
+  },
+  {
+    "old_url": "https://github.com/dragginzgame/ic-memory/issues/70",
+    "new": {
+      "id": "I_kwDOVRIKCM8AAAABYl6UmQ",
+      "number": 69,
+      "url": "https://github.com/dragginzgame/ic-persistence/issues/69",
+      "state": "CLOSED",
+      "title": "Refresh the local audit overlay after the 0.36 explicit-declaration cut"
+    }
+  },
+  {
+    "old_url": "https://github.com/dragginzgame/ic-memory/issues/71",
+    "new": {
+      "id": "I_kwDOVRIKCM8AAAABYl6Vfg",
+      "number": 70,
+      "url": "https://github.com/dragginzgame/ic-persistence/issues/70",
+      "state": "CLOSED",
+      "title": "Adopt Shared Tooling 0.10 snapshot-owned common tool catalogs"
+    }
+  },
+  {
+    "old_url": "https://github.com/dragginzgame/ic-memory/issues/72",
+    "new": {
+      "id": "I_kwDOVRIKCM8AAAABYl6WyQ",
+      "number": 71,
+      "url": "https://github.com/dragginzgame/ic-persistence/issues/71",
+      "state": "CLOSED",
+      "title": "Test current committed-capability privacy without compiler suggestion drift"
+    }
+  },
+  {
+    "old_url": "https://github.com/dragginzgame/ic-memory/issues/73",
+    "new": {
+      "id": "I_kwDOVRIKCM8AAAABYl6YOw",
+      "number": 72,
+      "url": "https://github.com/dragginzgame/ic-persistence/issues/72",
+      "state": "CLOSED",
+      "title": "Remove duplicate bootstrap fixture flows and delegate native release mechanics"
+    }
+  },
+  {
+    "old_url": "https://github.com/dragginzgame/ic-memory/issues/74",
+    "new": {
+      "id": "I_kwDOVRIKCM8AAAABYl6ZWw",
+      "number": 73,
+      "url": "https://github.com/dragginzgame/ic-persistence/issues/73",
+      "state": "CLOSED",
+      "title": "Adopt Shared Tooling 0.11 CI installers and exact evidence readback"
+    }
+  },
+  {
+    "old_url": "https://github.com/dragginzgame/ic-memory/issues/75",
+    "new": {
+      "id": "I_kwDOVRIKCM8AAAABYl6aZQ",
+      "number": 74,
+      "url": "https://github.com/dragginzgame/ic-persistence/issues/74",
+      "state": "CLOSED",
+      "title": "Delegate native annotated release-tag checks to the existing Shared owner"
+    }
+  },
+  {
+    "old_url": "https://github.com/dragginzgame/ic-memory/issues/76",
+    "new": {
+      "id": "I_kwDOVRIKCM8AAAABYl6brA",
+      "number": 75,
+      "url": "https://github.com/dragginzgame/ic-persistence/issues/75",
+      "state": "CLOSED",
+      "title": "Use a canonical pure workspace-version renderer when Shared provides it"
+    }
+  },
+  {
+    "old_url": "https://github.com/dragginzgame/ic-memory/issues/77",
+    "new": {
+      "id": "I_kwDOVRIKCM8AAAABYl6dFQ",
+      "number": 76,
+      "url": "https://github.com/dragginzgame/ic-persistence/issues/76",
+      "state": "CLOSED",
+      "title": "Converge ordinary fixture completion and retention on the qualified Shared helper"
+    }
+  },
+  {
+    "old_url": "https://github.com/dragginzgame/ic-memory/issues/78",
+    "new": {
+      "id": "I_kwDOVRIKCM8AAAABYl6eYg",
+      "number": 77,
+      "url": "https://github.com/dragginzgame/ic-persistence/issues/77",
+      "state": "CLOSED",
+      "title": "Reduce duplicated Wasm sorting code in bounded bootstrap collections"
+    }
+  },
+  {
+    "old_url": "https://github.com/dragginzgame/ic-memory/issues/79",
+    "new": {
+      "id": "I_kwDOVRIKCM8AAAABYl6fiA",
+      "number": 78,
+      "url": "https://github.com/dragginzgame/ic-persistence/issues/78",
+      "state": "CLOSED",
+      "title": "Avoid repeated free-slot scans during declaration resolution"
+    }
+  },
+  {
+    "old_url": "https://github.com/dragginzgame/ic-memory/issues/80",
+    "new": {
+      "id": "I_kwDOVRIKCM8AAAABYl6g5A",
+      "number": 79,
+      "url": "https://github.com/dragginzgame/ic-persistence/issues/79",
+      "state": "CLOSED",
+      "title": "Retire the duplicate key-only Wasm size probe"
+    }
+  },
+  {
+    "old_url": "https://github.com/dragginzgame/ic-memory/issues/81",
+    "new": {
+      "id": "I_kwDOVRIKCM8AAAABYl6huA",
+      "number": 80,
+      "url": "https://github.com/dragginzgame/ic-persistence/issues/80",
+      "state": "CLOSED",
+      "title": "Adopt canonical Shared fixture-retention probes and retire the copied harness"
+    }
+  },
+  {
+    "old_url": "https://github.com/dragginzgame/ic-memory/issues/82",
+    "new": {
+      "id": "I_kwDOVRIKCM8AAAABYl6irw",
+      "number": 81,
+      "url": "https://github.com/dragginzgame/ic-persistence/issues/81",
+      "state": "OPEN",
+      "title": "Retire mirrored manager layout and growth mechanics after qualified upstream publication"
+    }
+  },
+  {
+    "old_url": "https://github.com/dragginzgame/ic-memory/issues/83",
+    "new": {
+      "id": "I_kwDOVRIKCM8AAAABYl6kPQ",
+      "number": 82,
+      "url": "https://github.com/dragginzgame/ic-persistence/issues/82",
+      "state": "CLOSED",
+      "title": "Admit retained package copy descriptors to prevent FIFO hangs"
+    }
+  },
+  {
+    "old_url": "https://github.com/dragginzgame/ic-memory/issues/84",
+    "new": {
+      "id": "I_kwDOVRIKCM8AAAABYl6lpA",
+      "number": 83,
+      "url": "https://github.com/dragginzgame/ic-persistence/issues/83",
+      "state": "CLOSED",
+      "title": "Compose detailed allocation reports from their numeric summary"
+    }
+  },
+  {
+    "old_url": "https://github.com/dragginzgame/ic-memory/issues/85",
+    "new": {
+      "id": "I_kwDOVRIKCM8AAAABYl6nIQ",
+      "number": 84,
+      "url": "https://github.com/dragginzgame/ic-persistence/issues/84",
+      "state": "CLOSED",
+      "title": "Prepare bounded ledger bytes once before Cell publication"
+    }
+  },
+  {
+    "old_url": "https://github.com/dragginzgame/ic-memory/issues/87",
+    "new": {
+      "id": "I_kwDOVRIKCM8AAAABYl6oqA",
+      "number": 85,
+      "url": "https://github.com/dragginzgame/ic-persistence/issues/85",
+      "state": "CLOSED",
+      "title": "Adopt canonical advisory README renderer after Shared publication"
+    }
+  },
+  {
+    "old_url": "https://github.com/dragginzgame/ic-memory/issues/88",
+    "new": {
+      "id": "I_kwDOVRIKCM8AAAABYl6pkw",
+      "number": 86,
+      "url": "https://github.com/dragginzgame/ic-persistence/issues/86",
+      "state": "CLOSED",
+      "title": "Avoid repeating formatting and hook fixtures within each native CI job"
+    }
+  },
+  {
+    "old_url": "https://github.com/dragginzgame/ic-memory/issues/90",
+    "new": {
+      "id": "I_kwDOVRIKCM8AAAABYl6qug",
+      "number": 87,
+      "url": "https://github.com/dragginzgame/ic-persistence/issues/87",
+      "state": "CLOSED",
+      "title": "Avoid constructing the reserved ledger binding twice in allocation reports"
+    }
+  },
+  {
+    "old_url": "https://github.com/dragginzgame/ic-memory/issues/91",
+    "new": {
+      "id": "I_kwDOVRIKCM8AAAABYl6sBA",
+      "number": 88,
+      "url": "https://github.com/dragginzgame/ic-persistence/issues/88",
+      "state": "CLOSED",
+      "title": "Share claim identity lookup while preserving lifecycle error precedence"
+    }
+  },
+  {
+    "old_url": "https://github.com/dragginzgame/ic-memory/issues/92",
+    "new": {
+      "id": "I_kwDOVRIKCM8AAAABYl6tRw",
+      "number": 89,
+      "url": "https://github.com/dragginzgame/ic-persistence/issues/89",
+      "state": "OPEN",
+      "title": "Adopt published Host verified copying and retire release copy orchestration"
+    }
+  },
+  {
+    "old_url": "https://github.com/dragginzgame/ic-memory/issues/93",
+    "new": {
+      "id": "I_kwDOVRIKCM8AAAABYl6uUw",
+      "number": 90,
+      "url": "https://github.com/dragginzgame/ic-persistence/issues/90",
+      "state": "OPEN",
+      "title": "Adopt published std-only Testkit allocator measurement and retire local engine"
+    }
+  },
+  {
+    "old_url": "https://github.com/dragginzgame/ic-memory/issues/94",
+    "new": {
+      "id": "I_kwDOVRIKCM8AAAABYl6vYg",
+      "number": 91,
+      "url": "https://github.com/dragginzgame/ic-persistence/issues/91",
+      "state": "CLOSED",
+      "title": "Release staged ledger records before Cell persistence"
+    }
+  },
+  {
+    "old_url": "https://github.com/dragginzgame/ic-memory/issues/95",
+    "new": {
+      "id": "I_kwDOVRIKCM8AAAABYl6wRA",
+      "number": 92,
+      "url": "https://github.com/dragginzgame/ic-persistence/issues/92",
+      "state": "CLOSED",
+      "title": "Delegate hook fixture lifecycle to the existing Shared owner"
+    }
+  },
+  {
+    "old_url": "https://github.com/dragginzgame/ic-memory/issues/96",
+    "new": {
+      "id": "I_kwDOVRIKCM8AAAABYl6xMg",
+      "number": 93,
+      "url": "https://github.com/dragginzgame/ic-persistence/issues/93",
+      "state": "CLOSED",
+      "title": "Adopt published Build strict lock projection verifier"
+    }
+  },
+  {
+    "old_url": "https://github.com/dragginzgame/ic-memory/issues/97",
+    "new": {
+      "id": "I_kwDOVRIKCM8AAAABYl6ySg",
+      "number": 94,
+      "url": "https://github.com/dragginzgame/ic-persistence/issues/94",
+      "state": "CLOSED",
+      "title": "Use private ledger codec functions and a test-only envelope fixture"
+    }
+  },
+  {
+    "old_url": "https://github.com/dragginzgame/ic-memory/issues/98",
+    "new": {
+      "id": "I_kwDOVRIKCM8AAAABYl6zww",
+      "number": 95,
+      "url": "https://github.com/dragginzgame/ic-persistence/issues/95",
+      "state": "CLOSED",
+      "title": "Hard-cut the unused reservation policy callback"
+    }
+  },
+  {
+    "old_url": "https://github.com/dragginzgame/ic-memory/issues/99",
+    "new": {
+      "id": "I_kwDOVRIKCM8AAAABYl603A",
+      "number": 96,
+      "url": "https://github.com/dragginzgame/ic-persistence/issues/96",
+      "state": "CLOSED",
+      "title": "Remove redundant Debug payload from doctor binding mismatch"
+    }
+  },
+  {
+    "old_url": "https://github.com/dragginzgame/ic-memory/issues/100",
+    "new": {
+      "id": "I_kwDOVRIKCM8AAAABYl612g",
+      "number": 97,
+      "url": "https://github.com/dragginzgame/ic-persistence/issues/97",
+      "state": "CLOSED",
+      "title": "Share bounded ledger and Cell serialization buffers"
+    }
+  },
+  {
+    "old_url": "https://github.com/dragginzgame/ic-memory/issues/101",
+    "new": {
+      "id": "I_kwDOVRIKCM8AAAABYl628Q",
+      "number": 98,
+      "url": "https://github.com/dragginzgame/ic-persistence/issues/98",
+      "state": "OPEN",
+      "title": "Adopt canonical Testkit memory IO instrumentation"
+    }
+  },
+  {
+    "old_url": "https://github.com/dragginzgame/ic-memory/issues/102",
+    "new": {
+      "id": "I_kwDOVRIKCM8AAAABYl64QQ",
+      "number": 99,
+      "url": "https://github.com/dragginzgame/ic-persistence/issues/99",
+      "state": "CLOSED",
+      "title": "Converge release version and date admission on Shared"
+    }
+  },
+  {
+    "old_url": "https://github.com/dragginzgame/ic-memory/issues/104",
+    "new": {
+      "id": "I_kwDOVRIKCM8AAAABYl65ig",
+      "number": 100,
+      "url": "https://github.com/dragginzgame/ic-persistence/issues/100",
+      "state": "CLOSED",
+      "title": "Share explicit fixture byte-cell construction for Blob probes"
+    }
+  },
+  {
+    "old_url": "https://github.com/dragginzgame/ic-memory/issues/106",
+    "new": {
+      "id": "I_kwDOVRIKCM8AAAABYl66_Q",
+      "number": 101,
+      "url": "https://github.com/dragginzgame/ic-persistence/issues/101",
+      "state": "CLOSED",
+      "title": "Hard cut to one checksummed current ledger snapshot"
+    }
+  },
+  {
+    "old_url": "https://github.com/dragginzgame/ic-memory/issues/107",
+    "new": {
+      "id": "I_kwDOVRIKCM8AAAABYl68MQ",
+      "number": 102,
+      "url": "https://github.com/dragginzgame/ic-persistence/issues/102",
+      "state": "CLOSED",
+      "title": "Qualify and replace rustls 0.23.45 in runtime qualification"
+    }
+  },
+  {
+    "old_url": "https://github.com/dragginzgame/ic-memory/issues/108",
+    "new": {
+      "id": "I_kwDOVRIKCM8AAAABYl69mA",
+      "number": 103,
+      "url": "https://github.com/dragginzgame/ic-persistence/issues/103",
+      "state": "CLOSED",
+      "title": "Reuse one recovered-slot bitmap for custody and resolution"
+    }
+  },
+  {
+    "old_url": "https://github.com/dragginzgame/ic-memory/issues/109",
+    "new": {
+      "id": "I_kwDOVRIKCM8AAAABYl6-1A",
+      "number": 104,
+      "url": "https://github.com/dragginzgame/ic-persistence/issues/104",
+      "state": "CLOSED",
+      "title": "Consume recovered doctor records without duplicating ledger keys"
+    }
+  },
+  {
+    "old_url": "https://github.com/dragginzgame/ic-memory/issues/110",
+    "new": {
+      "id": "I_kwDOVRIKCM8AAAABYl6_wg",
+      "number": 105,
+      "url": "https://github.com/dragginzgame/ic-persistence/issues/105",
+      "state": "CLOSED",
+      "title": "Adopt canonical Build Cargo environment observation after publication"
+    }
+  },
+  {
+    "old_url": "https://github.com/dragginzgame/ic-memory/issues/112",
+    "new": {
+      "id": "I_kwDOVRIKCM8AAAABYl7AyQ",
+      "number": 106,
+      "url": "https://github.com/dragginzgame/ic-persistence/issues/106",
+      "state": "CLOSED",
+      "title": "Carry resolved bootstrap declarations without repeated lookup or sorting"
+    }
+  },
+  {
+    "old_url": "https://github.com/dragginzgame/ic-memory/issues/113",
+    "new": {
+      "id": "I_kwDOVRIKCM8AAAABYl7B5Q",
+      "number": 107,
+      "url": "https://github.com/dragginzgame/ic-persistence/issues/107",
+      "state": "CLOSED",
+      "title": "Adopt Build Cargo metadata observation and Rust 1.91"
+    }
+  },
+  {
+    "old_url": "https://github.com/dragginzgame/ic-memory/issues/114",
+    "new": {
+      "id": "I_kwDOVRIKCM8AAAABYl7DHQ",
+      "number": 108,
+      "url": "https://github.com/dragginzgame/ic-persistence/issues/108",
+      "state": "CLOSED",
+      "title": "Remove unused allocation declaration labels"
+    }
+  },
+  {
+    "old_url": "https://github.com/dragginzgame/ic-memory/issues/115",
+    "new": {
+      "id": "I_kwDOVRIKCM8AAAABYl7EdA",
+      "number": 109,
+      "url": "https://github.com/dragginzgame/ic-persistence/issues/109",
+      "state": "CLOSED",
+      "title": "Hard cut slot encoding to a checked numeric ID"
+    }
+  },
+  {
+    "old_url": "https://github.com/dragginzgame/ic-memory/issues/117",
+    "new": {
+      "id": "I_kwDOVRIKCM8AAAABYl7Fpw",
+      "number": 110,
+      "url": "https://github.com/dragginzgame/ic-persistence/issues/110",
+      "state": "CLOSED",
+      "title": "Fix release-adapter Cargo discovery failing ShellCheck SC2155"
+    }
+  },
+  {
+    "old_url": "https://github.com/dragginzgame/ic-memory/issues/118",
+    "new": {
+      "id": "I_kwDOVRIKCM8AAAABYl7GjQ",
+      "number": 111,
+      "url": "https://github.com/dragginzgame/ic-persistence/issues/111",
+      "state": "CLOSED",
+      "title": "Enforce exclusive allocation leases and narrow substrate exports"
+    }
+  },
+  {
+    "old_url": "https://github.com/dragginzgame/ic-memory/issues/119",
+    "new": {
+      "id": "I_kwDOVRIKCM8AAAABYl7HnA",
+      "number": 112,
+      "url": "https://github.com/dragginzgame/ic-persistence/issues/112",
+      "state": "CLOSED",
+      "title": "Retire README version rendering before the Shared tooling hard cut"
+    }
+  },
+  {
+    "old_url": "https://github.com/dragginzgame/ic-memory/issues/123",
+    "new": {
+      "id": "I_kwDOVRIKCM8AAAABYl7IjQ",
+      "number": 113,
+      "url": "https://github.com/dragginzgame/ic-persistence/issues/113",
+      "state": "OPEN",
+      "title": "Qualify Rust 1.99.1 as the development compiler"
+    }
+  },
+  {
+    "old_url": "https://github.com/dragginzgame/ic-memory/issues/124",
+    "new": {
+      "id": "I_kwDOVRIKCM8AAAABYl7Jsg",
+      "number": 114,
+      "url": "https://github.com/dragginzgame/ic-persistence/issues/114",
+      "state": "OPEN",
+      "title": "Remove Ciborium from the retained-ledger dependency graph"
+    }
+  },
+  {
+    "old_url": "https://github.com/dragginzgame/ic-storage/issues/1",
+    "new": {
+      "id": "I_kwDOVRIKCM8AAAABYl7Kuw",
+      "number": 115,
+      "url": "https://github.com/dragginzgame/ic-persistence/issues/115",
+      "state": "CLOSED",
+      "title": "Adopt Memory 0.46 exclusive leases and root backing exports after publication"
+    }
+  },
+  {
+    "old_url": "https://github.com/dragginzgame/ic-storage/issues/4",
+    "new": {
+      "id": "I_kwDOVRIKCM8AAAABYl7Liw",
+      "number": 116,
+      "url": "https://github.com/dragginzgame/ic-persistence/issues/116",
+      "state": "CLOSED",
+      "title": "Adopt fail-closed Cargo dependency-boundary admission"
+    }
+  },
+  {
+    "old_url": "https://github.com/dragginzgame/ic-storage/issues/11",
+    "new": {
+      "id": "I_kwDOVRIKCM8AAAABYl7Mmg",
+      "number": 117,
+      "url": "https://github.com/dragginzgame/ic-persistence/issues/117",
+      "state": "CLOSED",
+      "title": "Provide governed map capacity reservation without cloning allocation leases"
+    }
+  },
+  {
+    "old_url": "https://github.com/dragginzgame/ic-storage/issues/12",
+    "new": {
+      "id": "I_kwDOVRIKCM8AAAABYl7Nfw",
+      "number": 118,
+      "url": "https://github.com/dragginzgame/ic-persistence/issues/118",
+      "state": "OPEN",
+      "title": "Investigate discard-value mutations for governed stable maps"
+    }
+  },
+  {
+    "old_url": "https://github.com/dragginzgame/ic-storage/issues/14",
+    "new": {
+      "id": "I_kwDOVRIKCM8AAAABYl7OVg",
+      "number": 119,
+      "url": "https://github.com/dragginzgame/ic-persistence/issues/119",
+      "state": "CLOSED",
+      "title": "Qualify Rust 1.99.1 as the development compiler"
+    }
+  },
+  {
+    "old_url": "https://github.com/dragginzgame/ic-storage/issues/15",
+    "new": {
+      "id": "I_kwDOVRIKCM8AAAABYl7PdA",
+      "number": 120,
+      "url": "https://github.com/dragginzgame/ic-persistence/issues/120",
+      "state": "CLOSED",
+      "title": "Support retained governed collection regions sharing one control allocation"
+    }
+  },
+  {
+    "old_url": "https://github.com/dragginzgame/ic-storage/issues/17",
+    "new": {
+      "id": "I_kwDOVRIKCM8AAAABYl7Q3g",
+      "number": 121,
+      "url": "https://github.com/dragginzgame/ic-persistence/issues/121",
+      "state": "OPEN",
+      "title": "Align adapters with published Memory 0.49 runtime handles"
+    }
+  }
+]

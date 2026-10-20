@@ -6,9 +6,10 @@
   names, APIs, persisted formats and allocation/lease responsibilities.
 - Share workspace dependencies, CI and source-bound two-package release receipts;
   publish Memory before Storage with checksum-verified partial-publication resume.
+- Keep archive qualification on the selected dependencies and reject duplicate or
+  substituted Memory/Storage packages before compilation.
 - Align both crate versions at the authorized release; consumers must select the
   matching Memory/Storage 0.50 identities. [Detailed notes](docs/changelog/0.50.md).
-
 
 ## [0.49.4] - 2026-10-20
 

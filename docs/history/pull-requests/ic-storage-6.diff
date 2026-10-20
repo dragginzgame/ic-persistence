@@ -1,0 +1,196 @@
+diff --git a/AGENTS.md b/AGENTS.md
+index aab0a98..b571703 100644
+--- a/AGENTS.md
++++ b/AGENTS.md
+@@ -31,7 +31,7 @@ Rust checks are `make fmt-check`, `make check`, `make clippy`,
+ `make docs-check`, `make test`, `make wasm-check` and `make msrv`. `make ci` is the complete repository gate. Shared Tooling owns tests of the exported helpers.
+ 
+ Common setup and release commands come from `make/consumer.mk`.
+-The pending implementation batch is `0.3.1`; release metadata remains maintainer-owned.
++The pending implementation batch is `0.3.2`; release metadata remains maintainer-owned.
+ Releases use the local Cargo adapter and shared metadata helpers and direct delivery to
+ `origin/main`. The shared contribution and release authorization rules apply.
+ `make publish-check` and `make publish` require clean source at an annotated
+diff --git a/CHANGELOG.md b/CHANGELOG.md
+index 7cfb264..6d217be 100644
+--- a/CHANGELOG.md
++++ b/CHANGELOG.md
+@@ -1,5 +1,13 @@
+ # Changelog
+ 
++## [0.3.2]
++
++- Refresh the separate dependency-boundary snapshot to Shared Tooling 0.20.0,
++  requiring successful Cargo completion and complete workspace metadata before
++  admitting dependencies. Preserve the local package allowlist, published
++  library contract and main tooling snapshot
++  ([#4 — Adopt fail-closed Cargo dependency-boundary admission](https://github.com/dragginzgame/ic-storage/issues/4)).
++
+ ## [0.3.1] - 2026-10-17
+ 
+ - Remove the membership preflight from deletion. Missing-key transactions
+diff --git a/docs/status/current.md b/docs/status/current.md
+index cba031e..d6e1d05 100644
+--- a/docs/status/current.md
++++ b/docs/status/current.md
+@@ -1,5 +1,21 @@
+ # Current handoff
+ 
++## Prepared 0.3.2
++
++The dependency-boundary bundle selects committed Shared Tooling 0.20.0 source
++`3f87ddc1a0c1616775b2114c42a4adee7376c9b1` through the canonical exporter.
++It now requires successful Cargo completion and complete workspace metadata.
++The local allowlist, main baseline snapshot, package versions and dependency
++selections are unchanged. Consumer qualification and adoption are tracked in
++[#4 — Adopt fail-closed dependency-boundary admission](https://github.com/dragginzgame/ic-storage/issues/4).
++
++Focused Linux qualification passes: actual workspace metadata/allowlist, rejection
++when the substrate is deliberately disallowed, both snapshot checks, documentation
++links and selected ShellCheck. The policy is restored byte-for-byte. No Rust source,
++full workspace gate or native macOS execution is part of this contributor-only update.
++
++## Earlier source and qualification
++
+ Released source is now 0.3.0 (`af1f181`); pending work is 0.3.1. Deletion now
+ uses one transactional search; misses discard all staged balancing and leave
+ bytes untouched. A successful single-leaf deletion uses one read instead of
+diff --git a/docs/upstreams.md b/docs/upstreams.md
+index 9525ba1..2930856 100644
+--- a/docs/upstreams.md
++++ b/docs/upstreams.md
+@@ -115,12 +115,14 @@ of this native decoding dependency.
+ 
+ ## Dependency-boundary helper adoption
+ 
+-The generic checker is contributed in
+-[Shared Tooling PR #257](https://github.com/dragginzgame/shared-tooling/pull/257).
+-The separate snapshot in `tools/dependency-boundaries/` pins contribution commit
+-`eb04376623a8995b2301d7cc80723a2a3f3e5b8e`; the main baseline snapshot is unchanged.
+-This is an unmerged contribution pin, not a claim that the helper has shipped in
+-Shared Tooling 0.17.2 (the source checkout's current package version).
++The separate snapshot in `tools/dependency-boundaries/` selects Shared Tooling
++0.20.0 main commit `3f87ddc1a0c1616775b2114c42a4adee7376c9b1`, replacing the
++earlier [PR #257](https://github.com/dragginzgame/shared-tooling/pull/257)
++contribution pin. Cargo must complete successfully and identify this workspace
++with complete member/package metadata before dependencies can be admitted.
++Malformed or incomplete observations cannot establish an empty dependency set.
++The main baseline snapshot is unchanged. Adoption is tracked in
++[#4 — Adopt fail-closed dependency-boundary admission](https://github.com/dragginzgame/ic-storage/issues/4).
+ `make check-storage-boundary` verifies the bundle before running the shared
+ checker with local policy `ci/cargo-dependency-boundaries.json`. The former
+ local shell/Perl implementation is removed. Rules cover canonical names of
+diff --git a/tools/dependency-boundaries/.shared-tooling.snapshot b/tools/dependency-boundaries/.shared-tooling.snapshot
+index a345ff9..be1d79b 100644
+--- a/tools/dependency-boundaries/.shared-tooling.snapshot
++++ b/tools/dependency-boundaries/.shared-tooling.snapshot
+@@ -1,9 +1,9 @@
+ # Shared Tooling snapshot v1
+-# version	0.17.2
++# version	0.20.0
+ format	1
+ source	https://github.com/dragginzgame/shared-tooling
+-revision	eb04376623a8995b2301d7cc80723a2a3f3e5b8e
++revision	3f87ddc1a0c1616775b2114c42a4adee7376c9b1
+ # entrypoint	scripts/ci/check-cargo-dependency-boundaries.sh
+-file	400d623a1a323ae1b292c6d509ca9acbcccd893b1f7c7461cb1b8a7cc7b82733	-	scripts/ci/check-cargo-dependency-boundaries.sh
++file	d38467ef1b8e143e9d8daca99975b93f6957fa3796f825b830997b3dc7f0b145	-	scripts/ci/check-cargo-dependency-boundaries.sh
+ file	4c981184847462ab3c01cac087e28309f8e054253fd95c7bbe56f643877aa708	x	scripts/ci/verify-file-checksum.sh
+ file	a4682503812f210b951aede536cdd65642bfe266b02ab532853a1aeff64f9742	x	scripts/ci/verify-shared-tooling-snapshot.sh
+diff --git a/tools/dependency-boundaries/scripts/ci/check-cargo-dependency-boundaries.sh b/tools/dependency-boundaries/scripts/ci/check-cargo-dependency-boundaries.sh
+index 5fee424..639f4ae 100644
+--- a/tools/dependency-boundaries/scripts/ci/check-cargo-dependency-boundaries.sh
++++ b/tools/dependency-boundaries/scripts/ci/check-cargo-dependency-boundaries.sh
+@@ -5,19 +5,24 @@ set -euo pipefail
+     echo 'usage: check-cargo-dependency-boundaries.sh --consumer ROOT' >&2
+     exit 2
+ }
+-cd -- "$2"
++consumer="$2"
++case "$consumer$PWD" in *$'\n'*|*$'\r'*) echo 'consumer directory contains CR/LF' >&2; exit 2 ;; esac
++[[ "$consumer" == /* ]] || consumer="$PWD/$consumer"
++cd -P -- "$consumer"
++case "$PWD" in *$'\n'*|*$'\r'*) echo 'resolved consumer directory contains CR/LF' >&2; exit 2 ;; esac
++[[ -f Cargo.toml && ! -L Cargo.toml ]] || { echo 'consumer requires a regular Cargo.toml' >&2; exit 2; }
+ policy=ci/cargo-dependency-boundaries.json
+ [[ -f "$policy" && ! -L "$policy" ]] || {
+     echo "missing or non-regular dependency boundary policy: $policy" >&2
+     exit 1
+ }
+-CARGO_NET_OFFLINE=true RUSTUP_AUTO_INSTALL=0 cargo metadata --no-deps --locked --format-version 1 |
+-    perl -MJSON::PP -e '
++CARGO_NET_OFFLINE=true RUSTUP_AUTO_INSTALL=0 perl -MJSON::PP -e '
+         use strict;
+         use warnings;
+         local $/;
+         open my $file, "<", $ARGV[0] or die "cannot read boundary policy: $!\n";
+         my $policy = decode_json(<$file>);
++        close $file or die "cannot close boundary policy: $!\n";
+         ref($policy) eq "ARRAY" && @$policy or die "expected a nonempty policy array\n";
+         my %rules;
+         for my $rule (@$policy) {
+@@ -25,30 +30,53 @@ CARGO_NET_OFFLINE=true RUSTUP_AUTO_INSTALL=0 cargo metadata --no-deps --locked -
+                 && exists($rule->{dependency}) && exists($rule->{allowed_packages})
+                 or die "expected dependency and allowed_packages\n";
+             my $name = $rule->{dependency};
+-            defined($name) && !ref($name) && $name =~ /^[A-Za-z0-9_-]+$/
++            defined($name) && !ref($name) && $name =~ /\A[A-Za-z0-9_-]+\z/
+                 or die "invalid dependency name\n";
+             exists($rules{$name}) and die "duplicate dependency rule: $name\n";
+             ref($rule->{allowed_packages}) eq "ARRAY" or die "expected package array\n";
+             my %allowed;
+             for my $package (@{$rule->{allowed_packages}}) {
+-                defined($package) && !ref($package) && $package =~ /^[A-Za-z0-9_-]+$/
++                defined($package) && !ref($package) && $package =~ /\A[A-Za-z0-9_-]+\z/
+                     or die "invalid allowed package\n";
+                 $allowed{$package}++ and die "duplicate allowed package: $package\n";
+             }
+             $rules{$name} = \%allowed;
+         }
+-        my $metadata = decode_json(<STDIN>);
+-        my %members = map { $_ => 1 } @{$metadata->{workspace_members}};
+-        my @violations;
++        # Admit a complete successful observation before interpreting its bytes.
++        # A child may emit valid JSON and then fail or die from a signal.
++        open my $cargo, "-|", "cargo", "metadata", "--no-deps", "--locked", "--format-version", "1"
++            or die "cannot run Cargo metadata: $!\n";
++        my $bytes = <$cargo> // "";
++        close $cargo or die "Cargo metadata failed\n";
++        my $metadata = decode_json($bytes);
++        ref($metadata) eq "HASH" && !ref($metadata->{version}) && ($metadata->{version} // 0) eq "1"
++            && defined($metadata->{workspace_root}) && !ref($metadata->{workspace_root})
++            && $metadata->{workspace_root} eq $ARGV[1]
++            && ref($metadata->{workspace_members}) eq "ARRAY" && @{$metadata->{workspace_members}}
++            && ref($metadata->{packages}) eq "ARRAY"
++            or die "invalid Cargo workspace metadata\n";
++        my (%members, %packages, %violations);
++        for my $member (@{$metadata->{workspace_members}}) {
++            defined($member) && !ref($member) && length($member) && !$members{$member}++
++                or die "invalid or duplicate workspace member\n";
++        }
+         for my $package (@{$metadata->{packages}}) {
+-            next unless $members{$package->{id}};
++            ref($package) eq "HASH" && defined($package->{id}) && !ref($package->{id})
++                && length($package->{id}) && !$packages{$package->{id}}++
++                && defined($package->{name}) && !ref($package->{name}) && length($package->{name})
++                && ref($package->{dependencies}) eq "ARRAY"
++                or die "invalid or duplicate Cargo package\n";
+             for my $dependency (@{$package->{dependencies}}) {
++                ref($dependency) eq "HASH" && defined($dependency->{name})
++                    && !ref($dependency->{name}) && length($dependency->{name})
++                    or die "invalid Cargo dependency\n";
+                 my $name = $dependency->{name};
+-                push @violations, "$package->{name} -> $name"
+-                    if exists($rules{$name}) && !$rules{$name}{$package->{name}};
++                $violations{"$package->{name} -> $name"} = 1
++                    if $members{$package->{id}} && exists($rules{$name}) && !$rules{$name}{$package->{name}};
+             }
+         }
+-        die "Forbidden direct Cargo dependencies:\n" . join("\n", sort @violations) . "\n"
+-            if @violations;
++        $packages{$_} or die "missing workspace member package\n" for keys %members;
++        die "Forbidden direct Cargo dependencies:\n" . join("\n", sort keys %violations) . "\n"
++            if keys %violations;
+         print "Cargo dependency boundaries passed.\n";
+-    ' "$policy"
++    ' "$policy" "$PWD"

@@ -1,0 +1,328 @@
+diff --git a/CHANGELOG.md b/CHANGELOG.md
+index 091c63d..4867dfe 100644
+--- a/CHANGELOG.md
++++ b/CHANGELOG.md
+@@ -2,6 +2,9 @@
+ 
+ ## [0.4.1]
+ 
++- Reuse validated decoded children during deletion and merging, reducing
++  repeated node reads/decoding while preserving staged failure semantics.
++  Explicitly reject aliased merge children before reclaiming either page.
+ - Prepare mixed-workload keys/values only for operations that consume them,
+   and append matrix scan keys directly into one output buffer. Record fresh
+   benchmark baselines for both engines; allocation histories and counts change.
+diff --git a/crates/ic-storage/src/btree/tests/behavior.rs b/crates/ic-storage/src/btree/tests/behavior.rs
+index f645320..15b5511 100644
+--- a/crates/ic-storage/src/btree/tests/behavior.rs
++++ b/crates/ic-storage/src/btree/tests/behavior.rs
+@@ -1215,7 +1215,9 @@ fn deletion_searches_once_and_discards_balancing_on_a_miss() {
+     for n in 0..32 {
+         tree.insert(&key(n), &[7]).unwrap();
+     }
++    reads.set(0);
+     tree.remove(&key(31)).unwrap();
++    assert_eq!(reads.get(), 2);
+     // Two minimum-size children: descent for an absent key stages a merge.
+     let before = backing.borrow().clone();
+     reads.set(0);
+@@ -1224,6 +1226,7 @@ fn deletion_searches_once_and_discards_balancing_on_a_miss() {
+     reads.set(0);
+     writes.set(0);
+     assert_eq!(tree.remove(&key(999)).unwrap(), None);
++    assert_eq!(reads.get(), 3);
+     eprintln!(
+         "minimum-child miss: membership={preflight_reads} reads, transactional={} reads",
+         reads.get()
+@@ -1268,7 +1271,7 @@ fn merging_deletion_reuses_validated_reclaimed_nodes() {
+     // the root. The live sibling must not be read again just to mark it free.
+     memory.read_calls.set(0);
+     assert_eq!(tree.remove(&key(15)).unwrap(), Some(vec![7]));
+-    assert_eq!(memory.read_calls.get(), 5);
++    assert_eq!(memory.read_calls.get(), 3);
+     assert_eq!(tree.node(tree.header.root).unwrap().children, []);
+     tree.validate().unwrap();
+     let tree = BTreeMap::open(tree.into_memory(), Config::default(), Lexicographic).unwrap();
+@@ -1285,6 +1288,29 @@ fn merging_deletion_reuses_validated_reclaimed_nodes() {
+     }
+ }
+ 
++#[test]
++fn deletion_rejects_aliased_merge_children_without_writes() {
++    use crate::btree::page::SIZE;
++
++    let memory = ObservedMemory::default();
++    let mut tree = BTreeMap::create(memory.clone(), Config::default(), Lexicographic).unwrap();
++    for n in 0..32 {
++        tree.insert(&key(n), &[7]).unwrap();
++    }
++    tree.remove(&key(31)).unwrap();
++    let mut root = tree.node(tree.header.root).unwrap();
++    root.children[1] = root.children[0];
++    // The duplicate pointer is checksummed and each child independently decodes.
++    memory
++        .memory
++        .write(tree.header.root * SIZE as u64, &*root.encode().unwrap());
++    let before = memory.memory.borrow().clone();
++    memory.write_calls.set(0);
++    assert_eq!(tree.remove(&key(15)), Err(Error::Corrupt));
++    assert_eq!(memory.write_calls.get(), 0);
++    assert_eq!(*memory.memory.borrow(), before);
++}
++
+ struct ValidationCount(Rc<Cell<u64>>);
+ impl Comparator for ValidationCount {
+     const IDENTITY: [u8; 16] = *b"validation-count";
+diff --git a/crates/ic-storage/src/btree/transaction.rs b/crates/ic-storage/src/btree/transaction.rs
+index f39fe58..22cd7eb 100644
+--- a/crates/ic-storage/src/btree/transaction.rs
++++ b/crates/ic-storage/src/btree/transaction.rs
+@@ -270,13 +270,17 @@ impl<'a, M: Memory, C: Comparator> Transaction<'a, M, C> {
+         }
+         Err(Error::Corrupt)
+     }
+-    // Merge adjacent children around their parent separator; return the survivor.
+-    fn merge(&mut self, parent: &mut Node, at: usize) -> Result<u64, Error> {
++    // Merge validated adjacent children and return the decoded survivor.
++    fn merge(
++        &mut self,
++        parent: &mut Node,
++        at: usize,
++        mut left: Node,
++        right: Node,
++    ) -> Result<(u64, Node), Error> {
+         let left_id = parent.children[at];
+         let right_id = parent.children.remove(at + 1);
+-        let mut left = self.node(left_id)?;
+-        let right = self.node(right_id)?;
+-        if left.children.is_empty() != right.children.is_empty() {
++        if left_id == right_id || left.children.is_empty() != right.children.is_empty() {
+             return Err(Error::Corrupt);
+         }
+         left.entries.push(parent.entries.remove(at));
+@@ -284,13 +288,13 @@ impl<'a, M: Memory, C: Comparator> Transaction<'a, M, C> {
+         left.children.extend(right.children);
+         self.put_node(left_id, &left)?;
+         self.stage_free(right_id);
+-        Ok(left_id)
++        Ok((left_id, left))
+     }
+-    fn prepare_child(&mut self, parent: &mut Node, at: usize) -> Result<u64, Error> {
++    fn prepare_child(&mut self, parent: &mut Node, at: usize) -> Result<(u64, Node), Error> {
+         let id = parent.children[at];
+         let mut child = self.node(id)?;
+         if child.entries.len() >= DEGREE {
+-            return Ok(id);
++            return Ok((id, child));
+         }
+         if child.entries.len() != DEGREE - 1 {
+             return Err(Error::Corrupt);
+@@ -308,7 +312,10 @@ impl<'a, M: Memory, C: Comparator> Transaction<'a, M, C> {
+                 }
+                 self.put_node(left_id, &left)?;
+                 self.put_node(id, &child)?;
+-                return Ok(id);
++                return Ok((id, child));
++            }
++            if at + 1 == parent.children.len() {
++                return self.merge(parent, at - 1, left, child);
+             }
+         }
+         if at + 1 < parent.children.len() {
+@@ -322,11 +329,11 @@ impl<'a, M: Memory, C: Comparator> Transaction<'a, M, C> {
+                 }
+                 self.put_node(right_id, &right)?;
+                 self.put_node(id, &child)?;
+-                return Ok(id);
++                return Ok((id, child));
+             }
+-            return self.merge(parent, at);
++            return self.merge(parent, at, child, right);
+         }
+-        self.merge(parent, at.checked_sub(1).ok_or(Error::Corrupt)?)
++        Err(Error::Corrupt)
+     }
+     fn extreme(&self, mut id: u64, last: bool) -> Result<Record, Error> {
+         for _ in 0..MAX_HEIGHT {
+@@ -348,37 +355,51 @@ impl<'a, M: Memory, C: Comparator> Transaction<'a, M, C> {
+         }
+         Err(Error::Corrupt)
+     }
+-    fn delete(&mut self, id: u64, key: &[u8], depth: usize) -> Result<Option<Record>, Error> {
++    fn delete(
++        &mut self,
++        id: u64,
++        mut node: Node,
++        key: &[u8],
++        depth: usize,
++    ) -> Result<Option<Record>, Error> {
+         if depth >= MAX_HEIGHT {
+             return Err(Error::Corrupt);
+         }
+-        let mut node = self.node(id)?;
+         let (at, found) = self.locate(&node, key)?;
+         let removed;
+         if found {
+             removed = node.entries[at];
+             if node.children.is_empty() {
+                 node.entries.remove(at);
+-            } else if self.node(node.children[at])?.entries.len() >= DEGREE {
+-                let replacement = self.extreme(node.children[at], true)?;
+-                self.delete(node.children[at], &self.key(replacement)?, depth + 1)?
+-                    .ok_or(Error::Corrupt)?;
+-                node.entries[at] = replacement;
+-            } else if self.node(node.children[at + 1])?.entries.len() >= DEGREE {
+-                let replacement = self.extreme(node.children[at + 1], false)?;
+-                self.delete(node.children[at + 1], &self.key(replacement)?, depth + 1)?
+-                    .ok_or(Error::Corrupt)?;
+-                node.entries[at] = replacement;
+             } else {
+-                let child = self.merge(&mut node, at)?;
+-                self.delete(child, key, depth + 1)?.ok_or(Error::Corrupt)?;
++                let left_id = node.children[at];
++                let left = self.node(left_id)?;
++                if left.entries.len() >= DEGREE {
++                    let replacement = self.extreme(left_id, true)?;
++                    self.delete(left_id, left, &self.key(replacement)?, depth + 1)?
++                        .ok_or(Error::Corrupt)?;
++                    node.entries[at] = replacement;
++                } else {
++                    let right_id = node.children[at + 1];
++                    let right = self.node(right_id)?;
++                    if right.entries.len() >= DEGREE {
++                        let replacement = self.extreme(right_id, false)?;
++                        self.delete(right_id, right, &self.key(replacement)?, depth + 1)?
++                            .ok_or(Error::Corrupt)?;
++                        node.entries[at] = replacement;
++                    } else {
++                        let (child_id, child) = self.merge(&mut node, at, left, right)?;
++                        self.delete(child_id, child, key, depth + 1)?
++                            .ok_or(Error::Corrupt)?;
++                    }
++                }
+             }
+         } else {
+             if node.children.is_empty() {
+                 return Ok(None);
+             }
+-            let child = self.prepare_child(&mut node, at)?;
+-            let Some(record) = self.delete(child, key, depth + 1)? else {
++            let (child_id, child) = self.prepare_child(&mut node, at)?;
++            let Some(record) = self.delete(child_id, child, key, depth + 1)? else {
+                 return Ok(None);
+             };
+             removed = record;
+@@ -387,7 +408,8 @@ impl<'a, M: Memory, C: Comparator> Transaction<'a, M, C> {
+         Ok(Some(removed))
+     }
+     pub fn remove(&mut self, key: &[u8]) -> Result<Option<Vec<u8>>, Error> {
+-        let Some(removed) = self.delete(self.header.root, key, 0)? else {
++        let root = self.node(self.header.root)?;
++        let Some(removed) = self.delete(self.header.root, root, key, 0)? else {
+             return Ok(None);
+         };
+         self.free_blob(removed.key, removed.key_len, None)?;
+diff --git a/docs/design/canonical-workloads.md b/docs/design/canonical-workloads.md
+index a3e71e0..95a7a00 100644
+--- a/docs/design/canonical-workloads.md
++++ b/docs/design/canonical-workloads.md
+@@ -608,3 +608,73 @@ The same `target/reclamation-benchmark.sjh5wqb7/` attempt retains the final buil
+ under `final/`, with runner, Wasm, lockfile and both CSV/log suites;
+ `engine-to-final.csv` and `.json` retain comparisons. Final Wasm SHA-256:
+ `2b7e204c3d743fcea60ae571ed2558cd361dfd221038a607921887d4016de325`.
++
++## Reuse decoded nodes during deletion
++
++The retained 0.4.1 optimization passes validated decoded children from balancing
++into recursive deletion and passes decoded siblings into merging. Rotation and
++merge survivors retain their existing node vectors, avoiding stable reads and
++staged-page decoding solely to reconstruct the same node. Publication, page
++layout, stable-page reclamation order and comparator/payload validation are unchanged.
++Read-budget regressions require two reads instead of three for ordinary child
++descent, three instead of five for a merging deletion/root collapse, and three
++instead of five for the balancing miss that discards its staged changes.
++
++Reusing a decoded merge survivor requires explicit sibling distinctness. An
++authenticated duplicate child pointer previously failed when recursive deletion
++reread the page just staged free. The first reuse prototype missed that refusal.
++A regression reproduces the old refusal, exposes the prototype's acceptance and
++proves the retained guard rejects the alias without writes. This is preservation
++of an existing corruption boundary, not permission to omit integrity checks.
++
++Qualification uses the unchanged benchmark source at cleanup-stack commit
++bbd07f5, Rust 1.99, IC Memory 0.47, IC Testkit 0.51 and PocketIC server 16.0.0/client
++16.1.0 on Linux. Its Wasm rebuild is byte-identical to the previously qualified
++fixture-cleanup artifact, so the retained baseline CSV is reused. Dependencies,
++fixtures, input preparation, operation order, measured regions and model checks
++remain fixed throughout these storage experiments.
++
++| Engine / mixed workload | Baseline instructions | Retained optimization | Change |
++| --- | ---: | ---: | ---: |
++| Ours / rows | 316,963,272 | 313,810,775 | -0.9946% |
++| Ours / index | 187,136,538 | 183,244,018 | -2.0800% |
++| Upstream / rows | 344,979,980 | 344,979,980 | 0.0000% |
++| Upstream / index | 114,176,042 | 114,176,042 | 0.0000% |
++
++All 46 matrix removal cases improve and the other 460 cases are unchanged.
++Removal savings reach 13.3396% for row_inline (482,046 to 417,743 instructions);
++index_2048 improves 11.1651% (1,389,314 to 1,234,196), and index_4096 improves
++11.0652% (1,394,272 to 1,239,993). Wins against upstream remain 381/506; mixed
++index work still costs about 1.60 times upstream. This is a deletion improvement,
++not closure of the remaining read/scan and large-payload cost gaps.
++
++Both suites pass 2,024 matrix and 256 mixed measurements with exact repeats,
++matching model/results and unchanged heap/stable capacities. Mixed sequence
++costs remain uneven: 20 of our 64 distinct cases improve, 30 are unchanged and
++14 increase. The largest increase is 50.5184% for row keys_reverse_2; the largest
++decrease is 20.0396% for row keys_forward_1. Retaining fewer decoded allocations
++changes later allocation history even though scan code is unchanged. The
++allocator/compiler cause of those individual shifts is not isolated here.
++
++An inline-key borrowing candidate is deferred. It avoids materialization in
++binary search and improves 44/46 matrix get cases, but mixed rows increase
++0.3178% and one scan increases 76.0541%. Combining it with guarded node reuse
++improves rows 0.5303% and indexes 2.3645%, but retains a 76.0754% worst mixed scan
++increase. The deletion-only candidate has the better row total, unchanged
++non-removal matrix cases and unchanged upstream counts. No inline-key search
++change or experiment-only test is retained in the library.
++
++Artifacts are retained at `target/btree-search.moe57xp2/`: `baseline/` is the
++frozen anchor, `inline/` is key borrowing, `prototype/` is the rejected unguarded
++combination, `final/` is the deferred guarded combination, and `deletion/` is the
++accepted build. Each retains runner, Wasm, lockfile and both CSV/log suites;
++comparison CSV/JSON files and `selection.json` record the choice. Selected Wasm
++SHA-256 is `4a7658a1942c43ffba2d4abc4c150005982d77d6752ec1746262b08c568c9053`.
++
++The selected source passes all 40 regular library tests, three public adapter
++tests, the valid Rustdoc example and seven compile-fail examples. Native and
++Wasm Clippy, formatting, links, pins and the storage dependency boundary pass.
++All three deletion regressions pass on Rust 1.91; the 320,000-operation extended
++differential campaign passes on Rust 1.99. The selected Wasm rebuild matches
++the accepted benchmark bytes exactly. Full local release CI, native macOS
++execution and actual IcyDB codec/recovery qualification are not run here.
+diff --git a/docs/status/current.md b/docs/status/current.md
+index 746d076..19d643b 100644
+--- a/docs/status/current.md
++++ b/docs/status/current.md
+@@ -1,5 +1,21 @@
+ # Current handoff
+ 
++Pending 0.4.1 now reuses decoded children through deletion, borrowing/merging and
++recursive descent. Ordinary child deletion drops from three reads to two;
++merging deletion/root collapse and the balancing miss drop from five to three.
++An explicit sibling-alias guard preserves corruption refusal that the old reread
++provided. Its regression rejects authenticated duplicate pointers without writes.
++All 40 regular library tests, three adapter tests, eight Rustdoc examples,
++native/Wasm Clippy and three deletion regressions on Rust 1.91 pass. The selected
++source passes the 320,000-operation differential campaign. Its Wasm exactly
++matches the accepted benchmark artifact; fixture/dependency selections are fixed.
++Mixed instructions improve 0.9946% for rows and 2.0800% for indexes; all 46 matrix
++removals improve, with the other 460 cases unchanged. One mixed row scan still
++increases 50.5184%; inline-key borrowing is deferred after worse scan tradeoffs.
++See [the comparison](../design/canonical-workloads.md#reuse-decoded-nodes-during-deletion).
++This builds on the benchmark cleanup PR, changes no API or persisted format,
++and leaves package versions at 0.4.0. Full local release CI is not run.
++
+ Pending 0.4.1 also removes unused benchmark values for reads/deletes and all
+ unused batch inputs for scans. Matrix scans append borrowed key slices to one
+ output buffer; the workload target schedule has one helper owner. Native/Wasm

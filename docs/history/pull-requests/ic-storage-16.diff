@@ -1,0 +1,86 @@
+diff --git a/.github/workflows/ci.yml b/.github/workflows/ci.yml
+index c5feb61..14c4124 100644
+--- a/.github/workflows/ci.yml
++++ b/.github/workflows/ci.yml
+@@ -30,7 +30,7 @@ jobs:
+           persist-credentials: false
+       - name: Prepare Rust toolchains
+         run: |
+-          rustup toolchain install 1.99.0 --profile minimal --component rustfmt --component clippy --target wasm32-unknown-unknown
++          rustup toolchain install 1.99.1 --profile minimal --component rustfmt --component clippy --target wasm32-unknown-unknown
+           rustup toolchain install 1.91.0 --profile minimal
+       - name: Prepare pinned tools
+         run: make install-tools
+diff --git a/CHANGELOG.md b/CHANGELOG.md
+index f225dd6..00cd6e7 100644
+--- a/CHANGELOG.md
++++ b/CHANGELOG.md
+@@ -1,5 +1,11 @@
+ # Changelog
+ 
++## [0.5.5]
++
++- Select Rust 1.99.1 for development and Linux/macOS CI, keeping the library's
++  Rust 1.91 minimum unchanged. Addresses
++  [#14 — Qualify Rust 1.99.1 as the development compiler](https://github.com/dragginzgame/ic-storage/issues/14).
++
+ ## [0.5.4] - 2026-10-18
+ 
+ - Add governed B-tree region views for retained trees sharing an allocation with
+diff --git a/README.md b/README.md
+index 1e0aef2..77316f4 100644
+--- a/README.md
++++ b/README.md
+@@ -16,7 +16,7 @@ The reviewed [Shared Tooling snapshot](.shared-tooling.snapshot) pins version
+ 0.23.0 at commit `0b351cd2ba2bcd8927b783a5fec89afc8013f708`.
+ Read [AGENTS.md](AGENTS.md) for local contributor instructions and
+ [the setup guide](docs/local-setup.md) for Linux/macOS prerequisites.
+-Rust 1.99.0 is the development toolchain. The Rust 2024 library lives in
++Rust 1.99.1 is the development toolchain. The Rust 2024 library lives in
+ `crates/ic-storage`, inherits root workspace metadata, and supports Rust 1.91.0.
+ See [upstream ownership](docs/upstreams.md) for dependency responsibilities.
+ 
+diff --git a/docs/status/current.md b/docs/status/current.md
+index e12d359..7085124 100644
+--- a/docs/status/current.md
++++ b/docs/status/current.md
+@@ -14,7 +14,14 @@ The [root changelog](../../CHANGELOG.md) owns pending numbered notes. Package
+ versions, the Git index and release refs remain maintainer-owned. Shared Tooling
+ remains at the reviewed 0.23.0 snapshot. No sibling checkout is edited by this pass.
+ 
+-## Governed retained regions: pending 0.5.4
++## Development compiler
++
++The development selector and explicit Linux/macOS CI installation use Rust
++1.99.1. The library's Rust 1.91 minimum and dependency lock remain unchanged.
++The root changelog collects this compatible contributor-tooling update under
++0.5.5; package versions and release refs remain maintainer-owned.
++
++## Governed retained regions: published 0.5.4
+ 
+ `BTreeMapRegion` retains an existing shared runtime lease and opens the exact
+ upstream tree region for each operation. Bounded framing reads precede the
+@@ -36,9 +43,9 @@ compilation, ten documentation examples, formatting, documentation links and
+ the dependency boundary pass. This is adapter qualification, not a live canister
+ upgrade or IcyDB adoption. Full release CI and native macOS remain unrun.
+ 
+-Release 0.5.3 is committed at `249da24992da229464b809d44ffed7f5ab8d4bae`;
+-0.5.4 is an additive pending change. The following sections retain the preceding
+-0.5.3 implementation and composition evidence.
++Release 0.5.3 is committed at `249da24992da229464b809d44ffed7f5ab8d4bae`.
++The additive region interface shipped in 0.5.4 at `26a6390`. The following sections
++retain the preceding 0.5.3 implementation and composition evidence.
+ 
+ The ownership cleanup removes obsolete private-engine import probes and a test
+ of IC Memory's standalone unknown-key policy. Adapter tests retain persisted
+diff --git a/rust-toolchain.toml b/rust-toolchain.toml
+index 64ffcf5..e527dfe 100644
+--- a/rust-toolchain.toml
++++ b/rust-toolchain.toml
+@@ -1,5 +1,5 @@
+ [toolchain]
+-channel = "1.99.0"
++channel = "1.99.1"
+ profile = "minimal"
+ components = ["rustfmt", "clippy"]
+ targets = ["wasm32-unknown-unknown"]

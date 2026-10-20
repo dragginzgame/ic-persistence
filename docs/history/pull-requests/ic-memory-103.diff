@@ -1,0 +1,443 @@
+diff --git a/.github/workflows/ci.yml b/.github/workflows/ci.yml
+index 548728a..a94bc89 100644
+--- a/.github/workflows/ci.yml
++++ b/.github/workflows/ci.yml
+@@ -280,7 +280,7 @@ jobs:
+         shell: bash
+         env:
+           RUSTUP_TOOLCHAIN: ${{ steps.pin.outputs.channel }}
+-        run: cargo check --locked --offline --all-targets 2>&1 | tee "$RUNNER_TEMP/msrv.log"
++        run: cargo check --locked --offline --all-targets --features test-support 2>&1 | tee "$RUNNER_TEMP/msrv.log"
+       - name: Retain failed MSRV diagnostics
+         if: failure()
+         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # reviewed Shared Tooling pin, v7
+diff --git a/CHANGELOG.md b/CHANGELOG.md
+index 359d67d..adbfda3 100644
+--- a/CHANGELOG.md
++++ b/CHANGELOG.md
+@@ -1,5 +1,11 @@
+ # Changelog
+ 
++## [0.38.1]
++
++- Add opt-in `test-support` heap-memory call observations with shared clone/reset
++  state and explicit counter overflow; reuse the owner in allocation fixtures.
++  [Detailed notes](docs/changelog/0.38.md).
++
+ ## [0.38.0] - 2026-10-14
+ 
+ ### Fixed
+diff --git a/Makefile b/Makefile
+index 20fc917..3933465 100644
+--- a/Makefile
++++ b/Makefile
+@@ -134,6 +134,12 @@ test-hooks: format-tools-check
+ test:
+ 	+cargo +$(VALIDATION_TOOLCHAIN) test --locked --offline -- --test-threads=1
+ 
++.PHONY: test-memory-observer
++test-memory-observer:
++	+cargo +$(VALIDATION_TOOLCHAIN) clippy --locked --offline --lib --tests --features test-support -- -D warnings
++	+cargo +$(VALIDATION_TOOLCHAIN) test --locked --offline --lib --features test-support test_support::
++	+cargo +$(VALIDATION_TOOLCHAIN) check --locked --offline --example allocation_measurements --features test-support
++
+ version:
+ 	+@$(TOOL) version
+ 
+@@ -148,7 +154,7 @@ validate:
+ 
+ validate-toolchain:
+ 	$(MAKE) --no-print-directory shared-tooling-check tools-check format-tools-check
+-	$(MAKE) --no-print-directory check-pins test-pins test-tools test-tooling test-release-adapters test-release-runner test-hooks fmt-check
++	$(MAKE) --no-print-directory check-pins test-pins test-tools test-tooling test-release-adapters test-release-runner test-hooks fmt-check test-memory-observer
+ 	+cargo +$(VALIDATION_TOOLCHAIN) clippy --locked --offline --all-targets -- -D warnings
+ 	+cargo +$(VALIDATION_TOOLCHAIN) test --locked --offline -- --test-threads=1
+ 	+RUSTDOCFLAGS='-D warnings' cargo +$(VALIDATION_TOOLCHAIN) doc --locked --offline --no-deps
+diff --git a/crates/ic-memory/Cargo.toml b/crates/ic-memory/Cargo.toml
+index d540dc5..6f30e3a 100644
+--- a/crates/ic-memory/Cargo.toml
++++ b/crates/ic-memory/Cargo.toml
+@@ -19,6 +19,9 @@ ic-host-artifacts.workspace = true
+ ic-host-fs.workspace = true
+ ic-host-process.workspace = true
+ 
++[features]
++test-support = []
++
+ [dependencies]
+ ciborium.workspace = true
+ ic-stable-structures.workspace = true
+@@ -30,6 +33,10 @@ serde_json.workspace = true
+ toml.workspace = true
+ trybuild.workspace = true
+ 
++[[example]]
++name = "allocation_measurements"
++required-features = ["test-support"]
++
+ [[example]]
+ name = "composed_host"
+ path = "examples/composed_host.rs"
+diff --git a/crates/ic-memory/README.md b/crates/ic-memory/README.md
+index 1bbe1a4..ed7d2a9 100644
+--- a/crates/ic-memory/README.md
++++ b/crates/ic-memory/README.md
+@@ -338,3 +338,14 @@ common pool has space, and the complete layout passes admission and validation.
+ `ic-memory` is pre-1.0 infrastructure extracted from Canic. Current releases use
+ the current API and durable format only; earlier pre-1.0 wire formats are not a
+ compatibility target.
++
++## Heap-memory test observations
++
++Opt into `ic-memory`'s `test-support` feature for
++`ic_memory::test_support::{Counts, Metered}`. `Metered` wraps the exact exported
++`VectorMemory` substrate. Clones share bytes and observations; `reset()` clears
++only counters. `counts().overflowed` reports lost numeric quality; direct use of
++`bytes` bypasses observation. Call counts are test effects, not IC charges.
++Keep this feature in development dependencies. The allocation example requires
++`--features test-support`; `make test-memory-observer` qualifies its compilation
++and the observer's shared state/overflow tests without running a timing driver.
+diff --git a/crates/ic-memory/examples/allocation_measurements.rs b/crates/ic-memory/examples/allocation_measurements.rs
+index b2a6278..af089ea 100644
+--- a/crates/ic-memory/examples/allocation_measurements.rs
++++ b/crates/ic-memory/examples/allocation_measurements.rs
+@@ -1,12 +1,10 @@
+ //! Disposable native fixtures, not Toko live attribution or IC instruction costs.
+-#[path = "support/metered.rs"]
+-mod metered;
++use ic_memory::test_support::{Counts, Metered};
+ use ic_memory::{
+     AllocationPolicy, MemoryAllocations, MemoryManagerConfig, MemoryManagerSlot, MemoryRuntime,
+     PolicyIdentity, PolicyIdentityError, RuntimeBootstrapPolicy, RuntimeMemory, StableKey,
+ };
+ use ic_stable_structures::{Cell, Memory, StableVec};
+-use metered::Metered;
+ use std::{convert::Infallible, hint::black_box, time::Instant};
+ 
+ struct Allow;
+@@ -24,13 +22,8 @@ impl RuntimeBootstrapPolicy for Allow {
+         PolicyIdentity::new("allocation-measurements", 1)
+     }
+ }
+-fn record(
+-    bucket: u16,
+-    phase: &str,
+-    counts: metered::Counts,
+-    elapsed: u128,
+-    report: &MemoryAllocations,
+-) {
++fn record(bucket: u16, phase: &str, counts: Counts, elapsed: u128, report: &MemoryAllocations) {
++    assert!(!counts.overflowed);
+     assert_eq!(
+         report.summary.physical_extent.bytes,
+         report.summary.manager_metadata_bytes
+diff --git a/crates/ic-memory/examples/support/metered.rs b/crates/ic-memory/examples/support/metered.rs
+deleted file mode 100644
+index 1c9552f..0000000
+--- a/crates/ic-memory/examples/support/metered.rs
++++ /dev/null
+@@ -1,57 +0,0 @@
+-use ic_stable_structures::{Memory, VectorMemory};
+-use std::{cell::Cell, rc::Rc};
+-
+-#[derive(Clone, Copy, Debug, Default)]
+-pub struct Counts {
+-    pub reads: u64,
+-    pub read_bytes: u64,
+-    pub writes: u64,
+-    pub write_bytes: u64,
+-    pub grows: u64,
+-    pub grown_pages: u64,
+-}
+-
+-#[derive(Clone, Default)]
+-pub struct Metered {
+-    pub bytes: VectorMemory,
+-    counts: Rc<Cell<Counts>>,
+-}
+-
+-impl Metered {
+-    pub fn reset(&self) {
+-        self.counts.set(Counts::default());
+-    }
+-    pub fn counts(&self) -> Counts {
+-        self.counts.get()
+-    }
+-}
+-
+-impl Memory for Metered {
+-    fn size(&self) -> u64 {
+-        self.bytes.size()
+-    }
+-    fn grow(&self, pages: u64) -> i64 {
+-        let result = self.bytes.grow(pages);
+-        let mut counts = self.counts.get();
+-        counts.grows += 1;
+-        if result >= 0 {
+-            counts.grown_pages += pages;
+-        }
+-        self.counts.set(counts);
+-        result
+-    }
+-    fn read(&self, offset: u64, dst: &mut [u8]) {
+-        let mut counts = self.counts.get();
+-        counts.reads += 1;
+-        counts.read_bytes += dst.len() as u64;
+-        self.counts.set(counts);
+-        self.bytes.read(offset, dst);
+-    }
+-    fn write(&self, offset: u64, src: &[u8]) {
+-        let mut counts = self.counts.get();
+-        counts.writes += 1;
+-        counts.write_bytes += src.len() as u64;
+-        self.counts.set(counts);
+-        self.bytes.write(offset, src);
+-    }
+-}
+diff --git a/crates/ic-memory/src/lib.rs b/crates/ic-memory/src/lib.rs
+index 8362967..93152d9 100644
+--- a/crates/ic-memory/src/lib.rs
++++ b/crates/ic-memory/src/lib.rs
+@@ -93,6 +93,9 @@ mod slot;
+ mod sort;
+ mod stable_cell;
+ mod text;
++
++#[cfg(any(test, feature = "test-support"))]
++pub mod test_support;
+ mod validation;
+ 
+ #[cfg(test)]
+diff --git a/crates/ic-memory/src/runtime/allocation_tests.rs b/crates/ic-memory/src/runtime/allocation_tests.rs
+index f37dc04..d743314 100644
+--- a/crates/ic-memory/src/runtime/allocation_tests.rs
++++ b/crates/ic-memory/src/runtime/allocation_tests.rs
+@@ -2,14 +2,12 @@ use super::{
+     AllocationBinding, MemoryManagerLayoutError, MemoryRuntime, RuntimeConstructionError,
+     RuntimeDiagnosticError, RuntimeOpenError, layout, policy::GenericAllocationPolicy,
+ };
++use crate::test_support::Metered;
+ use crate::{IC_MEMORY_LEDGER_STABLE_KEY, MEMORY_MANAGER_LEDGER_ID};
+ use ic_stable_structures::{
+     Memory, VectorMemory,
+     memory_manager::{MemoryId, MemoryManager},
+ };
+-#[path = "../../examples/support/metered.rs"]
+-mod metered;
+-use metered::Metered;
+ 
+ fn conservation(report: &super::MemoryAllocations) {
+     assert_eq!(report.memories.len(), 255);
+diff --git a/crates/ic-memory/src/test_support/mod.rs b/crates/ic-memory/src/test_support/mod.rs
+new file mode 100644
+index 0000000..6050a3d
+--- /dev/null
++++ b/crates/ic-memory/src/test_support/mod.rs
+@@ -0,0 +1,120 @@
++//! Opt-in native heap-memory observations for tests, never IC performance evidence.
++//!
++//! Enable `test-support` to observe calls through this crate's exact `Memory`
++//! trait. Clones share bytes and counters; reset changes counters only. Direct
++//! access to `Metered::bytes` bypasses observation. No timers or canister hooks.
++
++use std::{cell::Cell, rc::Rc};
++
++use crate::ic_stable_structures::{Memory, VectorMemory};
++
++///
++/// Counts
++///
++/// Native memory calls and their supplied byte/page quantities since reset.
++///
++/// Values clip at `u64::MAX`; `overflowed` records any lost count or quantity.
++/// Read/write calls are counted before delegation. Growth is counted after its
++/// return, including failure; only successful growth contributes pages.
++///
++
++#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
++pub struct Counts {
++    /// Read calls.
++    pub reads: u64,
++    /// Bytes supplied to reads.
++    pub read_bytes: u64,
++    /// Write calls.
++    pub writes: u64,
++    /// Bytes supplied to writes.
++    pub write_bytes: u64,
++    /// Growth calls that returned.
++    pub grows: u64,
++    /// Pages accepted by successful growth calls.
++    pub grown_pages: u64,
++    /// Whether any count or quantity exceeded its numeric cap.
++    pub overflowed: bool,
++}
++
++const fn add(value: &mut u64, overflowed: &mut bool, amount: u64) {
++    if let Some(next) = value.checked_add(amount) {
++        *value = next;
++    } else {
++        *value = u64::MAX;
++        *overflowed = true;
++    }
++}
++
++///
++/// Metered
++///
++/// A native `VectorMemory` backend with shared call observations.
++///
++/// Clones share both storage and the counter window. The delegated substrate
++/// retains its own growth/error behavior; this wrapper observes native calls,
++/// not stable-memory charges, timings, instructions or cycles.
++///
++
++#[derive(Clone, Default)]
++pub struct Metered {
++    /// Heap-backed bytes; direct operations bypass the observation counters.
++    pub bytes: VectorMemory,
++    counts: Rc<Cell<Counts>>,
++}
++
++impl Metered {
++    /// Reset the shared counter window without changing bytes or page capacity.
++    pub fn reset(&self) {
++        self.counts.set(Counts::default());
++    }
++
++    /// Copy the current shared observations, including actual counter overflow.
++    #[must_use]
++    pub fn counts(&self) -> Counts {
++        self.counts.get()
++    }
++}
++
++impl Memory for Metered {
++    fn size(&self) -> u64 {
++        self.bytes.size()
++    }
++
++    fn grow(&self, pages: u64) -> i64 {
++        let result = self.bytes.grow(pages);
++        let mut counts = self.counts.get();
++        add(&mut counts.grows, &mut counts.overflowed, 1);
++        if result >= 0 {
++            add(&mut counts.grown_pages, &mut counts.overflowed, pages);
++        }
++        self.counts.set(counts);
++        result
++    }
++
++    fn read(&self, offset: u64, dst: &mut [u8]) {
++        let mut counts = self.counts.get();
++        add(&mut counts.reads, &mut counts.overflowed, 1);
++        add(
++            &mut counts.read_bytes,
++            &mut counts.overflowed,
++            dst.len() as u64,
++        );
++        self.counts.set(counts);
++        self.bytes.read(offset, dst);
++    }
++
++    fn write(&self, offset: u64, src: &[u8]) {
++        let mut counts = self.counts.get();
++        add(&mut counts.writes, &mut counts.overflowed, 1);
++        add(
++            &mut counts.write_bytes,
++            &mut counts.overflowed,
++            src.len() as u64,
++        );
++        self.counts.set(counts);
++        self.bytes.write(offset, src);
++    }
++}
++
++#[cfg(test)]
++mod tests;
+diff --git a/crates/ic-memory/src/test_support/tests.rs b/crates/ic-memory/src/test_support/tests.rs
+new file mode 100644
+index 0000000..1dd138c
+--- /dev/null
++++ b/crates/ic-memory/src/test_support/tests.rs
+@@ -0,0 +1,56 @@
++use super::*;
++
++#[test]
++fn clones_share_observations_and_reset_preserves_storage() {
++    let memory = Metered::default();
++    let observer = memory.clone();
++    assert_eq!(memory.grow(1), 0);
++    memory.write(0, b"ok");
++    let mut read = [0; 2];
++    observer.read(0, &mut read);
++    assert_eq!(&read, b"ok");
++    assert_eq!(memory.counts(), observer.counts());
++    assert_eq!(
++        observer.counts(),
++        Counts {
++            reads: 1,
++            read_bytes: 2,
++            writes: 1,
++            write_bytes: 2,
++            grows: 1,
++            grown_pages: 1,
++            overflowed: false
++        }
++    );
++    observer.reset();
++    assert_eq!(memory.counts(), Counts::default());
++    assert_eq!(memory.size(), 1);
++    observer.read(0, &mut read);
++    assert_eq!(&read, b"ok");
++    assert_eq!(memory.counts().writes, 0);
++    memory.write(2, &[]);
++    assert_eq!(observer.counts().writes, 1);
++    assert_eq!(observer.counts().write_bytes, 0);
++}
++
++#[test]
++fn actual_overflow_is_sticky_and_reset_opens_an_exact_window() {
++    let memory = Metered::default();
++    memory.grow(1);
++    memory.counts.set(Counts {
++        writes: u64::MAX - 1,
++        write_bytes: u64::MAX - 1,
++        ..Counts::default()
++    });
++    memory.write(0, b"x");
++    assert_eq!(memory.counts().writes, u64::MAX);
++    assert!(!memory.counts().overflowed);
++    memory.write(0, b"x");
++    assert_eq!(memory.counts().writes, u64::MAX);
++    assert_eq!(memory.counts().write_bytes, u64::MAX);
++    assert!(memory.counts().overflowed);
++    memory.read(0, &mut [0]);
++    assert!(memory.counts().overflowed);
++    memory.reset();
++    assert_eq!(memory.counts(), Counts::default());
++}
+diff --git a/docs/changelog/0.38.md b/docs/changelog/0.38.md
+index cafe2d2..c1ff763 100644
+--- a/docs/changelog/0.38.md
++++ b/docs/changelog/0.38.md
+@@ -1,5 +1,20 @@
+ # 0.38 release notes
+ 
++## [0.38.1]
++
++The opt-in `test-support` feature exports `test_support::{Counts, Metered}` using
++the package's exact stable-structures trait and VectorMemory backend. Clones share
++bytes and counters; reset changes only the observation window. Counters clip with
++a sticky actual-overflow flag; empty operations remain observable calls. Direct
++backend access bypasses observation. These are heap-memory calls rather than IC
++instructions, cycles or elapsed-time evidence. No dependencies or stored bytes
++change, and ordinary library builds keep the feature disabled.
++
++Internal allocation tests and the allocation example reuse this owner. The
++example now requires `--features test-support`; it rejects overflowed observations
++before rendering its retained output format. The focused `test-memory-observer`
++gate runs with native validation, and the compiler-floor job checks the feature.
++
+ ## [0.38.0] - 2026-10-14
+ 
+ Native CI delegates formatting and hook fixtures to `validate-toolchain` once

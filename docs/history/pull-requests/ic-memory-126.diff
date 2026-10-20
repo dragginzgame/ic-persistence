@@ -1,0 +1,165 @@
+diff --git a/CHANGELOG.md b/CHANGELOG.md
+index cb9d547..fd65e30 100644
+--- a/CHANGELOG.md
++++ b/CHANGELOG.md
+@@ -1,5 +1,15 @@
+ # Changelog
+ 
++## [0.49.3]
++
++- Capture Cargo metadata through the helper's selected Host, using IC Build
++  0.23 command rendering and canonical decoding. Preserve offline/locked
++  selection, output bounds and typed execution diagnostics across Host releases.
++- Preserve interrupted release bootstrap on native macOS's Bash when explicitly
++  preparing the selected metadata editor.
++
++[Detailed notes](docs/changelog/0.49.md#0493)
++
+ ## [0.49.2] - 2026-10-20
+ 
+ - Select Rust 1.99.1 for development and matching CI checks, retaining existing
+diff --git a/Cargo.lock b/Cargo.lock
+index 2485ea3..dc9812e 100644
+--- a/Cargo.lock
++++ b/Cargo.lock
+@@ -178,9 +178,9 @@ checksum = "ed5909b6e89a2db4456e54cd5f673791d7eca6732202bbf2a9cc504fe2f9b84a"
+ 
+ [[package]]
+ name = "ic-build"
+-version = "0.22.1"
++version = "0.23.0"
+ source = "registry+https://github.com/rust-lang/crates.io-index"
+-checksum = "9e4f17cdb7df1431acb988aba21d90b3b3b7136b1fdb59d6946ff81f3436bf06"
++checksum = "225d849b7d759341caffe3e4e1b5f02bac50773d28b687a7ca7bcfa7f6d770f6"
+ dependencies = [
+  "cargo_metadata",
+  "clap",
+diff --git a/Cargo.toml b/Cargo.toml
+index a11f22e..923759b 100644
+--- a/Cargo.toml
++++ b/Cargo.toml
+@@ -19,7 +19,7 @@ keywords = ["ic-stable-structures", "memory-id", "registry", "canister", "icp"]
+ categories = ["wasm", "data-structures"]
+ 
+ [workspace.dependencies]
+-ic-build = { version = "0.22", default-features = false }
++ic-build = { version = "0.23", default-features = false }
+ ic-host-artifacts = { version = "0.31", default-features = false }
+ ic-host-fs = { version = "0.31", default-features = false }
+ ic-host-process = { version = "0.31", default-features = false }
+diff --git a/crates/ic-memory/examples/repo_tool/mod.rs b/crates/ic-memory/examples/repo_tool/mod.rs
+index 7d2b588..a8d2d47 100644
+--- a/crates/ic-memory/examples/repo_tool/mod.rs
++++ b/crates/ic-memory/examples/repo_tool/mod.rs
+@@ -9,7 +9,7 @@ use ic_build::cargo::{
+         configuration_directories, is_build_variable, is_compiler_override, observe_configurations,
+     },
+     lock_projection::{WorkspaceVersionProjection, verify_workspace_version_projection},
+-    observation::{CargoMetadataSpec, observe_metadata},
++    observation::{CargoMetadataSpec, decode_metadata},
+     release_metadata::{render_workspace_lock, render_workspace_manifest},
+     selection::CargoFeatureSelection,
+ };
+@@ -201,27 +201,29 @@ struct Processes;
+ 
+ impl Execute for Processes {
+     fn cargo_target(&self, root: &Path) -> Result<PathBuf> {
+-        let metadata = observe_metadata(
+-            &CargoMetadataSpec {
+-                manifest_path: &root.join("Cargo.toml"),
+-                include_dependencies: false,
+-                filter_platform: None,
+-                locked: true,
+-                offline: true,
+-                features: &CargoFeatureSelection::default(),
+-            },
++        let mut command = CargoMetadataSpec {
++            manifest_path: &root.join("Cargo.toml"),
++            include_dependencies: false,
++            filter_platform: None,
++            locked: true,
++            offline: true,
++            features: &CargoFeatureSelection::default(),
++        }
++        .command(Command::new("cargo"))?;
++        let output = capture_command(
++            &mut command,
+             OutputLimits {
+                 stdout: OutputLimit::Terminate(4 * 1024 * 1024),
+                 stderr: OutputLimit::Terminate(64 * 1024),
+                 timeout: None,
+             },
+-            Command::new("cargo"),
+         )
++        .and_then(CompletedExecution::require_success)
++        .and_then(CompletedExecution::require_complete)
+         .inspect_err(|error| {
+-            if let Some(error) = error.downcast_ref::<ToolError>() {
+-                report_tool_error("cargo", error);
+-            }
++            report_tool_error("cargo", error);
+         })?;
++        let metadata = decode_metadata(&output.stdout)?;
+         Ok(metadata.target_directory.into_std_path_buf())
+     }
+ 
+diff --git a/docs/changelog/0.49.md b/docs/changelog/0.49.md
+index 6f411ce..f5626a9 100644
+--- a/docs/changelog/0.49.md
++++ b/docs/changelog/0.49.md
+@@ -1,5 +1,18 @@
+ # 0.49 release notes
+ 
++## [0.49.3]
++
++Cargo metadata execution stays with the repo helper's selected Host. IC Build
++0.23 renders the existing no-dependency, locked/offline command and decodes
++complete JSON through Cargo's canonical schema. The helper admits success and
++completeness before decoding, retains its 4 MiB/64 KiB output limits and reports
++the selected Host's typed failures. No release receipt or runtime format changes.
++
++Interrupted release bootstrap uses a nonempty editor-selection argument array,
++preserving Bash 3.2's nounset contract when release preparation omits `--check`.
++Ordinary helper recovery remains check-only; the selected editor, caller's offline
++setting, retained attempts and release authority are unchanged.
++
+ ## [0.49.2] - 2026-10-20
+ 
+ - Select Rust 1.99.1 for development and matching CI checks, retaining existing
+diff --git a/docs/host-support.md b/docs/host-support.md
+index 7f1dc1d..5611ae4 100644
+--- a/docs/host-support.md
++++ b/docs/host-support.md
+@@ -300,8 +300,8 @@ recovery reconciles those bytes against the saved intent before restoring or
+ retrying. These dependencies are absent from canister graphs. `shasum` remains a setup
+ and CI prerequisite through common scripts, rather than a release adapter
+ subprocess. Product receipts, release identities and Wasm budgets stay local.
+-Cargo metadata discovery uses IC Build's re-export of Cargo's canonical command
+-builder and schema, executing through this helper's selected `ic-host-process`.
++Cargo metadata discovery uses IC Build 0.23's specification command rendering
++and canonical schema decoding, executing through this helper's selected `ic-host-process`.
+ This keeps Host limit and error types within their owner when IC Build selects
+ a different Host release. The existing locked/offline selection and output
+ bounds remain enforced before metadata decoding.
+diff --git a/scripts/dev/run-repo-tool.sh b/scripts/dev/run-repo-tool.sh
+index 9e807b6..26711e9 100755
+--- a/scripts/dev/run-repo-tool.sh
++++ b/scripts/dev/run-repo-tool.sh
+@@ -61,13 +61,13 @@ mkdir -p "$scratch/crates/ic-memory"
+ cp crates/ic-memory/Cargo.toml crates/ic-memory/README.md "$scratch/crates/ic-memory/"
+ # shellcheck source=ci/release-tools.env
+ source ci/release-tools.env
+-editor_admission=(--check)
++editor_selection=(--consumer "$PWD" --package ic-build --version "$IC_BUILD_RELEASE_METADATA_VERSION"
++    --bin ic-build-release-metadata --profile debug)
+ # Standard releases authorize preparation of this selected tool as well as caches.
+ # Ordinary helper calls stay check-only; installation is otherwise explicit.
+-if [[ "${RELEASE_CACHE_PREPARE:-0}" == 1 ]]; then editor_admission=(); fi
++if [[ "${RELEASE_CACHE_PREPARE:-0}" != 1 ]]; then editor_selection+=(--check); fi
+ editor="$(RUSTUP_TOOLCHAIN="$toolchain" bash scripts/dev/install-rust-tools.sh \
+-    --consumer "$PWD" --package ic-build --version "$IC_BUILD_RELEASE_METADATA_VERSION" \
+-    --bin ic-build-release-metadata --profile debug "${editor_admission[@]}")"
++    "${editor_selection[@]}")"
+ "$editor" --max-input-bytes "$CARGO_RELEASE_METADATA_MAX_BYTES" manifest Cargo.toml \
+     "$manifest_version" "$lock_version" > "$scratch/Cargo.toml"
+ cp -R crates/ic-memory/src crates/ic-memory/examples "$scratch/crates/ic-memory/"

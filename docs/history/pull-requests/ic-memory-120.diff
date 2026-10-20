@@ -1,0 +1,246 @@
+diff --git a/CHANGELOG.md b/CHANGELOG.md
+index e6f5fcc..8f50759 100644
+--- a/CHANGELOG.md
++++ b/CHANGELOG.md
+@@ -1,5 +1,11 @@
+ # Changelog
+ 
++## [0.46.1]
++
++- Add a fixture-runtime constructor with explicit allocation keys and geometry,
++  returning the runtime without initializing any collection. Reuse it in
++  fixture-cell setup while preserving existing error variants and recovery.
++
+ ## [0.46.0] - 2026-10-17
+ 
+ - **Breaking ownership API:** allocation handles are non-cloneable leases.
+@@ -22,6 +28,7 @@
+ 
+ [Detailed notes](docs/changelog/0.46.md)
+ 
++
+ ## [0.45.0] - 2026-10-16
+ 
+ - **Breaking API/JSON:** replace pool exclusion ranges with checked numeric IDs
+diff --git a/crates/ic-memory/README.md b/crates/ic-memory/README.md
+index b2858e3..a392792 100644
+--- a/crates/ic-memory/README.md
++++ b/crates/ic-memory/README.md
+@@ -351,6 +351,13 @@ earlier images: use fresh/reset memory. Incompatible bytes reject without
+ initializing genesis or clearing memory. See the
+ [current ledger contract](../../docs/current-ledger.md).
+ 
++For fixture runtimes, opt in to `test-support` and call `testing::fixture_runtime`
++with explicit backing memory, owner, namespace, stable-key list and bucket
++configuration. It returns `MemoryRuntime` for opening multiple allocations or
++exercising refused opens, without initializing collections. Setup uses the
++ordinary generic allocation policy and has typed `FixtureRuntimeError` failures;
++no global manager or production admission policy is installed.
++
+ For fixture-only byte cells, opt in to `test-support` and construct
+ `testing::FixtureCell` with explicit backing memory, owner, namespace, key and
+ `MemoryManagerConfig`. The Cell handle retains its backing; the temporary
+diff --git a/crates/ic-memory/src/testing/mod.rs b/crates/ic-memory/src/testing/mod.rs
+index 1d981ee..a1e31d3 100644
+--- a/crates/ic-memory/src/testing/mod.rs
++++ b/crates/ic-memory/src/testing/mod.rs
+@@ -1,9 +1,9 @@
+ //! Explicit fixture-only ledger and cell setup; callers own codecs, bounds and lifecycle calls.
+ 
+-use crate::{
+-    GenericAllocationPolicy, Memory, MemoryAllocationPool, MemoryAuthority, MemoryManagerConfig,
+-    MemoryRequest, MemoryRuntime, RuntimeMemory, SealedDeclarationSnapshot,
+-};
++mod runtime;
++pub use runtime::{FixtureRuntimeError, fixture_runtime};
++
++use crate::{Memory, MemoryManagerConfig, RuntimeMemory};
+ use ic_stable_structures::Cell;
+ 
+ /// Passive fixture DTOs and bounded raw snapshot readers. These do not recover
+@@ -179,14 +179,7 @@ impl<M: Memory> FixtureCell<M> {
+         stable_key: &str,
+         config: MemoryManagerConfig,
+     ) -> Result<RuntimeMemory<M>, FixtureCellError> {
+-        let request = MemoryRequest::new(owner, stable_key)?;
+-        let pool =
+-            MemoryAllocationPool::new(vec![MemoryAuthority::new(owner, namespace)?], vec![])?;
+-        let declarations = SealedDeclarationSnapshot::new(vec![request])?;
+-        let mut runtime = MemoryRuntime::new_with_config(memory, config)?;
+-        runtime
+-            .bootstrap(&declarations, &pool, &GenericAllocationPolicy)
+-            .map_err(|error| FixtureCellError::Bootstrap(Box::new(error)))?;
++        let runtime = fixture_runtime(memory, owner, namespace, &[stable_key], config)?;
+         Ok(runtime.open_memory(stable_key)?)
+     }
+ 
+diff --git a/crates/ic-memory/src/testing/runtime.rs b/crates/ic-memory/src/testing/runtime.rs
+new file mode 100644
+index 0000000..eb05696
+--- /dev/null
++++ b/crates/ic-memory/src/testing/runtime.rs
+@@ -0,0 +1,69 @@
++//! Fixture-only runtime bootstrap shared by cells and collection qualification.
++use crate::{
++    GenericAllocationPolicy, Memory, MemoryAllocationPool, MemoryAuthority, MemoryManagerConfig,
++    MemoryRequest, MemoryRuntime, SealedDeclarationSnapshot,
++};
++
++/// Failure to construct and admit an explicitly configured fixture runtime.
++#[derive(Debug, thiserror::Error)]
++#[non_exhaustive]
++pub enum FixtureRuntimeError {
++    /// Invalid owner, stable key or declaration snapshot.
++    #[error(transparent)]
++    Declaration(#[from] crate::MemoryDeclarationError),
++    /// Invalid namespace grant or allocation pool.
++    #[error(transparent)]
++    AllocationPool(#[from] crate::MemoryAllocationPoolError),
++    /// Backing layout or configured geometry was refused.
++    #[error(transparent)]
++    Construction(#[from] crate::RuntimeConstructionError),
++    /// Runtime bootstrap or protected ledger recovery failed.
++    #[error(transparent)]
++    Bootstrap(Box<crate::RuntimeBootstrapError<std::convert::Infallible>>),
++}
++
++/// Bootstrap explicitly named fixture allocations using the ordinary runtime.
++///
++/// The caller supplies backing memory, one owner/namespace, stable keys and bucket
++/// geometry. No Cell or collection is initialized. Returns the runtime so callers
++/// can open multiple committed allocations or exercise rejected opens. Retained
++/// backing is admitted by normal bootstrap; errors never trigger a reset/fallback.
++/// This fixture helper uses the generic allocation policy and no exclusions;
++/// production policy/composition callers must configure their own runtime.
++///
++/// # Errors
++/// Preserves typed declaration, pool, construction and bootstrap failures.
++/// Bootstrap retains its ordinary ledger publication and recovery behavior.
++/// # Panics
++/// Backing memory IO retains its substrate panic behavior.
++pub fn fixture_runtime<M: Memory>(
++    backing: M,
++    owner: &str,
++    namespace: &str,
++    stable_keys: &[&str],
++    config: MemoryManagerConfig,
++) -> Result<MemoryRuntime<M>, FixtureRuntimeError> {
++    let requests = stable_keys
++        .iter()
++        .map(|key| MemoryRequest::new(owner, key))
++        .collect::<Result<Vec<_>, _>>()?;
++    let pool = MemoryAllocationPool::new(vec![MemoryAuthority::new(owner, namespace)?], vec![])?;
++    let declarations = SealedDeclarationSnapshot::new(requests)?;
++    let mut runtime = MemoryRuntime::new_with_config(backing, config)?;
++    runtime
++        .bootstrap(&declarations, &pool, &GenericAllocationPolicy)
++        .map_err(|error| FixtureRuntimeError::Bootstrap(Box::new(error)))?;
++    Ok(runtime)
++}
++
++// Preserve the existing cell API and its error variants while sharing setup.
++impl From<FixtureRuntimeError> for super::FixtureCellError {
++    fn from(error: FixtureRuntimeError) -> Self {
++        match error {
++            FixtureRuntimeError::Declaration(error) => Self::Declaration(error),
++            FixtureRuntimeError::AllocationPool(error) => Self::AllocationPool(error),
++            FixtureRuntimeError::Construction(error) => Self::Construction(error),
++            FixtureRuntimeError::Bootstrap(error) => Self::Bootstrap(error),
++        }
++    }
++}
+diff --git a/crates/ic-memory/src/testing/tests.rs b/crates/ic-memory/src/testing/tests.rs
+index 62990da..3515bcd 100644
+--- a/crates/ic-memory/src/testing/tests.rs
++++ b/crates/ic-memory/src/testing/tests.rs
+@@ -1,5 +1,8 @@
+ use super::*;
+-use crate::VectorMemory;
++use crate::{
++    GenericAllocationPolicy, MemoryAllocationPool, MemoryAuthority, MemoryRequest, MemoryRuntime,
++    SealedDeclarationSnapshot, VectorMemory,
++};
+ 
+ #[test]
+ fn cell_keeps_existing_runtime_bytes_and_bucket_configuration() {
+@@ -343,3 +346,80 @@ fn bounded_open_does_not_initialize_a_missing_cell_in_an_existing_manager() {
+         })
+     ));
+ }
++
++#[test]
++fn fixture_runtime_keeps_named_allocations_and_returns_the_authority() {
++    let backing = VectorMemory::default();
++    let config = MemoryManagerConfig::new(16).unwrap();
++    let keys = ["fixture.map.v1", "fixture.cell.v1"];
++    let runtime = fixture_runtime(backing.clone(), "fixture", "fixture.", &keys, config).unwrap();
++    assert!(matches!(
++        runtime.open_memory("fixture.unknown.v1"),
++        Err(crate::RuntimeOpenError::StableKeyNotCommitted(_))
++    ));
++    let map = runtime.open_memory(keys[0]).unwrap();
++    let cell = runtime.open_memory(keys[1]).unwrap();
++    assert_eq!(map.size(), 0, "setup must not initialize a collection");
++    assert_eq!(cell.size(), 0);
++    assert_eq!(map.grow(1).unwrap(), 0);
++    map.write(0, b"map bytes");
++    assert_eq!(cell.size(), 0, "allocations must remain distinct");
++    drop((runtime, map, cell));
++    let runtime = fixture_runtime(backing.clone(), "fixture", "fixture.", &keys, config).unwrap();
++    let map = runtime.open_memory(keys[0]).unwrap();
++    let mut bytes = [0; 9];
++    map.read(0, &mut bytes);
++    assert_eq!(&bytes, b"map bytes");
++    drop((runtime, map));
++    let before = backing.borrow().clone();
++    assert!(matches!(
++        fixture_runtime(
++            backing.clone(),
++            "fixture",
++            "fixture.",
++            &keys,
++            MemoryManagerConfig::new(32).unwrap()
++        ),
++        Err(FixtureRuntimeError::Construction(_))
++    ));
++    assert_eq!(*backing.borrow(), before);
++}
++
++#[test]
++fn fixture_runtime_preserves_setup_error_categories() {
++    let config = MemoryManagerConfig::new(16).unwrap();
++    let backing = VectorMemory::default();
++    assert!(matches!(
++        fixture_runtime(backing.clone(), "", "fixture.", &["fixture.map.v1"], config),
++        Err(FixtureRuntimeError::Declaration(_))
++    ));
++    assert!(matches!(
++        fixture_runtime(
++            backing.clone(),
++            "fixture",
++            "fixture.",
++            &["fixture.map.v1", "fixture.map.v1"],
++            config
++        ),
++        Err(FixtureRuntimeError::Declaration(_))
++    ));
++    assert!(matches!(
++        fixture_runtime(
++            backing.clone(),
++            "fixture",
++            "invalid",
++            &["fixture.map.v1"],
++            config
++        ),
++        Err(FixtureRuntimeError::AllocationPool(_))
++    ));
++    assert_eq!(
++        backing.size(),
++        0,
++        "invalid declarations/grants must not initialize backing"
++    );
++    assert!(matches!(
++        fixture_runtime(backing, "fixture", "other.", &["fixture.map.v1"], config),
++        Err(FixtureRuntimeError::Bootstrap(_))
++    ));
++}

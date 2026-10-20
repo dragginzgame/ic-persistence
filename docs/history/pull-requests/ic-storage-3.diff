@@ -1,0 +1,88 @@
+diff --git a/AGENTS.md b/AGENTS.md
+index d4bd519..159059f 100644
+--- a/AGENTS.md
++++ b/AGENTS.md
+@@ -31,7 +31,7 @@ Rust checks are `make fmt-check`, `make check`, `make clippy`,
+ `make docs-check`, `make test`, `make wasm-check` and `make msrv`. `make ci` is the complete repository gate. Shared Tooling owns tests of the exported helpers.
+ 
+ Common setup and release commands come from `make/consumer.mk`.
+-The pending implementation batch is `0.4.0`; release metadata remains maintainer-owned.
++The pending implementation batch is `0.4.1`; release metadata remains maintainer-owned.
+ Releases use the local Cargo adapter and shared metadata helpers and direct delivery to
+ `origin/main`. The shared contribution and release authorization rules apply.
+ `make publish-check` and `make publish` require clean source at an annotated
+diff --git a/CHANGELOG.md b/CHANGELOG.md
+index 85c6403..a7147ef 100644
+--- a/CHANGELOG.md
++++ b/CHANGELOG.md
+@@ -1,5 +1,10 @@
+ # Changelog
+ 
++## [0.4.1]
++
++- Expose in-place clearing on the governed stable-map adapter, retaining its
++  exclusive allocation lease and upstream storage format across reset/reopen.
++
+ ## [0.4.0] - 2026-10-17
+ 
+ - Adapt the benchmark runner to IC Testkit 0.51's explicit call principals and
+diff --git a/crates/ic-storage/src/adapter.rs b/crates/ic-storage/src/adapter.rs
+index ddf6086..9d9c43f 100644
+--- a/crates/ic-storage/src/adapter.rs
++++ b/crates/ic-storage/src/adapter.rs
+@@ -39,6 +39,11 @@ impl<K: Storable + Ord + Clone, V: Storable, M: Memory> StableBTreeMap<K, V, M>
+     pub fn insert(&mut self, key: K, value: V) -> Option<V> {
+         self.inner.insert(key, value)
+     }
++    /// Clear all entries in place, retaining the governed allocation.
++    /// Delegates to upstream `BTreeMap::clear_new`; allocated pages are not shrunk.
++    pub fn clear_new(&mut self) {
++        self.inner.clear_new();
++    }
+     /// Delegates to upstream `BTreeMap::get` with the governed allocation.
+     pub fn get(&self, key: &K) -> Option<V> {
+         self.inner.get(key)
+diff --git a/crates/ic-storage/tests/adapter.rs b/crates/ic-storage/tests/adapter.rs
+index e795c53..4d6ed47 100644
+--- a/crates/ic-storage/tests/adapter.rs
++++ b/crates/ic-storage/tests/adapter.rs
+@@ -185,3 +185,39 @@ fn constructor_errors_release_allocation_leases() {
+     .unwrap();
+     assert!(tree.is_empty());
+ }
++
++#[test]
++fn map_clear_persists_empty_state_and_reuses_its_allocation() {
++    let backing = VectorMemory::default();
++    {
++        let runtime = runtime(backing.clone());
++        let mut map = StableBTreeMap::<u64, u64>::init(runtime.open_memory("test.map.v1").unwrap());
++        for key in 0..256 {
++            map.insert(key, key + 1);
++        }
++        let capacity = backing.borrow().len();
++        map.clear_new();
++        assert_eq!(backing.borrow().len(), capacity);
++        assert!(matches!(
++            runtime.open_memory("test.map.v1"),
++            Err(RuntimeOpenError::AlreadyOpen { .. })
++        ));
++        assert!(map.is_empty());
++        assert_eq!(map.len(), 0);
++        assert!(map.iter().next().is_none());
++        assert_eq!(map.get(&128), None);
++        map.clear_new();
++    }
++    {
++        let runtime = runtime(backing.clone());
++        let mut map = StableBTreeMap::<u64, u64>::init(runtime.open_memory("test.map.v1").unwrap());
++        assert!(map.is_empty());
++        assert_eq!(map.insert(42, 99), None);
++        assert_eq!(map.get(&42), Some(99));
++    }
++    let runtime = runtime(backing);
++    let map = StableBTreeMap::<u64, u64>::init(runtime.open_memory("test.map.v1").unwrap());
++    assert_eq!(map.len(), 1);
++    assert_eq!(map.get(&42), Some(99));
++    assert_eq!(map.get(&128), None);
++}

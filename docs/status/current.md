@@ -6,14 +6,15 @@ collection adapters over those leases. Crate names and public responsibilities
 are unchanged. See the [migration map](../migration/ic-persistence.md) for exact
 source revisions, preserved branches/PRs, exceptions and cutover instructions.
 
-Work is isolated on `integration/ic-persistence` in
-`/tmp/ic-persistence-integration`. The original checkouts and ignored evidence
-remain intact. The import commit preserves Storage's original history as a
-second parent; workspace/tooling edits are separate. The maintainer authorized
+The consolidated checkout is `/home/adam/projects/ic-persistence`, on `main`,
+with origin `https://github.com/dragginzgame/ic-persistence`. Integration was
+prepared on `integration/ic-persistence` in `/tmp/ic-persistence-integration`.
+The import commit preserves Storage's original history as a second parent;
+workspace/tooling edits are separate. The maintainer authorized
 publication to the new public `dragginzgame/ic-persistence` repository on
 2026-10-20. The destination exists with collaborator-only PR creation; the
-consolidated branch is selected for its `main`. Original repositories, package
-versions, tags and downstream consumers remain unchanged.
+consolidated branch was selected for its `main`. Package versions and downstream
+consumers remain unchanged by this local setup.
 
 Current package versions remain Memory 0.49.4 and Storage 0.5.9. The proposed
 coordinated release is 0.50.0. The temporary explicit Storage version disappears
@@ -23,11 +24,36 @@ PR #18's release retry protection. Dirty Shared sibling work is not adopted.
 
 Storage's original handoff and changelog remain under
 [historical evidence](../history/ic-storage/handoff.md). Platform #30/#32 and
-Storage #12 remain upstream/consumer work, outside this mechanical migration.
+the former Storage #12 (now Persistence #118) remain upstream/consumer work.
 Memory PR #125/#126 heads are retained for review; main already contains their
-capabilities through later releases. No remote PR status was changed.
+capabilities through later releases.
+
+## Repository retirement
+
+All 121 original issues are now in IC Persistence, preserving their open/closed
+states. All 362 original issue comments were verified: 341 transferred normally;
+21 omitted from destination discussions were restored with explicit original
+authorship and timestamps. The [issue](../history/issue-transfers.json) and
+[comment](../history/comment-transfers.json) maps retain old-to-new references.
+All 23 original PRs have [historical exports](../history/pull-requests/README.md)
+with descriptions, comments, reviews, timelines, commits and diffs.
+
+The maintainer authorized deletion of both old local checkouts and both original
+GitHub repositories. The local checkouts were deleted after verified backups.
+Complete checkout archives, verified Git mirrors and GitHub exports remain at
+`/home/adam/projects/ic-persistence-retirement-2026-10-20/`.
+Both original GitHub repositories remain: deletion was refused because the
+current CLI token lacks `delete_repo`. Both old trackers report no remaining
+issues; the nine source copies flagged during approval review were independently
+verified, including all 21 associated comments, before retrying deletion.
 
 ## Qualification
+
+The archive helper now seeds fixture locks from the repository selection,
+rejects external version/source/checksum drift and duplicate or substituted
+package identities, and builds with `--locked`. Native, Rust 1.91 and Wasm
+archive-consumer checks pass, as do the injected drift/duplicate rejection
+fixtures and final archive, unpacked-file and source-input integrity checks.
 
 Linux: the focused workspace run passed 267 tests (including 60 release tests)
 and 13 doctests; six existing allocation-measurement tests remain intentionally

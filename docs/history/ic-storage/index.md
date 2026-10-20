@@ -15,3 +15,7 @@ Use the [migration map](../../migration/ic-persistence.md),
 [current handoff](../../status/current.md) and root [release guide](../../../RELEASING.md)
 for the consolidated repository. The original Git histories and preserved branch
 heads remain the authoritative source for omitted historical tooling.
+
+The [issue map](../issue-transfers.json), [comment map](../comment-transfers.json)
+and [PR exports](../pull-requests/README.md) retain the collaboration history
+after consolidation. See the current handoff for repository retirement status.

@@ -1,0 +1,136 @@
+diff --git a/.shared-tooling.snapshot b/.shared-tooling.snapshot
+index eb2bd4f..5ab6158 100644
+--- a/.shared-tooling.snapshot
++++ b/.shared-tooling.snapshot
+@@ -1,8 +1,8 @@
+ # Shared Tooling snapshot v1
+-# version	0.25.8
++# version	0.25.9
+ format	1
+ source	https://github.com/dragginzgame/shared-tooling
+-revision	0a2d2ee3b5e0ae77755c2915ac28836d4d5ba359
++revision	85aded191d85ac4a8c0e5deab207f6be18895862
+ # entrypoint	DRAGGINZGAME.md
+ # entrypoint	rules/contributions.md
+ # entrypoint	rules/changelogs.md
+@@ -104,8 +104,8 @@ file	35fd87d36a09ed0971841abf28535d43470c713a82581c2251b924da1ab8f484	-	audits/f
+ file	ffdca09602c44c8aff8fc2a17588b20eb6a56e2e71fb6d42ad75087fdd65819b	-	audits/complexity-and-technical-debt.md
+ file	1b64cf2ba0393ab329ec29eb05a696d47ef5933f5ab9bff6e1fe4a7e7b294075	-	audits/module-surface-hardening.md
+ file	8aa442dcbe08e4092e3f5209ff5d6feac188f4959c63171dd9e6dfbff8d57366	-	audits/module-cleanup.md
+-file	7937a517833f334004253271596040505792def6dbc5eb59f2d7104a698a1339	-	docs/releases.md
+-file	924e66af90c91cf6b5efa0d330d53742dcdf8eb28d34ca8465c15fe8687ab4ea	x	scripts/ci/run-release.sh
++file	702cf0f17c981cc655de7d7b535f9a8684f1fd1a6f2c5461cc7dbf97c0c05ebe	-	docs/releases.md
++file	f6fefe35aff870cf38057e4f319b139edab2d2e2ba00f46e505c3b3e1b64583b	x	scripts/ci/run-release.sh
+ file	ec8948910a221713a967d62b7ae42775929cad5ead4de111cb1cacdb1dedcb56	-	scripts/ci/release-pr.sh
+ file	9e32385247296ce95d2b15b1290c64e6b6dff15716c1c139f21ab5e5128f4be3	x	scripts/ci/check-make-execution.sh
+ file	a3af7084956384262842be33100f91a22fdd82b0f91b6091a00e90f8726f67fe	x	scripts/ci/check-release-source.sh
+diff --git a/CHANGELOG.md b/CHANGELOG.md
+index de58fc1..c221798 100644
+--- a/CHANGELOG.md
++++ b/CHANGELOG.md
+@@ -1,5 +1,11 @@
+ # Changelog
+ 
++## [0.5.10]
++
++- Adopt Shared Tooling 0.25.9: refuse a new release increment past an
++  undelivered committed preparation, preserving its saved plan and evidence.
++  Tool pins, package APIs and dependency selections are unchanged.
++
+ ## [0.5.9] - 2026-10-20
+ 
+ - Adopt Shared Tooling 0.25.8, retaining failed Cargo metadata diagnostics and
+diff --git a/docs/releases.md b/docs/releases.md
+index 8b2fd50..062fb86 100644
+--- a/docs/releases.md
++++ b/docs/releases.md
+@@ -263,7 +263,15 @@ when HEAD is a newer descendant commit and the index, worktree and untracked
+ source inventory are clean. The saved index tree must be empty, no preparation
+ file set (`PLAN.files`, including symlinks) may exist, and the recorded branch,
+ remote and exact push destination must still agree. Current canonical metadata
+-must read either the saved previous version or the saved candidate.
++must read either the saved previous version or the saved candidate. When it reads
++the candidate, a committed bump alone is insufficient: its local annotated tag
++must lie between the saved source and current HEAD, the exact tag object must
++match the saved destination, and the observed destination branch must contain
++that tagged commit. Missing or conflicting tags, failed remote observations and
++unavailable/divergent branch history stop before archiving the plan or running
++another gate. Keep the saved plan and reconcile the intended release; do not
++remove its evidence or invent a tag to bypass the refusal. This checks Git
++delivery, not registry publication.
+ 
+ The runner archives the original plan unchanged under
+ `release-state/X.Y.Z.attempt.*/`, while holding the release lock, then reads the
+@@ -274,12 +282,14 @@ bound to their original attempt; adapters must preserve them on revalidation.
+ The archived intent is superseded local preparation, not proof of successful
+ release, delivery or publication.
+ 
+-For example, a stale `0.6.3 -> 0.6.4` prepare plan must not block a clean newer
+-commit whose Cargo workspace already reads `0.6.4`. `make release-patch` archives
+-that intent, validates the current checkout, and prepares `0.6.5`. If committed
+-metadata still reads `0.6.3`, it validates and prepares `0.6.4` instead. Patch,
+-minor and major use this same restart behavior; the saved kind does not override
+-the current request after committed preparation has been superseded.
++For example, after `0.6.3 -> 0.6.4` preparation fails and its metadata is committed,
++`make release-patch` refuses to select `0.6.5` while delivery of `0.6.4` is
++unconfirmed. It preserves the `0.6.4` plan and all earlier evidence. If `0.6.4`
++has separately been tagged and delivered with the identities above, the retry
++can archive that stale preparation, validate current source and prepare `0.6.5`.
++If committed metadata still reads `0.6.3`, it validates and prepares `0.6.4`
++instead. Patch, minor and major use this same admission; a different requested
++increment does not bypass the delivery check.
+ 
+ This boundary depends on the consumer adapter contract: preparation changes
+ **local release metadata only**. It may retain local backups, journals and
+@@ -658,7 +668,9 @@ destination, completed phases and evidence. Uncommitted preparation remains boun
+ to its saved source and kind at unchanged HEAD. A newer clean descendant commit
+ can supersede direct `prepare` intent under
+ [the restart contract](#source-changes-after-saved-preparation-intent), with current
+-metadata selection and fresh complete validation. After the release commit exists,
++metadata selection and fresh complete validation. A committed candidate cannot
++be incremented again until its Git delivery is confirmed under that contract.
++After the release commit exists,
+ newer commits are
+ allowed only on its direct descendant history, with the exact staged tree, sole
+ source parent and release subject still verified. A dirty tree, changed release
+diff --git a/scripts/ci/run-release.sh b/scripts/ci/run-release.sh
+index 7e60791..459c191 100755
+--- a/scripts/ci/run-release.sh
++++ b/scripts/ci/run-release.sh
+@@ -133,7 +133,7 @@ load_plan() {
+     case "$phase" in preflight|validate) phase=preflight ;; esac
+ }
+ restart_committed_preparation() {
+-    local current_source current_version untracked archive
++    local current_source current_version untracked archive prepared_commit prepared_tag
+     # Preparation owns local metadata only. A clean descendant commit captures
+     # its current disposition; no runner staging/commit/delivery was dispatched.
+     current_source="$(git rev-parse --verify HEAD)"
+@@ -147,6 +147,27 @@ restart_committed_preparation() {
+     current_version="$("$make_bin" --no-print-directory -s release-version)"
+     [[ "$current_version" == "$previous" || "$current_version" == "$candidate" ]] || fail 'committed metadata differs from the saved preparation versions'
+     assert_destination
++    if [[ "$current_version" == "$candidate" ]]; then
++        # A committed bump is still preparation, not proof that this release was
++        # delivered. Refuse before archiving its intent or selecting another bump.
++        prepared_commit="$(git rev-parse --verify "refs/tags/v$candidate^{commit}")" ||
++            fail "prepared version $candidate is committed but delivery is unconfirmed; keep $plan and reconcile the saved release before requesting another increment"
++        prepared_tag="$(git rev-parse "refs/tags/v$candidate")"
++        bash "$runner_dir/check-release-tag.sh" "$prepared_commit" "$candidate" ||
++            fail "prepared version $candidate has no valid annotated release tag; keep $plan and reconcile the saved release"
++        git merge-base --is-ancestor "$source" "$prepared_commit" ||
++            fail 'prepared release tag is outside the saved source history'
++        git merge-base --is-ancestor "$prepared_commit" "$current_source" ||
++            fail 'prepared release tag is outside the current source history'
++        read_remote_refs
++        [[ "$remote_tag" == "$prepared_tag" && -n "$remote_head" ]] ||
++            fail "prepared version $candidate is not confirmed at the saved destination; keep $plan and reconcile its delivery"
++        git merge-base --is-ancestor "$prepared_commit" "$remote_head" ||
++            fail 'prepared release is absent from the observed destination branch; fetch and reconcile'
++        [[ "$(git rev-parse "refs/tags/v$candidate")" == "$prepared_tag" ]] ||
++            fail 'prepared release tag changed during delivery observation'
++        assert_destination
++    fi
+     archive="$(mktemp -d "$state_root/$candidate.attempt.XXXXXX")"
+     mv "$plan" "$archive/$candidate.plan"
+     printf 'Restarting from committed metadata %s at %s; retained preparation: %s\n' \

@@ -1,0 +1,194 @@
+diff --git a/CHANGELOG.md b/CHANGELOG.md
+index cc7dfb3..874548d 100644
+--- a/CHANGELOG.md
++++ b/CHANGELOG.md
+@@ -1,5 +1,12 @@
+ # Changelog
+ 
++## [0.49.2]
++
++- Use Shared's existing tool-evidence collector while retaining Memory's selected
++  logs, redirected-parent diagnostics and hosted completeness checks.
++
++[Detailed notes](docs/changelog/0.49.md#0492)
++
+ ## [0.49.1] - 2026-10-19
+ 
+ - Consume IC Platform 0.2's native PocketIC interface in installed qualification,
+diff --git a/docs/changelog/0.49.md b/docs/changelog/0.49.md
+index 207ac11..9f1d355 100644
+--- a/docs/changelog/0.49.md
++++ b/docs/changelog/0.49.md
+@@ -1,5 +1,15 @@
+ # 0.49 release notes
+ 
++## [0.49.2]
++
++Use the already adopted Shared collector for tool selection, diagnostic receipts
++and archiving. Memory keeps its log inventory, redirected-parent diagnostics,
++archive path and hosted completeness output. Failed selector output remains
++available as diagnostics but cannot authorize collecting external payloads.
++The consumer fixture retains actual installer failures, archive bytes, modes,
++links, retry isolation and hosted bindings. Library APIs and stored bytes are
++unchanged; no snapshot refresh or tool setup change is required.
++
+ ## [0.49.1] - 2026-10-19
+ 
+ The independent runtime qualification runner consumes published IC Platform 0.2
+diff --git a/scripts/ci/collect-failure-evidence.sh b/scripts/ci/collect-failure-evidence.sh
+index 80d7d0f..bb11f16 100755
+--- a/scripts/ci/collect-failure-evidence.sh
++++ b/scripts/ci/collect-failure-evidence.sh
+@@ -1,7 +1,7 @@
+ #!/usr/bin/env bash
+ set -euo pipefail
+ 
+-# Consumer policy only: the shared helper owns archive creation and path safety.
++# Consumer policy only: Shared owns tool selection and archive orchestration.
+ [[ $# == 2 || $# == 3 ]] || { echo 'usage: collect-failure-evidence.sh TEMP-ROOT REPOSITORY-ROOT [full|compact]' >&2; exit 2; }
+ mode="${3:-full}"
+ [[ "$mode" == full || "$mode" == compact ]] || { echo 'invalid tool evidence selection' >&2; exit 2; }
+@@ -30,18 +30,17 @@ for path in "$temp_root/ic-memory-fixtures" "$temp_root/tools-setup.log" "$temp_
+         inputs+=("$temp_root" "${path#"$temp_root/"}")
+     fi
+ done
+-bundles=()
+ select_tools=false
+-diagnostics=""
++local_diagnostics=""
+ for local_root in target .tools; do
+     if [[ -L "$repository_root/$local_root" ]]; then
+         # Retain the final link, never its children. Their rejection must not
+         # discard independent logs or evidence from the other physical root.
+         inputs+=("$repository_root" "$local_root")
+         complete=false
+-        [[ -n "$diagnostics" ]] || diagnostics="$(mktemp -d "$temp_root/tool-evidence.XXXXXX")"
++        [[ -n "$local_diagnostics" ]] || local_diagnostics="$(mktemp -d "$temp_root/local-evidence.XXXXXX")"
+         printf 'Evidence incomplete: %s is a symlink; retaining the link without following its target.\n' \
+-            "$local_root" >> "$diagnostics/local-selection.log"
++            "$local_root" >> "$local_diagnostics/local-selection.log"
+     else
+         case "$local_root" in
+             target) paths=(target/qualification target/release-validation) ;;
+@@ -56,8 +55,8 @@ for local_root in target .tools; do
+                     # inadmissible leaf locally without traversing it.
+                     paths+=(.tools/rust)
+                     complete=false
+-                    [[ -n "$diagnostics" ]] || diagnostics="$(mktemp -d "$temp_root/tool-evidence.XXXXXX")"
+-                    printf 'Evidence incomplete: .tools/rust is not a physical directory; retaining the leaf without following it.\n' >> "$diagnostics/local-selection.log"
++                    [[ -n "$local_diagnostics" ]] || local_diagnostics="$(mktemp -d "$temp_root/local-evidence.XXXXXX")"
++                    printf 'Evidence incomplete: .tools/rust is not a physical directory; retaining the leaf without following it.\n' >> "$local_diagnostics/local-selection.log"
+                 fi
+                 ;;
+         esac
+@@ -68,36 +67,29 @@ for local_root in target .tools; do
+         done
+     fi
+ done
+-if [[ -n "$diagnostics" ]]; then
+-    cat "$diagnostics/local-selection.log" >&2
++if [[ -n "$local_diagnostics" ]]; then
++    cat "$local_diagnostics/local-selection.log" >&2
++    inputs+=("$temp_root" "${local_diagnostics#"$temp_root/"}")
+ fi
+ if [[ "$select_tools" == true ]]; then
+-    [[ -n "$diagnostics" ]] || diagnostics="$(mktemp -d "$temp_root/tool-evidence.XXXXXX")"
+-    selector=(bash "$ROOT/scripts/ci/select-tool-evidence.sh" "$mode" "$repository_root" "$diagnostics")
+-    if [[ "$mode" == compact ]]; then
+-        selector+=("$ROOT/ci/tool-versions.env" "$ROOT/ci/ic-tools.tsv")
+-    fi
+-    selector_status=0
+-    "${selector[@]}" > "$diagnostics/selection" 2> "$diagnostics/selection.log" || selector_status=$?
+-    if [[ "$selector_status" != 0 ]]; then
+-        complete=false
+-        printf '%s\n' "$selector_status" > "$diagnostics/selection-status"
+-        echo 'Tool evidence incomplete; retaining available product logs and selection diagnostics.' >&2
+-        cat "$diagnostics/selection.log" >&2
+-    fi
+-    while IFS= read -r -d '' selection_root && IFS= read -r -d '' selection_path; do
+-        inputs+=("$selection_root" "$selection_path")
+-    done < "$diagnostics/selection"
+-fi
+-if [[ -n "$diagnostics" ]]; then
+-    if [[ "$complete" == false || -d "$diagnostics/host" || -d "$diagnostics/ic" || -s "$diagnostics/selection.log" ]]; then
+-        inputs+=("$temp_root" "${diagnostics#"$temp_root/"}")
+-    else
+-        rm "$diagnostics/selection" "$diagnostics/selection.log"
+-        rmdir "$diagnostics"
+-    fi
+-fi
+-if [[ ${#inputs[@]} != 0 ]]; then
++    diagnostics="$(mktemp -d "$temp_root/tool-evidence.XXXXXX")"
++    archive_dir="$(mktemp -d "$temp_root/ic-memory-evidence.XXXXXX")"
++    collection_status=0
++    bash "$ROOT/scripts/ci/collect-tool-evidence.sh" "$archive_dir/evidence.tar.gz" \
++        "$repository_root" "$diagnostics" "$mode" \
++        "$ROOT/ci/tool-versions.env" "$ROOT/ci/ic-tools.tsv" \
++        ${inputs[@]+"${inputs[@]}"} || collection_status=$?
++    case "$collection_status" in
++        0)
++            if [[ ! -d "$diagnostics/host" && ! -d "$diagnostics/ic" ]]; then
++                rm "$diagnostics/selections.nul" "$diagnostics/selection.log" \
++                    "$diagnostics/selection-status" "$diagnostics/archive-status"
++                rmdir "$diagnostics"
++            fi ;;
++        1) complete=false ;;
++        *) exit "$collection_status" ;;
++    esac
++elif [[ ${#inputs[@]} != 0 ]]; then
+     archive_dir="$(mktemp -d "$temp_root/ic-memory-evidence.XXXXXX")"
+     bash "$ROOT/scripts/ci/archive-evidence.sh" "$archive_dir/evidence.tar.gz" "${inputs[@]}"
+ fi
+diff --git a/scripts/ci/test-failure-evidence.sh b/scripts/ci/test-failure-evidence.sh
+index cd44c94..a81b514 100755
+--- a/scripts/ci/test-failure-evidence.sh
++++ b/scripts/ci/test-failure-evidence.sh
+@@ -350,20 +350,19 @@ for selection_mode in full compact; do
+                 [[ "$member" != "./$alias/"* ]] || { echo 'redirected payload must not be archived' >&2; exit 1; }
+             done < "$redirected/members"
+         done
+-        diagnostics=("$redirected/unpacked"/tool-evidence.*/local-selection.log)
++        diagnostics=("$redirected/unpacked"/local-evidence.*/local-selection.log)
+         [[ ${#diagnostics[@]} == 1 && -s "${diagnostics[0]}" ]] || exit 1
+         cmp "$redirected/error" "${diagnostics[0]}"
+     done
+ done
+ 
+-# A selector may fail after emitting admitted pairs. Retain those complete
+-# selections, its exact status/stderr and product logs; ignore a trailing root
+-# without a path. Substitute only selection, keeping the real collector/archive.
++# A failed selector supplies diagnostics, not payload authority. Retain local
++# tool logs and the exact status/stderr through the real shared orchestrator.
+ for selection_mode in full compact; do
+     partial_root="$fixture/partial-selector-$selection_mode"
+     mkdir -p "$partial_root/scripts/ci" "$partial_root/temp" "$partial_root/repository/.tools/host-set.selected" \
+         "$partial_root/unpacked"
+-    cp "$ROOT/scripts/ci/collect-failure-evidence.sh" "$ROOT/scripts/ci/archive-evidence.sh" "$partial_root/scripts/ci/"
++    cp "$ROOT/scripts/ci/collect-failure-evidence.sh" "$ROOT/scripts/ci/archive-evidence.sh" "$ROOT/scripts/ci/collect-tool-evidence.sh" "$partial_root/scripts/ci/"
+     cat > "$partial_root/scripts/ci/select-tool-evidence.sh" <<'SELECTOR'
+ #!/usr/bin/env bash
+ if [[ "$1" == compact ]]; then
+@@ -371,18 +370,21 @@ if [[ "$1" == compact ]]; then
+     [[ "$4" == "$snapshot_root/ci/tool-versions.env" &&
+         "$5" == "$snapshot_root/ci/ic-tools.tsv" ]] || exit 18
+ fi
+-printf '%s\0%s\0%s\0' "$2" '.tools/host-set.selected' "$2"
++printf '%s\0%s\0%s\0' "$IC_MEMORY_UNTRUSTED_SELECTION" private "$2"
+ printf 'controlled partial selector failure\n' >&2
+ exit 17
+ SELECTOR
+     cp "$temp_root/validation.log" "$partial_root/temp/validation.log"
+     printf 'admitted tool diagnostics\n' > "$partial_root/repository/.tools/host-set.selected/install.log"
+-    partial_archive="$(GITHUB_OUTPUT="$partial_root/outputs" bash "$partial_root/scripts/ci/collect-failure-evidence.sh" \
++    mkdir "$partial_root/outside"
++    printf 'never archive failed selections\n' > "$partial_root/outside/private"
++    partial_archive="$(IC_MEMORY_UNTRUSTED_SELECTION="$partial_root/outside" GITHUB_OUTPUT="$partial_root/outputs" bash "$partial_root/scripts/ci/collect-failure-evidence.sh" \
+         "$partial_root/temp" "$partial_root/repository" "$selection_mode" 2> "$partial_root/error")"
+     [[ -f "$partial_archive" && "$(cat "$partial_root/outputs")" == collection-complete=false ]] || exit 1
+     tar -xzf "$partial_archive" -C "$partial_root/unpacked"
+     cmp "$temp_root/validation.log" "$partial_root/unpacked/validation.log"
+     cmp "$partial_root/repository/.tools/host-set.selected/install.log" "$partial_root/unpacked/.tools/host-set.selected/install.log"
++    [[ ! -e "$partial_root/unpacked/private" ]] || exit 1
+     statuses=("$partial_root/unpacked"/tool-evidence.*/selection-status)
+     [[ ${#statuses[@]} == 1 && "$(cat "${statuses[0]}")" == 17 && \
+         "$(cat "${statuses[0]%/*}/selection.log")" == 'controlled partial selector failure' ]] || exit 1
