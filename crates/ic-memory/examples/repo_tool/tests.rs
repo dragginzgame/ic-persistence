@@ -3232,7 +3232,7 @@ fn coordinated_publication_resumes_only_matching_packages_in_dependency_order() 
         .iter()
         .filter(|call| call[0] == "curl")
         .collect();
-    assert!(!requests.is_empty());
+    assert_ne!(requests, [] as [&Vec<String>; 0]);
     for request in requests {
         assert!(request.windows(2).any(|args| {
             args[0] == "--user-agent"
