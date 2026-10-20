@@ -4,7 +4,9 @@ set -euo pipefail
 fixture="$(mktemp -d "${TMPDIR:-/tmp}/ic-persistence-package-admission.XXXXXX")"
 echo "Retained archive-admission fixture: $fixture"
 mkdir -p "$fixture/bin"
-export REAL_CARGO="$(command -v cargo)" REAL_YQ="$(command -v yq)"
+REAL_CARGO="$(command -v cargo)"
+REAL_YQ="$(command -v yq)"
+export REAL_CARGO REAL_YQ
 cat > "$fixture/bin/yq" <<'STUB'
 #!/usr/bin/env bash
 set -euo pipefail
