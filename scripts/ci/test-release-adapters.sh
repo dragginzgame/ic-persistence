@@ -8,12 +8,17 @@ unset RELEASE_CACHE_PREPARE
 export RELEASE_DELIVERY=direct
 # Keep Make status/warning assertions independent of the caller's locale.
 export LC_ALL=C
+# shellcheck source=ci/release-tools.env
+source ci/release-tools.env
 # Resolve relative script entry points without CDPATH output or newline loss.
 ROOT="${BASH_SOURCE[0]}"
 [[ "$ROOT" == /* ]] || ROOT="$PWD/$ROOT"
 ROOT="$(cd -P "${ROOT%/*}/../.." && printf '%s/.' "$PWD")"
 ROOT="${ROOT%/.}"
-bash "$ROOT/scripts/ci/check-release-commands.sh" "$ROOT" rust-toolchain.toml ci/tool-versions.env make/consumer.mk make/tools.mk make/release.mk make/rust-format.mk make/execution.mk scripts/ci/check-make-execution.sh scripts/ci/check-release-delivery.sh
+FIXTURE_TOOLCHAIN="$(sed -n 's/^channel = "\([^"]*\)"$/\1/p' "$ROOT/rust-toolchain.toml")"
+[[ "$FIXTURE_TOOLCHAIN" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || exit 1
+export FIXTURE_TOOLCHAIN
+bash "$ROOT/scripts/ci/check-release-commands.sh" "$ROOT" rust-toolchain.toml ci/release-tools.env ci/tool-versions.env make/consumer.mk make/tools.mk make/release.mk make/rust-format.mk make/execution.mk scripts/ci/check-make-execution.sh scripts/ci/check-release-delivery.sh
 FIXTURE="$(mktemp -d "${TMPDIR:-/tmp}/ic-memory-release-adapters.XXXXXX")"
 FIXTURE="$(CDPATH="" cd -P -- "$FIXTURE" && printf '%s/.' "$PWD")"
 FIXTURE="${FIXTURE%/.}"
@@ -23,7 +28,7 @@ fixture_complete=false
 trap 'fixture_finish "$?" "$FIXTURE" "Consumer release-adapter fixture retained"' EXIT
 mkdir -p "$FIXTURE/ci" "$FIXTURE/make"
 cp "$ROOT/Makefile" "$ROOT/rust-toolchain.toml" "$FIXTURE/"
-cp "$ROOT/ci/tool-versions.env" "$FIXTURE/ci/"
+cp "$ROOT/ci/release-tools.env" "$ROOT/ci/tool-versions.env" "$FIXTURE/ci/"
 cp "$ROOT/make/consumer.mk" "$ROOT/make/tools.mk" "$ROOT/make/release.mk" "$ROOT/make/rust-format.mk" "$ROOT/make/execution.mk" "$FIXTURE/make/"
 mkdir -p "$FIXTURE/scripts/ci"
 cp "$ROOT/scripts/ci/check-make-execution.sh" "$ROOT/scripts/ci/check-release-delivery.sh" "$FIXTURE/scripts/ci/"
@@ -96,7 +101,7 @@ root="$(pwd -P)"
 STUB
 cat > "$FIXTURE/scripts/ci/check-format-tools.sh" <<'STUB'
 #!/usr/bin/env bash
-[[ "$#" == 2 && "$*" == '2.1.4 cargo' && "$RUSTUP_TOOLCHAIN" == 1.99.0 ]] || exit 1
+[[ "$#" == 2 && "$*" == '2.1.4 cargo' && "$RUSTUP_TOOLCHAIN" == "$FIXTURE_TOOLCHAIN" ]] || exit 1
 STUB
 cat > "$FIXTURE/scripts/dev/install-host-tools.sh" <<'STUB'
 #!/usr/bin/env bash
@@ -127,6 +132,12 @@ set -euo pipefail
 kind="${0##*/install-}"
 kind="${kind%-tools.sh}"
 [[ "$1" == --consumer && "$2" == "$(pwd -P)" ]] || exit 1
+if [[ "$kind" == rust && "$3" == --package ]]; then
+    [[ "$*" == "--consumer $PWD --package ic-build --version 0.22.0 --bin ic-build-release-metadata --profile debug" ||
+       "$*" == "--consumer $PWD --package ic-build --version 0.22.0 --bin ic-build-release-metadata --profile debug --check" ]] || exit 1
+    printf 'editor %s\n' "${11:-install}" >> aggregate-events
+    exit 0
+fi
 case "$kind" in
     host|rust) [[ "$3" == --versions && "$4" == "$PWD/ci/tool-versions.env" ]] || exit 1 ;;
     ic) [[ "$3" == --pins && "$4" == "$PWD/ci/ic-tools.tsv" ]] || exit 1 ;;
@@ -139,9 +150,9 @@ for target in install-tools tools-check; do
     rm -f "$FIXTURE/aggregate-events"
     (cd "$FIXTURE"; make -j2 --no-print-directory "$target") > "$FIXTURE/$target.log" 2>&1
     if [[ "$target" == install-tools ]]; then
-        printf 'rust --preflight\nhost install\nrust install\nic install\n' > "$FIXTURE/aggregate-expected"
+        printf 'rust --preflight\nhost install\nrust install\nic install\neditor install\n' > "$FIXTURE/aggregate-expected"
     else
-        printf 'host --check\nrust --check\nic --check\n' > "$FIXTURE/aggregate-expected"
+        printf 'host --check\nrust --check\nic --check\neditor --check\n' > "$FIXTURE/aggregate-expected"
     fi
     cmp "$FIXTURE/aggregate-expected" "$FIXTURE/aggregate-events"
     status=0
@@ -252,7 +263,7 @@ jobserver="$FIXTURE/jobserver"
 mkdir -p "$jobserver/bin" "$jobserver/make" "$jobserver/ci" "$jobserver/scripts/ci"
 cp "$ROOT/Makefile" "$ROOT/rust-toolchain.toml" "$jobserver/"
 cp "$ROOT/make/consumer.mk" "$ROOT/make/tools.mk" "$ROOT/make/release.mk" "$ROOT/make/rust-format.mk" "$ROOT/make/execution.mk" "$jobserver/make/"
-cp "$ROOT/ci/tool-versions.env" "$jobserver/ci/"
+cp "$ROOT/ci/release-tools.env" "$ROOT/ci/tool-versions.env" "$jobserver/ci/"
 cp "$ROOT/scripts/ci/check-make-execution.sh" "$ROOT/scripts/ci/check-release-delivery.sh" "$ROOT/scripts/ci/check-format-tools.sh" \
     "$ROOT/scripts/ci/run-formatting.sh" "$jobserver/scripts/ci/"
 export JOBSERVER_EVENTS="$jobserver/events"
@@ -281,7 +292,7 @@ for target in fmt fmt-check test-tooling test fetch-dependencies wasm-size versi
     (cd "$jobserver"; PATH="$jobserver/bin:$PATH" make --no-print-directory "${parallel[@]}" \
         "$target" TOOL=./helper) > "$jobserver/$target.log" 2>&1
 done
-grep -F 'sort --workspace testing/runtime-qualification' "$JOBSERVER_EVENTS"
+grep -F 'sort --workspace --grouped testing/runtime-qualification' "$JOBSERVER_EVENTS"
 grep -F 'fmt --manifest-path testing/runtime-qualification/Cargo.toml --all' "$JOBSERVER_EVENTS"
 grep -F 'helper release-verify' "$JOBSERVER_EVENTS"
 grep -F 'helper publish --dry-run' "$JOBSERVER_EVENTS"
@@ -353,14 +364,28 @@ done
 mkdir -p "$FIXTURE/bootstrap/scripts/dev" "$FIXTURE/bootstrap/bin" \
     "$FIXTURE/bootstrap/crates/ic-memory/src" "$FIXTURE/bootstrap/crates/ic-memory/examples" "$FIXTURE/bootstrap/ci" "$FIXTURE/bootstrap/make"
 cp "$ROOT/Makefile" "$ROOT/rust-toolchain.toml" "$FIXTURE/bootstrap/"
-cp "$ROOT/ci/tool-versions.env" "$FIXTURE/bootstrap/ci/"
+cp "$ROOT/ci/release-tools.env" "$ROOT/ci/tool-versions.env" "$FIXTURE/bootstrap/ci/"
 cp "$ROOT/make/consumer.mk" "$ROOT/make/tools.mk" "$ROOT/make/release.mk" "$ROOT/make/rust-format.mk" "$ROOT/make/execution.mk" "$FIXTURE/bootstrap/make/"
 mkdir -p "$FIXTURE/bootstrap/scripts/ci"
 cp "$ROOT/scripts/ci/check-make-execution.sh" "$ROOT/scripts/ci/check-release-delivery.sh" "$FIXTURE/bootstrap/scripts/ci/"
 cp "$ROOT/scripts/ci/read-cargo-workspace-version.sh" \
-    "$ROOT/scripts/ci/render-cargo-workspace-version.pl" \
     "$ROOT/scripts/ci/validate-release-inputs.pl" "$ROOT/scripts/ci/StableVersion.pm" "$FIXTURE/bootstrap/scripts/ci/"
 cp "$ROOT/scripts/dev/run-repo-tool.sh" "$FIXTURE/bootstrap/scripts/dev/"
+# Exercise the real published renderer; substitute only tool-store selection.
+fixture_editor="$(RUSTUP_TOOLCHAIN="$FIXTURE_TOOLCHAIN" bash "$ROOT/scripts/dev/install-rust-tools.sh" \
+    --consumer "$ROOT" --package ic-build --version "$IC_BUILD_RELEASE_METADATA_VERSION" \
+    --bin ic-build-release-metadata --profile debug --check)"
+export FIXTURE_RELEASE_EDITOR="$fixture_editor"
+cat > "$FIXTURE/bootstrap/scripts/dev/install-rust-tools.sh" <<'STUB'
+#!/usr/bin/env bash
+set -euo pipefail
+[[ "$*" == "--consumer $PWD --package ic-build --version 0.22.0 --bin ic-build-release-metadata --profile debug" ||
+   "$*" == "--consumer $PWD --package ic-build --version 0.22.0 --bin ic-build-release-metadata --profile debug --check" ]] || exit 1
+[[ "${CARGO_NET_OFFLINE-unset}" == "$CALLER_OFFLINE" ]] || exit 1
+exit_status="${EDITOR_STATUS:-0}"
+[[ "$exit_status" == 0 ]] || exit "$exit_status"
+printf '%s\n' "$FIXTURE_RELEASE_EDITOR"
+STUB
 cd "$FIXTURE/bootstrap"
 cat > Cargo.toml <<'MANIFEST'
 [workspace]
@@ -392,11 +417,11 @@ cat > bin/cargo <<'STUB'
 #!/usr/bin/env bash
 set -euo pipefail
 if [[ "$1" == locate-project ]]; then
-    [[ "$RUSTUP_TOOLCHAIN" == 1.99.0 && "$CARGO_NET_OFFLINE" == true ]] || exit 1
+    [[ "$RUSTUP_TOOLCHAIN" == "$FIXTURE_TOOLCHAIN" && "$CARGO_NET_OFFLINE" == true ]] || exit 1
     [[ "$*" == 'locate-project --workspace --message-format plain --manifest-path Cargo.toml' ]] || exit 1
     exec "$FIXTURE_REAL_CARGO" "$@"
 fi
-[[ "$1" == +1.99.0 ]] || exit 1
+[[ "$1" == +"$FIXTURE_TOOLCHAIN" ]] || exit 1
 [[ "$RUSTUP_AUTO_INSTALL" == 0 && "${CARGO_NET_OFFLINE-unset}" == "$CALLER_OFFLINE" ]] || exit 1
 case "$2" in
     fetch)
@@ -429,7 +454,7 @@ case "$2" in
         fi
         ;;
     metadata)
-        [[ "$*" == '+1.99.0 metadata --locked --offline --no-deps --format-version 1' ]] || exit 1
+        [[ "$*" == "+$FIXTURE_TOOLCHAIN metadata --locked --offline --no-deps --format-version 1" ]] || exit 1
         echo metadata >> calls
         echo '{"target_directory":"fixture"}'
         ;;
@@ -445,8 +470,9 @@ case "$2" in
             cmp crates/ic-memory/Cargo.toml "$(dirname "$7")/crates/ic-memory/Cargo.toml"
             cmp crates/ic-memory/README.md "$(dirname "$7")/crates/ic-memory/README.md"
             cmp LICENSE "$(dirname "$7")/LICENSE"
-            [[ "$(readlink "$(dirname "$7")/crates/ic-memory/src")" == "$PWD/crates/ic-memory/src" ]] || exit 1
-            [[ "$(readlink "$(dirname "$7")/crates/ic-memory/examples")" == "$PWD/crates/ic-memory/examples" ]] || exit 1
+            [[ -d "$(dirname "$7")/crates/ic-memory/src" && ! -L "$(dirname "$7")/crates/ic-memory/src" ]] || exit 1
+            [[ -d "$(dirname "$7")/crates/ic-memory/examples" && ! -L "$(dirname "$7")/crates/ic-memory/examples" ]] || exit 1
+            cmp crates/ic-memory/src/lib.rs "$(dirname "$7")/crates/ic-memory/src/lib.rs"
             echo bootstrap >> calls
         else
             [[ "$6" == --example && "$7" == repo-tool && "$8" == -- ]] || exit 1
@@ -504,7 +530,7 @@ check_release_cache_preparation() {
         : > calls
         : > preparation-events
         status=0
-        CACHE_MISSING=1 RELEASE_CACHE_PREPARE=1 bash scripts/dev/run-repo-tool.sh 1.99.0 version \
+        CACHE_MISSING=1 RELEASE_CACHE_PREPARE=1 bash scripts/dev/run-repo-tool.sh "$FIXTURE_TOOLCHAIN" version \
             > "release-cache-$offline.log" 2>&1 || status=$?
         if [[ "$offline" == true ]]; then
             [[ "$status" == 101 && ! -s preparation-events ]] || exit 1
@@ -520,7 +546,7 @@ check_release_cache_preparation() {
     export CALLER_OFFLINE=unset
     : > calls
     status=0
-    CACHE_STATUS=9 RELEASE_CACHE_PREPARE=1 bash scripts/dev/run-repo-tool.sh 1.99.0 version \
+    CACHE_STATUS=9 RELEASE_CACHE_PREPARE=1 bash scripts/dev/run-repo-tool.sh "$FIXTURE_TOOLCHAIN" version \
         > release-network-failure.log 2>&1 || status=$?
     [[ "$status" == 9 ]] || exit 1
     if grep -E '^(normal|bootstrap)$' calls; then exit 1; fi
@@ -533,7 +559,7 @@ check_publication_environment
 check_release_cache_preparation
 cp calls successful-calls
 status=0
-CACHE_STATUS=101 bash scripts/dev/run-repo-tool.sh 1.99.0 version > cache-refusal.log 2>&1 || status=$?
+CACHE_STATUS=101 bash scripts/dev/run-repo-tool.sh "$FIXTURE_TOOLCHAIN" version > cache-refusal.log 2>&1 || status=$?
 [[ "$status" == 101 ]] || exit 1
 grep -F 'simulated offline cache failure' cache-refusal.log
 grep -F 'Run make fetch-dependencies' cache-refusal.log
@@ -561,7 +587,7 @@ cmp original-manifest Cargo.toml
 cmp prepared-lock Cargo.lock
 cp calls successful-calls
 status=0
-CACHE_STATUS=101 bash scripts/dev/run-repo-tool.sh 1.99.0 version > bootstrap-cache-refusal.log 2>&1 || status=$?
+CACHE_STATUS=101 bash scripts/dev/run-repo-tool.sh "$FIXTURE_TOOLCHAIN" version > bootstrap-cache-refusal.log 2>&1 || status=$?
 [[ "$status" == 101 ]] || exit 1
 grep -F 'simulated offline cache failure' bootstrap-cache-refusal.log
 grep -F 'Run make fetch-dependencies' bootstrap-cache-refusal.log
@@ -574,12 +600,26 @@ if BOOTSTRAP_STATUS=7 make --no-print-directory -s release-version > refusal.log
 fi
 cmp original-manifest Cargo.toml
 cmp prepared-lock Cargo.lock
-# Cargo's selected target is a literal path, including any terminal newline.
+# Shared path admission rejects CR/LF before creating recovery tooling state.
 normal_target="$BOOTSTRAP_TARGET"
-export BOOTSTRAP_TARGET="$PWD/newline target"$'\n\n'
-[[ "$(make --no-print-directory -s release-version 2> newline-target.log)" == 0.12.3 ]] || exit 1
-[[ -d "$BOOTSTRAP_TARGET/repo-tool-bootstrap" ]] || exit 1
-[[ ! -e "$PWD/newline target" ]] || exit 1
+for suffix in $'\n\n' $'\r'; do
+    export BOOTSTRAP_TARGET="$PWD/invalid target$suffix"
+    if make --no-print-directory -s release-version > invalid-target.log 2>&1; then
+        echo 'launcher admitted a forbidden target directory' >&2; exit 1
+    fi
+    grep -F 'invalid bootstrap target directory' invalid-target.log
+    [[ ! -e "$BOOTSTRAP_TARGET" && ! -e "$PWD/invalid target" ]] || exit 1
+    cmp original-manifest Cargo.toml
+    cmp prepared-lock Cargo.lock
+done
+export BOOTSTRAP_TARGET="$normal_target"
+# Failed admission must stop before helper compilation or source writes.
+cp calls saved-editor-calls
+status=0
+EDITOR_STATUS=19 bash scripts/dev/run-repo-tool.sh "$FIXTURE_TOOLCHAIN" version > editor-refusal.log 2>&1 || status=$?
+[[ "$status" == 19 ]] || exit 1
+printf '%s\n' metadata >> saved-editor-calls
+cmp saved-editor-calls calls
 cmp original-manifest Cargo.toml
 cmp prepared-lock Cargo.lock
 # Plausible parser output never overrides its failed observation status.
@@ -588,7 +628,7 @@ printf '%s\n' 'if [[ "$*" == "-p=json -r .target_directory" ]]; then exit 23; fi
 cp calls failed-parser-calls
 printf '%s\n' metadata >> failed-parser-calls
 status=0
-YQ="$PWD/bin/failed-yq" bash scripts/dev/run-repo-tool.sh 1.99.0 version > failed-parser.log 2>&1 || status=$?
+YQ="$PWD/bin/failed-yq" bash scripts/dev/run-repo-tool.sh "$FIXTURE_TOOLCHAIN" version > failed-parser.log 2>&1 || status=$?
 [[ "$status" == 23 ]] || exit 1
 cmp failed-parser-calls calls
 cmp original-manifest Cargo.toml
@@ -620,7 +660,7 @@ cmp prepared-lock Cargo.lock
 for input in Cargo.toml Cargo.lock; do
     cp calls saved-parser-calls
     status=0
-    TOML_PARSER_FAILURE="$input" bash scripts/dev/run-repo-tool.sh 1.99.0 version \
+    TOML_PARSER_FAILURE="$input" bash scripts/dev/run-repo-tool.sh "$FIXTURE_TOOLCHAIN" version \
         > "failed-toml-$input.log" 2>&1 || status=$?
     [[ "$status" != 0 ]] || exit 1
     cmp saved-parser-calls calls
@@ -632,7 +672,7 @@ sed '/keep this comment/a\
   version = "0.12.3"' formatted-manifest > Cargo.toml
 cp Cargo.toml duplicate-manifest
 cp calls saved-parser-calls
-if bash scripts/dev/run-repo-tool.sh 1.99.0 version > duplicate-manifest.log 2>&1; then
+if bash scripts/dev/run-repo-tool.sh "$FIXTURE_TOOLCHAIN" version > duplicate-manifest.log 2>&1; then
     echo 'launcher accepted duplicate manifest metadata' >&2; exit 1
 fi
 cmp saved-parser-calls calls
@@ -643,7 +683,7 @@ cp original-manifest Cargo.toml
 for version in '13' '"0.13.0\n"' '"0.13.0\u0000"'; do
     printf 'version = 4\n[[package]]\nname = "ic-memory"\nversion = %s\n' "$version" > Cargo.lock
     cp Cargo.lock malformed-lock
-    if bash scripts/dev/run-repo-tool.sh 1.99.0 version > malformed-lock.log 2>&1; then
+    if bash scripts/dev/run-repo-tool.sh "$FIXTURE_TOOLCHAIN" version > malformed-lock.log 2>&1; then
         echo 'launcher accepted malformed locked version' >&2; exit 1
     fi
     cmp saved-parser-calls calls

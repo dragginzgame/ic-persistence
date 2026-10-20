@@ -10,6 +10,7 @@ use ic_build::cargo::{
     },
     lock_projection::{WorkspaceVersionProjection, verify_workspace_version_projection},
     observation::{CargoMetadataSpec, observe_metadata},
+    release_metadata::{render_workspace_lock, render_workspace_manifest},
     selection::CargoFeatureSelection,
 };
 use ic_host_artifacts::artifact::Sha256Digest;
@@ -68,8 +69,6 @@ impl Error for PreparationError {
 const PACKAGE_MANIFEST: &str = "crates/ic-memory/Cargo.toml";
 const PACKAGE_README: &str = "crates/ic-memory/README.md";
 const CHANGELOG_FINALIZER: &str = "scripts/ci/finalize-release-changelog.awk";
-const LOCK_REWRITER: &str = "scripts/ci/rewrite-local-lock-versions.pl";
-const WORKSPACE_VERSION_RENDERER: &str = "scripts/ci/render-cargo-workspace-version.pl";
 const RELEASE_INPUT_ADMISSION: &str = "scripts/ci/validate-release-inputs.pl";
 const TAG_CHECKER: &str = "scripts/ci/check-release-tag.sh";
 const REPLACE_FILE_OPTIONS: WriteOptions = WriteOptions {
@@ -398,7 +397,7 @@ impl<E: Execute> Repository<E> {
         Ok(numbers)
     }
 
-    // Keep exact helper inputs for retries and diagnosis. Both transforms use
+    // Keep exact helper inputs for retries and diagnosis. Changelog finalization uses
     // Host capture instead of writing to one pipe before draining the others.
     fn transform_text(
         &self,
@@ -466,12 +465,7 @@ impl<E: Execute> Repository<E> {
             "unexpected package version",
         )?;
         expected["workspace"]["package"]["version"] = toml::Value::String(version.to_owned());
-        let updated = self.transform_text(
-            "perl",
-            &[WORKSPACE_VERSION_RENDERER],
-            text,
-            &[previous, version],
-        )?;
+        let updated = render_workspace_manifest(text, previous, version, &[])?;
         require(
             expected == toml::from_str::<toml::Value>(&updated)?,
             "workspace version rendering changed other metadata",
@@ -479,12 +473,14 @@ impl<E: Execute> Repository<E> {
         Ok(updated)
     }
 
-    fn replace_lock_version(&self, text: &str, previous: &str, version: &str) -> Result<String> {
-        let updated = self.transform_text(
-            "perl",
-            &[LOCK_REWRITER],
+    fn replace_lock_version(text: &str, previous: &str, version: &str) -> Result<String> {
+        let updated = render_workspace_lock(
             text,
-            &[previous, version, "ic-memory"],
+            &[WorkspaceVersionProjection {
+                package: "ic-memory",
+                previous,
+                next: version,
+            }],
         )?;
         check_lock_update(text.as_bytes(), &updated, previous, version)?;
         Ok(updated)
@@ -748,7 +744,7 @@ impl<E: Execute> Repository<E> {
         Ok(BTreeMap::from([
             (
                 "Cargo.lock".to_owned(),
-                self.replace_lock_version(
+                Self::replace_lock_version(
                     &self.text("Cargo.lock", Some(source))?,
                     previous,
                     version,

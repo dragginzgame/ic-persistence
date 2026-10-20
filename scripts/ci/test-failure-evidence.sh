@@ -356,14 +356,15 @@ for selection_mode in full compact; do
     done
 done
 
-# A selector may fail after emitting admitted pairs. Retain those complete
-# selections, its exact status/stderr and product logs; ignore a trailing root
-# without a path. Substitute only selection, keeping the real collector/archive.
+# Failed selector output cannot authorize physical payloads. Retain local tool
+# references, exact status/stderr and product logs through Shared's orchestrator.
+# Substitute only selection, keeping both real collectors and the real archiver.
 for selection_mode in full compact; do
     partial_root="$fixture/partial-selector-$selection_mode"
     mkdir -p "$partial_root/scripts/ci" "$partial_root/temp" "$partial_root/repository/.tools/host-set.selected" \
-        "$partial_root/unpacked"
-    cp "$ROOT/scripts/ci/collect-failure-evidence.sh" "$ROOT/scripts/ci/archive-evidence.sh" "$partial_root/scripts/ci/"
+        "$partial_root/unpacked" "$partial_root/outside"
+    cp "$ROOT/scripts/ci/collect-failure-evidence.sh" "$ROOT/scripts/ci/collect-tool-evidence.sh" \
+        "$ROOT/scripts/ci/archive-evidence.sh" "$partial_root/scripts/ci/"
     cat > "$partial_root/scripts/ci/select-tool-evidence.sh" <<'SELECTOR'
 #!/usr/bin/env bash
 if [[ "$1" == compact ]]; then
@@ -371,11 +372,12 @@ if [[ "$1" == compact ]]; then
     [[ "$4" == "$snapshot_root/ci/tool-versions.env" &&
         "$5" == "$snapshot_root/ci/ic-tools.tsv" ]] || exit 18
 fi
-printf '%s\0%s\0%s\0' "$2" '.tools/host-set.selected' "$2"
+printf '%s\0%s\0%s\0' "${2%/*}/outside" 'secret' "$2"
 printf 'controlled partial selector failure\n' >&2
 exit 17
 SELECTOR
     cp "$temp_root/validation.log" "$partial_root/temp/validation.log"
+    printf 'unadmitted external payload\n' > "$partial_root/outside/secret"
     printf 'admitted tool diagnostics\n' > "$partial_root/repository/.tools/host-set.selected/install.log"
     partial_archive="$(GITHUB_OUTPUT="$partial_root/outputs" bash "$partial_root/scripts/ci/collect-failure-evidence.sh" \
         "$partial_root/temp" "$partial_root/repository" "$selection_mode" 2> "$partial_root/error")"
@@ -383,6 +385,7 @@ SELECTOR
     tar -xzf "$partial_archive" -C "$partial_root/unpacked"
     cmp "$temp_root/validation.log" "$partial_root/unpacked/validation.log"
     cmp "$partial_root/repository/.tools/host-set.selected/install.log" "$partial_root/unpacked/.tools/host-set.selected/install.log"
+    [[ ! -e "$partial_root/unpacked/secret" ]] || { echo 'failed selector output admitted an external payload' >&2; exit 1; }
     statuses=("$partial_root/unpacked"/tool-evidence.*/selection-status)
     [[ ${#statuses[@]} == 1 && "$(cat "${statuses[0]}")" == 17 && \
         "$(cat "${statuses[0]%/*}/selection.log")" == 'controlled partial selector failure' ]] || exit 1

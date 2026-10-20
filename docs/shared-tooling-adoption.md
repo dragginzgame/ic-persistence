@@ -9,21 +9,34 @@ local baseline. Future policy changes require reviewed snapshot adoption.
 
 ## Current source selection
 
-Memory selects Shared Tooling 0.23.0 at
-`0b351cd2ba2bcd8927b783a5fec89afc8013f708`, with 70 explicit roots and 103 payloads.
+Memory selects Shared Tooling 0.25.4 at
+`db555ab6cf4a93af9a183f18d921d3b0ee97c725`, with 69 explicit roots and 104 payloads.
 The canonical [preview and refresh procedure](consuming-snapshots.md#preview-before-refreshing)
-exports committed bytes from a clean source checkout. Never patch vendored files
-or attribute dirty source to a committed export. Keep directly invoked helpers as
-explicit roots; required companions are derived by the exporter.
+exports committed bytes from a clean source checkout. The normal sibling's dirty
+policy edits were excluded. Direct callers remain explicit roots and required
+companions are derived by the exporter.
 
-The current selection retires the host-installer producer fixture and its two
-fixture companions. Memory's failure-evidence test now invokes the actual
-installer through its public interface with controlled assets and a failing
-version probe, then verifies the retained payload and original diagnostics across
-its archive round trip. It no longer relies on a producer test's early exit,
-environment switches or private fixture directory layout. The implementation
-matrix remains at Shared Tooling. The source revision and all retained payload
-bytes, tool pins, workspace lockfiles and compiler selections are unchanged.
+Shared 0.25.3 binds explicit Cargo feature sets to selected tool installations
+and admission receipts. Memory's current tools need no feature arguments. Rerun
+`make install-tools` for the updated build policy; previous installations and
+failed attempts remain retained, and ordinary checks never repair tools.
+
+Memory's failure collector delegates tool selection and archiving to Shared's
+`collect-tool-evidence.sh`. Failed selector output remains diagnostic data;
+it cannot admit physical payloads. Memory retains product log selection,
+redirected-parent admission and hosted upload/download verification.
+
+The retired Perl manifest/lock renderers leave the snapshot. Repo-tool calls
+published IC Build's pure rendering API and retains its independent semantic
+projection, saved release intent, receipts and rollback. Changelog finalization
+still uses Shared's canonical helper with retained bounded inputs. Interrupted
+manifest/lock bootstrap uses the published editor selected in
+[`ci/release-tools.env`](../ci/release-tools.env), with regular source copies and
+no source symlinks. `make install-release-tools` explicitly prepares it;
+`make release-tools-check` admits it offline. The common setup/check aggregates
+include that tool. Standard release bootstrap can prepare the selected editor;
+ordinary helper recovery only checks it. Neither path changes dependency
+selection or installs a Rust compiler.
 
 Earlier adoption decisions and exact qualification results remain in the
 numbered changelogs, [release-workflow evidence](release-workflow-qualification.md)

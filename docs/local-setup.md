@@ -39,9 +39,15 @@ different support scopes require an explicitly approved exception.
 | System bootstrap | Bash, Git, GNU Make, curl, CA certificates, tar, gzip, xz, Perl, a SHA-256 implementation and standard Unix utilities | Host package manager; see [bootstrap prerequisites](#bootstrap-prerequisites) |
 | Common host tools | `jq`, Mike Farah `yq`, `rg` with PCRE2, `cloc` | `make install-host-tools`; offline `make host-tools-check`; `.tools/host/bin` |
 | Optional product IC tools | `quill`, `icp`, `didc`, `ic-wasm`, `wasm-opt` | `make install-ic-tools`; offline `make ic-tools-check`; `.tools/ic/bin` |
-| Common Cargo tools | `cargo-sort`, `cargo-sort-derives`, `candid-extractor` | `make install-rust-tools`; offline `make rust-tools-check`; `.tools/rust/common/bin`. All repositories prepare a declared Rust/Cargo toolchain and native build prerequisites first. |
+| Common Cargo tools | `cargo-sort`, `cargo-sort-derives` | `make install-rust-tools`; offline `make rust-tools-check`; `.tools/rust/common/bin`. All repositories prepare a declared Rust/Cargo toolchain and native build prerequisites first. |
 | Rust development | rustfmt and product compilation targets | Consumer toolchain setup and the [formatter prerequisite check](verification-helpers.md#formatter-prerequisites) |
 | Workflow-specific tools | ShellCheck, actionlint, Gitleaks, authenticated `gh`, Node/SDKs and other tools used by that repository | Explicit consumer setup; declare the tools required by each workflow |
+
+Shared's archive-license fixtures also require Perl's `Archive::Tar` module.
+Check availability with `perl -MArchive::Tar -e 'exit 0'`; install it through the
+host's Perl package setup if absent. The portable prerequisite check refuses a
+missing module before allocating suite fixtures. Archive inspection also uses
+the bootstrap `gzip` executable; it never extracts archives.
 
 Follow the derive sorter's documented
 [macro qualification and pin adoption](../rules/git-hooks.md#derive-macros-and-dollar-prefixed-paths)
@@ -49,7 +55,7 @@ before removing corruption-workaround markers. The selected 0.14.1 formatter
 requires Rust 1.88 or newer to build; consumer library MSRVs stay independently owned.
 Tool availability and version checks do not establish semantic preservation.
 
-`make install-tools` and `make tools-check` cover the seven common host/Cargo executables,
+`make install-tools` and `make tools-check` cover the common host/Cargo executables,
 regardless of the repository's implementation language. The five IC executables
 are optional product tools; their standalone setup/check targets remain available.
 Setup does not install a Rust toolchain or authenticate GitHub. Product and workflow-specific
@@ -136,6 +142,38 @@ Common catalogs do not own consumer compiler/MSRV choices, application
 dependencies, Testkit/PocketIC selections or product tool adapters. Workflow-only
 tools may retain consumer selections; merely adopting a catalog does not install
 tools outside the common inventory or change a workflow's declared support.
+
+## Shared Tooling's integration editor
+
+Shared Tooling's own `make install-tools` also prepares the released IC Build
+editor used by its integration fixtures; `make tools-check` admits that selection
+offline. The standalone targets are `make install-release-editor` and
+`make release-editor-check`. The latter prints the verified absolute executable
+path and never installs it. Its version, profile and fixture byte allowance are
+selected in Shared's root Makefile.
+
+`make test-portable` checks that prepared selection before starting any fixtures
+and supplies its path and allowance to the suite. CI uses these same setup and
+test targets. The cache key includes the owning Makefile, so a changed selection
+cannot keep reusing a cache key for an older tool set. Cache presence never
+replaces installed-byte admission.
+
+Direct suite and prerequisite-helper calls must also supply
+`CARGO_RELEASE_METADATA_EDITOR` (an absolute executable file) and
+`CARGO_RELEASE_METADATA_MAX_BYTES` (a positive decimal integer). The prerequisite
+helper checks those inputs before fixture allocation without executing the
+editor. Prefer `make test-portable`, which supplies the offline-admitted values.
+
+This editor is a Shared-local requirement, not an addition to every consumer's
+common Cargo tools. Consumer release adapters retain the explicit selections in
+[Cargo candidate rendering](releases.md#cargo-release-candidate-rendering).
+
+Shared's standard release commands prepare and check these tools after fresh
+source/changelog admission, before validation. Reconciliation of saved preparation
+and standalone `release-preflight` only check prepared tools; neither installs
+against interrupted metadata. PR delivery prepares the exact merged checkout's
+tools before its fresh validation. Ordinary metadata preparation and late checks
+do not install tools.
 
 ## Shared executable storage
 
@@ -284,7 +322,7 @@ PocketIC consumers additionally use their selected IC Testkit CLI's explicit
 
 After preparing the consumer's declared Rust/Cargo toolchain and compilation
 prerequisites, use `make install-rust-tools` and offline `make rust-tools-check`.
-The shared helper installs cargo-sort, cargo-sort-derives and candid-extractor
+The shared helper installs cargo-sort and cargo-sort-derives
 into shared build-identity slots and exposes the complete set at `.tools/rust/common/bin`, using their exact versions from
 [ci/tool-versions.env](../ci/tool-versions.env) and Cargo's `--locked` installation.
 Preflight selects the consumer's prepared compiler, including explicit Rustup
@@ -297,6 +335,16 @@ relative `--lockfile` paths retain their consumer-relative meaning.
 the snapshot's `ci/tool-versions.env`, independently of `HOST_TOOL_VERSIONS`.
 Keep qualified version exceptions in that selected catalog,
 and remove duplicate consumer constants when adopting the shared pins.
+
+Use [IC Wire for supported controlled application messages](../DRAGGINZGAME.md#ic-application-encoding).
+Candid extraction serves the Candid interfaces a product still needs; Wire codec
+generation does not require a Candid extractor.
+
+Candid extraction is a product-selected tool. Consumers that extract declarations
+own its pin, explicit installation/check target and PATH selection through the
+[selected Cargo tool interface](#consumer-selected-cargo-tools). Common setup does
+not install it. Qualify that selection before adopting the narrower common set;
+retained installation slots are not deleted.
 
 The complete common aggregate includes this set in every repository, including
 non-Rust repositories. The narrow commands remain useful for explicit retries
@@ -390,7 +438,7 @@ This example is a caller selection, not a new fleet-wide package pin. Consumers
 own package versions, profiles, compiler selection, explicit executable overrides
 and product qualification. Use `--bin NAME` for a published binary. This mode
 does not install the formatter bundle or read its versions catalog; `make
-install-rust-tools` prepares the three common tools through this same engine.
+install-rust-tools` prepares the common formatter tools through this same engine.
 
 For a tool selected by a consumer lockfile, replace `--version` with `--lockfile`:
 
@@ -411,6 +459,26 @@ Selection is read again before candidate activation and before returning a path;
 a changed selection fails and retains any build attempt. Retry against the new
 lock selection; prior installations remain intact. Consumers still own the
 selected graph, package, target/profile and Testkit's separate server setup/check.
+
+For a target gated by Cargo features, pass `--features NAME[,NAME]...` on both
+setup and check. For example, Host's file CLI requires its `cli` feature:
+
+```bash
+bash scripts/dev/install-rust-tools.sh --consumer "$PWD" \
+  --package ic-host-fs --lockfile Cargo.lock --bin ic-host-file --profile debug \
+  --features cli
+# Repeat the same arguments with --check for offline admission.
+```
+
+Feature lists use comma-separated ASCII names, optionally `dependency/feature`;
+repeat `--features` to combine lists. Ordering and duplicates normalize to one
+requested set. Empty lists, whitespace and malformed names refuse before setup.
+Cargo validates whether the published package supports the requested features;
+its refusal retains the attempt without activating it. Package defaults stay
+enabled; this interface does not accept `--all-features` or `--no-default-features`.
+Feature sets select separate immutable installations and must match the Cargo
+receipt. Featureless requests keep their existing input shape. Ambient Cargo
+flags cannot supply features, and checks never repair a mismatching selection.
 
 Consumer extensions such as cargo-audit and cargo-machete use this same owner.
 Keep their exact pins in the consumer and register their existing setup/check
@@ -483,8 +551,13 @@ selected host and Cargo identity, but never build or download. Digests detect lo
 are not publisher signatures. The consumer still owns compiler compatibility.
 
 Missing or invalid selected-installation diagnostics identify the package, exact
-version, target kind/name, profile and destination. The caller supplies its own
-setup command; successful selection still prints only the executable path.
+version, target kind/name, profile and failing path. Source admission distinguishes
+missing archives from ambiguous cached sources; receipt and byte checks identify
+the rejected file. Refusals include a shell-quoted explicit installer command
+retaining the consumer's catalog or package/lockfile selection, target and profile.
+For feature-selected tools, the repair command also retains the requested set.
+An ambiguous cache still requires inspecting the named archives; rerunning setup
+does not choose between them. Successful selection prints only the executable path.
 Dependency updates that change the selected CLI must prepare and check it before
 preparation is complete. Authorized releases use the existing setup/check targets
 in [preflight](releases.md#selected-executable-tools-before-validation); fetching
@@ -580,6 +653,27 @@ manager updates; they are not claimed to be checksum-pinned shared binaries.
 Shared setup never invokes sudo or installs a package manager implicitly.
 The pinned local host set supplies ripgrep and cloc; neither is a bootstrap dependency.
 
+### Shared Tooling's own compiler
+
+Shared pins its development and Cargo-tool-build compiler in its own root
+`rust-toolchain.toml`. With Rustup and native build prerequisites available,
+prepare the host parser tools, then the selected compiler:
+
+```bash
+make install-host-tools
+export PATH="$PWD/.tools/host/bin:$PATH"
+bash scripts/dev/prepare-rust-toolchain.sh --toolchain-file rust-toolchain.toml
+```
+
+Then run `make install-tools` and `make tools-check`. CI prepares this same file
+before computing Cargo build-cache identity or qualifying registry builds. The
+separate Rust 1.88.0 runtime-scanner qualification remains independent. This pin
+is Shared's local policy; adopting a snapshot does not change consumer compilers.
+After changing the pin or the shared build-helper policy, rerun explicit setup;
+prior tool generations and evidence remain retained.
+
+### Portable suite prerequisites
+
 Every repository prepares its declared Rust/Cargo toolchain and native build
 prerequisites before the common tool setup. Rust development and Shared Tooling's
 portable fixtures also need rustfmt. After that bootstrap, use the common setup
@@ -592,10 +686,12 @@ export PATH="$PWD/.tools/host/bin:$PWD/.tools/rust/common/bin:$PATH"
 ```
 
 Before starting portable fixtures, `test-portable-tools.sh` checks the required
-commands on PATH (including cloc, shasum, jq, Mike Farah yq and ripgrep) and reuses
-the offline formatter prerequisite check. Run this admission independently with
-`bash scripts/ci/check-portable-prerequisites.sh`. It reports missing commands
-together and points back here; it never installs tools or replaces the individual
+commands on PATH (including cloc, shasum, jq, Mike Farah yq and ripgrep), the editor
+inputs described [above](#shared-toolings-integration-editor), and reuses
+the offline formatter prerequisite check. With those inputs supplied, run this
+admission independently with `bash scripts/ci/check-portable-prerequisites.sh`.
+It reports missing commands together and points back here; it never installs
+tools or replaces the individual
 fixtures' version, feature and behavior checks. Standard Unix utilities from the
 bootstrap environment are still required. This is Shared Tooling's own suite
 setup, not a new prerequisite gate for every consumer.

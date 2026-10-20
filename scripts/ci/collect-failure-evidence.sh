@@ -71,33 +71,24 @@ done
 if [[ -n "$diagnostics" ]]; then
     cat "$diagnostics/local-selection.log" >&2
 fi
-if [[ "$select_tools" == true ]]; then
-    [[ -n "$diagnostics" ]] || diagnostics="$(mktemp -d "$temp_root/tool-evidence.XXXXXX")"
-    selector=(bash "$ROOT/scripts/ci/select-tool-evidence.sh" "$mode" "$repository_root" "$diagnostics")
-    if [[ "$mode" == compact ]]; then
-        selector+=("$ROOT/ci/tool-versions.env" "$ROOT/ci/ic-tools.tsv")
-    fi
-    selector_status=0
-    "${selector[@]}" > "$diagnostics/selection" 2> "$diagnostics/selection.log" || selector_status=$?
-    if [[ "$selector_status" != 0 ]]; then
-        complete=false
-        printf '%s\n' "$selector_status" > "$diagnostics/selection-status"
-        echo 'Tool evidence incomplete; retaining available product logs and selection diagnostics.' >&2
-        cat "$diagnostics/selection.log" >&2
-    fi
-    while IFS= read -r -d '' selection_root && IFS= read -r -d '' selection_path; do
-        inputs+=("$selection_root" "$selection_path")
-    done < "$diagnostics/selection"
-fi
 if [[ -n "$diagnostics" ]]; then
-    if [[ "$complete" == false || -d "$diagnostics/host" || -d "$diagnostics/ic" || -s "$diagnostics/selection.log" ]]; then
-        inputs+=("$temp_root" "${diagnostics#"$temp_root/"}")
-    else
-        rm "$diagnostics/selection" "$diagnostics/selection.log"
-        rmdir "$diagnostics"
-    fi
+    inputs+=("$temp_root" "${diagnostics#"$temp_root/"}")
 fi
-if [[ ${#inputs[@]} != 0 ]]; then
+if [[ "$select_tools" == true ]]; then
+    # Shared owns selector admission, failed-output isolation and tool fallback.
+    # Keep its receipts separate from Memory's local path-admission diagnostics.
+    diagnostics="$(mktemp -d "$temp_root/tool-evidence.XXXXXX")"
+    archive_dir="$(mktemp -d "$temp_root/ic-memory-evidence.XXXXXX")"
+    collection_status=0
+    bash "$ROOT/scripts/ci/collect-tool-evidence.sh" "$archive_dir/evidence.tar.gz" \
+        "$repository_root" "$diagnostics" "$mode" "$ROOT/ci/tool-versions.env" \
+        "$ROOT/ci/ic-tools.tsv" ${inputs[@]+"${inputs[@]}"} || collection_status=$?
+    case "$collection_status" in
+        0) ;;
+        1) complete=false ;;
+        *) exit "$collection_status" ;;
+    esac
+elif [[ ${#inputs[@]} != 0 ]]; then
     archive_dir="$(mktemp -d "$temp_root/ic-memory-evidence.XXXXXX")"
     bash "$ROOT/scripts/ci/archive-evidence.sh" "$archive_dir/evidence.tar.gz" "${inputs[@]}"
 fi

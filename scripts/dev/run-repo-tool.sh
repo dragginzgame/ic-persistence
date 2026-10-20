@@ -52,17 +52,25 @@ fi
 target="$(cargo "+$toolchain" metadata --locked --offline --no-deps --format-version 1 |
     "${YQ:-yq}" -p=json -r '.target_directory' && printf '.')"
 target="${target%$'\n.'}"
-[[ "$target" == /* ]] || { echo 'invalid bootstrap target directory' >&2; exit 1; }
+[[ "$target" == /* && "$target" != *$'\n'* && "$target" != *$'\r'* ]] || { echo 'invalid bootstrap target directory' >&2; exit 1; }
 mkdir -p "$target/repo-tool-bootstrap"
 scratch="$(mktemp -d "$target/repo-tool-bootstrap/attempt.XXXXXX")"
 echo "Retained repo-tool bootstrap metadata: $scratch" >&2
 cp Cargo.lock LICENSE "$scratch/"
 mkdir -p "$scratch/crates/ic-memory"
 cp crates/ic-memory/Cargo.toml crates/ic-memory/README.md "$scratch/crates/ic-memory/"
-perl scripts/ci/render-cargo-workspace-version.pl Cargo.toml \
+# shellcheck source=ci/release-tools.env
+source ci/release-tools.env
+editor_admission=(--check)
+# Standard releases authorize preparation of this selected tool as well as caches.
+# Ordinary helper calls stay check-only; installation is otherwise explicit.
+if [[ "${RELEASE_CACHE_PREPARE:-0}" == 1 ]]; then editor_admission=(); fi
+editor="$(RUSTUP_TOOLCHAIN="$toolchain" bash scripts/dev/install-rust-tools.sh \
+    --consumer "$PWD" --package ic-build --version "$IC_BUILD_RELEASE_METADATA_VERSION" \
+    --bin ic-build-release-metadata --profile debug "${editor_admission[@]}")"
+"$editor" --max-input-bytes "$CARGO_RELEASE_METADATA_MAX_BYTES" manifest Cargo.toml \
     "$manifest_version" "$lock_version" > "$scratch/Cargo.toml"
-ln -s "$PWD/crates/ic-memory/src" "$scratch/crates/ic-memory/src"
-ln -s "$PWD/crates/ic-memory/examples" "$scratch/crates/ic-memory/examples"
+cp -R crates/ic-memory/src crates/ic-memory/examples "$scratch/crates/ic-memory/"
 # This only makes compilation metadata coherent; it grants no release authority.
 # The adapter runs in the real checkout and checks source, intent and evidence.
 check_dependency_cache --manifest-path "$scratch/Cargo.toml"

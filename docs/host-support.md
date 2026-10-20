@@ -36,7 +36,7 @@ The current library declares Rust 1.91.0, including its native IC Build metadata
 The older matrix evidence above retains its original Rust 1.88.0 identity;
 current-source Rust 1.91 native CI acceptance must be recorded separately.
 
-- Rustup with Rust 1.99.0, Clippy, rustfmt and `wasm32-unknown-unknown`; also
+- Rustup with Rust 1.99.1, Clippy, rustfmt and `wasm32-unknown-unknown`; also
   install the declared MSRV, Rust 1.91.0. Toolchain changes need a demonstrated
   reason and separate qualification.
 - Git, GNU Make, Bash 3.2 or newer, curl, tar with gzip/xz support, Perl,
@@ -136,7 +136,7 @@ Memory lockfiles. Prepare it and Testkit's authenticated server selection explic
 make install-runtime-server
 make runtime-server-check
 make install-ic-tools
-cargo +1.99.0 fetch --locked --manifest-path testing/runtime-qualification/Cargo.toml
+cargo +1.99.1 fetch --locked --manifest-path testing/runtime-qualification/Cargo.toml
 make test-runtime
 ```
 
@@ -183,8 +183,11 @@ its local workspace fixture and workspace report remain available. The two fleet
 reporter copies are also retired at the maintainer's explicit selection.
 See [#34](https://github.com/dragginzgame/ic-memory/issues/34).
 
-The common aggregate includes cargo-sort, cargo-sort-derives and
-candid-extractor alongside the host and five IC tools. Narrow
+The common aggregate includes cargo-sort and cargo-sort-derives alongside the
+host and five IC tools. Memory additionally selects the published IC Build
+release editor through `ci/release-tools.env`; `make install-release-tools` and
+`make release-tools-check` prepare/admit it explicitly. Candid extraction is no
+longer a common Cargo tool selection. Narrow
 `make install-rust-tools` and offline `make rust-tools-check` remain useful for
 explicit setup retries; they do not establish readiness of the complete set.
 The snapshot's `ci/tool-versions.env` owns the common pins. Host, IC and Cargo

@@ -46,6 +46,92 @@ exact constraints, immutable Git revisions, lockfiles and external path inputs.
   automatic pre-commit formatting and independent CI/release checks; ordering
   must preserve the catalog and every inherited selection.
 
+## External IC dependency boundary
+
+All IC-specific dependencies maintained outside `dragginzgame`, including DFINITY
+packages, must be consumed through explicit `ic-platform` features and interfaces.
+The IC Platform repository is the sole direct dependency owner for these upstream
+packages. Other repositories must not declare or import them directly, including
+through renamed dependencies, generated code or proc-macro expansions.
+
+- This covers Candid and its parser/derives, CDK/runtime/system APIs, principals,
+  Agent/PocketIC clients, certification/signature and ledger/management types,
+  stable-structures and any other external package specific to the Internet
+  Computer, regardless of its publisher or package-name prefix.
+- Apply the boundary to normal, build, development, test and tooling dependencies,
+  optional features, target-specific tables and independently scoped workspaces.
+  A private probe, example, unpublished package or macro-generated upstream path
+  is not an automatic exception.
+- If Platform lacks a required capability, file or update its owning issue and
+  qualify an explicit Platform interface before adopting it. Do not bypass that
+  work with a new direct dependency, copied implementation or consumer facade.
+  Track existing direct uses as migration debt; retire them with their actual
+  callers and focused checks, preserving external bytes and recovery obligations.
+  Any temporary exception requires express maintainer approval with scope and
+  reason under the baseline's exception rules.
+- Product ownership stays with its Dragginzgame crate: for example, Memory/Storage
+  own memory and storage policy, Testkit owns simulator lifecycle, and Wire owns
+  application codecs and resource admission. Platform owns the external dependency boundary;
+  this rule does not move those product implementations into Platform. General
+  purpose dependencies such as Serde remain with their consuming crates.
+
+Apply the baseline's [IC application encoding policy](../DRAGGINZGAME.md#ic-application-encoding)
+before adding or retaining a Candid dependency or requesting another Platform
+Candid facade. Owned application endpoints use `ic-wire`, including public
+endpoints with third-party callers. `ic-platform` supplies the explicit adapter
+for independently defined protocols that require Candid and existing checkpoint
+compatibility; dependency isolation does not make Candid an application-codec choice.
+
+## Dependency roles and deployment checks
+
+Organize the root `[workspace.dependencies]` catalog into two sections headed
+`# Production dependencies` and `# Tests and tooling only`. Put each header once
+above its section, with a blank line between sections and alphabetical order
+within each. Do not repeat role annotations after individual dependencies.
+These dependency-role headers belong only inside `[workspace.dependencies]`.
+The `members` array may separately use `# Production packages` and
+`# Tests and tooling packages` under the
+[workspace member-role guidance](rust-workspaces.md#workspace-member-roles).
+Dependency roles describe use within this workspace, not whether a selected
+version is published to a registry.
+
+- A production dependency is needed by a production package through normal or
+  build dependencies, including supported optional features and targets. Put an
+  entry used by both production and tests in the production category. Build
+  dependencies belong here even though their code need not enter the artifact.
+- Tests and tooling entries are used only through development dependencies or
+  non-production packages. A package can be published elsewhere and still serve
+  only this role here. Workspace membership and `package.publish` do not prove
+  deployment use or successful registry publication.
+- Keep one catalog and child inheritance. Annotations do not select dependencies;
+  Cargo's manifests and resolved graph remain authoritative. Preserve the sections
+  through the [formatting contract](git-hooks.md), using Cargo sort's grouped mode
+  consistently in formatting, hooks, CI and release checks.
+
+Before deployment, inspect the production package's locked graph with the same
+target and feature selection as its build. For example, for a default-feature
+Wasm package, replacing `production-package` with its actual package name:
+
+```bash
+cargo tree --locked -p production-package --target wasm32-unknown-unknown --edges normal,build
+```
+
+Add the build's `--no-default-features` and `--features` selections when used.
+Check that tests/tooling-only entries do not enter this graph as dependencies,
+including through transitive dependencies; exclude the selected root package
+itself and account for renamed dependency identities. A check for one deployment
+does not establish every supported feature/target combination.
+The existing direct-dependency boundary checker can enforce package ownership
+rules, but does not check transitive reachability or these comment labels.
+
+[Cargo tree](https://doc.rust-lang.org/cargo/commands/cargo-tree.html) is an
+inspection aid, not an exact compilation trace. Automated deployment admission
+belongs with the consumer's build: enforce its dependency exclusions, retain the
+successful locked build evidence, and bind the inspected source, lockfile,
+target/features and final artifact digest to the bytes deployed. Registry
+availability is separate evidence; a cached offline build or a `version` beside
+`path` does not establish that the selected source is a live registry package.
+
 ## Cargo network policy
 
 - Authorized development, tests and validation include preparing missing sources
@@ -231,10 +317,13 @@ Root `Cargo.toml`:
 
 ```toml
 [workspace.dependencies]
-serde = "1"
-tempfile = "3"
+# Production dependencies
 cc = "1"
 rustix = { version = "1", features = ["fs"] }
+serde = "1"
+
+# Tests and tooling only
+tempfile = "3"
 ```
 
 Child `Cargo.toml`:

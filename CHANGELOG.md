@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.49.2]
+
+- Select Rust 1.99.1 for development and matching CI checks, retaining existing
+  package MSRVs.
+
+- Adopt Shared Tooling 0.25.4 and IC Build's canonical Cargo metadata rendering;
+  remove retired Perl renderers while retaining release recovery and validation.
+
+- Preserve failure evidence through Shared's collector without trusting physical
+  paths emitted by a failed tool selector.
+
+[Detailed notes](docs/changelog/0.49.md#0492)
+
 ## [0.49.1] - 2026-10-19
 
 - Consume IC Platform 0.2's native PocketIC interface in installed qualification,

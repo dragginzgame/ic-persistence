@@ -22,6 +22,12 @@ Quill messages or performs deployment/publication effects.
 
 ## Selected set
 
+The `didc` executable serves required Candid interfaces and their compatibility
+checks. Its presence in this bundle does not select an application encoding;
+follow the [IC Wire preference](../DRAGGINZGAME.md#ic-application-encoding) for
+controlled messages. IC Wire's generated codecs do not replace Candid IDL tools
+where an external interface requires them.
+
 The reviewed default pins live only in [ci/ic-tools.tsv](../ci/ic-tools.tsv).
 Each row specifies executable, exact
 version, native host and archive SHA-256. The digests were read from the official
@@ -202,10 +208,7 @@ versions before switching. Keep overrides outside the immutable shared snapshot.
 Do not copy version constants into a second catalog or upgrade tools implicitly
 as part of baseline adoption.
 
-This script owns provisioning only. The four packages in
-[IC Host Tooling](https://github.com/dragginzgame/ic-host-tooling) own their library
-contracts: `ic-host-artifacts` owns artifact streams and inspection; `ic-host-fs`
-owns bounded filesystem reads, publication and locks; `ic-host-process` owns
-admitted executable execution; and `ic-host-tools` owns Candid extraction and IC
-response decoding. Consumer orchestration, credentials, destinations and
-measurement policy remain local.
+This script owns executable provisioning. Build and Candid extraction orchestration
+belong to IC Build; host primitives and IC interpretation belong to IC Host
+Tooling. See the [capability boundary](https://github.com/dragginzgame/shared-tooling/blob/main/README.md#capability-ownership).
+Consumer orchestration, credentials, destinations and measurement policy remain local.

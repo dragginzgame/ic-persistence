@@ -3,6 +3,7 @@
         install-tools tools-check install-host-tools host-tools-check install-ic-tools ic-tools-check test-tools test-failure-evidence \
         lint-tooling test-hooks test-tooling test-fixture-cell validate validate-toolchain wasm-size \
         install-runtime-server runtime-server-check test-runtime \
+        install-release-tools release-tools-check \
         test-release-adapters \
         release-version release-preflight release-verify release-prepare-version \
         release-prepared-check release-files release-commit-check release-committed-check \
@@ -18,20 +19,21 @@ endif
 # Bootstrap from the repository's simple, checked-in toolchain declaration.
 # The Rust helper parses the full TOML for its own compiler identity checks.
 VALIDATION_TOOLCHAIN ?= $(shell sed -n 's/^channel = "\([^"]*\)"$$/\1/p' rust-toolchain.toml)
+include ci/release-tools.env
 TOOL := bash scripts/dev/run-repo-tool.sh $(VALIDATION_TOOLCHAIN)
 override SHARED_TOOLING_ROOT := $(CURDIR)
 # Both maintained workspaces retain the same complete formatter sequence.
-FORMAT_WRITE_COMMAND = bash -ec 'cargo "+$$1" sort --workspace; \
-    cargo "+$$1" sort --workspace testing/runtime-qualification; \
+FORMAT_WRITE_COMMAND = bash -ec 'cargo "+$$1" sort --workspace --grouped; \
+    cargo "+$$1" sort --workspace --grouped testing/runtime-qualification; \
     cargo "+$$1" fmt --all; \
     cargo "+$$1" fmt --manifest-path testing/runtime-qualification/Cargo.toml --all' -- "$(VALIDATION_TOOLCHAIN)"
-FORMAT_CHECK_COMMAND = bash -ec 'cargo "+$$1" sort --workspace --check; \
-    cargo "+$$1" sort --workspace --check testing/runtime-qualification; \
+FORMAT_CHECK_COMMAND = bash -ec 'cargo "+$$1" sort --workspace --grouped --check; \
+    cargo "+$$1" sort --workspace --grouped --check testing/runtime-qualification; \
     cargo "+$$1" fmt --all -- --check; \
     cargo "+$$1" fmt --manifest-path testing/runtime-qualification/Cargo.toml --all -- --check' -- "$(VALIDATION_TOOLCHAIN)"
 # Memory uses IC executables for installed runtime qualification.
-LOCAL_TOOL_INSTALL_TARGETS += install-ic-tools
-LOCAL_TOOL_CHECK_TARGETS += ic-tools-check
+LOCAL_TOOL_INSTALL_TARGETS += install-ic-tools install-release-tools
+LOCAL_TOOL_CHECK_TARGETS += ic-tools-check release-tools-check
 include make/consumer.mk
 export PATH := $(CURDIR)/.tools/ic/bin:$(PATH)
 fmt fmt-check format-tools-check: export RUSTUP_TOOLCHAIN := $(VALIDATION_TOOLCHAIN)
@@ -49,6 +51,13 @@ help:
 	@echo 'Installed runtime: install-runtime-server (explicit Testkit setup), runtime-server-check (offline), test-runtime (prepared server and locked caches).'
 	@echo 'Report: cloc (root workspace; CLOC_MANIFEST selects an independent Cargo manifest). Fleet reports run in Shared Tooling.'
 	@echo 'Maintainer releases: release-patch, release-minor, release-major; normal targets recover unfinished releases.'
+
+# Explicit preparation; normal checks only admit the selected published editor.
+install-release-tools:
+	+RUSTUP_TOOLCHAIN=$(VALIDATION_TOOLCHAIN) bash scripts/dev/install-rust-tools.sh --consumer "$(CURDIR)" --package ic-build --version $(IC_BUILD_RELEASE_METADATA_VERSION) --bin ic-build-release-metadata --profile debug
+
+release-tools-check:
+	+RUSTUP_TOOLCHAIN=$(VALIDATION_TOOLCHAIN) bash scripts/dev/install-rust-tools.sh --consumer "$(CURDIR)" --package ic-build --version $(IC_BUILD_RELEASE_METADATA_VERSION) --bin ic-build-release-metadata --profile debug --check
 
 # Explicit network setup; ordinary tool/library gates never provision a server.
 install-runtime-server: host-tools-check
@@ -110,7 +119,7 @@ check-pins:
 # Install exact, checksum-verified tools separately; these checks are offline.
 lint-tooling:
 	$${ACTIONLINT_BIN:-actionlint} .github/workflows/*.yml
-	$${SHELLCHECK_BIN:-shellcheck} --shell=bash ci/tool-versions.env scripts/ci/*.sh scripts/dev/*.sh .githooks/pre-commit
+	$${SHELLCHECK_BIN:-shellcheck} --shell=bash ci/release-tools.env ci/tool-versions.env scripts/ci/*.sh scripts/dev/*.sh .githooks/pre-commit
 
 test-tooling:
 	+cargo +$(VALIDATION_TOOLCHAIN) test --locked --offline --example repo-tool

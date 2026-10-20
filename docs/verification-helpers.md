@@ -1,10 +1,31 @@
 # Focused verification helpers
+<!-- Shared companions: docs/cargo-graph-checks.md -->
 
 These optional helpers share mechanical checks. Consumers retain document
 selection, release validation gates, publication authority and registry polling
 policy. They require Perl core modules or Bash 3.2+, as noted below, and run on
 Linux and macOS. The portable regression suite includes offline fixtures;
 native CI qualifies each supported host separately.
+
+## Repository symlink admission
+
+```sh
+perl scripts/ci/check-no-symlinks.pl --consumer /path/to/checkout
+```
+
+The offline reader checks the selected checkout's actual Git index modes and
+tracked/nonignored working paths, including every parent below the checkout
+root. Indexed links refuse even if their working replacement is regular;
+dangling links and directory links refuse without following their targets.
+Tracked deletions are allowed. Failed Git/filesystem observations never pass.
+Inventory uses NUL delimiters and disables optional Git index writes; inherited
+Git directory/index overrides cannot select another source.
+
+Shared's `make check-no-symlinks` runs in its CI and release gate. Consumers may
+adopt the script as a snapshot entrypoint and select it in their existing gates.
+Ignored tool stores and isolated negative-test scratch are outside the inventory;
+this is not admission of arbitrary ignored files or generated package contents.
+Those remain subject to the baseline rule and their artifact checks.
 
 ## Fixture diagnostic replay
 
@@ -19,7 +40,7 @@ No files are removed or collected into a separate artifact.
 ## Cargo dependency-order fixtures
 
 ```bash
-perl scripts/ci/prepare-cargo-formatting-fixture.pl Cargo.toml workspace.dependencies candid ic-build > unsorted.toml
+perl scripts/ci/prepare-cargo-formatting-fixture.pl Cargo.toml workspace.dependencies ic-build ic-wire > unsorted.toml
 ```
 
 The helper accepts a caller-owned valid Cargo manifest and swaps exactly two
@@ -118,9 +139,10 @@ it never installs or downloads tools. Invalid selections refuse before dispatch.
 
 The common failure action defaults to full retention. Set
 upstream store configuration consistently with setup. If store admission fails,
-the selector still emits safe local references and bundles without following
-their targets, and returns nonzero. The action archives those selections plus
-local logs/builds and the selection diagnostic/status, sets
+the selector returns nonzero; its partial output is diagnostic data, not authority
+to select physical payloads. The action uses `collect-tool-evidence.sh` to retain
+local references without following them, local logs/builds and the selection
+diagnostic/status, sets
 `collection-complete=false`, uploads that partial evidence, then fails its final
 completeness step. A rejected store never authorizes traversal or repair, and
 partial evidence is not reported as complete retention. Set
@@ -133,8 +155,10 @@ of a successful hosted transport. The selector owns the full physical
 `.tools/rust` tree plus its admitted shared generations and original build/log
 evidence, independently of host/IC compaction. Custom callers must not also add
 the same local tree to the archive. Links are archived without following targets.
-Consumers adopt the selector only from a
-reviewed committed snapshot, rather than recreating its classifier locally.
+Consumers adopt the selector only from a reviewed committed snapshot, rather
+than recreating its classifier locally. For collection, prefer the existing
+[orchestrator](#tool-evidence-collection-orchestration) over a local selector/read/
+archive loop; keep product log selection and upload policy in the consumer.
 
 ## Runner disk capacity
 
@@ -224,6 +248,25 @@ Cargo also checks package structure. The reader never chooses a Git commit,
 updates a version or lockfile, or finalizes release notes. Consumers own selection
 of working versus committed sources and their release/preparation transactions.
 
+## Saved Cargo source context
+
+```bash
+bash scripts/ci/read-cargo-source-context.sh /path/to/repo COMMIT manifest.json crates/library apps/cli
+```
+
+The caller supplies admitted root-manifest JSON and explicit relative member
+directories. The helper reads package names from that exact local commit and
+returns the saved `source_root`, `manifest` and `members` context accepted by the
+Cargo metadata renderers. Current member files are never read. Missing members,
+invalid paths, duplicate package identities, ambiguous parser streams and failed
+Git/TOML readers refuse without a partial context. Git, jq and prepared Mike Farah
+yq are required; no Cargo invocation, fetch, installation, editing or Git mutation occurs.
+
+Consumers retain root-manifest authentication, member/package eligibility,
+version policy and independent graph admission. This input preparation does not
+implement a TOML editor and survives the planned editor replacement in
+[#273 — Adopt released IC Build Cargo editor and retire Perl renderers](https://github.com/dragginzgame/shared-tooling/issues/273).
+
 ## CI binary installers
 
 Use `scripts/ci/install-ci-tool.sh TOOL` for actionlint, shellcheck, gitleaks,
@@ -262,7 +305,12 @@ tab-separated tool, version, host and digest records. Rust records use `all` and
 `-` for host and digest. Optional tool selection filters only after the entire
 selected group is admitted; an unknown tool refuses without partial output.
 CI records normalize asset-specific host spellings to `LINUX_AMD64`.
+Canonical stable-version grammar comes from `StableVersion.pm`; CLOC retains
+its two-component version allowance. Catalog admission adds no release u64 bound.
 Callers select records directly; the former raw `values` projection is removed.
+The IC admission backend, `ic-tool-pins.awk`, always emits the complete validated
+matrix. It has no version-only or validation-only output mode. Select individual
+tools through `tool-catalog-records.pl ic CATALOG TOOL` after matrix admission.
 For example, obtain the formatter pin without recreating catalog variables:
 
 ```bash
@@ -347,20 +395,55 @@ Shared Tooling's `make check-doc-links` selects root, audit, rule and guide
 Markdown files and runs in CI and the release gate. Consumers choose their own
 roster; snapshot-relative links must exist in the adopted file set.
 
+## Release receipts
+
+Source `scripts/ci/release-receipts.sh` from the release adapter's checkout.
+`release_receipt_identity` writes the selected source, previous/target versions,
+date, remote and branch plus all push URLs for that remote. The caller supplies
+the corresponding `RELEASE_*` inputs; the helper neither selects nor validates
+release policy. `release_receipt_payload COMMIT PATH...` writes Git blob identities
+for the selected committed paths, or hashes the current files when COMMIT is empty.
+Callers retain the ordered file inventory and independent source/file admission.
+
+`release_receipt_write RECEIPT GENERATOR [ARG...]` generates into a private
+adjacent temporary file and replaces the receipt only after successful generation.
+`release_receipt_check RECEIPT GENERATOR [ARG...]` compares regenerated bytes
+exactly, including trailing newlines. Missing or symlinked receipts refuse;
+failed generation cannot replace the prior receipt. Both helpers report failure
+without choosing retries or authorizing release effects.
+
+`release_receipt_archive TEMPLATE FILE...` preserves previous attempts before
+replacement, admitting the whole set before copying. Absent entries are allowed;
+links, non-regular entries and duplicate basenames refuse. Failed copies retain
+the active evidence and any partial archive. See
+[metadata preparation and evidence custody](releases.md#reusing-metadata-preparation-and-evidence-custody)
+for selected-file preparation, restoration and the callback contract.
+
+The caller must hold exclusive custody of the selected source and trusted state
+directory throughout these operations. Atomic receipt replacement does not supply
+a lock, authenticate the state directory, make multiple files transactional or
+provide crash recovery. Keep actual adapter, interruption and delivery tests at
+the consumer. Select the helper through canonical snapshot export; generic
+identity, byte, symlink and failed-generation cases live in
+`scripts/ci/test-release-receipts.sh` at the Shared owner.
+
 ## Standard release command adoption
 
 ```sh
 bash scripts/ci/check-release-commands.sh /path/to/repo tool-versions.env
 ```
 
-The root's Makefile is copied into a temporary checkout without Git metadata.
-Additional arguments select reviewed, repository-relative files needed while
-Make parses that copy. For example, Canic includes `tool-versions.env`; IcyDB
-reads `scripts/ci/actionlint-checksums.tsv`. No files are implicitly discovered
-or sourced from siblings. The copied Makefile must call
+The root's Makefile and explicit additional roots are copied into a temporary
+checkout without Git metadata through `prepare-script-fixture.sh`, including
+their declared companion closure. All selected inputs must be present regular
+files with safe parents. Select the Make include roots and let their declarations
+carry dependencies; consumer-owned parse-time inputs still need explicit roots
+or companion declarations. No sibling discovery occurs. The copied Makefile must call
 `scripts/ci/run-release.sh` relative to its fixture checkout (directly or through
 Bash). That path contains a substitute that records exact arguments and returns
-a chosen status. GNU Make and Bash are prerequisites.
+a chosen status. The runner is replaced after copying and before any Make
+execution. GNU Make and Bash are prerequisites; include the preparer and its
+declaration reader when refreshing a manually selected checker snapshot.
 
 The checker exercises patch/minor/major routing, resume with an explicit version,
 explicit remote/branch propagation, runner success and failure propagation,
@@ -398,24 +481,17 @@ evidence; a preflight observation is not a lock or an upload receipt.
 
 ## Exact crates.io version observation
 
-```sh
-status=0
-bash scripts/ci/check-crates-io-version.sh my-crate 0.1.2 || status=$?
-case "$status" in
-    0) echo 'Already present' ;;
-    1) echo 'Absent; the caller may consider separately authorized publication' ;;
-    2) echo 'Observation unavailable or invalid; stop' >&2; exit 2 ;;
-esac
-```
-
-The default Bash/curl helper accepts one crate name and one canonical stable `X.Y.Z`
-version. Prerelease/build versions, leading-zero components, malformed names and
-extra arguments are rejected. Its exit contract is **0 present (HTTP 200),
+The helper accepts one crate name and one canonical stable `X.Y.Z` version.
+The status-only command uses Bash and curl to observe HTTP presence without
+creating retained metadata. Reconciliation callers select `--metadata NEW-DIRECTORY`
+and prepare jq and curl 8.4.0+ before invocation.
+Prerelease/build versions, leading-zero components, malformed names and extra
+arguments are rejected. Its exit contract is **0 present,
 1 absent (HTTP 404), 2 unavailable or invalid**. Transport failure wins over any
-HTTP-looking output; rate limits, authorization failures, server failures and
-unexpected responses are unavailable. Diagnostics go to stderr; stdout is empty.
-Call it in a conditional or capture its status as above when using `set -e`.
-Never use a blanket nonzero test to decide that publication is safe.
+HTTP-looking output. Metadata mode additionally validates the response identity,
+checksum and yank flag; status-only presence does not establish archive equivalence.
+Handle all three statuses. Never use a blanket
+nonzero test to decide that publication is safe.
 
 One request targets the fixed crates.io API, with HTTPS-only redirects, a
 10-second connection timeout and 30-second total timeout. It disables implicit
@@ -427,8 +503,7 @@ an inconclusive result must stop that flow rather than trigger publication.
 
 ### Retained exact metadata
 
-Consumers needing package identity and checksum facts can select the same helper's
-additive metadata mode:
+Each observation retains package identity and checksum facts:
 
 ```sh
 status=0
@@ -441,7 +516,6 @@ case "$status" in
 esac
 ```
 
-`--metadata NEW-DIRECTORY` additionally requires prepared jq and curl 8.4.0+.
 The directory's parent must exist; an existing directory, file or symlink is
 rejected before a request, so a retry cannot overwrite or reuse earlier evidence.
 The helper creates it with private permissions and retains `request.url`,
@@ -452,7 +526,7 @@ alone is not evidence of a completed observation. Callers select a fresh path
 for every attempt and must check the exit status.
 
 The body limit is 1 MiB, enforced during transfer and checked again before JSON
-parsing. The curl floor is specific to metadata mode because
+parsing. The curl floor is required because
 [older curl cannot enforce this limit without a known response size](https://curl.se/docs/manpage.html#--max-filesize).
 Only HTTP 200 containing exactly one JSON object with the exact requested crate
 and version, a 64-character lowercase SHA-256 checksum and a boolean `yanked`
@@ -578,28 +652,15 @@ must retain policy/order checks and prove audit cannot run after preparation fai
 
 ## Local Cargo.lock versions
 
-```sh
-perl scripts/ci/rewrite-local-lock-versions.pl Cargo.lock 0.1.0 0.1.1 my-crate helper-crate > candidate.lock
-```
+Use the explicitly prepared IC Build release editor for manifest and local lock
+versions. Its lock renderer changes only selected unsourced package versions and
+exact unqualified local references. Shared Tooling retains originals and runs
+locked/offline Cargo graph validation before completing preparation.
 
-The Perl/core-only transformer reads a regular Cargo-generated LF lockfile in
-format 3 or 4 and emits a complete candidate on stdout. Supply canonical stable
-versions and the exact local package roster selected by the consumer's Cargo
-metadata. Each selected package must appear exactly once without a `source`
-field and have the previous version. Missing, duplicate or mismatched identities
-fail without emitting a partial candidate. The input file is never written.
-
-Only selected local versions and their exact unqualified dependency references
-change. Registry/Git identities, source-qualified references, checksums, unrelated
-versions, whitespace and comments stay unchanged. This is a narrow transformation
-of Cargo's generated layout, not a general TOML parser or resolver. The caller
-must check exit status before replacing its lockfile, retain failed candidates,
-and run Cargo's locked offline validation against the prepared manifests.
-Selecting independent lockfiles, discovering packages, metadata writes and
-release recovery remain consumer responsibilities. Do not redirect output onto
-the input file, invoke dependency resolution online, or use this to repair an
-already inconsistent graph. The upstream fixture includes independent real-Cargo
-locked/offline validation with local-only dependencies.
+See [Cargo candidate rendering](releases.md#cargo-release-candidate-rendering) for
+the required executable and byte-allowance selections. Candidate bytes are never
+redirected onto their inputs. Tool preparation, package selection and release
+authorization remain consumer-owned.
 
 ## Formatter prerequisites
 
@@ -643,6 +704,13 @@ to this contract can include previously skipped formats such as `.mjs` and
 `.vue`; review exclusions before adopting it. Unknown file types remain untouched.
 
 ## Consumer formatting-hook adoption
+
+On failure, the checker replays its existing baseline and per-checkout hook logs
+to stderr before reporting the retained fixture directory. Diagnostic replay is
+best effort and preserves the original failure status; successful checks remove
+their scratch directory. Consumers need no outer fixture for log replay or custody.
+Nested formatter logs stay inside that fixture, including expected rejection
+logs; inherited `RUNNER_TEMP` evidence remains untouched.
 
 ```sh
 bash scripts/ci/check-formatting-hooks.sh "$PWD" crates/example/src/lib.rs \
@@ -725,6 +793,11 @@ finalizer rejects non-increasing previous/target pairs itself.
 
 The optional host-side `failure_evidence.py` provides non-extracting archive
 indexing/regular reads and independent compact Shared tool receipt verification.
+`verify_compact_tools` selects a nonempty set of `host`, `ic`, or both from the
+caller's `tool_pins` keys. Every selected bundle requires its caller pins, fresh
+check log and managed compact selection; unknown or empty selections refuse.
+IC selection additionally requires matching installer pins, native host and
+checksum receipts. Unselected bundles remain diagnostics and are not qualified.
 Consumers keep source/job/run identity and product assertions. The Python helper
 is selected only by download-verification consumers, not native shell setup.
 Run `python3 scripts/ci/test-failure-evidence.py` on the download-verification
@@ -802,6 +875,15 @@ is never used to admit physical payloads. Instead, local Rust evidence and
 host/IC references are retained without following redirected roots or links.
 Diagnostics remain in the partial archive; completeness is not inferred from
 successful archiving. Stdout contains the created archive path only.
+
+Callers still admit their own selected paths. If a parent such as `target` or
+`.tools` is a symlink, select the parent link itself instead of its children,
+retain a diagnostic and report incomplete collection. This keeps independent
+logs eligible for archiving without traversing the redirected parent. The
+orchestrator does not repair an invalid caller selection or infer product paths.
+Keep consumer tests for these selections, original failures, completeness and
+upload/download bindings; Shared owns the generic selector/archiver regression
+matrix.
 
 ## Formatter evidence selection
 
@@ -917,7 +999,15 @@ the supplied marker. `RUN/tmp` must exist. The helper publishes
 
 `collect-native-diagnostics.sh CHECKOUT EVIDENCE OUTPUT FORMAT-ROOT TOOLS-OUTCOME
 HOST-PINS IC-PINS NAME...` archives only the supplied existing top-level files
-and writes its SHA-256 before collecting failed tools or formatter logs.
+and writes its SHA-256 before collecting failed tools or formatter logs. The
+`OUTPUT.sha256` sidecar contains exactly one lowercase digest and LF, with no
+filename. Verify the explicitly selected archive through the checksum owner:
+
+```bash
+bash scripts/ci/verify-file-checksum.sh sha256 "$(cat "$archive.sha256")" "$archive"
+```
+
+This replaces the filename-bearing sidecar contract; update `shasum -c` callers.
 Names cannot traverse directories; the scratch tree is never implicitly selected.
 The helper uses the existing tool/formatter owners and returns 0 on success,
 the tool collector's nonfatal status on partial collection, or 2 on fatal
@@ -961,6 +1051,16 @@ policy and prepare the Cargo tool; this check performs no installation or
 manifest mutation. Other check callers remain unchanged. The flag is rejected
 for `prepare` and `check-graph`. Scripts from the selected export are never run.
 
+For intentionally separated dependency groups, use `--manifest-order-grouped`
+instead. It adds `--grouped` to the same read-only Cargo sort check, retaining
+alphabetical order within each group. Both options require `check` and include
+`--check`; neither rewrites the workspace nor the selected release export.
+Current and committed-source checks must select the same ordering policy as
+the consumer's formatter and hook. The flag does not change those callers or
+verify dependency roles. Follow the
+[dependency-role adoption checklist](consuming-snapshots.md#dependency-role-adoption-in-0240)
+when selecting grouped mode.
+
 ## Hosted qualification admission and evidence parents
 
 `qualify-hosted-failure.sh` owns stage/manual-dispatch admission, selected-checkout
@@ -1002,6 +1102,8 @@ still qualify the complete upload/download boundary.
 
 `check-release-changelog.sh VERSION PREVIOUS DATE CHANGELOG` admits a regular
 changelog with the canonical candidate selector before any setup or mutation.
+Version components and Gregorian dates use `validate-release-inputs.pl`, including
+its u64 component bounds. Invalid scalar inputs exit 2 before changelog reading.
 It writes no temporary/output file, preserves failed reader/selector status and
 keeps empty notes advisory. Coordinated metadata preparation remains the writer;
 consumer source, tag, impact and release authority stay local. Focused coverage
@@ -1029,9 +1131,20 @@ copies explicit reviewed roots and their transitive line-two `Shared companions`
 declarations, preserving file modes. It shares the declaration reader with the
 snapshot exporter; inspected payloads are never executed. Cycles are deduplicated.
 The complete closure and destination parents are admitted before any copying;
-unsafe paths, symlink traversal, missing inputs and overlapping roots refuse.
+unsafe paths, symlink traversal and missing inputs refuse. The fixture must not
+contain the source root. Scratch beneath the source is permitted, but the entire
+copy plan refuses before effects if an output would overwrite any selected input,
+including a hard-linked input reached through a different output path. Distinct
+planned outputs must not share a hard link: copying either would change the
+other's bytes. Both cases refuse before any selected file is copied.
 Existing regular fixture files may be replaced. Callers own an idle disposable
 destination and stable reviewed source; copying does not protect against
 concurrent mutation. The helper neither creates a snapshot nor proves supplier
 custody. Consumers retain product adapters, substitutions and assertions.
 Focused coverage is `bash scripts/ci/test-script-fixture.sh`.
+
+## Resolved dependency graphs
+
+Use [the graph checker](cargo-graph-checks.md) to enforce consumer-selected
+transitive exclusions and rendered package identity counts. Direct ownership
+checks and product feature/lifecycle policies remain separate.

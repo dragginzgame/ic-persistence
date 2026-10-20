@@ -130,46 +130,19 @@ fn helper_output_cannot_change_locked_dependency_selection() {
     let same_name_registry = format!(
         "{LOCK}[[package]]\nname = \"ic-memory\"\nversion = \"0.12.3\"\nsource = \"registry+https://github.com/rust-lang/crates.io-index\"\nchecksum = \"unchanged\"\n"
     );
-    let rendered = fixture
-        .repo
-        .replace_lock_version(&same_name_registry, "0.12.3", "0.13.0")
-        .unwrap();
+    let rendered =
+        Repository::<Processes>::replace_lock_version(&same_name_registry, "0.12.3", "0.13.0")
+            .unwrap();
     assert_eq!(
         rendered,
         same_name_registry.replacen("version = \"0.12.3\"", "version = \"0.13.0\"", 1)
     );
     let changed = LOCK.replace("0.12.3", "0.13.0");
-    fs::write(
-        fixture.repo.root.join(LOCK_REWRITER),
-        format!("print <<'LOCK';\n{changed}LOCK\n"),
-    )
-    .unwrap();
-    let error = fixture
-        .repo
-        .replace_lock_version(LOCK, "0.12.3", "0.13.0")
-        .unwrap_err();
+    let error = check_lock_update(LOCK.as_bytes(), &changed, "0.12.3", "0.13.0").unwrap_err();
     assert!(matches!(
         error.downcast_ref::<ic_build::cargo::lock_projection::LockProjectionError>(),
         Some(ic_build::cargo::lock_projection::LockProjectionError::ChangedInputs)
     ));
-    fixture.assert_original();
-}
-
-#[test]
-fn rendered_manifest_cannot_change_unselected_metadata() {
-    let fixture = Fixture::new();
-    let changed = MANIFEST.replace("0.12.3", "0.13.0");
-    fs::write(
-        fixture.repo.root.join(WORKSPACE_VERSION_RENDERER),
-        format!("print <<'MANIFEST';\n{changed}MANIFEST\n"),
-    )
-    .unwrap();
-    assert!(
-        fixture
-            .repo
-            .replace_workspace_version(MANIFEST, "0.12.3", "0.13.0")
-            .is_err()
-    );
     fixture.assert_original();
 }
 
@@ -288,8 +261,6 @@ impl Fixture {
             ),
         ]);
         for helper in [
-            WORKSPACE_VERSION_RENDERER,
-            LOCK_REWRITER,
             CHANGELOG_FINALIZER,
             RELEASE_INPUT_ADMISSION,
             "scripts/ci/StableVersion.pm",
@@ -2977,10 +2948,7 @@ fn real_index_rejects_hidden_staging_and_checks_exact_prepared_bytes() {
     repo.git(&["read-tree", &selection.source]).unwrap();
     let original = repo.text("README.md", Some("HEAD")).unwrap();
     let expected = format!("{original}\nPrepared release fixture.\n");
-    let locked = fixture
-        .repo
-        .replace_lock_version(LOCK, "0.12.3", "0.13.0")
-        .unwrap();
+    let locked = Repository::<Processes>::replace_lock_version(LOCK, "0.12.3", "0.13.0").unwrap();
     let surfaces = BTreeMap::from([
         ("README.md".to_owned(), expected.clone()),
         ("Cargo.lock".to_owned(), locked.clone()),

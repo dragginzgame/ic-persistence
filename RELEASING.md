@@ -69,9 +69,11 @@ then admits it through `make tools-check format-tools-check` before the full
 gate. Common setup first checks platform/catalog and Rust/Cargo availability
 without downloads or automatic toolchain installation. Setup follows coherent
 saved-source admission/cache preparation and is not
-replayed against interrupted metadata. Common setup includes the pinned Cargo
-tools; rustfmt/toolchain bootstrap and runtime-server setup retain their explicit
-owners. Standalone validation remains offline and checks all common tools plus
+replayed against interrupted metadata. Common setup includes the pinned Cargo tools and Memory's published IC Build
+release editor; rustfmt/toolchain bootstrap and runtime-server setup retain their
+explicit owners. `ci/release-tools.env` owns the editor selection. Ordinary
+recovery calls check it offline; standard release bootstrap may explicitly
+prepare it before rendering an interrupted manifest/lock pair. Standalone validation remains offline and checks all common tools plus
 formatter prerequisites before builds, including under parallel Make.
 
 Release preflight checks the selected cache with `cargo fetch --locked --offline`; it never retries
