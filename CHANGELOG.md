@@ -1,6 +1,6 @@
 # Changelog
 
-## [0.49.3]
+## [0.49.3] - 2026-10-20
 
 - Fix release bootstrap under Bash 3.2 and print retained diagnostics when its
   adapter fixture fails.
