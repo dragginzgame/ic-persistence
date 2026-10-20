@@ -1,6 +1,6 @@
 # Changelog
 
-## [0.49.4]
+## [0.49.4] - 2026-10-20
 
 - Adopt Shared Tooling 0.25.8, accepting numbered `- Unreleased` notes and running
   the existing Clippy gate before expensive release validation stages.
