@@ -1,6 +1,6 @@
 # Changelog
 
-## [0.50.0]
+## [0.50.0] - 2026-10-20
 
 - Consolidate Memory and Storage as IC Persistence while preserving both crate
   names, APIs, persisted formats and allocation/lease responsibilities.
