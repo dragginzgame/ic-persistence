@@ -1,0 +1,20 @@
+[package]
+name = "ic-storage"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+description.workspace = true
+license.workspace = true
+readme = "README.md"
+publish = ["crates-io"]
+
+[dependencies]
+ic-memory.workspace = true
+ic-stable-structures.workspace = true
+
+[dev-dependencies]
+ic-memory = { workspace = true, features = ["test-support"] }
+
+[lints]
+workspace = true
