@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.50.1]
+
+- Prepare the declared MSRV for native archive qualification and admit both
+  required compilers before expensive validation or packaging.
+
+
 ## [0.50.0] - 2026-10-20
 
 - Consolidate Memory and Storage as IC Persistence while preserving both crate
