@@ -4,7 +4,7 @@
         lint-tooling test-hooks test-tooling test-fixture-cell validate validate-toolchain wasm-size \
         install-runtime-server runtime-server-check test-runtime \
         install-release-tools release-tools-check \
-        test-release-adapters test-package-admission \
+        test-release-adapters test-package-admission validation-compilers-check \
         release-version release-preflight release-verify release-prepare-version \
         release-prepared-check release-files release-commit-check release-committed-check \
         release-tagged-check release-push-check qualify-release package publish publish-dry-run
@@ -136,7 +136,11 @@ test-release-adapters:
 	bash scripts/ci/test-release-adapters.sh
 	bash scripts/ci/test-consolidated-bootstrap.sh
 
+validation-compilers-check:
+	bash scripts/ci/check-validation-compilers.sh $(VALIDATION_TOOLCHAIN)
+
 test-package-admission:
+	bash scripts/ci/test-validation-compilers.sh
 	bash scripts/ci/test-package-admission.sh
 
 test-hooks: format-tools-check
@@ -164,6 +168,7 @@ validate:
 
 validate-toolchain:
 	$(MAKE) --no-print-directory shared-tooling-check tools-check format-tools-check
+	$(MAKE) --no-print-directory validation-compilers-check
 	+cargo +$(VALIDATION_TOOLCHAIN) clippy --workspace --locked --offline --all-targets -- -D warnings
 	$(MAKE) --no-print-directory check-production-graph check-pins check-storage-boundary check-license check-doc-links test-release-adapters
 	$(MAKE) --no-print-directory test-tools test-tooling test-hooks fmt-check test-fixture-cell test-package-admission

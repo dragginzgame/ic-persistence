@@ -35,6 +35,10 @@ when recording release qualification; retain failed runs and their limitations.
 The current library declares Rust 1.91.0, including its native IC Build metadata dependency.
 The older matrix evidence above retains its original Rust 1.88.0 identity;
 current-source Rust 1.91 native CI acceptance must be recorded separately.
+Native CI prepares both the development compiler and the declared MSRV because
+archive consumers run on both. `make validation-compilers-check` admits those
+installed compilers offline before expensive validation; standalone archive
+qualification performs the same check. Neither check installs a compiler.
 
 - Rustup with Rust 1.99.1, Clippy, rustfmt and `wasm32-unknown-unknown`; also
   install the declared MSRV, Rust 1.91.0. Toolchain changes need a demonstrated

@@ -2,6 +2,9 @@
 
 ## [0.50.1]
 
+- Prepare the declared MSRV for native archive qualification and admit both
+  required compilers before expensive validation or packaging.
+
 - Use published IC Testkit Native for native allocator measurements, removing
   the local allocator engine while retaining workloads, CSV and exact counts.
 
