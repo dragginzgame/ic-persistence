@@ -1,6 +1,6 @@
 # Changelog
 
-## [0.5.8]
+## [0.5.8] - 2026-10-20
 
 - Adopt Shared Tooling 0.25.3 with feature-aware Cargo tool setup and clearer
   admission diagnostics. Rerun `make install-tools` and
