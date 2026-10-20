@@ -1,6 +1,6 @@
 # Changelog
 
-## [0.50.1]
+## [0.50.1] - 2026-10-20
 
 - Run release-tool tests once during validation, removing their duplicate serial run.
 - Identify publication registry requests to crates.io so they are not rejected
