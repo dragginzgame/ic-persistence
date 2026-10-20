@@ -13,7 +13,7 @@ and performance investigation is retained as [historical research](docs/archive/
 ## Development
 
 The reviewed [Shared Tooling snapshot](.shared-tooling.snapshot) pins version
-0.25.0 at commit `2a79f5f93383f3d2a8a38d65406c7d52c2f77913`.
+0.25.3 at commit `c55c1065c0061455dab7f0e2be8ddd04fdeb9910`.
 Read [AGENTS.md](AGENTS.md) for local contributor instructions and
 [the setup guide](docs/local-setup.md) for Linux/macOS prerequisites.
 Rust 1.99.1 is the development toolchain. The Rust 2024 library lives in
@@ -26,6 +26,10 @@ make tools-check
 make install-hooks
 make help
 ```
+
+After adopting this snapshot, rerun `make install-tools` and
+`make install-release-tools` to prepare the updated Cargo tool build policy.
+Prior installations remain retained; offline checks never repair selections.
 
 Common setup prepares host and Cargo tools. IC executables are optional product
 selections. Make selects the repository's tools automatically. For direct shell use:

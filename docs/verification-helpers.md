@@ -7,6 +7,26 @@ policy. They require Perl core modules or Bash 3.2+, as noted below, and run on
 Linux and macOS. The portable regression suite includes offline fixtures;
 native CI qualifies each supported host separately.
 
+## Repository symlink admission
+
+```sh
+perl scripts/ci/check-no-symlinks.pl --consumer /path/to/checkout
+```
+
+The offline reader checks the selected checkout's actual Git index modes and
+tracked/nonignored working paths, including every parent below the checkout
+root. Indexed links refuse even if their working replacement is regular;
+dangling links and directory links refuse without following their targets.
+Tracked deletions are allowed. Failed Git/filesystem observations never pass.
+Inventory uses NUL delimiters and disables optional Git index writes; inherited
+Git directory/index overrides cannot select another source.
+
+Shared's `make check-no-symlinks` runs in its CI and release gate. Consumers may
+adopt the script as a snapshot entrypoint and select it in their existing gates.
+Ignored tool stores and isolated negative-test scratch are outside the inventory;
+this is not admission of arbitrary ignored files or generated package contents.
+Those remain subject to the baseline rule and their artifact checks.
+
 ## Fixture diagnostic replay
 
 `fixture_replay_logs FILE...` in `scripts/ci/fixture-lifecycle.sh` writes existing

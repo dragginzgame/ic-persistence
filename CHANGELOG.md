@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.5.8]
+
+- Adopt Shared Tooling 0.25.3 with feature-aware Cargo tool setup and clearer
+  admission diagnostics. Rerun `make install-tools` and
+  `make install-release-tools` for the updated build policy; prior installations
+  remain retained. Library APIs and stored formats are unchanged.
+
 ## [0.5.7] - 2026-10-19
 
 - Prepare and verify the release metadata editor alongside common tools during
