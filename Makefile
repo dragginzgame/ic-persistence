@@ -48,7 +48,7 @@ check-release-commands: test-release-preflight
 	bash scripts/ci/check-release-commands.sh . make/consumer.mk make/tools.mk make/release.mk make/rust-format.mk make/execution.mk scripts/ci/check-make-execution.sh scripts/ci/check-release-delivery.sh ci/release-delivery.txt
 
 ci:
-	+bash scripts/ci/run-validation-targets.sh --fail-fast shared-tooling-check check-doc-links check-license check-pins check-storage-boundary check-release-commands fmt-check check clippy docs-check test wasm-check msrv package
+	+bash scripts/ci/run-validation-targets.sh --fail-fast shared-tooling-check check-doc-links check-license check-pins check-storage-boundary check-release-commands fmt-check clippy check docs-check test wasm-check msrv package
 
 release-preflight:
 	@bash scripts/release/adapter.sh preflight

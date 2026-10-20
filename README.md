@@ -13,7 +13,7 @@ and performance investigation is retained as [historical research](docs/archive/
 ## Development
 
 The reviewed [Shared Tooling snapshot](.shared-tooling.snapshot) pins version
-0.25.3 at commit `c55c1065c0061455dab7f0e2be8ddd04fdeb9910`.
+0.25.8 at commit `0a2d2ee3b5e0ae77755c2915ac28836d4d5ba359`.
 Read [AGENTS.md](AGENTS.md) for local contributor instructions and
 [the setup guide](docs/local-setup.md) for Linux/macOS prerequisites.
 Rust 1.99.1 is the development toolchain. The Rust 2024 library lives in
@@ -27,8 +27,8 @@ make install-hooks
 make help
 ```
 
-After adopting this snapshot, rerun `make install-tools` and
-`make install-release-tools` to prepare the updated Cargo tool build policy.
+When the shared Cargo tool build policy changes, rerun `make install-tools` and
+`make install-release-tools` to prepare the new selection.
 Prior installations remain retained; offline checks never repair selections.
 
 Common setup prepares host and Cargo tools. IC executables are optional product
@@ -56,5 +56,7 @@ editor's absolute path and a 1 MiB per-document
 input limit to Shared Tooling. This host tool is separate from library dependencies
 and common development setup. Publication uses `make publish-check` and `make publish`
 from clean source at an annotated release tag. See [the release contract](docs/releases.md).
+Release validation runs the existing Clippy gate before builds, tests and packaging;
+publication entrypoints also stop on lint failure before creating an attempt.
 
 Licensed under MIT; see LICENSE.

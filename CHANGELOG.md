@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.5.9]
+
+- Adopt Shared Tooling 0.25.8, retaining failed Cargo metadata diagnostics and
+  accepting numbered `Unreleased` headings during release preparation.
+- Run the existing Clippy gate before release builds, tests and packaging, and
+  before publication attempts. Lint failure stops later stages under parallel
+  Make as well. Library APIs and stored formats are unchanged.
+
 ## [0.5.8] - 2026-10-20
 
 - Adopt Shared Tooling 0.25.3 with feature-aware Cargo tool setup and clearer

@@ -6,6 +6,7 @@ bash scripts/ci/check-release-source.sh
 version="$(bash scripts/ci/read-cargo-workspace-version.sh --stable Cargo.toml)"
 commit="$(git rev-parse HEAD)"
 bash scripts/ci/check-release-tag.sh "$commit" "$version"
+make --no-print-directory clippy
 # The shared owner retains exact dispatch arguments and interrupted-attempt evidence.
 mkdir -p target/publication
 attempt="$(mktemp -d target/publication/attempt.XXXXXX)"
