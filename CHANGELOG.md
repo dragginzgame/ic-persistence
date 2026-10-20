@@ -2,6 +2,9 @@
 
 ## [0.50.1]
 
+- Prepare the declared MSRV for native archive qualification and admit both
+  required compilers before expensive validation or packaging.
+
 - Retire the pre-consolidation Storage version exception and use the canonical
   inheritance gate directly; retain historical release recovery and evidence.
 

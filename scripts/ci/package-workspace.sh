@@ -6,6 +6,7 @@ pin="$1"
 shift
 [[ $# -eq 0 || "$1" == --allow-dirty ]] || exit 2
 export RUSTUP_AUTO_INSTALL=0
+bash scripts/ci/check-validation-compilers.sh "$pin"
 source_root="$(pwd -P)"
 cargo "+$pin" package --workspace --registry crates-io --locked --offline --no-verify "$@"
 metadata="$(cargo "+$pin" metadata --no-deps --locked --offline --format-version 1)"
