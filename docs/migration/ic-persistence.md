@@ -115,10 +115,12 @@ and checks the shared lease type; it does not claim a live registry publication.
    Preserve the bundles and outstanding branch/PR disposition before any cleanup.
 2. Review hosted Linux/macOS ARM/macOS Intel CI after separately authorizing a
    branch push. Local Linux evidence does not qualify native macOS or hosted CI.
-3. Separately authorize renaming the Memory GitHub repository to `ic-persistence`;
-   update its description to “Allocation governance and governed stable collections
-   for Internet Computer canisters; publishes ic-memory and ic-storage.” Update
-   origin after that rename, without rewriting old issue/evidence URLs.
+3. The maintainer selected a new public `dragginzgame/ic-persistence` repository
+   on 2026-10-20 instead of renaming Memory. The destination has been created
+   with collaborator-only PR creation and the description “Allocation governance
+   and governed stable collections for Internet Computer canisters; publishes
+   ic-memory and ic-storage.” Publish the consolidated history to its `main`;
+   keep original repositories and historical issue/evidence URLs intact.
 4. Move the consolidated checkout to `/home/adam/projects/ic-persistence` when
    convenient. Original Memory/Storage directories and ignored evidence remain
    intact until the maintainer explicitly disposes of them.

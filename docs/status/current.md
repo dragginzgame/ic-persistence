@@ -9,8 +9,11 @@ source revisions, preserved branches/PRs, exceptions and cutover instructions.
 Work is isolated on `integration/ic-persistence` in
 `/tmp/ic-persistence-integration`. The original checkouts and ignored evidence
 remain intact. The import commit preserves Storage's original history as a
-second parent; workspace/tooling edits are separate. No remote repository,
-branch, tag, package or consumer has been changed.
+second parent; workspace/tooling edits are separate. The maintainer authorized
+publication to the new public `dragginzgame/ic-persistence` repository on
+2026-10-20. The destination exists with collaborator-only PR creation; the
+consolidated branch is selected for its `main`. Original repositories, package
+versions, tags and downstream consumers remain unchanged.
 
 Current package versions remain Memory 0.49.4 and Storage 0.5.9. The proposed
 coordinated release is 0.50.0. The temporary explicit Storage version disappears
