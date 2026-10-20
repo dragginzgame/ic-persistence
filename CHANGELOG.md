@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.50.1]
+
+- Use published IC Testkit Native for native allocator measurements, removing
+  the local allocator engine while retaining workloads, CSV and exact counts.
+
+
 ## [0.50.0] - 2026-10-20
 
 - Consolidate Memory and Storage as IC Persistence while preserving both crate

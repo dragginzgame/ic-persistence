@@ -258,6 +258,7 @@ dependencies = [
  "ic-host-fs",
  "ic-host-process",
  "ic-stable-structures",
+ "ic-testkit-native",
  "serde",
  "serde_cbor",
  "serde_json",
@@ -282,6 +283,12 @@ dependencies = [
  "ic-memory",
  "ic-stable-structures",
 ]
+
+[[package]]
+name = "ic-testkit-native"
+version = "0.62.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "343e02ff63d69090df0b7bcd57d5a58a98fafb70db451f3aa74d3951b79d1a02"
 
 [[package]]
 name = "ic_principal"
