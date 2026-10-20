@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.49.4]
+
+- Adopt Shared Tooling 0.25.8, accepting numbered `- Unreleased` notes and running
+  the existing Clippy gate before expensive release validation stages.
+- Align Build 0.24.0 with Host 0.32.0 for native release tooling, removing the
+  older Host generation without changing library or stored-format contracts.
+
+[Detailed notes](docs/changelog/0.49.md#0494)
+
 ## [0.49.3] - 2026-10-20
 
 - Fix release bootstrap under Bash 3.2 and print retained diagnostics when its

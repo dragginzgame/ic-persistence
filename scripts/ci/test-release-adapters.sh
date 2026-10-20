@@ -174,6 +174,49 @@ for target in install-tools tools-check; do
         > "$FIXTURE/$target-ic-failure.log" 2>&1 || status=$?
     [[ "$status" == 2 ]] || exit 1
 done
+# The actual validation recipe must finish Clippy before later stages, even with
+# parallel Make. Substitute recursive leaves and Cargo, never the parent recipe.
+mkdir "$FIXTURE/lint-bin"
+cat > "$FIXTURE/lint-gate" <<'STUB'
+#!/usr/bin/env bash
+printf 'make %s\n' "$*" >> lint-events
+STUB
+cat > "$FIXTURE/lint-bin/cargo" <<'STUB'
+#!/usr/bin/env bash
+set -euo pipefail
+printf 'cargo %s\n' "$*" >> lint-events
+if [[ "${2:-}" == clippy ]]; then
+    [[ "$*" == "+$FIXTURE_TOOLCHAIN clippy --locked --offline --all-targets -- -D warnings" ]] || exit 1
+    exit "$CLIPPY_STATUS"
+fi
+STUB
+chmod +x "$FIXTURE/lint-gate" "$FIXTURE/lint-bin/cargo"
+for lint_status in 23 0; do
+    rm -f "$FIXTURE/lint-events"
+    status=0
+    (cd "$FIXTURE"; PATH="$FIXTURE/lint-bin:$PATH" CLIPPY_STATUS="$lint_status" \
+        make -j2 --no-print-directory validate-toolchain MAKE=./lint-gate) \
+        > "$FIXTURE/lint-ordering-$lint_status.log" 2>&1 || status=$?
+    printf '%s\n' \
+        'make --no-print-directory shared-tooling-check tools-check format-tools-check' \
+        "cargo +$FIXTURE_TOOLCHAIN clippy --locked --offline --all-targets -- -D warnings" \
+        > "$FIXTURE/lint-expected"
+    if [[ "$lint_status" == 0 ]]; then
+        [[ "$status" == 0 ]] || exit 1
+        printf '%s\n' \
+            'make --no-print-directory check-production-graph check-pins test-release-adapters' \
+            'make --no-print-directory test-tools test-tooling test-hooks fmt-check test-fixture-cell' \
+            "cargo +$FIXTURE_TOOLCHAIN test --locked --offline -- --test-threads=1" \
+            "cargo +$FIXTURE_TOOLCHAIN doc --locked --offline --no-deps" \
+            "cargo +$FIXTURE_TOOLCHAIN check --locked --offline --target wasm32-unknown-unknown --tests" \
+            'make --no-print-directory wasm-size' \
+            "cargo +$FIXTURE_TOOLCHAIN package --locked --offline --allow-dirty" \
+            >> "$FIXTURE/lint-expected"
+    else
+        [[ "$status" == 2 ]] || exit 1
+    fi
+    cmp "$FIXTURE/lint-expected" "$FIXTURE/lint-events"
+done
 # MSRV output is usable only when its helper succeeds. Substitute the preceding
 # recursive command while retaining the actual consumer's single validate recipe.
 mkdir "$FIXTURE/msrv-bin"
@@ -223,7 +266,7 @@ for result in gate-failure read-failure success compiler-failure; do
     fi
 done
 # Diagnostics stay intact; unintended duplicate recipes must still be visible.
-if grep -E 'warning: (overriding|ignoring old) recipe' "$FIXTURE/tool-ordering.log" "$FIXTURE"/msrv-*.log; then
+if grep -E 'warning: (overriding|ignoring old) recipe' "$FIXTURE/tool-ordering.log" "$FIXTURE"/lint-ordering-*.log "$FIXTURE"/msrv-*.log; then
     echo 'consumer admission fixtures replaced a production recipe' >&2; exit 1
 fi
 (cd "$FIXTURE"; make --no-print-directory release-patch)

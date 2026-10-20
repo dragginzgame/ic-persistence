@@ -1537,6 +1537,7 @@ fn shared_note_finalization_preserves_history_and_refuses_conflicting_targets() 
 
     for notes in [
         "##\t[0.13.0]  \n\nChanges.\n\n## [0.12.3] - 2026-10-04\nHistory",
+        "## [0.13.0] - Unreleased\n\nChanges.\n\n## [0.12.3] - 2026-10-04\nHistory",
         "## [0.13.0]",
         "## [0.12.3]\n\nUndated published history",
     ] {

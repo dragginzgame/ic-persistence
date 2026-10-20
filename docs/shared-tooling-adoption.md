@@ -9,12 +9,17 @@ local baseline. Future policy changes require reviewed snapshot adoption.
 
 ## Current source selection
 
-Memory selects Shared Tooling 0.25.4 at
-`db555ab6cf4a93af9a183f18d921d3b0ee97c725`, with 70 explicit roots and 105 payloads.
+Memory selects Shared Tooling 0.25.8 at
+`0a2d2ee3b5e0ae77755c2915ac28836d4d5ba359`, with 70 explicit roots and 105 payloads.
 The canonical [preview and refresh procedure](consuming-snapshots.md#preview-before-refreshing)
-exports committed bytes from a clean source checkout. The normal sibling's dirty
-policy edits were excluded. Direct callers remain explicit roots and required
-companions are derived by the exporter.
+exports committed bytes from a clean source checkout. Direct callers remain
+explicit roots and required companions are derived by the exporter.
+
+Validation runs the existing all-target Clippy gate after prerequisite admission
+and before fixture suites, tests, Wasm builds and packaging. Sequential recipes
+preserve that ordering under parallel Make; the feature-specific fixture lint
+also remains in its focused target. Release notes may use a numbered
+` - Unreleased` heading, which the shared finalizer dates during preparation.
 
 Shared 0.25.3 binds explicit Cargo feature sets to selected tool installations
 and admission receipts. Memory's current tools need no feature arguments. Rerun

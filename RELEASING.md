@@ -21,15 +21,18 @@ select that release policy.
 ## Source and dependency preparation
 
 Before 1.0, breaking consumer contracts require a minor release; compatible work
-uses a patch. Maintain one numbered, undated pending entry, `## [X.Y.Z]`, in both
+uses a patch. Maintain one numbered, undated pending entry, `## [X.Y.Z]`
+(optionally followed by ` - Unreleased`), in both
 `CHANGELOG.md` and `docs/changelog/<major>.<minor>.md`. Notes select the candidate
 without changing package versions. Preparation refuses mismatched or duplicate
 identities and preserves historical entries.
 
 The Rust adapter calls the unchanged shared changelog finalizer with the saved
 previous version, selected version and UTC date. Heading whitespace and a
-candidate without a final newline do not block preparation. With no draft, the
-helper creates only the selected heading; it does not invent note content.
+candidate without a final newline do not block preparation. The optional
+` - Unreleased` marker is replaced with the saved release date during preparation.
+With no draft, the helper creates only the selected heading; it does not invent
+note content.
 Memory also rejects a selected identity already present in its bare historical
 headings. Helper failures stop before any candidate output is installed.
 
