@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.50.0]
+
+- Consolidate Memory and Storage as IC Persistence while preserving both crate
+  names, APIs, persisted formats and allocation/lease responsibilities.
+- Share workspace dependencies, CI and source-bound two-package release receipts;
+  publish Memory before Storage with checksum-verified partial-publication resume.
+- Align both crate versions at the authorized release; consumers must select the
+  matching Memory/Storage 0.50 identities. [Detailed notes](docs/changelog/0.50.md).
+
+
 ## [0.49.4] - 2026-10-20
 
 - Adopt Shared Tooling 0.25.8, accepting numbered `- Unreleased` notes and running

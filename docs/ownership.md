@@ -1,6 +1,6 @@
 # Implementation ownership
 
-IC Memory owns durable allocation governance for one backing memory: permanent
+IC Persistence maintains two published crates. IC Memory owns durable allocation governance for one backing memory: permanent
 key-to-ID bindings, host-wide placement, admission before commitment, protected
 ledger recovery and exclusive checked handles. It does not own application data,
 collection semantics, component lifecycle or deployment policy.
@@ -27,9 +27,14 @@ it does not choose another pool, rerun host admission or construct another manag
 Exact warm host verification is a separate check of the complete bootstrap binding.
 See [advanced integration](../ADVANCED.md) and [the composed host example](../crates/ic-memory/examples/composed_host.rs).
 
-## Delegated capabilities
+IC Storage owns the governed collection adapters in `crates/ic-storage/src/adapter`.
+Its existing source and formats are unchanged by the repository consolidation.
+Storage depends on Memory through the root path-plus-version catalog; Memory
+does not depend on Storage.
 
-| Owner | What Memory consumes / what stays outside this repo |
+## Dependencies and external capabilities
+
+| Owner | Boundary |
 | --- | --- |
 | `ic-stable-structures` | Pinned manager/Cell substrate and backing `Memory` interface. Memory retains the checked layout adapters needed for bounded reads and fallible growth. |
 | `ic-storage::adapter` | Production typed collections over `RuntimeMemory`. Storage depends on Memory; Memory must not depend back on Storage or expose its raw collection substrate. |
@@ -59,7 +64,7 @@ establish that every published consumer or deployed application has adopted them
 - Fixture Cells exercise governed byte storage and caller-selected limits; they
   are not a general production collection API. Installed IO/upgrade tests qualify
   this crate's behavior rather than duplicating Testkit's server implementation.
-- Native repo-tool owns Memory's release proofs and recovery transaction. Shared
+- Native repo-tool owns both packages' release proofs and recovery transaction. Shared
   runner delegation does not replace those proofs. A pending upstream editor or
   receipt proposal is not an available compatible dependency.
 

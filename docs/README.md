@@ -1,13 +1,12 @@
-<p align="center">
-  <img src="https://raw.githubusercontent.com/dragginzgame/shared-assets/main/ic-memory/ic-memory-readme-header.svg" alt="IC Memory — Stops upgrades from mixing up stored data" width="100%">
-</p>
-
-# ic-memory documentation
+# IC Persistence documentation
 
 The documents in this directory serve different audiences. Use this index to
 distinguish current integration guidance from historical engineering evidence.
 
 ## Start here
+
+- [IC Persistence overview](../README.md) and [migration map](migration/ic-persistence.md) describe the two-package repository.
+- [Governed Storage collections](../crates/ic-storage/README.md) cover collection leases, regions and upstream formats.
 
 - [Project overview and quick start](../crates/ic-memory/README.md) explains in plain language
   what `ic-memory` protects, when it is useful, and how to integrate it.

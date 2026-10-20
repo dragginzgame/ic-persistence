@@ -1,3 +1,0 @@
-tasks/systemd/shared-tooling-maintenance.service
-tasks/systemd/shared-tooling-maintenance.timer
-scripts/dev/run-maintenance.sh

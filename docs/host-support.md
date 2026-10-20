@@ -1,6 +1,6 @@
 # Host support and qualification
 
-ic-memory supports native development and maintainer workflows on these hosts.
+IC Persistence supports native development and maintainer workflows on these hosts.
 Its canister runtime target remains `wasm32-unknown-unknown`.
 
 | Host | Architecture | Native CI label | Qualification |
@@ -358,7 +358,7 @@ never follows the link to collect outside payloads.
 For interactive CI inspection, use the unchanged shared helper:
 
 ```sh
-GH_REPO=dragginzgame/ic-memory bash scripts/dev/gh-ci.sh --commit HEAD --all-workflows --limit 100
+GH_REPO=dragginzgame/ic-persistence bash scripts/dev/gh-ci.sh --commit HEAD --all-workflows --limit 100
 ```
 
 When `--logs` cannot retrieve failed-step evidence, the helper reports the gap
@@ -375,9 +375,10 @@ before claiming complete workflow coverage. Uncommitted edits have no CI result.
 The repository root is a virtual Cargo workspace. Shared package metadata,
 dependencies, profiles and the selected lockfile remain there; the library
 package, examples, tests, current wire fixtures and full package guide live in
-`crates/ic-memory/`. Existing root Make/Cargo commands select this sole default
-member. A checkout path dependency must point to `crates/ic-memory`, for example
-`ic-memory = { path = "../ic-memory/crates/ic-memory" }`.
+`crates/ic-memory/` and `crates/ic-storage/`. Both are default workspace members.
+A checkout path dependency selects the corresponding package, for example
+`ic-memory = { path = "../ic-persistence/crates/ic-memory" }`. Storage's internal
+Memory edge is path-plus-version and shares the root Memory identity.
 
 The approved independent root remains `testing/runtime-qualification/`, with
 its own lockfile and sole package at
@@ -385,6 +386,6 @@ its own lockfile and sole package at
 caller-owned PocketIC server requirements retain that root. Layout adoption
 does not merge or update either dependency graph. Package archives contain the
 library source, examples, tests, fixtures, package guide and root-owned MIT
-license, copied unchanged from the repository-owned `LICENSE`; repository CI,
+licenses with their original copyright notices and MIT terms; repository CI,
 governance and operational evidence remain outside the
 crate archive.

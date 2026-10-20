@@ -12,7 +12,7 @@
 export RELEASE_DELIVERY ?= direct
 ifneq ($(filter release-%,$(MAKECMDGOALS)),)
 ifneq ($(RELEASE_DELIVERY),direct)
-$(error ic-memory release adapters support only RELEASE_DELIVERY=direct)
+$(error ic-persistence release adapters support only RELEASE_DELIVERY=direct)
 endif
 endif
 
@@ -25,11 +25,11 @@ override SHARED_TOOLING_ROOT := $(CURDIR)
 # Both maintained workspaces retain the same complete formatter sequence.
 FORMAT_WRITE_COMMAND = bash -ec 'cargo "+$$1" sort --workspace --grouped; \
     cargo "+$$1" sort --workspace --grouped testing/runtime-qualification; \
-    cargo "+$$1" fmt --all; \
+    cargo "+$$1" fmt --all; rustfmt "+$$1" --edition 2024 testing/package-consumer.rs; \
     cargo "+$$1" fmt --manifest-path testing/runtime-qualification/Cargo.toml --all' -- "$(VALIDATION_TOOLCHAIN)"
 FORMAT_CHECK_COMMAND = bash -ec 'cargo "+$$1" sort --workspace --grouped --check; \
     cargo "+$$1" sort --workspace --grouped --check testing/runtime-qualification; \
-    cargo "+$$1" fmt --all -- --check; \
+    cargo "+$$1" fmt --all -- --check; rustfmt "+$$1" --edition 2024 --check testing/package-consumer.rs; \
     cargo "+$$1" fmt --manifest-path testing/runtime-qualification/Cargo.toml --all -- --check' -- "$(VALIDATION_TOOLCHAIN)"
 # Memory uses IC executables for installed runtime qualification.
 LOCAL_TOOL_INSTALL_TARGETS += install-ic-tools install-release-tools
@@ -113,16 +113,16 @@ fetch-dependencies:
 	+cargo +$(VALIDATION_TOOLCHAIN) fetch --locked
 
 check-pins:
-	+RUSTUP_TOOLCHAIN=$(VALIDATION_TOOLCHAIN) RUSTUP_AUTO_INSTALL=0 CARGO_NET_OFFLINE=true bash scripts/ci/check-dependency-pins.sh --cargo-inheritance
+	+RUSTUP_TOOLCHAIN=$(VALIDATION_TOOLCHAIN) RUSTUP_AUTO_INSTALL=0 CARGO_NET_OFFLINE=true bash scripts/ci/check-workspace-pins.sh
 
 # Product policy stays here; Shared observes the locked normal/build graph.
 check-production-graph:
 	+RUSTUP_TOOLCHAIN=$(VALIDATION_TOOLCHAIN) RUSTUP_AUTO_INSTALL=0 perl scripts/ci/check-cargo-graph.pl \
-		--consumer "$(CURDIR)" --package ic-memory --target wasm32-unknown-unknown \
+		--consumer "$(CURDIR)" --package ic-storage --target wasm32-unknown-unknown \
 		--forbid ic-build --forbid-pattern '^ic-host-' --forbid-pattern '^ic-testkit(?:-|$$)' \
 		--forbid-pattern '^clap(?:_|$$)' \
 		--forbid pocket-ic --forbid serde_json --forbid toml --forbid trybuild \
-		--require ic-stable-structures=1
+		--require ic-stable-structures=1 --require ic-memory=1
 
 # Install exact, checksum-verified tools separately; these checks are offline.
 lint-tooling:
@@ -134,12 +134,13 @@ test-tooling:
 
 test-release-adapters:
 	bash scripts/ci/test-release-adapters.sh
+	bash scripts/ci/test-consolidated-bootstrap.sh
 
 test-hooks: format-tools-check
 	+CDPATH="$(CURDIR)" RUSTUP_AUTO_INSTALL=0 CARGO_NET_OFFLINE=true bash scripts/ci/test-git-hooks.sh
 
 test:
-	+cargo +$(VALIDATION_TOOLCHAIN) test --locked --offline -- --test-threads=1
+	+cargo +$(VALIDATION_TOOLCHAIN) test --workspace --locked --offline -- --test-threads=1
 
 test-fixture-cell:
 	+cargo +$(VALIDATION_TOOLCHAIN) clippy --locked --offline --lib --tests --features test-support -- -D warnings
@@ -160,15 +161,15 @@ validate:
 
 validate-toolchain:
 	$(MAKE) --no-print-directory shared-tooling-check tools-check format-tools-check
-	+cargo +$(VALIDATION_TOOLCHAIN) clippy --locked --offline --all-targets -- -D warnings
-	$(MAKE) --no-print-directory check-production-graph check-pins test-release-adapters
+	+cargo +$(VALIDATION_TOOLCHAIN) clippy --workspace --locked --offline --all-targets -- -D warnings
+	$(MAKE) --no-print-directory check-production-graph check-pins check-storage-boundary check-license check-doc-links test-release-adapters
 	$(MAKE) --no-print-directory test-tools test-tooling test-hooks fmt-check test-fixture-cell
-	+cargo +$(VALIDATION_TOOLCHAIN) test --locked --offline -- --test-threads=1
-	+RUSTDOCFLAGS='-D warnings' cargo +$(VALIDATION_TOOLCHAIN) doc --locked --offline --no-deps
-	+cargo +$(VALIDATION_TOOLCHAIN) check --locked --offline --target wasm32-unknown-unknown --tests
+	+cargo +$(VALIDATION_TOOLCHAIN) test --workspace --locked --offline -- --test-threads=1
+	+RUSTDOCFLAGS='-D warnings' cargo +$(VALIDATION_TOOLCHAIN) doc --workspace --locked --offline --no-deps
+	+cargo +$(VALIDATION_TOOLCHAIN) check --workspace --locked --offline --target wasm32-unknown-unknown --tests
 	$(MAKE) --no-print-directory wasm-size
 	# Validate working-tree edits; release admission separately requires clean source.
-	+cargo +$(VALIDATION_TOOLCHAIN) package --locked --offline --allow-dirty
+	+bash scripts/ci/package-workspace.sh $(VALIDATION_TOOLCHAIN) --allow-dirty
 
 wasm-size:
 	+cargo +$(VALIDATION_TOOLCHAIN) build --locked --offline --profile wasm-size --target wasm32-unknown-unknown \
@@ -206,10 +207,22 @@ qualify-release:
 	+$(TOOL) qualify-release
 
 package: ensure-clean
-	+cargo +$(VALIDATION_TOOLCHAIN) package --locked --offline
+	+bash scripts/ci/package-workspace.sh $(VALIDATION_TOOLCHAIN)
 
 publish:
 	+$(TOOL) publish
 
 publish-dry-run:
 	+$(TOOL) publish --dry-run
+
+.PHONY: check-storage-boundary check-license check-doc-links
+check-storage-boundary:
+	+RUSTUP_TOOLCHAIN=$(VALIDATION_TOOLCHAIN) RUSTUP_AUTO_INSTALL=0 CARGO_NET_OFFLINE=true bash scripts/ci/check-cargo-dependency-boundaries.sh --consumer "$(CURDIR)"
+
+check-license:
+	perl scripts/ci/check-license.pl --kind mit --file LICENSE
+	cmp LICENSE crates/ic-memory/LICENSE
+	perl scripts/ci/check-license.pl --kind mit --file crates/ic-storage/LICENSE
+
+check-doc-links:
+	perl scripts/ci/check-documentation-links.pl --root "$(CURDIR)" README.md AGENTS.md docs/status/current.md docs/migration/ic-persistence.md docs/storage/upstreams.md crates/ic-storage/README.md docs/archive/private-btree/*.md docs/history/ic-storage/index.md

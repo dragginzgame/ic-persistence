@@ -14,8 +14,11 @@ Before changing tooling, formatting, release adapters or retention, read
 vendored files or attribute dirty shared source to a committed export.
 
 The virtual repository-root workspace owns shared package metadata and the
-dependency catalog. The library package is `crates/ic-memory/`; its source,
-examples, tests, current wire fixtures and canonical package README live there.
+dependency catalog. The library packages are `crates/ic-memory/` and `crates/ic-storage/`.
+Memory owns allocation governance, bootstrap and exclusive leases; Storage owns
+governed collections over those leases. Storage depends on Memory, never the
+reverse. Package source, tests and canonical READMEs live under their packages.
+The repository is IC Persistence; published crate identities remain unchanged.
 Follow the [workspace layout rules](rules/rust-workspaces.md).
 
 Product contracts and numeric limits remain owned by this crate. Host support
@@ -31,7 +34,7 @@ manager/ledger implementation remain their explicit infrastructure boundary.
 Generic storage engines and upstream collections preserve this guarantee only
 when their production integrations use checked runtime handles. See the
 [shared policy note](docs/shared-tooling-adoption.md#stable-memory-governance-policy)
-for the upstream contribution and the separate `ic-storage` integration boundary.
+for the upstream contribution and the `ic-storage` package integration boundary.
 
 ## Development and qualification commands
 
@@ -171,3 +174,12 @@ pub struct SchemaMetadata {
 
 Keep this shape for new or edited item-level docs unless local context clearly
 requires a different style.
+
+## Consolidation transition
+
+Read [the migration map](docs/migration/ic-persistence.md) and current handoff.
+Storage temporarily retains explicit package version 0.5.9 while Memory remains
+0.49.4: consolidation does not authorize a version bump. The first coordinated
+release is 0.50.0; the release adapter then changes Storage to workspace version
+inheritance. Keep both public APIs, collection formats and allocation custody
+unchanged. Storage retains its existing lint policy and declaration boundary.

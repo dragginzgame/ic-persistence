@@ -276,6 +276,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "ic-storage"
+version = "0.5.9"
+dependencies = [
+ "ic-memory",
+ "ic-stable-structures",
+]
+
+[[package]]
 name = "ic_principal"
 version = "0.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"

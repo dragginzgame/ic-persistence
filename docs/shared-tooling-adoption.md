@@ -1,4 +1,4 @@
-# Memory tooling adoption and qualification boundaries
+# IC Persistence tooling adoption and qualification boundaries
 
 Read this before changing the shared snapshot, tool setup, release adapters,
 formatting or evidence retention. [AGENTS.md](../AGENTS.md) owns the local overlay;
@@ -9,8 +9,11 @@ local baseline. Future policy changes require reviewed snapshot adoption.
 
 ## Current source selection
 
-Memory selects Shared Tooling 0.25.8 at
-`0a2d2ee3b5e0ae77755c2915ac28836d4d5ba359`, with 70 explicit roots and 105 payloads.
+IC Persistence selects Shared Tooling 0.25.9 at
+`85aded191d85ac4a8c0e5deab207f6be18895862`, with 74 explicit roots and 113 payloads.
+The canonical takeover exporter retires the imported Storage snapshot after
+verifying its original bytes. Storage PR #18's release retry protection is
+therefore included; uncommitted Shared sibling changes are excluded.
 The canonical [preview and refresh procedure](consuming-snapshots.md#preview-before-refreshing)
 exports committed bytes from a clean source checkout. Direct callers remain
 explicit roots and required companions are derived by the exporter.

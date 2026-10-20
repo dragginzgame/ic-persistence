@@ -44,7 +44,7 @@ for local_root in target .tools; do
             "$local_root" >> "$diagnostics/local-selection.log"
     else
         case "$local_root" in
-            target) paths=(target/qualification target/release-validation) ;;
+            target) paths=(target/qualification target/release-validation target/package-qualification) ;;
             .tools)
                 paths=(.tools/ic-testkit-server)
                 bundles=("$repository_root"/.tools/host-set.* "$repository_root"/.tools/ic-set.*)

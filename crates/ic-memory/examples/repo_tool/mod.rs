@@ -9,9 +9,11 @@ use ic_build::cargo::{
     environment::{
         configuration_directories, is_build_variable, is_compiler_override, observe_configurations,
     },
-    lock_projection::{WorkspaceVersionProjection, verify_workspace_version_projection},
+    lock_projection::{WorkspaceVersionProjection, verify_workspace_release_projection},
     observation::{CargoMetadataSpec, decode_metadata},
-    release_metadata::{render_workspace_lock, render_workspace_manifest},
+    release_metadata::{
+        DependencyVersionProjection, render_workspace_lock, render_workspace_manifest,
+    },
     selection::CargoFeatureSelection,
 };
 use ic_host_artifacts::artifact::Sha256Digest;
@@ -46,7 +48,7 @@ type Result<T> = std::result::Result<T, Box<dyn Error>>;
 #[derive(Debug, Parser)]
 #[command(
     name = "repo-tool",
-    about = "IC Memory release and qualification tooling"
+    about = "IC Persistence release and qualification tooling"
 )]
 struct Arguments {
     #[command(subcommand)]
@@ -132,6 +134,8 @@ impl Error for PreparationError {
 }
 
 const PACKAGE_MANIFEST: &str = "crates/ic-memory/Cargo.toml";
+const STORAGE_MANIFEST: &str = "crates/ic-storage/Cargo.toml";
+const PACKAGES: [&str; 2] = ["ic-memory", "ic-storage"];
 const PACKAGE_README: &str = "crates/ic-memory/README.md";
 const CHANGELOG_FINALIZER: &str = "scripts/ci/finalize-release-changelog.awk";
 const RELEASE_INPUT_ADMISSION: &str = "scripts/ci/validate-release-inputs.pl";
@@ -199,6 +203,7 @@ struct PackageEvidence {
     package_head: String,
     lock_sha256: String,
     package_sha256: String,
+    storage_sha256: String,
     commands: Vec<Vec<String>>,
 }
 
@@ -408,15 +413,52 @@ fn toml_string(text: &str, section: &str, field: &str) -> Result<String> {
         .ok_or_else(|| format!("missing {section}.{field}").into())
 }
 
+fn locked_storage_version(text: &str) -> Result<String> {
+    let lock: toml::Value = toml::from_str(text)?;
+    let packages = lock
+        .get("package")
+        .and_then(toml::Value::as_array)
+        .ok_or("missing lock packages")?;
+    let selected: Vec<_> = packages
+        .iter()
+        .filter(|p| {
+            p.get("name").and_then(toml::Value::as_str) == Some("ic-storage")
+                && p.get("source").is_none()
+        })
+        .collect();
+    require(
+        selected.len() == 1,
+        "expected one local Storage lock record",
+    )?;
+    Ok(selected[0]
+        .get("version")
+        .and_then(toml::Value::as_str)
+        .ok_or("missing Storage version")?
+        .to_owned())
+}
+
 fn check_lock_update(before: &[u8], after: &str, previous: &str, version: &str) -> Result<()> {
-    verify_workspace_version_projection(
-        std::str::from_utf8(before)?,
+    let before = std::str::from_utf8(before)?;
+    let storage = locked_storage_version(before)?;
+    verify_workspace_release_projection(
+        before,
         after,
-        &[WorkspaceVersionProjection {
-            package: "ic-memory",
-            previous,
-            next: version,
-        }],
+        &[
+            WorkspaceVersionProjection {
+                package: "ic-memory",
+                previous,
+                next: version,
+            },
+            WorkspaceVersionProjection {
+                package: "ic-storage",
+                previous: &storage,
+                next: if previous == version {
+                    &storage
+                } else {
+                    version
+                },
+            },
+        ],
     )?;
     Ok(())
 }
@@ -530,7 +572,18 @@ impl<E: Execute> Repository<E> {
             "unexpected package version",
         )?;
         expected["workspace"]["package"]["version"] = toml::Value::String(version.to_owned());
-        let updated = render_workspace_manifest(text, previous, version, &[])?;
+        expected["workspace"]["dependencies"]["ic-memory"]["version"] =
+            toml::Value::String(version.to_owned());
+        let updated = render_workspace_manifest(
+            text,
+            previous,
+            version,
+            &[DependencyVersionProjection {
+                alias: "ic-memory",
+                previous,
+                next: version,
+            }],
+        )?;
         require(
             expected == toml::from_str::<toml::Value>(&updated)?,
             "workspace version rendering changed other metadata",
@@ -539,13 +592,21 @@ impl<E: Execute> Repository<E> {
     }
 
     fn replace_lock_version(text: &str, previous: &str, version: &str) -> Result<String> {
+        let storage = locked_storage_version(text)?;
         let updated = render_workspace_lock(
             text,
-            &[WorkspaceVersionProjection {
-                package: "ic-memory",
-                previous,
-                next: version,
-            }],
+            &[
+                WorkspaceVersionProjection {
+                    package: "ic-memory",
+                    previous,
+                    next: version,
+                },
+                WorkspaceVersionProjection {
+                    package: "ic-storage",
+                    previous: &storage,
+                    next: version,
+                },
+            ],
         )?;
         check_lock_update(text.as_bytes(), &updated, previous, version)?;
         Ok(updated)
@@ -680,12 +741,12 @@ impl<E: Execute> Repository<E> {
             .join(format!("{version}{suffix}.json")))
     }
 
-    fn package_path(&self, version: &str) -> Result<PathBuf> {
+    fn package_path(&self, package: &str, version: &str) -> Result<PathBuf> {
         self.version_parts(version)?;
         Ok(self
             .target()?
             .join("package")
-            .join(format!("ic-memory-{version}.crate")))
+            .join(format!("{package}-{version}.crate")))
     }
 
     fn sha256(path: &Path) -> Result<String> {
@@ -709,8 +770,8 @@ impl<E: Execute> Repository<E> {
             .join(format!("{digest}.crate")))
     }
 
-    fn record_package(&self, version: &str) -> Result<String> {
-        let package = self.package_path(version)?;
+    fn record_package(&self, name: &str, version: &str) -> Result<String> {
+        let package = self.package_path(name, version)?;
         let digest = Self::sha256(&package)?;
         let retained = self.retained_package(&digest)?;
         if !retained.exists() {
@@ -797,6 +858,44 @@ impl<E: Execute> Repository<E> {
         )
     }
 
+    fn storage_release_manifest(&self, source: &str, next: &str) -> Result<String> {
+        let text = self.text(STORAGE_MANIFEST, Some(source))?;
+        let mut expected: toml::Value = toml::from_str(&text)?;
+        require(
+            expected["package"]["name"].as_str() == Some("ic-storage"),
+            "unexpected Storage package",
+        )?;
+        if let Some(previous) = expected["package"]["version"].as_str() {
+            require(
+                previous == "0.5.9",
+                "unexpected pre-consolidation Storage version",
+            )?;
+            require(
+                self.version_parts(next)? > self.version_parts(previous)?,
+                "Storage release must advance",
+            )?;
+            expected["package"]["version"] = toml::Value::Table(toml::map::Map::from_iter([(
+                "workspace".to_owned(),
+                toml::Value::Boolean(true),
+            )]));
+            let rendered = text.replacen("version = \"0.5.9\"", "version.workspace = true", 1);
+            require(
+                toml::from_str::<toml::Value>(&rendered)? == expected,
+                "Storage transition changed other metadata",
+            )?;
+            Ok(rendered)
+        } else {
+            require(
+                expected["package"]["version"]
+                    .get("workspace")
+                    .and_then(toml::Value::as_bool)
+                    == Some(true),
+                "expected inherited Storage version",
+            )?;
+            Ok(text)
+        }
+    }
+
     fn surfaces(&self, selection: &ReleaseSelection) -> Result<BTreeMap<String, String>> {
         self.check_selection(selection)?;
         let source = &selection.source;
@@ -824,6 +923,10 @@ impl<E: Execute> Repository<E> {
                 )?,
             ),
             (PACKAGE_README.to_owned(), readme),
+            (
+                STORAGE_MANIFEST.to_owned(),
+                self.storage_release_manifest(source, version)?,
+            ),
             (
                 "CHANGELOG.md".to_owned(),
                 self.release_changelog(
@@ -1187,11 +1290,9 @@ impl<E: Execute> Repository<E> {
                 format!("VALIDATION_TOOLCHAIN={}", self.toolchain()?),
             ],
             vec![
-                "cargo".to_owned(),
-                pin,
-                "package".to_owned(),
-                "--locked".to_owned(),
-                "--offline".to_owned(),
+                "bash".to_owned(),
+                "scripts/ci/package-workspace.sh".to_owned(),
+                pin.trim_start_matches('+').to_owned(),
                 "--allow-dirty".to_owned(),
             ],
         ])
@@ -1199,11 +1300,9 @@ impl<E: Execute> Repository<E> {
 
     fn final_package_command(&self) -> Result<Vec<String>> {
         Ok(vec![
-            "cargo".to_owned(),
-            format!("+{}", self.toolchain()?),
-            "package".to_owned(),
-            "--locked".to_owned(),
-            "--offline".to_owned(),
+            "bash".to_owned(),
+            "scripts/ci/package-workspace.sh".to_owned(),
+            self.toolchain()?,
         ])
     }
 
@@ -1316,16 +1415,20 @@ impl<E: Execute> Repository<E> {
             evidence.package_head == head,
             "package evidence identifies another Git HEAD",
         )?;
-        require(
-            Self::sha256(&self.retained_package(&evidence.package_sha256)?)?
-                == evidence.package_sha256,
-            "retained archive differs from release validation",
-        )?;
-        if working {
+        for (package, digest) in [
+            ("ic-memory", &evidence.package_sha256),
+            ("ic-storage", &evidence.storage_sha256),
+        ] {
             require(
-                Self::sha256(&self.package_path(&selection.version)?)? == evidence.package_sha256,
-                "working package differs from release validation",
+                Self::sha256(&self.retained_package(digest)?)? == *digest,
+                "retained archive differs from release validation",
             )?;
+            if working {
+                require(
+                    Self::sha256(&self.package_path(package, &selection.version)?)? == *digest,
+                    "working package differs from release validation",
+                )?;
+            }
         }
         let mut commands = self.preparation_commands()?;
         if !prepared {
@@ -1374,7 +1477,8 @@ impl<E: Execute> Repository<E> {
             validation,
             package_head: selection.source.clone(),
             lock_sha256,
-            package_sha256: self.record_package(&selection.version)?,
+            package_sha256: self.record_package("ic-memory", &selection.version)?,
+            storage_sha256: self.record_package("ic-storage", &selection.version)?,
             commands,
         };
         self.write_evidence(&evidence, true)?;
@@ -1456,7 +1560,8 @@ impl<E: Execute> Repository<E> {
             "final packaging changed selected dependencies",
         )?;
         evidence.package_head = head;
-        evidence.package_sha256 = self.record_package(&version)?;
+        evidence.package_sha256 = self.record_package("ic-memory", &version)?;
+        evidence.storage_sha256 = self.record_package("ic-storage", &version)?;
         evidence.commands.push(command);
         self.write_evidence(&evidence, false)
     }
@@ -1508,43 +1613,116 @@ impl<E: Execute> Repository<E> {
         Ok(tag)
     }
 
+    fn registry_contains(&self, name: &str, version: &str, digest: &str) -> Result<bool> {
+        require(PACKAGES.contains(&name), "unknown publication package")?;
+        self.version_parts(version)?;
+        let response = self.output(
+            "curl",
+            &[
+                "--silent",
+                "--show-error",
+                "--location",
+                "--max-time",
+                "60",
+                "--write-out",
+                "\n%{http_code}",
+                &format!("https://crates.io/api/v1/crates/{name}/{version}"),
+            ],
+        )?;
+        let (body, status) = response
+            .rsplit_once('\n')
+            .ok_or("missing registry HTTP status")?;
+        if status == "404" {
+            return Ok(false);
+        }
+        require(
+            status == "200",
+            "registry observation failed; publication was not retried",
+        )?;
+        let record: serde_json::Value = serde_json::from_str(body)?;
+        let record = &record["version"];
+        require(
+            record["crate"].as_str() == Some(name)
+                && record["num"].as_str() == Some(version)
+                && record["yanked"].as_bool() == Some(false)
+                && record["checksum"].as_str() == Some(digest),
+            "published package differs from the qualified archive or is yanked",
+        )?;
+        Ok(true)
+    }
+
     fn publish(&self, dry_run: bool) -> Result<()> {
         let release = self.release_commit()?;
         let (version, head, _) = &release;
         let tag = self.check_tag(version, head)?;
-        let mut args = vec![
-            format!("+{}", self.toolchain()?),
-            "publish".to_owned(),
-            "--locked".to_owned(),
-            "--registry".to_owned(),
-            "crates-io".to_owned(),
+        let evidence = self.verify_evidence(&release.2, head, false, true)?;
+        let packages = [
+            ("ic-memory", &evidence.package_sha256),
+            ("ic-storage", &evidence.storage_sha256),
         ];
-        if dry_run {
-            args.push("--dry-run".to_owned());
+        // Observe both before any effect. Conflicting Storage must not allow a
+        // Memory upload; absent Memory must be confirmed before Storage uploads.
+        let published = if dry_run {
+            [false, false]
+        } else {
+            [
+                self.registry_contains(packages[0].0, version, packages[0].1)?,
+                self.registry_contains(packages[1].0, version, packages[1].1)?,
+            ]
+        };
+        for ((name, digest), exists) in packages.into_iter().zip(published) {
+            require(
+                self.release_commit()? == release,
+                "release changed before publication",
+            )?;
+            require(
+                self.check_tag(version, head)? == tag,
+                "release tag changed before publication",
+            )?;
+            if exists {
+                println!("Already published and checksum verified: {name} {version}");
+                continue;
+            }
+            let parent = self.target()?.join("release-validation/publication");
+            fs::create_dir_all(&parent)?;
+            let attempt = parent.join(format!(
+                "{name}.{}.{}",
+                std::process::id(),
+                SystemTime::now().duration_since(UNIX_EPOCH)?.as_nanos()
+            ));
+            // Shared owns per-attempt locking, stdout/stderr and both Cargo and
+            // logger statuses. This adapter owns package order and reconciliation.
+            self.run(
+                "env",
+                &[
+                    &format!("RUSTUP_TOOLCHAIN={}", self.toolchain()?),
+                    "bash",
+                    "scripts/ci/run-cargo-publication.sh",
+                    if dry_run { "check" } else { "publish" },
+                    attempt.to_str().ok_or("non-UTF-8 publication path")?,
+                    head,
+                    "crates-io",
+                    "--package",
+                    &format!("{name}@{version}"),
+                    "--no-verify",
+                ],
+            )?;
+            require(
+                self.release_commit()? == release,
+                "release changed during publication",
+            )?;
+            require(
+                self.check_tag(version, head)? == tag,
+                "release tag changed during publication",
+            )?;
+            if !dry_run {
+                require(
+                    self.registry_contains(name, version, digest)?,
+                    "publication is not yet visible; rerun publish later to reconcile checksums before continuing",
+                )?;
+            }
         }
-        require(
-            self.release_commit()? == release,
-            "release changed before publication",
-        )?;
-        require(
-            self.check_tag(version, head)? == tag,
-            "release tag changed before publication",
-        )?;
-        // Cargo uploads the crate from the package directory. Evidence is checked
-        // before dispatch and rechecked afterwards so a rebuild cannot replace it
-        // silently. Publication itself is a network effect, never an offline retry.
-        self.run(
-            "cargo",
-            &args.iter().map(String::as_str).collect::<Vec<_>>(),
-        )?;
-        require(
-            self.release_commit()? == release,
-            "release changed during publication",
-        )?;
-        require(
-            self.check_tag(version, head)? == tag,
-            "release tag changed during publication",
-        )
+        Ok(())
     }
 }
 

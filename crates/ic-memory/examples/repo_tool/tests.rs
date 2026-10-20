@@ -30,12 +30,15 @@ fn command_arguments_scope_dry_run_to_publication() {
 fn package_retention_refuses_a_replaced_fifo_without_a_writer() {
     if env::var_os("IC_MEMORY_PACKAGE_FIFO_CHILD").is_some() {
         let fixture = Fixture::new();
-        let package = fixture.repo.package_path("0.13.0").unwrap();
+        let package = fixture.repo.package_path("ic-memory", "0.13.0").unwrap();
         fs::create_dir_all(package.parent().unwrap()).unwrap();
         fs::write(&package, b"package bytes").unwrap();
         fixture.repo.exec.state.borrow_mut().archive_change = Some(package);
         fixture.fail("archive-fifo");
-        let error = fixture.repo.record_package("0.13.0").unwrap_err();
+        let error = fixture
+            .repo
+            .record_package("ic-memory", "0.13.0")
+            .unwrap_err();
         let ic_host_fs::durable::NamedWriteError::Producer {
             source,
             cleanup_error: None,
@@ -87,9 +90,9 @@ fn package_retention_refuses_a_replaced_fifo_without_a_writer() {
     assert_eq!(fs::read(result).unwrap(), b"refused");
 }
 
-const MANIFEST: &str = "[workspace]\nmembers = [\"crates/ic-memory\"]\n[workspace.package]\nversion = \"0.12.3\"\nrust-version = \"1.88.0\"\n[workspace.dependencies]\nother = \"0.12.3\"\n";
+const MANIFEST: &str = "[workspace]\nmembers = [\"crates/ic-memory\", \"crates/ic-storage\"]\n[workspace.package]\nversion = \"0.12.3\"\nrust-version = \"1.88.0\"\n[workspace.dependencies]\nic-memory = { path = \"crates/ic-memory\", version = \"0.12.3\" }\nother = \"0.12.3\"\n";
 const PACKAGE: &str = "[package]\nname = \"ic-memory\"\nversion.workspace = true\n";
-const LOCK: &str = "version = 4\n[[package]]\nname = \"ic-memory\"\nversion = \"0.12.3\"\n[[package]]\nname = \"other\"\nversion = \"0.12.3\"\n";
+const LOCK: &str = "version = 4\n[[package]]\nname = \"ic-storage\"\nversion = \"0.5.9\"\ndependencies = [\"ic-memory\"]\n[[package]]\nname = \"ic-memory\"\nversion = \"0.12.3\"\n[[package]]\nname = \"other\"\nversion = \"0.12.3\"\n";
 
 #[test]
 fn native_metadata_refuses_invalid_selected_manifest_without_touching_lock() {
@@ -156,7 +159,9 @@ fn helper_output_cannot_change_locked_dependency_selection() {
             .unwrap();
     assert_eq!(
         rendered,
-        same_name_registry.replacen("version = \"0.12.3\"", "version = \"0.13.0\"", 1)
+        same_name_registry
+            .replacen("version = \"0.12.3\"", "version = \"0.13.0\"", 1)
+            .replace("version = \"0.5.9\"", "version = \"0.13.0\"")
     );
     let changed = LOCK.replace("0.12.3", "0.13.0");
     let error = check_lock_update(LOCK.as_bytes(), &changed, "0.12.3", "0.13.0").unwrap_err();
@@ -267,6 +272,14 @@ impl Fixture {
             ("Cargo.toml".to_owned(), MANIFEST.to_owned()),
             (PACKAGE_MANIFEST.to_owned(), PACKAGE.to_owned()),
             (
+                STORAGE_MANIFEST.to_owned(),
+                "[package]\nname = \"ic-storage\"\nversion = \"0.5.9\"\n".to_owned(),
+            ),
+            (
+                "crates/ic-storage/src/lib.rs".to_owned(),
+                "// storage fixture\n".to_owned(),
+            ),
+            (
                 PACKAGE_README.to_owned(),
                 "# Fixture\n\nic-memory = \"0.12.3\"\n".to_owned(),
             ),
@@ -315,6 +328,7 @@ impl Fixture {
                 archive_change: None,
                 tag: false,
                 descendant: None,
+                published: BTreeMap::new(),
             }),
         };
         Self {
@@ -588,6 +602,7 @@ fn streamed_receipts_preserve_json_and_reject_partial_serialization() {
 
 #[derive(Deserialize, Serialize)]
 struct State {
+    published: BTreeMap<String, String>,
     source: BTreeMap<String, String>,
     release: Option<BTreeMap<String, String>>,
     staged: bool,
@@ -684,6 +699,44 @@ impl Execute for Substitute {
         reason = "one explicit process substitute records every permitted effect"
     )]
     fn run(&self, root: &Path, program: &str, args: &[&str], _: bool) -> Result<String> {
+        if program == "env" {
+            require(
+                args.len() == 10
+                    && args[0] == "RUSTUP_TOOLCHAIN=1.99.0"
+                    && args[1] == "bash"
+                    && args[2] == "scripts/ci/run-cargo-publication.sh"
+                    && matches!(args[3], "check" | "publish")
+                    && args[5] == "release"
+                    && args[6] == "crates-io"
+                    && args[7] == "--package"
+                    && args[9] == "--no-verify",
+                "unexpected coordinated publication attempt",
+            )?;
+            let (name, version) = args[8].split_once('@').ok_or("missing exact selector")?;
+            require(
+                version
+                    == toml_string(
+                        &fs::read_to_string(root.join("Cargo.toml"))?,
+                        "workspace.package",
+                        "version",
+                    )?,
+                "wrong publication version",
+            )?;
+            let mut forwarded = vec![
+                "+1.99.0",
+                "publish",
+                "--locked",
+                "--registry",
+                "crates-io",
+                "--package",
+                name,
+                "--no-verify",
+            ];
+            if args[3] == "check" {
+                forwarded.push("--dry-run");
+            }
+            return self.run(root, "cargo", &forwarded, false);
+        }
         let mut state = self.state.borrow_mut();
         state.calls.push(
             std::iter::once(program)
@@ -737,7 +790,7 @@ impl Execute for Substitute {
                 Err("fixture Make execution refusal".into())
             }
             "perl" | "awk" => Processes.run(root, program, args, true),
-            "bash" => Processes.run(
+            "bash" if args.first() != Some(&"scripts/ci/package-workspace.sh") => Processes.run(
                 &Path::new(env!("CARGO_MANIFEST_DIR")).join("../.."),
                 program,
                 args,
@@ -763,7 +816,10 @@ impl Execute for Substitute {
                 Ok(String::new())
             }
             "cargo" if args.get(1) == Some(&"fetch") => Ok(String::new()),
-            "cargo" if args.get(1) == Some(&"package") => {
+            "cargo" | "bash"
+                if args.get(1) == Some(&"package")
+                    || args.first() == Some(&"scripts/ci/package-workspace.sh") =>
+            {
                 let directory = target.join("package");
                 fs::create_dir_all(&directory)?;
                 if state.fail.as_deref() == Some("package-head") {
@@ -789,12 +845,47 @@ impl Execute for Substitute {
                     directory.join(format!("ic-memory-{}.crate", version()?)),
                     bytes,
                 )?;
+                fs::write(
+                    directory.join(format!("ic-storage-{}.crate", version()?)),
+                    format!("storage-{bytes}"),
+                )?;
                 if state.fail.as_deref() == Some("package") {
                     return Err("fixture package failure".into());
                 }
                 Ok(String::new())
             }
+            "curl" => {
+                if state.fail.as_deref() == Some("registry-error") {
+                    return Ok("unavailable\n503".to_owned());
+                }
+                let url = args.last().unwrap();
+                let name = url.rsplit('/').nth(1).unwrap();
+                let Some(digest) = state.published.get(name) else {
+                    return Ok("missing\n404".to_owned());
+                };
+                Ok(format!(
+                    "{}\n200",
+                    serde_json::json!({"version": {
+                        "crate": name, "num": version()?, "checksum": digest,
+                        "yanked": state.fail.as_deref() == Some("registry-yanked")
+                    }})
+                ))
+            }
             "cargo" if args.get(1) == Some(&"publish") => {
+                let name = args[args.iter().position(|arg| *arg == "--package").unwrap() + 1];
+                if !args.contains(&"--dry-run") {
+                    if name == "ic-storage" && state.fail.as_deref() == Some("storage-upload") {
+                        return Err("Storage upload refused".into());
+                    }
+                    let archive = target
+                        .join("package")
+                        .join(format!("{name}-{}.crate", version()?));
+                    let digest = Repository::<Self>::sha256(&archive)?;
+                    state.published.insert(name.to_owned(), digest);
+                    if state.fail.as_deref() == Some("upload-response-lost") {
+                        return Err("response lost after accepted upload".into());
+                    }
+                }
                 match state.fail.as_deref() {
                     Some("publish-tag-missing") => state.tag = false,
                     Some("publish-tag-commit") => state.fail = Some("tag-commit".to_owned()),
@@ -1097,7 +1188,7 @@ fn compiler_environment_overrides_refuse_preparation_and_release_effects() {
     let paths = [
         fixture.repo.receipt_path("0.13.0", true).unwrap(),
         fixture.repo.receipt_path("0.13.0", false).unwrap(),
-        fixture.repo.package_path("0.13.0").unwrap(),
+        fixture.repo.package_path("ic-memory", "0.13.0").unwrap(),
         fixture
             .repo
             .retained_package(&evidence.package_sha256)
@@ -1289,6 +1380,7 @@ fn inherited_compiler_configuration_refuses_preparation() {
                 archive_change: None,
                 tag: false,
                 descendant: None,
+                published: BTreeMap::new(),
             }),
         },
     };
@@ -1657,6 +1749,9 @@ fn preparation_stage_commit_qualification_and_publish_preserve_exact_evidence() 
             "--locked",
             "--registry",
             "crates-io",
+            "--package",
+            "ic-memory",
+            "--no-verify",
             "--dry-run"
         ]));
     assert!(!state.calls.iter().any(|call| {
@@ -1723,7 +1818,7 @@ fn preparation_retains_primary_and_rollback_errors_and_restores_other_owned_file
 
         fn run(&self, root: &Path, program: &str, args: &[&str], capture: bool) -> Result<String> {
             let result = self.0.run(root, program, args, capture)?;
-            if program == "cargo" && args.get(1) == Some(&"package") {
+            if program == "bash" && args.first() == Some(&"scripts/ci/package-workspace.sh") {
                 // A missing surface models failed inspection during restoration.
                 fs::rename(root.join("CHANGELOG.md"), root.join("retained-changelog"))?;
                 // A foreign replacement must never be overwritten by rollback.
@@ -1786,7 +1881,7 @@ fn preparation_retains_primary_and_rollback_errors_and_restores_other_owned_file
         fixture.repo.exec.state.borrow().source["docs/changelog/0.13.md"]
     );
     assert_eq!(fs::read(validation).unwrap(), saved);
-    assert!(repo.package_path("0.13.0").unwrap().exists());
+    assert!(repo.package_path("ic-memory", "0.13.0").unwrap().exists());
     assert!(!repo.receipt_path("0.13.0", true).unwrap().exists());
     assert!(failure.source().unwrap().is::<std::io::Error>());
     let diagnostic = failure.to_string();
@@ -2118,7 +2213,13 @@ fn interrupted_preparation_finishes_saved_candidate_without_revalidating() {
         if interruption == "package" {
             fixture.fail("package");
             assert!(fixture.repo.prepared(&fixture.selection).is_err());
-            assert!(fixture.repo.package_path("0.13.0").unwrap().exists());
+            assert!(
+                fixture
+                    .repo
+                    .package_path("ic-memory", "0.13.0")
+                    .unwrap()
+                    .exists()
+            );
             fixture.repo.exec.state.borrow_mut().fail = None;
         }
         if matches!(interruption, "partial" | "partial-lock") {
@@ -2277,6 +2378,7 @@ fn all_release_kinds_finalize_root_and_detail_notes_at_saved_date() {
                 "Cargo.lock",
                 "Cargo.toml",
                 PACKAGE_README,
+                STORAGE_MANIFEST,
                 detail
             ],
         );
@@ -2340,10 +2442,10 @@ fn archive_publication_errors_preserve_validation_and_reconcile_visible_bytes() 
         assert_eq!(fs::read(&foreign).unwrap(), b"unrelated evidence");
         assert_eq!(
             transfers() - before_retry,
-            usize::from(phase == "archive-before")
+            usize::from(phase == "archive-before") + 1
         );
         fs::write(&retained, b"corrupted retained archive").unwrap();
-        assert!(fixture.repo.record_package("0.13.0").is_err());
+        assert!(fixture.repo.record_package("ic-memory", "0.13.0").is_err());
         assert_eq!(fs::read(&retained).unwrap(), b"corrupted retained archive");
     }
 }
@@ -2351,7 +2453,7 @@ fn archive_publication_errors_preserve_validation_and_reconcile_visible_bytes() 
 #[test]
 fn archive_copy_refuses_a_directory_and_preserves_unpublished_state() {
     let fixture = Fixture::new();
-    let package = fixture.repo.package_path("0.13.0").unwrap();
+    let package = fixture.repo.package_path("ic-memory", "0.13.0").unwrap();
     fs::create_dir_all(package.parent().unwrap()).unwrap();
     fs::write(&package, b"archive").unwrap();
     let digest = Sha256Digest::compute(b"archive").to_string();
@@ -2362,7 +2464,10 @@ fn archive_copy_refuses_a_directory_and_preserves_unpublished_state() {
     fixture.repo.exec.state.borrow_mut().archive_change = Some(package);
     fixture.fail("archive-read");
 
-    let error = fixture.repo.record_package("0.13.0").unwrap_err();
+    let error = fixture
+        .repo
+        .record_package("ic-memory", "0.13.0")
+        .unwrap_err();
     let ic_host_fs::durable::NamedWriteError::Producer {
         source: actual,
         cleanup_error: None,
@@ -2390,7 +2495,7 @@ fn changed_archive_source_stops_before_publication_or_receipt() {
     fixture.repo.verify(&fixture.selection).unwrap();
     let validation = fixture.repo.validation_path("0.13.0").unwrap();
     let validation_bytes = fs::read(&validation).unwrap();
-    let package = fixture.repo.package_path("0.13.0").unwrap();
+    let package = fixture.repo.package_path("ic-memory", "0.13.0").unwrap();
     fixture.repo.exec.state.borrow_mut().archive_change = Some(package.clone());
     assert!(fixture.repo.prepare_selected(&fixture.selection).is_err());
     fixture.assert_original();
@@ -2649,7 +2754,7 @@ fn changed_missing_and_wrong_source_receipts_never_dispatch_publication() {
             }
             "package" => {
                 fs::write(
-                    fixture.repo.package_path("0.13.0").unwrap(),
+                    fixture.repo.package_path("ic-memory", "0.13.0").unwrap(),
                     "changed artifact",
                 )
                 .unwrap();
@@ -2768,7 +2873,7 @@ fn invalid_prepared_artifacts_stop_final_qualification_without_replacing_evidenc
             .retained_package(&final_evidence.package_sha256)
             .unwrap();
         let archive_bytes = fs::read(&final_archive).unwrap();
-        let working_archive = fixture.repo.package_path("0.13.0").unwrap();
+        let working_archive = fixture.repo.package_path("ic-memory", "0.13.0").unwrap();
         let working_bytes = fs::read(&working_archive).unwrap();
         let prepared_bytes = fs::read(&prepared_path).unwrap();
         let call_start = fixture.repo.exec.state.borrow().calls.len();
@@ -2858,7 +2963,7 @@ fn selected_older_release_reuses_exact_receipts_and_archives_after_a_fix() {
     }
     fixture.repo.exec.state.borrow_mut().descendant = Some(descendant);
     fs::write(
-        fixture.repo.package_path("0.13.0").unwrap(),
+        fixture.repo.package_path("ic-memory", "0.13.0").unwrap(),
         "newer working archive",
     )
     .unwrap();
@@ -3089,4 +3194,115 @@ fn patch_preparation_keeps_head_and_rejects_unvalidated_source_or_staging() {
     fixture.fail("remote-ahead");
     assert!(fixture.prepare().is_err());
     fixture.assert_original();
+}
+
+#[test]
+fn coordinated_publication_resumes_only_matching_packages_in_dependency_order() {
+    let fixture = Fixture::new();
+    fixture.release();
+    fixture.fail("storage-upload");
+    assert!(fixture.repo.publish(false).is_err());
+    assert_eq!(fixture.repo.exec.state.borrow().published.len(), 1);
+    assert!(
+        fixture
+            .repo
+            .exec
+            .state
+            .borrow()
+            .published
+            .contains_key("ic-memory")
+    );
+    fixture.repo.exec.state.borrow_mut().fail = None;
+    fixture.repo.publish(false).unwrap();
+    fixture.repo.publish(false).unwrap();
+    let state = fixture.repo.exec.state.borrow();
+    let uploads: Vec<_> = state
+        .calls
+        .iter()
+        .filter(|call| call.get(2).is_some_and(|arg| arg == "publish"))
+        .map(|call| call[call.iter().position(|arg| arg == "--package").unwrap() + 1].as_str())
+        .collect();
+    assert_eq!(uploads, ["ic-memory", "ic-storage", "ic-storage"]);
+    assert_eq!(state.published.len(), 2);
+}
+
+#[test]
+fn publication_reconciles_a_lost_upload_response_without_reuploading_memory() {
+    let fixture = Fixture::new();
+    fixture.release();
+    fixture.fail("upload-response-lost");
+    assert!(fixture.repo.publish(false).is_err());
+    fixture.repo.exec.state.borrow_mut().fail = None;
+    fixture.repo.publish(false).unwrap();
+    assert_eq!(fixture.repo.exec.state.borrow().published.len(), 2);
+    assert_eq!(
+        fixture
+            .repo
+            .exec
+            .state
+            .borrow()
+            .calls
+            .iter()
+            .filter(|call| call.get(2).is_some_and(|arg| arg == "publish"))
+            .count(),
+        2
+    );
+}
+
+#[test]
+fn registry_conflicts_or_unknown_status_refuse_before_any_upload() {
+    for failure in ["registry-error", "registry-yanked", "checksum"] {
+        let fixture = Fixture::new();
+        fixture.release();
+        let evidence = fixture
+            .repo
+            .verify_evidence(&fixture.selection, "release", false, true)
+            .unwrap();
+        fixture.repo.exec.state.borrow_mut().published.insert(
+            "ic-storage".to_owned(),
+            if failure == "checksum" {
+                "wrong".to_owned()
+            } else {
+                evidence.storage_sha256
+            },
+        );
+        fixture.fail(failure);
+        assert!(fixture.repo.publish(false).is_err());
+        assert!(
+            !fixture
+                .repo
+                .exec
+                .state
+                .borrow()
+                .calls
+                .iter()
+                .any(|call| call.get(2).is_some_and(|arg| arg == "publish"))
+        );
+    }
+}
+
+#[test]
+fn storage_archive_and_manifest_are_bound_to_the_coordinated_release() {
+    let fixture = Fixture::new();
+    fixture.release();
+    assert_eq!(
+        toml::from_str::<toml::Value>(
+            &fs::read_to_string(fixture.repo.root.join(STORAGE_MANIFEST)).unwrap()
+        )
+        .unwrap()["package"]["version"]["workspace"]
+            .as_bool(),
+        Some(true)
+    );
+    let manifest: toml::Value =
+        toml::from_str(&fs::read_to_string(fixture.repo.root.join("Cargo.toml")).unwrap()).unwrap();
+    assert_eq!(
+        manifest["workspace"]["dependencies"]["ic-memory"]["version"].as_str(),
+        Some("0.13.0")
+    );
+    fs::write(
+        fixture.repo.package_path("ic-storage", "0.13.0").unwrap(),
+        b"foreign archive",
+    )
+    .unwrap();
+    assert!(fixture.repo.publish(true).is_err());
 }

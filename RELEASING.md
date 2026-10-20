@@ -2,7 +2,7 @@
   <img src="https://raw.githubusercontent.com/dragginzgame/shared-assets/main/ic-memory/ic-memory-readme-header.svg" alt="IC Memory — Stops upgrades from mixing up stored data" width="100%">
 </p>
 
-# Releasing ic-memory
+# Releasing IC Persistence
 
 This guide covers explicitly authorized release work. Ordinary fixes and release
 preparation leave edits unstaged; an explicit commit or PR request authorizes its
@@ -81,8 +81,8 @@ formatter prerequisites before builds, including under parallel Make.
 
 Release preflight checks the selected cache with `cargo fetch --locked --offline`; it never retries
 online or regenerates the lockfile. Validation, version refresh and packaging
-remain offline. A root-version refresh may change only the `ic-memory` entry,
-never dependency selection. Cache preparation remains a distinct step: the
+remain offline. Version preparation changes only the two local package versions
+and their local dependency references, never external dependency selection. Cache preparation remains a distinct step: the
 documented release command authorizes `cargo fetch --locked` before helper
 compilation, including during resume. Cargo's explicit offline environment and
 configuration settings remain in effect. Ordinary helper calls use a locked,
@@ -331,3 +331,41 @@ explicit authority under the [shared cadence](DRAGGINZGAME.md#validation-and-evi
 Release, publication and installed runtime qualification retain their separate authority.
 Current focused evidence is recorded in
 [release workflow qualification](docs/release-workflow-qualification.md).
+
+## Coordinated Memory and Storage publication
+
+The first consolidated release is 0.50.0 (use `release-minor` after authorized
+cutover). Until then, Storage retains its published 0.5.9 manifest version while
+Memory remains 0.49.4. Preparation converts Storage to workspace inheritance and
+updates both local lock records and the internal Memory version requirement.
+These are saved, source-bound release surfaces with the existing rollback rules.
+Subsequent releases use the common workspace version. Older single-package
+receipts must be resumed in their original checkout/tooling, never converted.
+
+Both qualified archive digests are retained in every package receipt. Packaging
+creates both archives offline and independently builds extracted packages and a
+consumer on native Rust 1.91 and the selected compiler, then checks Wasm. The
+consumer patches registry names only to those extracted archives, avoiding Cargo's
+temporary-registry offline download failure and preventing accidental use of an
+older published Memory. Its manifest/lock/logs are retained under
+`target/package-qualification/`; the maintained root lock is unchanged.
+
+`make publish` admits clean release source, exact tag, both archives and receipts
+before registry effects. It observes both crates.io versions; only HTTP 404 means
+absent. A conflicting checksum, yanked version or failed observation stops the
+command before uploading. It uploads Memory first, confirms the expected registry
+checksum, then uploads Storage. `--no-verify` avoids repeating compilation during
+upload: the exact archives already have independent package qualification.
+
+Shared's canonical publication runner retains each attempt, exact package selector,
+Cargo output and separate Cargo/logger statuses under
+`target/release-validation/publication/`. Interrupted locks are retained for
+inspection rather than automatically broken.
+
+After a partial upload or lost response, retain the release checkout, plans and
+archives and rerun `make publish`. Matching registry checksums are skipped; no
+automatic overwrite, version selection or retry occurs. If visibility is delayed,
+the command stops and can be rerun later. `publish-dry-run` never supplies evidence
+of real publication; Storage's registry resolution may still require Memory's
+selected release to be available. The offline archive consumer proves the
+unpublished pair independently. No real publication was performed by migration.

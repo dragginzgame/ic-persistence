@@ -186,11 +186,15 @@ cat > "$FIXTURE/lint-bin/cargo" <<'STUB'
 set -euo pipefail
 printf 'cargo %s\n' "$*" >> lint-events
 if [[ "${2:-}" == clippy ]]; then
-    [[ "$*" == "+$FIXTURE_TOOLCHAIN clippy --locked --offline --all-targets -- -D warnings" ]] || exit 1
+    [[ "$*" == "+$FIXTURE_TOOLCHAIN clippy --workspace --locked --offline --all-targets -- -D warnings" ]] || exit 1
     exit "$CLIPPY_STATUS"
 fi
 STUB
 chmod +x "$FIXTURE/lint-gate" "$FIXTURE/lint-bin/cargo"
+cat > "$FIXTURE/scripts/ci/package-workspace.sh" <<'STUB'
+#!/usr/bin/env bash
+printf 'package %s\n' "$*" >> lint-events
+STUB
 for lint_status in 23 0; do
     rm -f "$FIXTURE/lint-events"
     status=0
@@ -199,18 +203,18 @@ for lint_status in 23 0; do
         > "$FIXTURE/lint-ordering-$lint_status.log" 2>&1 || status=$?
     printf '%s\n' \
         'make --no-print-directory shared-tooling-check tools-check format-tools-check' \
-        "cargo +$FIXTURE_TOOLCHAIN clippy --locked --offline --all-targets -- -D warnings" \
+        "cargo +$FIXTURE_TOOLCHAIN clippy --workspace --locked --offline --all-targets -- -D warnings" \
         > "$FIXTURE/lint-expected"
     if [[ "$lint_status" == 0 ]]; then
         [[ "$status" == 0 ]] || exit 1
         printf '%s\n' \
-            'make --no-print-directory check-production-graph check-pins test-release-adapters' \
+            'make --no-print-directory check-production-graph check-pins check-storage-boundary check-license check-doc-links test-release-adapters' \
             'make --no-print-directory test-tools test-tooling test-hooks fmt-check test-fixture-cell' \
-            "cargo +$FIXTURE_TOOLCHAIN test --locked --offline -- --test-threads=1" \
-            "cargo +$FIXTURE_TOOLCHAIN doc --locked --offline --no-deps" \
-            "cargo +$FIXTURE_TOOLCHAIN check --locked --offline --target wasm32-unknown-unknown --tests" \
+            "cargo +$FIXTURE_TOOLCHAIN test --workspace --locked --offline -- --test-threads=1" \
+            "cargo +$FIXTURE_TOOLCHAIN doc --workspace --locked --offline --no-deps" \
+            "cargo +$FIXTURE_TOOLCHAIN check --workspace --locked --offline --target wasm32-unknown-unknown --tests" \
             'make --no-print-directory wasm-size' \
-            "cargo +$FIXTURE_TOOLCHAIN package --locked --offline --allow-dirty" \
+            "package $FIXTURE_TOOLCHAIN --allow-dirty" \
             >> "$FIXTURE/lint-expected"
     else
         [[ "$status" == 2 ]] || exit 1
@@ -323,6 +327,12 @@ cp "$ROOT/make/consumer.mk" "$ROOT/make/tools.mk" "$ROOT/make/release.mk" "$ROOT
 cp "$ROOT/ci/release-tools.env" "$ROOT/ci/tool-versions.env" "$jobserver/ci/"
 cp "$ROOT/scripts/ci/check-make-execution.sh" "$ROOT/scripts/ci/check-release-delivery.sh" "$ROOT/scripts/ci/check-format-tools.sh" \
     "$ROOT/scripts/ci/run-formatting.sh" "$jobserver/scripts/ci/"
+mkdir -p "$jobserver/testing"
+cp "$ROOT/testing/package-consumer.rs" "$jobserver/testing/"
+cat > "$jobserver/scripts/ci/package-workspace.sh" <<'STUB'
+#!/usr/bin/env bash
+exec cargo package "$@"
+STUB
 export JOBSERVER_EVENTS="$jobserver/events"
 cat > "$jobserver/bin/cargo" <<'STUB'
 #!/usr/bin/env bash
