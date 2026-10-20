@@ -1,6 +1,6 @@
 # Changelog
 
-## [0.5.9]
+## [0.5.9] - 2026-10-20
 
 - Adopt Shared Tooling 0.25.8, retaining failed Cargo metadata diagnostics and
   accepting numbered `Unreleased` headings during release preparation.
