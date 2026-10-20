@@ -72,6 +72,7 @@ revision	db555ab6cf4a93af9a183f18d921d3b0ee97c725
 # entrypoint	scripts/ci/cargo-tool-cache-key.sh
 # entrypoint	scripts/dev/gh-ci.sh
 # entrypoint	scripts/ci/collect-tool-evidence.sh
+# entrypoint	scripts/ci/check-cargo-graph.pl
 file	6680359b8395bec1cbd264f5f2a2052461b93b9eb20710d649e870999d06404a	-	DRAGGINZGAME.md
 file	9893ae624c25321f5aa22328bf78fb80480444d2bbf2a01a5dedbd244df162e7	-	rules/contributions.md
 file	372e8a256767514d119ecd3e584cd20f15732b3eb169b212716069be7c3f9c80	-	rules/changelogs.md
@@ -141,6 +142,7 @@ file	40f31a19d6115411ebffe7c26e3ed30b8af7eead10dd4830de8d5a9312291222	x	scripts/
 file	4c2ee09c8e87b43397d2df28bdbc1b5fc0197a10ebe0a94d89cb46916b93a9ca	x	scripts/ci/cargo-tool-cache-key.sh
 file	6eb261f79ff2780422a75e018b091bb119f552a1d155504acacefb7e2e290ba0	x	scripts/dev/gh-ci.sh
 file	ad65666b8b34e4967cecff3cfc97038dbc5dfbce146ac57316add2b380310ae1	x	scripts/ci/collect-tool-evidence.sh
+file	851876e2eef381b13708117934f5229e40385f4d592a4de854ec21e1733424dd	-	scripts/ci/check-cargo-graph.pl
 file	4c981184847462ab3c01cac087e28309f8e054253fd95c7bbe56f643877aa708	x	scripts/ci/verify-file-checksum.sh
 file	a4682503812f210b951aede536cdd65642bfe266b02ab532853a1aeff64f9742	x	scripts/ci/verify-shared-tooling-snapshot.sh
 file	2183e51b479f88cfc99cc1ae79204c5b1a653c3e379193afd65565a11632ebc7	-	docs/tool-catalog-bindings.md

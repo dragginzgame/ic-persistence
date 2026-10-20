@@ -25,7 +25,21 @@ FIXTURE="${FIXTURE%/.}"
 # shellcheck source=scripts/ci/fixture-lifecycle.sh
 source "$ROOT/scripts/ci/fixture-lifecycle.sh"
 fixture_complete=false
-trap 'fixture_finish "$?" "$FIXTURE" "Consumer release-adapter fixture retained"' EXIT
+finish_fixture() {
+    local status="$1" command="$2" path
+    if [[ "$status" != 0 || "$fixture_complete" != true ]]; then
+        printf 'Release-adapter fixture failed in %s: %s\n' "$PWD" "$command" >&2
+        for path in "$FIXTURE/bootstrap/bootstrap.log" \
+            "$FIXTURE/bootstrap/release-cache-${CALLER_OFFLINE:-unset}.log"; do
+            if [[ -f "$path" ]]; then
+                printf 'Retained diagnostic: %s\n' "$path" >&2
+                tail -n 40 "$path" >&2
+            fi
+        done
+    fi
+    fixture_finish "$status" "$FIXTURE" "Consumer release-adapter fixture retained"
+}
+trap 'finish_fixture "$?" "$BASH_COMMAND"' EXIT
 mkdir -p "$FIXTURE/ci" "$FIXTURE/make"
 cp "$ROOT/Makefile" "$ROOT/rust-toolchain.toml" "$FIXTURE/"
 cp "$ROOT/ci/release-tools.env" "$ROOT/ci/tool-versions.env" "$FIXTURE/ci/"
@@ -133,8 +147,8 @@ kind="${0##*/install-}"
 kind="${kind%-tools.sh}"
 [[ "$1" == --consumer && "$2" == "$(pwd -P)" ]] || exit 1
 if [[ "$kind" == rust && "$3" == --package ]]; then
-    [[ "$*" == "--consumer $PWD --package ic-build --version 0.22.0 --bin ic-build-release-metadata --profile debug" ||
-       "$*" == "--consumer $PWD --package ic-build --version 0.22.0 --bin ic-build-release-metadata --profile debug --check" ]] || exit 1
+    [[ "$*" == "--consumer $PWD --package ic-build --version $IC_BUILD_RELEASE_METADATA_VERSION --bin ic-build-release-metadata --profile debug" ||
+       "$*" == "--consumer $PWD --package ic-build --version $IC_BUILD_RELEASE_METADATA_VERSION --bin ic-build-release-metadata --profile debug --check" ]] || exit 1
     printf 'editor %s\n' "${11:-install}" >> aggregate-events
     exit 0
 fi
@@ -379,8 +393,8 @@ export FIXTURE_RELEASE_EDITOR="$fixture_editor"
 cat > "$FIXTURE/bootstrap/scripts/dev/install-rust-tools.sh" <<'STUB'
 #!/usr/bin/env bash
 set -euo pipefail
-[[ "$*" == "--consumer $PWD --package ic-build --version 0.22.0 --bin ic-build-release-metadata --profile debug" ||
-   "$*" == "--consumer $PWD --package ic-build --version 0.22.0 --bin ic-build-release-metadata --profile debug --check" ]] || exit 1
+[[ "$*" == "--consumer $PWD --package ic-build --version $IC_BUILD_RELEASE_METADATA_VERSION --bin ic-build-release-metadata --profile debug" ||
+   "$*" == "--consumer $PWD --package ic-build --version $IC_BUILD_RELEASE_METADATA_VERSION --bin ic-build-release-metadata --profile debug --check" ]] || exit 1
 [[ "${CARGO_NET_OFFLINE-unset}" == "$CALLER_OFFLINE" ]] || exit 1
 exit_status="${EDITOR_STATUS:-0}"
 [[ "$exit_status" == 0 ]] || exit "$exit_status"

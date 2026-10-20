@@ -27,3 +27,5 @@ inputs, commands, observed results and remaining limitations. Both the supplied
 Wasm path and `IC_TESTKIT_POCKET_IC_URL` are required when invoking the runner
 directly. `--measure-valid-io` skips the rejection
 and upgrade checks; its output alone is not qualification evidence.
+`--help` lists the supported arguments without reading Wasm or contacting the
+server. Unknown and trailing arguments are rejected before runtime setup.

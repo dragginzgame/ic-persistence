@@ -10,7 +10,7 @@ local baseline. Future policy changes require reviewed snapshot adoption.
 ## Current source selection
 
 Memory selects Shared Tooling 0.25.4 at
-`db555ab6cf4a93af9a183f18d921d3b0ee97c725`, with 69 explicit roots and 104 payloads.
+`db555ab6cf4a93af9a183f18d921d3b0ee97c725`, with 70 explicit roots and 105 payloads.
 The canonical [preview and refresh procedure](consuming-snapshots.md#preview-before-refreshing)
 exports committed bytes from a clean source checkout. The normal sibling's dirty
 policy edits were excluded. Direct callers remain explicit roots and required
@@ -56,6 +56,7 @@ consumer proofs:
 | Snapshot hashes, modes and selected roots | `make shared-tooling-check` |
 | Actual catalogs, installed tools and native reuse | `make tools-check`, formatter admission and native CI |
 | Two-workspace pin policy and exceptions | `make check-pins` |
+| Default production Wasm normal/build dependency exclusions | `make check-production-graph` |
 | Release source, receipts, rollback and Make dispatch | repo-tool tests and `make test-release-adapters`, with substituted Git/Cargo effects |
 | Actual index formatting and failure isolation | `make test-hooks` |
 | Archive selections, hosted transport bindings and retained failures | `make test-tools` and `make test-failure-evidence` |
@@ -64,6 +65,11 @@ Fleet reporters, exporter regression fixtures and generic runner, parser,
 installer, Make, formatter, LOC and checksum matrices are not consumer tests.
 Run them at Shared Tooling's owner when qualifying its implementation. No local
 product proof, native host or installed-tool admission is removed by that split.
+
+The production graph check uses Shared's canonical observer with Memory-owned
+exclusions for native tooling and test dependencies. It checks the default
+`wasm32-unknown-unknown` library graph; it does not replace compilation, artifact
+size budgets or installed qualification. `test-support` adds no dependencies.
 
 ## Tool setup and formatting
 

@@ -4,6 +4,27 @@
 use super::*;
 use std::cell::RefCell;
 
+#[test]
+fn command_arguments_scope_dry_run_to_publication() {
+    for args in [
+        vec!["repo-tool"],
+        vec!["repo-tool", "version", "--dry-run"],
+        vec!["repo-tool", "publish", "unexpected"],
+        vec!["repo-tool", "unknown"],
+    ] {
+        assert!(Arguments::try_parse_from(args).is_err());
+    }
+    for (args, expected) in [
+        (vec!["repo-tool", "publish"], false),
+        (vec!["repo-tool", "publish", "--dry-run"], true),
+    ] {
+        assert!(matches!(
+            Arguments::try_parse_from(args).unwrap().command,
+            ToolCommand::Publish { dry_run } if dry_run == expected
+        ));
+    }
+}
+
 #[cfg(unix)]
 #[test]
 fn package_retention_refuses_a_replaced_fifo_without_a_writer() {

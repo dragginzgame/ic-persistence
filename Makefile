@@ -1,5 +1,5 @@
 .DEFAULT_GOAL := help
-.PHONY: help test version ensure-clean fetch-dependencies check-pins \
+.PHONY: help test version ensure-clean fetch-dependencies check-pins check-production-graph \
         install-tools tools-check install-host-tools host-tools-check install-ic-tools ic-tools-check test-tools test-failure-evidence \
         lint-tooling test-hooks test-tooling test-fixture-cell validate validate-toolchain wasm-size \
         install-runtime-server runtime-server-check test-runtime \
@@ -46,7 +46,7 @@ TESTKIT_SERVER_DIRECTORY := $(CURDIR)/.tools/ic-testkit-server
 
 help:
 	@echo 'Setup: install-tools (host, IC, Cargo tools), fetch-dependencies, install-hooks; prepare the Rust toolchain first.'
-	@echo 'Focused checks: shared-tooling-check, tools-check, test-tools, test-failure-evidence, check-pins, test-tooling, test-fixture-cell, test-release-adapters, test-hooks, fmt-check, lint-tooling.'
+	@echo 'Focused checks: shared-tooling-check, tools-check, test-tools, test-failure-evidence, check-pins, check-production-graph, test-tooling, test-fixture-cell, test-release-adapters, test-hooks, fmt-check, lint-tooling.'
 	@echo 'Formatting: fmt. Full release checks: validate, validate-toolchain.'
 	@echo 'Installed runtime: install-runtime-server (explicit Testkit setup), runtime-server-check (offline), test-runtime (prepared server and locked caches).'
 	@echo 'Report: cloc (root workspace; CLOC_MANIFEST selects an independent Cargo manifest). Fleet reports run in Shared Tooling.'
@@ -115,6 +115,14 @@ fetch-dependencies:
 check-pins:
 	+RUSTUP_TOOLCHAIN=$(VALIDATION_TOOLCHAIN) RUSTUP_AUTO_INSTALL=0 CARGO_NET_OFFLINE=true bash scripts/ci/check-dependency-pins.sh --cargo-inheritance
 
+# Product policy stays here; Shared observes the locked normal/build graph.
+check-production-graph:
+	+RUSTUP_TOOLCHAIN=$(VALIDATION_TOOLCHAIN) RUSTUP_AUTO_INSTALL=0 perl scripts/ci/check-cargo-graph.pl \
+		--consumer "$(CURDIR)" --package ic-memory --target wasm32-unknown-unknown \
+		--forbid ic-build --forbid-pattern '^ic-host-' --forbid-pattern '^ic-testkit(?:-|$$)' \
+		--forbid-pattern '^clap(?:_|$$)' \
+		--forbid pocket-ic --forbid serde_json --forbid toml --forbid trybuild \
+		--require ic-stable-structures=1
 
 # Install exact, checksum-verified tools separately; these checks are offline.
 lint-tooling:
@@ -152,7 +160,8 @@ validate:
 
 validate-toolchain:
 	$(MAKE) --no-print-directory shared-tooling-check tools-check format-tools-check
-	$(MAKE) --no-print-directory check-pins test-tools test-tooling test-release-adapters test-hooks fmt-check test-fixture-cell
+	$(MAKE) --no-print-directory check-production-graph check-pins test-release-adapters
+	$(MAKE) --no-print-directory test-tools test-tooling test-hooks fmt-check test-fixture-cell
 	+cargo +$(VALIDATION_TOOLCHAIN) clippy --locked --offline --all-targets -- -D warnings
 	+cargo +$(VALIDATION_TOOLCHAIN) test --locked --offline -- --test-threads=1
 	+RUSTDOCFLAGS='-D warnings' cargo +$(VALIDATION_TOOLCHAIN) doc --locked --offline --no-deps

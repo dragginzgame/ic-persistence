@@ -4,12 +4,13 @@
 //! package travel together in one receipt. Publication checks that evidence
 //! before dispatch; it never resolves a replacement lockfile.
 
+use clap::{Parser, Subcommand};
 use ic_build::cargo::{
     environment::{
         configuration_directories, is_build_variable, is_compiler_override, observe_configurations,
     },
     lock_projection::{WorkspaceVersionProjection, verify_workspace_version_projection},
-    observation::{CargoMetadataSpec, observe_metadata},
+    observation::{CargoMetadataSpec, decode_metadata},
     release_metadata::{render_workspace_lock, render_workspace_manifest},
     selection::CargoFeatureSelection,
 };
@@ -35,6 +36,70 @@ use std::{
 mod tests;
 
 type Result<T> = std::result::Result<T, Box<dyn Error>>;
+
+///
+/// Arguments
+///
+/// Parse the maintainer command before observing repository state or effects.
+///
+
+#[derive(Debug, Parser)]
+#[command(
+    name = "repo-tool",
+    about = "IC Memory release and qualification tooling"
+)]
+struct Arguments {
+    #[command(subcommand)]
+    command: ToolCommand,
+}
+
+///
+/// ToolCommand
+///
+/// Maintainer operations with command-specific arguments.
+///
+
+#[derive(Debug, Subcommand)]
+enum ToolCommand {
+    /// Print the selected package version.
+    Version,
+    /// Print the package's minimum supported Rust version.
+    Msrv,
+    /// Print the selected development toolchain.
+    Toolchain,
+    /// Print Cargo's target directory.
+    Target,
+    /// Require clean repository source.
+    EnsureClean,
+    /// Check the selected Wasm probe size budgets.
+    WasmSize,
+    /// Admit source and saved release intent before validation.
+    ReleasePreflight,
+    /// Validate and retain release evidence.
+    ReleaseVerify,
+    /// Prepare the saved release's metadata transaction.
+    ReleasePrepareVersion,
+    /// Check prepared metadata against saved intent.
+    ReleasePreparedCheck,
+    /// Print selected release paths as NUL-delimited records.
+    ReleaseFiles,
+    /// Admit the selected index before committing.
+    ReleaseCommitCheck,
+    /// Verify the selected committed release.
+    ReleaseCommittedCheck,
+    /// Verify the selected release tag.
+    ReleaseTaggedCheck,
+    /// Admit the selected release before pushing.
+    ReleasePushCheck,
+    /// Qualify the release's retained source and package.
+    QualifyRelease,
+    /// Publish the qualified package using saved release evidence.
+    Publish {
+        /// Check publication without uploading the package.
+        #[arg(long)]
+        dry_run: bool,
+    },
+}
 
 ///
 /// PreparationError
@@ -201,27 +266,27 @@ struct Processes;
 
 impl Execute for Processes {
     fn cargo_target(&self, root: &Path) -> Result<PathBuf> {
-        let metadata = observe_metadata(
-            &CargoMetadataSpec {
-                manifest_path: &root.join("Cargo.toml"),
-                include_dependencies: false,
-                filter_platform: None,
-                locked: true,
-                offline: true,
-                features: &CargoFeatureSelection::default(),
-            },
+        let mut command = CargoMetadataSpec {
+            manifest_path: &root.join("Cargo.toml"),
+            include_dependencies: false,
+            filter_platform: None,
+            locked: true,
+            offline: true,
+            features: &CargoFeatureSelection::default(),
+        }
+        .command(Command::new("cargo"))?;
+        let output = capture_command(
+            &mut command,
             OutputLimits {
                 stdout: OutputLimit::Terminate(4 * 1024 * 1024),
                 stderr: OutputLimit::Terminate(64 * 1024),
                 timeout: None,
             },
-            Command::new("cargo"),
         )
-        .inspect_err(|error| {
-            if let Some(error) = error.downcast_ref::<ToolError>() {
-                report_tool_error("cargo", error);
-            }
-        })?;
+        .and_then(CompletedExecution::require_success)
+        .and_then(CompletedExecution::require_complete)
+        .inspect_err(|error| report_tool_error("cargo", error))?;
+        let metadata = decode_metadata(&output.stdout)?;
         Ok(metadata.target_directory.into_std_path_buf())
     }
 
@@ -1488,68 +1553,64 @@ impl<E: Execute> Repository<E> {
     reason = "only the binary entrypoint calls this module"
 )]
 pub(super) fn main() -> Result<()> {
-    let args: Vec<_> = env::args().skip(1).collect();
-    require(
-        !args.is_empty() && args.len() <= 2,
-        "usage: repo-tool <version|msrv|toolchain|target|ensure-clean|wasm-size|release-preflight|release-verify|release-prepare-version|release-prepared-check|release-files|release-commit-check|release-committed-check|release-tagged-check|release-push-check|qualify-release|publish> [--dry-run]",
-    )?;
-    let command = args[0].as_str();
-    require(
-        args.len() == 1 || (command == "publish" && args[1] == "--dry-run"),
-        "--dry-run applies only to publish",
-    )?;
+    let arguments = Arguments::parse();
     let repo = Repository {
         root: env::current_dir()?,
         exec: Processes,
     };
-    match command {
-        "version" => println!("{}", repo.version(None)?),
-        "msrv" => println!("{}", repo.msrv()?),
-        "toolchain" => println!("{}", repo.toolchain()?),
-        "target" => println!("{}", repo.target()?.display()),
-        "ensure-clean" => repo.clean()?,
-        "wasm-size" => check_wasm_artifacts(&repo.target()?)?,
-        "release-preflight" => repo.preflight(&ReleaseSelection::from_env(&repo)?)?,
-        "release-verify" => repo.verify(&ReleaseSelection::from_env(&repo)?)?,
-        "release-prepare-version" => repo.prepare_selected(&ReleaseSelection::from_env(&repo)?)?,
-        "release-prepared-check" => {
+    match arguments.command {
+        ToolCommand::Version => println!("{}", repo.version(None)?),
+        ToolCommand::Msrv => println!("{}", repo.msrv()?),
+        ToolCommand::Toolchain => println!("{}", repo.toolchain()?),
+        ToolCommand::Target => println!("{}", repo.target()?.display()),
+        ToolCommand::EnsureClean => repo.clean()?,
+        ToolCommand::WasmSize => check_wasm_artifacts(&repo.target()?)?,
+        ToolCommand::ReleasePreflight => repo.preflight(&ReleaseSelection::from_env(&repo)?)?,
+        ToolCommand::ReleaseVerify => repo.verify(&ReleaseSelection::from_env(&repo)?)?,
+        ToolCommand::ReleasePrepareVersion => {
+            repo.prepare_selected(&ReleaseSelection::from_env(&repo)?)?;
+        }
+        ToolCommand::ReleasePreparedCheck => {
             repo.prepared(&ReleaseSelection::from_env(&repo)?)?;
         }
-        "release-files" => {
+        ToolCommand::ReleaseFiles => {
             for path in repo.surfaces(&ReleaseSelection::from_env(&repo)?)?.keys() {
                 print!("{path}\0");
             }
         }
-        "release-commit-check" => repo.commit_check(&ReleaseSelection::from_env(&repo)?)?,
-        "release-committed-check" => {
+        ToolCommand::ReleaseCommitCheck => {
+            repo.commit_check(&ReleaseSelection::from_env(&repo)?)?;
+        }
+        ToolCommand::ReleaseCommittedCheck => {
             repo.selected_committed_check(
                 &ReleaseSelection::from_env(&repo)?,
                 &release_commit_from_env()?,
             )?;
         }
-        "release-tagged-check" => {
+        ToolCommand::ReleaseTaggedCheck => {
             repo.tagged_check(
                 &ReleaseSelection::from_env(&repo)?,
                 &release_commit_from_env()?,
             )?;
         }
-        "release-push-check" => {
+        ToolCommand::ReleasePushCheck => {
             repo.push_check(
                 &ReleaseSelection::from_env(&repo)?,
                 &release_commit_from_env()?,
             )?;
         }
-        "qualify-release" => repo.qualify_release()?,
-        "publish" => {
+        ToolCommand::QualifyRelease => repo.qualify_release()?,
+        ToolCommand::Publish { dry_run } => {
+            // This policy must reject an invalid environment value even when
+            // --dry-run was explicitly supplied; it is not a CLI flag default.
             let flag = match env::var("PUBLISH_DRY_RUN") {
                 Ok(flag) => flag,
                 Err(env::VarError::NotPresent) => "0".to_owned(),
                 Err(error) => return Err(error.into()),
             };
             require(flag == "0" || flag == "1", "PUBLISH_DRY_RUN must be 0 or 1")?;
-            repo.publish(args.len() == 2 || flag == "1")?;
+            repo.publish(dry_run || flag == "1")?;
         }
-        _ => return Err("unknown repo-tool command".into()),
     }
     Ok(())
 }

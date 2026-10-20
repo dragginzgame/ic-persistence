@@ -1,6 +1,21 @@
 //! Explicit installed qualification of the supplied current-graph fixture.
+use clap::Parser;
 use ic_platform::pocket_ic::{ErrorCode, PocketIcBuilder, RejectResponse};
 use std::{env, fs, time::Duration};
+
+///
+/// Arguments
+///
+/// Select measurement-only execution before reading inputs or contacting a server.
+///
+
+#[derive(Debug, Parser)]
+#[command(about = "Qualify the supplied Wasm against an explicitly prepared PocketIC server")]
+struct Arguments {
+    /// Measure valid IO only, skipping rejection and upgrade checks.
+    #[arg(long)]
+    measure_valid_io: bool,
+}
 
 fn assert_trap(error: RejectResponse) {
     assert!(
@@ -13,11 +28,7 @@ fn assert_trap(error: RejectResponse) {
 }
 
 fn main() {
-    let measure_only = match env::args().nth(1).as_deref() {
-        None => false,
-        Some("--measure-valid-io") => true,
-        Some(_) => panic!("expected no arguments or --measure-valid-io"),
-    };
+    let arguments = Arguments::parse();
     let wasm = fs::read(env::var("IC_MEMORY_QUALIFICATION_WASM").expect("fixture path")).unwrap();
     // The caller owns server startup/teardown. Never implicitly spawn or
     // download a binary as part of qualification.
@@ -39,7 +50,7 @@ fn main() {
     assert_eq!(&initial[8..10], &[0x42, 0x6D]);
     assert_eq!(&initial[18..], &1_u64.to_le_bytes());
 
-    if !measure_only {
+    if !arguments.measure_valid_io {
         // Check all three delegates, including empty spans beyond the extent.
         for operation in 0..3 {
             for (offset, count) in [(65_536, 1), (65_537, 0), (u64::MAX, 1), (u64::MAX - 1, 2)] {
@@ -92,4 +103,30 @@ fn main() {
     assert_eq!(&final_snapshot[8..10], &[0x99, 0x6D]);
     assert_eq!(&final_snapshot[10..], &initial[10..]);
     println!("fixture_wasm_bytes,{}", wasm.len());
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn measurement_arguments_reject_extra_tokens() {
+        assert!(
+            !Arguments::try_parse_from(["runner"])
+                .unwrap()
+                .measure_valid_io
+        );
+        assert!(
+            Arguments::try_parse_from(["runner", "--measure-valid-io"])
+                .unwrap()
+                .measure_valid_io
+        );
+        for args in [
+            vec!["runner", "unexpected"],
+            vec!["runner", "--measure-valid-io", "unexpected"],
+            vec!["runner", "--unknown"],
+        ] {
+            assert!(Arguments::try_parse_from(args).is_err());
+        }
+    }
 }

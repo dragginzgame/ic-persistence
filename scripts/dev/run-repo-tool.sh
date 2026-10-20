@@ -67,7 +67,7 @@ editor_admission=(--check)
 if [[ "${RELEASE_CACHE_PREPARE:-0}" == 1 ]]; then editor_admission=(); fi
 editor="$(RUSTUP_TOOLCHAIN="$toolchain" bash scripts/dev/install-rust-tools.sh \
     --consumer "$PWD" --package ic-build --version "$IC_BUILD_RELEASE_METADATA_VERSION" \
-    --bin ic-build-release-metadata --profile debug "${editor_admission[@]}")"
+    --bin ic-build-release-metadata --profile debug ${editor_admission[@]+"${editor_admission[@]}"})"
 "$editor" --max-input-bytes "$CARGO_RELEASE_METADATA_MAX_BYTES" manifest Cargo.toml \
     "$manifest_version" "$lock_version" > "$scratch/Cargo.toml"
 cp -R crates/ic-memory/src crates/ic-memory/examples "$scratch/crates/ic-memory/"

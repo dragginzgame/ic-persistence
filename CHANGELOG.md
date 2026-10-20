@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.49.3]
+
+- Fix release bootstrap under Bash 3.2 and print retained diagnostics when its
+  adapter fixture fails.
+- Check the production Wasm dependency graph during validation to keep native
+  tooling and test dependencies outside the canister build.
+- Use Clap for maintainer and qualification commands, with help and argument
+  validation before repository or server access.
+
+[Detailed notes](docs/changelog/0.49.md#0493)
+
 ## [0.49.2] - 2026-10-20
 
 - Select Rust 1.99.1 for development and matching CI checks, retaining existing
