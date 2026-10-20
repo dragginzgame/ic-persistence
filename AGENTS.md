@@ -175,11 +175,12 @@ pub struct SchemaMetadata {
 Keep this shape for new or edited item-level docs unless local context clearly
 requires a different style.
 
-## Consolidation transition
+## Consolidated release ownership
 
-Read [the migration map](docs/migration/ic-persistence.md) and current handoff.
-Storage temporarily retains explicit package version 0.5.9 while Memory remains
-0.49.4: consolidation does not authorize a version bump. The first coordinated
-release is 0.50.0; the release adapter then changes Storage to workspace version
-inheritance. Keep both public APIs, collection formats and allocation custody
-unchanged. Storage retains its existing lint policy and declaration boundary.
+Memory and Storage inherit the common workspace version after release 0.50.0.
+The canonical Shared dependency checker enforces inheritance without the retired
+pre-release Storage exception. Keep both public APIs, collection formats and
+allocation custody unchanged. Historical release projection and interrupted
+manifest/lock bootstrap remain supported by the release adapter; they do not
+permit mixed versions in current source. Storage retains its existing lint
+policy and declaration boundary. See [the migration map](docs/migration/ic-persistence.md).

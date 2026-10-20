@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.50.1]
+
+- Retire the pre-consolidation Storage version exception and use the canonical
+  inheritance gate directly; retain historical release recovery and evidence.
+
+
 ## [0.50.0] - 2026-10-20
 
 - Consolidate Memory and Storage as IC Persistence while preserving both crate

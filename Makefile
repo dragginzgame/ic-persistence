@@ -113,7 +113,7 @@ fetch-dependencies:
 	+cargo +$(VALIDATION_TOOLCHAIN) fetch --locked
 
 check-pins:
-	+RUSTUP_TOOLCHAIN=$(VALIDATION_TOOLCHAIN) RUSTUP_AUTO_INSTALL=0 CARGO_NET_OFFLINE=true bash scripts/ci/check-workspace-pins.sh
+	+RUSTUP_TOOLCHAIN=$(VALIDATION_TOOLCHAIN) RUSTUP_AUTO_INSTALL=0 CARGO_NET_OFFLINE=true bash scripts/ci/check-dependency-pins.sh --cargo-inheritance
 
 # Product policy stays here; Shared observes the locked normal/build graph.
 check-production-graph:

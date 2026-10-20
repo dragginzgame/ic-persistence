@@ -1,6 +1,5 @@
 [package]
 name = "ic-storage"
-# Transitional version: release preparation moves both crates to the common version.
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true

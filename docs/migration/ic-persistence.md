@@ -1,8 +1,10 @@
 # IC Persistence consolidation
 
 This is a repository/workspace migration, not an API or persistence redesign.
-The integration checkout is `/tmp/ic-persistence-integration`, branch
-`integration/ic-persistence`. Neither original checkout is renamed or replaced.
+Initial integration used `/tmp/ic-persistence-integration`, branch
+`integration/ic-persistence`. The inventories below preserve that source scope;
+subsequent cutover and retirement are recorded in the checklist. Release 0.50.0
+now aligns both package versions.
 
 ## Preserved inputs
 
@@ -82,16 +84,17 @@ licenses retain their original copyright notices and MIT terms.
 
 ## Version and public identity
 
-Versions remain Memory **0.49.4** and Storage **0.5.9** until an authorized release.
-Storage temporarily declares its original version explicitly. The release adapter
-converts it to workspace inheritance, advances both local lock records and the
-internal Memory requirement together, and rejects unrelated lock changes.
-During this transition, `check-workspace-pins.sh` applies the canonical Shared
-inheritance checks with only the exact Storage version finding exempted. All
-dependency/source checks remain active. Once versions align, it dispatches the
-ordinary strict shared gate.
-The proposed first coordinated release is **0.50.0**, selected by `release-minor`
-from the existing Memory version. No release command was run during migration.
+Before release, Memory retained **0.49.4** and Storage **0.5.9**. The authorized
+0.50.0 release converted Storage to workspace version inheritance and advanced
+both lock records and the internal Memory requirement together. Current source
+uses the strict canonical Shared inheritance gate; the one-time explicit-version
+exception and its local wrapper are retired.
+
+The release adapter retains its exact historical manifest projection for saved
+0.50.0 intent, plus interrupted multi-file bootstrap and rollback. Those recovery
+contracts are distinct from current-source dependency admission. Removing them
+would require proving that retained release/publication receipts no longer use
+the pre-release source; this cleanup does not retire those receipts or artifacts.
 
 The repository move does not rename crates/imports, alter public signatures or
 change durable bytes, allocation keys or lease custody. The later 0.50 release
@@ -131,9 +134,9 @@ and checks the shared lease type; it does not claim a live registry publication.
    Backups are retained at
    `/home/adam/projects/ic-persistence-retirement-2026-10-20/`.
    GitHub deletion remains pending because the CLI token lacks `delete_repo`.
-5. Explicitly release 0.50.0 from reviewed clean main, then publish. The publisher
-   verifies both receipts and registry checksums, uploads Memory first, confirms
-   it before Storage, and resumes by skipping only checksum-matching versions.
+5. Release 0.50.0 is complete. Subsequent authorized releases retain the publisher's
+   two-receipt and registry-checksum admission: upload Memory first, confirm it
+   before Storage, and resume by skipping only checksum-matching versions.
    Keep all saved plans, logs and qualified archives if either publication fails.
 6. Coordinate downstream dependency alignment and branch protection separately.
    The three formerly open PRs are superseded by the consolidated implementation;
