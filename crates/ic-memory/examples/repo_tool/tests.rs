@@ -855,6 +855,9 @@ impl Execute for Substitute {
                 Ok(String::new())
             }
             "curl" => {
+                if state.fail.as_deref() == Some("registry-forbidden") {
+                    return Ok("forbidden\n403".to_owned());
+                }
                 if state.fail.as_deref() == Some("registry-error") {
                     return Ok("unavailable\n503".to_owned());
                 }
@@ -3224,6 +3227,19 @@ fn coordinated_publication_resumes_only_matching_packages_in_dependency_order() 
         .collect();
     assert_eq!(uploads, ["ic-memory", "ic-storage", "ic-storage"]);
     assert_eq!(state.published.len(), 2);
+    let requests: Vec<_> = state
+        .calls
+        .iter()
+        .filter(|call| call[0] == "curl")
+        .collect();
+    assert_ne!(requests, [] as [&Vec<String>; 0]);
+    for request in requests {
+        assert!(request.windows(2).any(|args| {
+            args[0] == "--user-agent"
+                && args[1]
+                    == "ic-persistence-release (https://github.com/dragginzgame/ic-persistence)"
+        }));
+    }
 }
 
 #[test]
@@ -3251,7 +3267,12 @@ fn publication_reconciles_a_lost_upload_response_without_reuploading_memory() {
 
 #[test]
 fn registry_conflicts_or_unknown_status_refuse_before_any_upload() {
-    for failure in ["registry-error", "registry-yanked", "checksum"] {
+    for failure in [
+        "registry-forbidden",
+        "registry-error",
+        "registry-yanked",
+        "checksum",
+    ] {
         let fixture = Fixture::new();
         fixture.release();
         let evidence = fixture
@@ -3267,7 +3288,15 @@ fn registry_conflicts_or_unknown_status_refuse_before_any_upload() {
             },
         );
         fixture.fail(failure);
-        assert!(fixture.repo.publish(false).is_err());
+        let error = fixture.repo.publish(false).unwrap_err().to_string();
+        if let Some(status) = match failure {
+            "registry-forbidden" => Some("403"),
+            "registry-error" => Some("503"),
+            _ => None,
+        } {
+            assert!(error.contains(&format!("HTTP {status}")));
+            assert!(error.contains(&format!("ic-memory {}", fixture.selection.version)));
+        }
         assert!(
             !fixture
                 .repo

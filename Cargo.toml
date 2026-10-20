@@ -7,7 +7,7 @@ exclude = ["testing/runtime-qualification"]
 [workspace.package]
 edition = "2024"
 rust-version = "1.91.0"
-version = "0.50.0"
+version = "0.50.1"
 license = "MIT"
 authors = ["borovan <84897664+borovan@users.noreply.github.com>"]
 description = "Durable stable-memory allocation governance for Internet Computer canisters"
@@ -20,7 +20,7 @@ categories = ["wasm", "data-structures"]
 
 [workspace.dependencies]
 # Production dependencies
-ic-memory = { path = "crates/ic-memory", version = "0.50.0" }
+ic-memory = { path = "crates/ic-memory", version = "0.50.1" }
 # Qualified manager/Cell layout boundary; see AGENTS.md#dependency-exceptions.
 ic-stable-structures = "=0.7.2"
 serde = { version = "1.0", default-features = false, features = [
@@ -32,10 +32,10 @@ thiserror = "2.0"
 
 # Tests and tooling only
 clap = { version = "4.6", default-features = false, features = ["derive", "std", "help", "usage", "error-context"] }
-ic-build = { version = "0.24", default-features = false }
-ic-host-artifacts = { version = "0.32", default-features = false }
-ic-host-fs = { version = "0.32", default-features = false }
-ic-host-process = { version = "0.32", default-features = false }
+ic-build = { version = "0.62", default-features = false }
+ic-host-artifacts = { version = "0.62", default-features = false }
+ic-host-fs = { version = "0.62", default-features = false }
+ic-host-process = { version = "0.62", default-features = false }
 serde_json = "1.0"
 toml = "1.1.6"
 trybuild = "1.0.121"

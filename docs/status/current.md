@@ -6,8 +6,8 @@ collection adapters over those leases. Crate names and public responsibilities
 are unchanged. See the [migration map](../migration/ic-persistence.md) for exact
 source revisions, preserved branches/PRs, exceptions and cutover instructions.
 
-The consolidated default branch released both packages at 0.50.0 in commit
-`f452b5cf9b26a25ee2fb69f4941c079e9c85f4e7`. Both inherit the workspace version;
+The consolidated default branch released both packages at 0.50.1 in commit
+`d61e5c014e11313313da167df3f24af2de6d96aa`. Both inherit the workspace version;
 the old explicit Storage version and current-source pin exception are retired.
 The release adapter still retains historical source projection and interrupted
 metadata bootstrap for existing receipts. Preserve those receipts and artifacts.
