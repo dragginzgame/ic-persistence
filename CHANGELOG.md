@@ -1,6 +1,6 @@
 # Changelog
 
-## [0.49.2]
+## [0.49.2] - 2026-10-20
 
 - Select Rust 1.99.1 for development and matching CI checks, retaining existing
   package MSRVs.
