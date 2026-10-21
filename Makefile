@@ -20,6 +20,7 @@ endif
 # The Rust helper parses the full TOML for its own compiler identity checks.
 VALIDATION_TOOLCHAIN ?= $(shell sed -n 's/^channel = "\([^"]*\)"$$/\1/p' rust-toolchain.toml)
 include ci/release-tools.env
+include ci/runtime-tools.env
 TOOL := bash scripts/dev/run-repo-tool.sh $(VALIDATION_TOOLCHAIN)
 override SHARED_TOOLING_ROOT := $(CURDIR)
 # Both maintained workspaces retain the same complete formatter sequence.
@@ -41,7 +42,6 @@ fmt fmt-check format-tools-check: export RUSTUP_TOOLCHAIN := $(VALIDATION_TOOLCH
 
 # The published Testkit CLI owns PocketIC selection, admission and lifecycle.
 # Keep this tool graph outside both maintained workspace lockfiles.
-IC_TESTKIT_VERSION := 0.63.2
 TESTKIT_CLI := RUSTUP_TOOLCHAIN=$(VALIDATION_TOOLCHAIN) bash scripts/dev/install-rust-tools.sh --consumer "$(CURDIR)" --package ic-testkit --version $(IC_TESTKIT_VERSION) --bin ic-testkit-server --profile release --features cli
 TESTKIT_SERVER_DIRECTORY := $(CURDIR)/.tools/ic-testkit-server
 
@@ -79,7 +79,7 @@ test-runtime: runtime-server-check ic-tools-check
 	  server="$$("$$cli" check --directory "$(TESTKIT_SERVER_DIRECTORY)")" && \
 	  optimizer="$(CURDIR)/.tools/ic/bin/wasm-opt" && \
 	  evidence="$$(mktemp -d target/qualification/runtime/attempt.XXXXXX)" && \
-	  shasum -a 256 Cargo.toml Cargo.lock .shared-tooling.snapshot "$(IC_TOOL_PINS)" \
+	  shasum -a 256 Cargo.toml Cargo.lock .shared-tooling.snapshot ci/runtime-tools.env "$(IC_TOOL_PINS)" \
 	    testing/runtime-qualification/Cargo.toml testing/runtime-qualification/Cargo.lock \
 	    target/wasm32-unknown-unknown/wasm-size/examples/wasm_io_qualification.wasm \
 	    target/runtime-qualification/debug/ic-memory-runtime-qualification "$$cli" "$$server" "$$optimizer" > "$$evidence/inputs.sha256" && \
@@ -131,7 +131,7 @@ check-production-graph:
 # Install exact, checksum-verified tools separately; these checks are offline.
 lint-tooling:
 	$${ACTIONLINT_BIN:-actionlint} .github/workflows/*.yml
-	$${SHELLCHECK_BIN:-shellcheck} --shell=bash ci/release-tools.env ci/tool-versions.env scripts/ci/*.sh scripts/dev/*.sh .githooks/pre-commit
+	$${SHELLCHECK_BIN:-shellcheck} --shell=bash ci/release-tools.env ci/runtime-tools.env ci/tool-versions.env scripts/ci/*.sh scripts/dev/*.sh .githooks/pre-commit
 
 test-tooling:
 	+cargo +$(VALIDATION_TOOLCHAIN) test --locked --offline --example repo-tool

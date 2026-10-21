@@ -256,8 +256,8 @@ jobs:
             ${{ steps.runtime-tool-cache-key.outputs.root }}/cargo-cache
             ${{ steps.runtime-tool-cache-key.outputs.root }}/rust-*
             .tools/ic-testkit-server
-          # Make owns the independently selected CLI and server-directory adapter.
-          key: runtime-tools-${{ runner.os }}-${{ runner.arch }}-${{ steps.runtime-tool-cache-key.outputs.key }}-${{ hashFiles('Makefile') }}
+          # Consumer pins select the CLI; shared installer identity owns build admission.
+          key: runtime-tools-${{ runner.os }}-${{ runner.arch }}-${{ steps.runtime-tool-cache-key.outputs.key }}-${{ hashFiles('ci/runtime-tools.env', 'ci/ic-tools.tsv') }}
       - name: Prepare and verify selected CLI and Testkit server
         shell: bash
         run: |
@@ -275,7 +275,7 @@ jobs:
             ${{ steps.runtime-tool-cache-key.outputs.root }}/cargo-cache
             ${{ steps.runtime-tool-cache-key.outputs.root }}/rust-*
             .tools/ic-testkit-server
-          key: runtime-tools-${{ runner.os }}-${{ runner.arch }}-${{ steps.runtime-tool-cache-key.outputs.key }}-${{ hashFiles('Makefile') }}
+          key: runtime-tools-${{ runner.os }}-${{ runner.arch }}-${{ steps.runtime-tool-cache-key.outputs.key }}-${{ hashFiles('ci/runtime-tools.env', 'ci/ic-tools.tsv') }}
       - name: Prepare both tracked dependency graphs
         shell: bash
         run: |

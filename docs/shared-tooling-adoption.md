@@ -88,8 +88,8 @@ size budgets or installed qualification. `test-support` adds no dependencies.
 
 The shared catalog owns common host/Cargo pins and the IC tool catalog. Memory
 selects its validation compiler, library MSRV, independent qualification workspace
-and Testkit CLI in its own manifests and Makefile. Follow
-[host support](host-support.md) for prerequisites and matching native evidence.
+in its own manifests and Makefile, and Testkit CLI in `ci/runtime-tools.env`.
+Follow [host support](host-support.md) for prerequisites and matching native evidence.
 Source adoption, explicit setup, local activation and native qualification are
 separate; an exported script or configured CI job is not acceptance evidence.
 

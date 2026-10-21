@@ -189,12 +189,15 @@ reporter copies are also retired at the maintainer's explicit selection.
 See [#34](https://github.com/dragginzgame/ic-memory/issues/34).
 
 The common aggregate includes cargo-sort and cargo-sort-derives alongside the
-host and five IC tools. Memory additionally selects the published IC Build
-release editor through `ci/release-tools.env`; `make install-release-tools` and
+host tools and selected `wasm-opt`. Memory additionally selects the published
+IC Build release editor through `ci/release-tools.env`; `make install-release-tools` and
 `make release-tools-check` prepare/admit it explicitly. Candid extraction is no
 longer a common Cargo tool selection. Narrow
 `make install-rust-tools` and offline `make rust-tools-check` remain useful for
 explicit setup retries; they do not establish readiness of the complete set.
+`ci/runtime-tools.env` owns the separately prepared Testkit CLI version. Runtime
+CI caches bind that pin and the IC catalog to Shared Tooling's compiler, native
+environment and installer identity; tool admission still checks restored bytes before qualification.
 The snapshot's `ci/tool-versions.env` owns the common pins. Host, IC and Cargo
 setup use independent snapshot defaults; Memory has no exception catalog.
 Shared Tooling 0.6.1 stores Cargo

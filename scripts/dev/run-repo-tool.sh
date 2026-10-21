@@ -30,27 +30,30 @@ check_dependency_cache() {
 }
 manifest_version="$(RUSTUP_TOOLCHAIN="$toolchain" \
     bash scripts/ci/read-cargo-workspace-version.sh --stable Cargo.toml)"
-# The TOML parser owns syntax; Memory selects exactly its named lock package.
-lock_version="$("${YQ:-yq}" -p toml -o json -I 0 '.' Cargo.lock | jq -ers '
+# Both published packages inherit the one workspace release identity.
+for package in ic-memory ic-storage; do
+    "${YQ:-yq}" -p toml -o json '.' "crates/$package/Cargo.toml" | jq -e --arg name "$package" '
+        .package | if .name == $name and .version == {workspace: true}
+        then true else error("expected inherited version for " + $name) end
+    ' > /dev/null
+done
+# Admit both local lock identities in one observation before shell capture.
+lock_versions="$("${YQ:-yq}" -p toml -o json -I 0 '.' Cargo.lock | jq -ers '
     if length != 1 then error("expected one lock document") else .[0] end
-    | .package | map(select(.name == "ic-memory"))
-    | if length != 1 then error("expected one locked ic-memory package") else .[0].version end
-    | if type != "string" then error("locked version must be a string")
-      elif contains("\n") or contains("\r") or contains("\u0000") then
-        error("locked version contains control bytes")
-      else . end
+    | .package as $packages
+    | ["ic-memory", "ic-storage"] | map(. as $name |
+        [$packages[] | select(.name == $name and .source == null)]
+        | if length != 1 then error("expected one local " + $name + " package") else .[0].version end
+        | if type != "string" then error("locked version must be a string")
+          elif contains("\n") or contains("\r") or contains("\u0000") then
+            error("locked version contains control bytes")
+          else . end)
+    | @tsv
 ')"
+IFS=$'\t' read -r lock_version storage_lock <<< "$lock_versions"
 perl scripts/ci/validate-release-inputs.pl version "$lock_version" > /dev/null
-storage_coherent=true
-if [[ -f crates/ic-storage/Cargo.toml ]]; then
-    storage_lock="$("${YQ:-yq}" -p toml -o json '.' Cargo.lock | jq -er '
-        [.package[] | select(.name == "ic-storage" and .source == null)] |
-        if length == 1 then .[0].version else error("expected one local Storage package") end')"
-    storage_version="$("${YQ:-yq}" -p toml -o json '.' crates/ic-storage/Cargo.toml | jq -er --arg common "$manifest_version" '
-        .package.version | if type == "string" then . elif .workspace == true then $common else error("invalid Storage version") end')"
-    [[ "$storage_lock" == "$storage_version" ]] || storage_coherent=false
-fi
-if [[ "$manifest_version" == "$lock_version" && "$storage_coherent" == true ]]; then
+perl scripts/ci/validate-release-inputs.pl version "$storage_lock" > /dev/null
+if [[ "$manifest_version" == "$lock_version" && "$manifest_version" == "$storage_lock" ]]; then
     check_dependency_cache
     exec cargo "+$toolchain" run --locked --offline --quiet --example repo-tool -- "$@"
 fi
@@ -77,34 +80,29 @@ if [[ "${RELEASE_CACHE_PREPARE:-0}" == 1 ]]; then editor_admission=(); fi
 editor="$(RUSTUP_TOOLCHAIN="$toolchain" bash scripts/dev/install-rust-tools.sh \
     --consumer "$PWD" --package ic-build --version "$IC_BUILD_RELEASE_METADATA_VERSION" \
     --bin ic-build-release-metadata --profile debug --features cli ${editor_admission[@]+"${editor_admission[@]}"})"
-editor_context=()
-if [[ -f crates/ic-storage/Cargo.toml ]]; then
-    mkdir -p "$scratch/crates/ic-storage"
-    cp -R crates/ic-storage/src crates/ic-storage/README.md "$scratch/crates/ic-storage/"
-    # Only compilation metadata is normalized; tracked files and saved release
-    # intent remain untouched and are independently admitted by the Rust helper.
-    perl scripts/ci/validate-release-inputs.pl version "$storage_lock" > /dev/null
-    awk -v version="$storage_lock" '
-        /^\[package\]$/ { package = 1; print; next }
-        /^\[/ { package = 0 }
-        package && /^[[:space:]]*version(\.workspace)?[[:space:]]*=/ {
-            print "version = \"" version "\""; count++; next
-        }
-        { print }
-        END { if (count != 1) exit 1 }
-    ' crates/ic-storage/Cargo.toml > "$scratch/crates/ic-storage/Cargo.toml"
-    original_storage="$("${YQ:-yq}" -p toml -o json '.' crates/ic-storage/Cargo.toml)"
-    rendered_storage="$("${YQ:-yq}" -p toml -o json '.' "$scratch/crates/ic-storage/Cargo.toml")"
-    jq -ne --argjson before "$original_storage" --argjson after "$rendered_storage" \
-        --arg version "$storage_lock" '($before | .package.version = $version) == $after' > /dev/null
-    "${YQ:-yq}" -p toml -o json '.' Cargo.toml | jq --arg root "$PWD" '{manifest: ., members: [
-        {name: "ic-memory", manifest_path: ($root + "/crates/ic-memory/Cargo.toml")},
-        {name: "ic-storage", manifest_path: ($root + "/crates/ic-storage/Cargo.toml")}
-    ]}' > "$scratch/workspace-input.json"
-    editor_context=("$scratch/workspace-input.json")
-fi
+mkdir -p "$scratch/crates/ic-storage"
+cp -R crates/ic-storage/src crates/ic-storage/README.md "$scratch/crates/ic-storage/"
+# Only compilation metadata is normalized; tracked files and saved release
+# intent remain untouched and are independently admitted by the Rust helper.
+awk -v version="$storage_lock" '
+    /^\[package\]$/ { package = 1; print; next }
+    /^\[/ { package = 0 }
+    package && /^[[:space:]]*version(\.workspace)?[[:space:]]*=/ {
+        print "version = \"" version "\""; count++; next
+    }
+    { print }
+    END { if (count != 1) exit 1 }
+' crates/ic-storage/Cargo.toml > "$scratch/crates/ic-storage/Cargo.toml"
+original_storage="$("${YQ:-yq}" -p toml -o json '.' crates/ic-storage/Cargo.toml)"
+rendered_storage="$("${YQ:-yq}" -p toml -o json '.' "$scratch/crates/ic-storage/Cargo.toml")"
+jq -ne --argjson before "$original_storage" --argjson after "$rendered_storage" \
+    --arg version "$storage_lock" '($before | .package.version = $version) == $after' > /dev/null
+"${YQ:-yq}" -p toml -o json '.' Cargo.toml | jq --arg root "$PWD" '{manifest: ., members: [
+    {name: "ic-memory", manifest_path: ($root + "/crates/ic-memory/Cargo.toml")},
+    {name: "ic-storage", manifest_path: ($root + "/crates/ic-storage/Cargo.toml")}
+]}' > "$scratch/workspace-input.json"
 "$editor" --max-input-bytes "$CARGO_RELEASE_METADATA_MAX_BYTES" manifest Cargo.toml \
-    "$manifest_version" "$lock_version" ${editor_context[@]+"${editor_context[@]}"} > "$scratch/Cargo.toml"
+    "$manifest_version" "$lock_version" "$scratch/workspace-input.json" > "$scratch/Cargo.toml"
 cp -R crates/ic-memory/src crates/ic-memory/examples "$scratch/crates/ic-memory/"
 # This only makes compilation metadata coherent; it grants no release authority.
 # The adapter runs in the real checkout and checks source, intent and evidence.

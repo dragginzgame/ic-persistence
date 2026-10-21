@@ -15,13 +15,13 @@ publication to the new public `dragginzgame/ic-persistence` repository on
 2026-10-20. The destination exists with collaborator-only PR creation; the
 consolidated branch was selected for its `main`. Downstream consumers retain their own dependency adoption decisions.
 
-Both packages inherit released workspace version 0.50.8. The completed 0.50.0
+Both packages inherit released workspace version 0.50.9. The completed 0.50.0
 conversion needs no version exception or manifest-rewrite path. Shared Tooling
 0.26.2 (`1959ef75d0b86ed7725d41ae5056303d35eb633d`) owns optimizer-only setup
 and evidence. Release 0.50.8 passed all ten native/MSRV/installed-runtime checks;
 the supplying Tooling 0.63.2 matrix also passed after its Intel DNS retry.
 
-Pending compatible 0.50.9 notes cover both crates and the independent runner
+Release 0.50.9 delivers both crates and the independent runner
 selecting published Platform 0.6.5. All maintained library/tests/example imports
 use its exports. Direct substrate declarations and allowances are retired;
 production admission checks exact registry 0.7.2 identity and singleton graphs.
@@ -40,9 +40,16 @@ Platform selections and consumer edges; PocketIC remains 16.1.0.
 
 [Platform #45](https://github.com/dragginzgame/ic-platform/issues/45) supplies the
 manager exports. Its exact release CI is still asynchronous; installed-runtime
-producer acceptance passes. Local source is uncommitted. Delivery and native
-consumer acceptance remain under
+producer acceptance passes. The adoption was delivered at
+`7ac7f78c7b8846c65c40a73a3fb10a3f824bdd63`; remaining native acceptance is tracked
+under
 [Persistence #130](https://github.com/dragginzgame/ic-persistence/issues/130).
+
+Pending compatible 0.50.10 tooling cleanup requires both inherited package
+manifests during bootstrap while preserving interrupted metadata recovery.
+Testkit's unchanged CLI pin lives in `ci/runtime-tools.env`; runtime CI keys
+use that selection and IC pins with Shared's build identity, so unrelated
+Makefile changes no longer select an empty tool cache.
 
 CI retains its failure-evidence fixture from the main validation pass for the
 hosted round trip. Archive rejection cases share prepared, hashed archives;

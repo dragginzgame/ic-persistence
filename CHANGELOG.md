@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.50.10] - Unreleased
+
+- Retire single-crate release bootstrap paths and narrow runtime CI cache keys
+  to tool selections, preserving interrupted recovery and offline admission.
+  [Details](docs/changelog/0.50.md#05010).
+
 ## [0.50.9] - 2026-10-21
 
 - Route Memory and Storage through IC Platform 0.6.5, preserving their substrate

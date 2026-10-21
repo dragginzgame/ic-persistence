@@ -187,8 +187,8 @@ They validate source/input identities, finalize the root and detail notes with
 the saved UTC date, update Cargo metadata, preserve the saved README and qualify the packages. The
 explicit staged file set is `Cargo.toml`, `Cargo.lock`, `crates/ic-memory/README.md`, `CHANGELOG.md`
 and the candidate minor-line detail file. The root lock edit changes only the
-`ic-memory` package version; the independent qualification lock is not a release
-edit. Git mutations belong exclusively to the common runner.
+local `ic-memory` and `ic-storage` package versions; the independent qualification
+lock is not a release edit. Git mutations belong exclusively to the common runner.
 
 Preflight checks both working files and the entire index. Restoring a working
 file does not hide unrelated or arbitrary staged content. The same index guard
@@ -197,7 +197,9 @@ metadata from the selected SHA and require its sole parent, release subject and
 exact prepared metadata to match saved intent.
 
 The root `[workspace.package]` owns the release version and MSRV;
-`crates/ic-memory/Cargo.toml` inherits them and stays unchanged during a bump.
+both package manifests inherit them and stay unchanged during a bump.
+The helper launcher requires both inherited declarations; interrupted metadata
+recovery uses regular copies of both packages and leaves tracked inputs intact.
 The canonical dependency example is in the package README.
 
 Metadata writes use same-directory atomic replacement, with `Cargo.toml` last.

@@ -18,7 +18,7 @@ ROOT="${ROOT%/.}"
 FIXTURE_TOOLCHAIN="$(sed -n 's/^channel = "\([^"]*\)"$/\1/p' "$ROOT/rust-toolchain.toml")"
 [[ "$FIXTURE_TOOLCHAIN" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || exit 1
 export FIXTURE_TOOLCHAIN
-bash "$ROOT/scripts/ci/check-release-commands.sh" "$ROOT" rust-toolchain.toml ci/release-tools.env ci/tool-versions.env make/consumer.mk make/tools.mk make/release.mk make/rust-format.mk make/execution.mk scripts/ci/check-make-execution.sh scripts/ci/check-release-delivery.sh
+bash "$ROOT/scripts/ci/check-release-commands.sh" "$ROOT" rust-toolchain.toml ci/release-tools.env ci/runtime-tools.env ci/tool-versions.env make/consumer.mk make/tools.mk make/release.mk make/rust-format.mk make/execution.mk scripts/ci/check-make-execution.sh scripts/ci/check-release-delivery.sh
 FIXTURE="$(mktemp -d "${TMPDIR:-/tmp}/ic-memory-release-adapters.XXXXXX")"
 FIXTURE="$(CDPATH="" cd -P -- "$FIXTURE" && printf '%s/.' "$PWD")"
 FIXTURE="${FIXTURE%/.}"
@@ -42,7 +42,7 @@ finish_fixture() {
 trap 'finish_fixture "$?" "$BASH_COMMAND"' EXIT
 mkdir -p "$FIXTURE/ci" "$FIXTURE/make"
 cp "$ROOT/Makefile" "$ROOT/rust-toolchain.toml" "$FIXTURE/"
-cp "$ROOT/ci/release-tools.env" "$ROOT/ci/tool-versions.env" "$FIXTURE/ci/"
+cp "$ROOT/ci/release-tools.env" "$ROOT/ci/runtime-tools.env" "$ROOT/ci/tool-versions.env" "$FIXTURE/ci/"
 cp "$ROOT/make/consumer.mk" "$ROOT/make/tools.mk" "$ROOT/make/release.mk" "$ROOT/make/rust-format.mk" "$ROOT/make/execution.mk" "$FIXTURE/make/"
 mkdir -p "$FIXTURE/scripts/ci"
 cp "$ROOT/scripts/ci/check-make-execution.sh" "$ROOT/scripts/ci/check-release-delivery.sh" "$FIXTURE/scripts/ci/"
@@ -371,7 +371,7 @@ jobserver="$FIXTURE/jobserver"
 mkdir -p "$jobserver/bin" "$jobserver/make" "$jobserver/ci" "$jobserver/scripts/ci"
 cp "$ROOT/Makefile" "$ROOT/rust-toolchain.toml" "$jobserver/"
 cp "$ROOT/make/consumer.mk" "$ROOT/make/tools.mk" "$ROOT/make/release.mk" "$ROOT/make/rust-format.mk" "$ROOT/make/execution.mk" "$jobserver/make/"
-cp "$ROOT/ci/release-tools.env" "$ROOT/ci/tool-versions.env" "$jobserver/ci/"
+cp "$ROOT/ci/release-tools.env" "$ROOT/ci/runtime-tools.env" "$ROOT/ci/tool-versions.env" "$jobserver/ci/"
 cp "$ROOT/scripts/ci/check-make-execution.sh" "$ROOT/scripts/ci/check-release-delivery.sh" "$ROOT/scripts/ci/check-format-tools.sh" \
     "$ROOT/scripts/ci/run-formatting.sh" "$jobserver/scripts/ci/"
 mkdir -p "$jobserver/testing"
@@ -478,7 +478,7 @@ done
 mkdir -p "$FIXTURE/bootstrap/scripts/dev" "$FIXTURE/bootstrap/bin" \
     "$FIXTURE/bootstrap/crates/ic-memory/src" "$FIXTURE/bootstrap/crates/ic-memory/examples" "$FIXTURE/bootstrap/ci" "$FIXTURE/bootstrap/make"
 cp "$ROOT/Makefile" "$ROOT/rust-toolchain.toml" "$FIXTURE/bootstrap/"
-cp "$ROOT/ci/release-tools.env" "$ROOT/ci/tool-versions.env" "$FIXTURE/bootstrap/ci/"
+cp "$ROOT/ci/release-tools.env" "$ROOT/ci/runtime-tools.env" "$ROOT/ci/tool-versions.env" "$FIXTURE/bootstrap/ci/"
 cp "$ROOT/make/consumer.mk" "$ROOT/make/tools.mk" "$ROOT/make/release.mk" "$ROOT/make/rust-format.mk" "$ROOT/make/execution.mk" "$FIXTURE/bootstrap/make/"
 mkdir -p "$FIXTURE/bootstrap/scripts/ci"
 cp "$ROOT/scripts/ci/check-make-execution.sh" "$ROOT/scripts/ci/check-release-delivery.sh" "$FIXTURE/bootstrap/scripts/ci/"
@@ -503,16 +503,20 @@ STUB
 cd "$FIXTURE/bootstrap"
 cat > Cargo.toml <<'MANIFEST'
 [workspace]
-members = ["crates/ic-memory"]
+members = ["crates/ic-memory", "crates/ic-storage"]
 [workspace.package]
 version = "0.12.3"
 [workspace.dependencies]
+ic-memory = { path = "crates/ic-memory", version = "0.12.3" }
 other = "0.12.3"
 MANIFEST
 cat > Cargo.lock <<'LOCK'
 version = 4
 [[package]]
 name = "ic-memory"
+version = "0.12.3"
+[[package]]
+name = "ic-storage"
 version = "0.12.3"
 [[package]]
 name = "other"
@@ -526,6 +530,10 @@ cat > crates/ic-memory/Cargo.toml <<'MANIFEST'
 name = "ic-memory"
 version.workspace = true
 MANIFEST
+mkdir -p crates/ic-storage/src
+printf '[package]\nname = "ic-storage"\nversion.workspace = true\n' > crates/ic-storage/Cargo.toml
+echo fixture > crates/ic-storage/README.md
+touch crates/ic-storage/src/lib.rs
 cp Cargo.toml original-manifest
 cat > bin/cargo <<'STUB'
 #!/usr/bin/env bash
@@ -587,6 +595,11 @@ case "$2" in
             [[ -d "$(dirname "$7")/crates/ic-memory/src" && ! -L "$(dirname "$7")/crates/ic-memory/src" ]] || exit 1
             [[ -d "$(dirname "$7")/crates/ic-memory/examples" && ! -L "$(dirname "$7")/crates/ic-memory/examples" ]] || exit 1
             cmp crates/ic-memory/src/lib.rs "$(dirname "$7")/crates/ic-memory/src/lib.rs"
+            cmp crates/ic-storage/src/lib.rs "$(dirname "$7")/crates/ic-storage/src/lib.rs"
+            cmp crates/ic-storage/README.md "$(dirname "$7")/crates/ic-storage/README.md"
+            storage_version="$("$FIXTURE_TOML_YQ" -p toml -o json '.' Cargo.lock | jq -er '.package[] | select(.name == "ic-storage") | .version')"
+            "$FIXTURE_TOML_YQ" -p toml -o json '.' "$(dirname "$7")/crates/ic-storage/Cargo.toml" |
+                jq -e --arg version "$storage_version" '.package == {name: "ic-storage", version: $version}' > /dev/null
             echo bootstrap >> calls
         else
             [[ "$6" == --example && "$7" == repo-tool && "$8" == -- ]] || exit 1
@@ -683,10 +696,11 @@ cmp original-manifest Cargo.toml
 cp calls saved-calls
 cat > expected-manifest <<'MANIFEST'
 [workspace]
-members = ["crates/ic-memory"]
+members = ["crates/ic-memory", "crates/ic-storage"]
 [workspace.package]
 version = "0.13.0"
 [workspace.dependencies]
+ic-memory = { path = "crates/ic-memory", version = "0.13.0" }
 other = "0.12.3"
 MANIFEST
 awk '!changed && $0 == "version = \"0.12.3\"" { $0 = "version = \"0.13.0\""; changed = 1 } { print }' \
@@ -752,30 +766,32 @@ export BOOTSTRAP_TARGET="$normal_target"
 cp calls saved-format-calls
 cat > Cargo.toml <<'MANIFEST'
 [workspace]
-members = ["crates/ic-memory"]
+members = ["crates/ic-memory", "crates/ic-storage"]
 [ workspace.package ] # selected metadata
   version   = "0.12.3" # keep this comment
 [workspace.dependencies]
+ic-memory = { path = "crates/ic-memory", version = "0.12.3" }
 other = "0.12.3"
 MANIFEST
 cp Cargo.toml formatted-manifest
 cat > expected-manifest <<'MANIFEST'
 [workspace]
-members = ["crates/ic-memory"]
+members = ["crates/ic-memory", "crates/ic-storage"]
 [ workspace.package ] # selected metadata
   version   = "0.13.0" # keep this comment
 [workspace.dependencies]
+ic-memory = { path = "crates/ic-memory", version = "0.13.0" }
 other = "0.12.3"
 MANIFEST
 [[ "$(make --no-print-directory -s release-version 2> formatted.log)" == 0.12.3 ]] || exit 1
 cmp formatted-manifest Cargo.toml
 cmp prepared-lock Cargo.lock
 # A parser emitting plausible facts before failing cannot start Cargo preparation.
-for input in Cargo.toml Cargo.lock; do
+for input in Cargo.toml Cargo.lock crates/ic-memory/Cargo.toml crates/ic-storage/Cargo.toml; do
     cp calls saved-parser-calls
     status=0
     TOML_PARSER_FAILURE="$input" bash scripts/dev/run-repo-tool.sh "$FIXTURE_TOOLCHAIN" version \
-        > "failed-toml-$input.log" 2>&1 || status=$?
+        > "failed-toml-${input//\//_}.log" 2>&1 || status=$?
     [[ "$status" != 0 ]] || exit 1
     cmp saved-parser-calls calls
     cmp formatted-manifest Cargo.toml
@@ -794,15 +810,20 @@ cmp duplicate-manifest Cargo.toml
 cmp prepared-lock Cargo.lock
 cp original-manifest Cargo.toml
 # Reject malformed lock values before shell capture can trim or discard bytes.
-for version in '13' '"0.13.0\n"' '"0.13.0\u0000"'; do
-    printf 'version = 4\n[[package]]\nname = "ic-memory"\nversion = %s\n' "$version" > Cargo.lock
-    cp Cargo.lock malformed-lock
-    if bash scripts/dev/run-repo-tool.sh "$FIXTURE_TOOLCHAIN" version > malformed-lock.log 2>&1; then
-        echo 'launcher accepted malformed locked version' >&2; exit 1
-    fi
-    cmp saved-parser-calls calls
-    cmp original-manifest Cargo.toml
-    cmp malformed-lock Cargo.lock
+for package in ic-memory ic-storage; do
+    for version in '13' '"0.13.0\n"' '"0.13.0\u0000"'; do
+        other=ic-memory
+        [[ "$package" == ic-memory ]] && other=ic-storage
+        printf 'version = 4\n[[package]]\nname = "%s"\nversion = %s\n[[package]]\nname = "%s"\nversion = "0.12.3"\n' \
+            "$package" "$version" "$other" > Cargo.lock
+        cp Cargo.lock malformed-lock
+        if bash scripts/dev/run-repo-tool.sh "$FIXTURE_TOOLCHAIN" version > malformed-lock.log 2>&1; then
+            echo 'launcher accepted malformed locked version' >&2; exit 1
+        fi
+        cmp saved-parser-calls calls
+        cmp original-manifest Cargo.toml
+        cmp malformed-lock Cargo.lock
+    done
 done
 cp prepared-lock Cargo.lock
 cp saved-format-calls calls
@@ -819,5 +840,22 @@ fi
 cmp saved-calls calls
 cmp original-manifest Cargo.toml
 cmp conflicting-lock Cargo.lock
+cp prepared-lock Cargo.lock
+for package in ic-memory ic-storage; do
+    manifest="crates/$package/Cargo.toml"
+    cp "$manifest" saved-member
+    for refusal in missing explicit-version; do
+        if [[ "$refusal" == missing ]]; then rm "$manifest"
+        else printf '[package]\nname = "%s"\nversion = "0.12.3"\n' "$package" > "$manifest"; fi
+        cp calls saved-member-calls
+        if bash scripts/dev/run-repo-tool.sh "$FIXTURE_TOOLCHAIN" version > member-refusal.log 2>&1; then
+            echo 'launcher admitted invalid required package metadata' >&2; exit 1
+        fi
+        cmp saved-member-calls calls
+        cmp original-manifest Cargo.toml
+        cmp prepared-lock Cargo.lock
+        cp saved-member "$manifest"
+    done
+done
 echo 'Consumer selection forwarding, attempt retention and launcher checks passed (substitutes only).'
 fixture_complete=true
