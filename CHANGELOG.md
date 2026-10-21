@@ -1,6 +1,6 @@
 # Changelog
 
-## [0.50.7] - Unreleased
+## [0.50.7] - 2026-10-21
 
 - Select only `wasm-opt` for installed qualification, native offline reuse and
   compact evidence through Shared Tooling 0.26.2; preserve full retention and
