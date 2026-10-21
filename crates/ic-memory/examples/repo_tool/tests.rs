@@ -92,7 +92,7 @@ fn package_retention_refuses_a_replaced_fifo_without_a_writer() {
 
 const MANIFEST: &str = "[workspace]\nmembers = [\"crates/ic-memory\", \"crates/ic-storage\"]\n[workspace.package]\nversion = \"0.12.3\"\nrust-version = \"1.88.0\"\n[workspace.dependencies]\nic-memory = { path = \"crates/ic-memory\", version = \"0.12.3\" }\nother = \"0.12.3\"\n";
 const PACKAGE: &str = "[package]\nname = \"ic-memory\"\nversion.workspace = true\n";
-const LOCK: &str = "version = 4\n[[package]]\nname = \"ic-storage\"\nversion = \"0.5.9\"\ndependencies = [\"ic-memory\"]\n[[package]]\nname = \"ic-memory\"\nversion = \"0.12.3\"\n[[package]]\nname = \"other\"\nversion = \"0.12.3\"\n";
+const LOCK: &str = "version = 4\n[[package]]\nname = \"ic-storage\"\nversion = \"0.12.3\"\ndependencies = [\"ic-memory\"]\n[[package]]\nname = \"ic-memory\"\nversion = \"0.12.3\"\n[[package]]\nname = \"other\"\nversion = \"0.12.3\"\n";
 
 #[test]
 fn native_metadata_refuses_invalid_selected_manifest_without_touching_lock() {
@@ -159,9 +159,7 @@ fn helper_output_cannot_change_locked_dependency_selection() {
             .unwrap();
     assert_eq!(
         rendered,
-        same_name_registry
-            .replacen("version = \"0.12.3\"", "version = \"0.13.0\"", 1)
-            .replace("version = \"0.5.9\"", "version = \"0.13.0\"")
+        same_name_registry.replacen("version = \"0.12.3\"", "version = \"0.13.0\"", 2)
     );
     let changed = LOCK.replace("0.12.3", "0.13.0");
     let error = check_lock_update(LOCK.as_bytes(), &changed, "0.12.3", "0.13.0").unwrap_err();
@@ -273,7 +271,7 @@ impl Fixture {
             (PACKAGE_MANIFEST.to_owned(), PACKAGE.to_owned()),
             (
                 STORAGE_MANIFEST.to_owned(),
-                "[package]\nname = \"ic-storage\"\nversion = \"0.5.9\"\n".to_owned(),
+                "[package]\nname = \"ic-storage\"\nversion.workspace = true\n".to_owned(),
             ),
             (
                 "crates/ic-storage/src/lib.rs".to_owned(),

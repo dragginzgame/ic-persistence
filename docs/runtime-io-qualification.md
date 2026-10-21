@@ -1,5 +1,18 @@
 # Runtime IO and maintainer improvements qualification
 
+## IC Tooling 0.63 installed qualification — 2026-10-21
+
+Linux qualification passed with Testkit 0.63.0 (`cli`), Platform 0.6.0,
+PocketIC client/server 16.1.0 and Rust 1.99.1. `make test-runtime` passed for
+original, `-O3`, `-Os` and `-Oz` Wasm. Each variant passed 12 invalid-IO traps
+without retained mutation, both failed-upgrade rollback cases, a successful
+upgrade retry advancing one generation, and all nine valid-IO measurements.
+
+Exact tool, source, binary and Wasm hashes plus optimizer, server and runtime
+logs remain in `target/qualification/runtime/attempt.foqrZd/`. This is installed
+Linux acceptance; it does not claim native macOS, hosted CI or release execution.
+Earlier records below retain their original selections and evidence.
+
 ## IC Platform 0.2 client boundary — 2026-10-19
 
 The pending 0.49.1 runner consumes registry IC Platform 0.2.0, archive source

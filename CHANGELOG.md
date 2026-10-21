@@ -1,9 +1,29 @@
 # Changelog
 
-## [0.50.2]
+## [0.50.5]
 
 - Prepare the declared MSRV for native archive qualification and admit both
   required compilers before expensive validation or packaging.
+  [Details](docs/changelog/0.50.md#0505).
+
+## [0.50.4] - 2026-10-21
+
+- Adopt IC Tooling 0.63, selecting the required `cli` feature for the release
+  metadata editor and Testkit server. [Details](docs/changelog/0.50.md#0504).
+
+## [0.50.3] - 2026-10-21
+
+- Adopt IC Platform 0.6 in the independent runtime harness, retaining PocketIC
+  16.1.0 and the existing client feature. [Details](docs/changelog/0.50.md#0503).
+
+## [0.50.2] - 2026-10-21
+
+- Retire completed consolidation paths and reuse prepared CI evidence and archive
+  fixtures while preserving release recovery and admission checks.
+
+- Align native dependencies and selected release/runtime tools on IC Tooling
+  0.62.1; adopt Platform 0.5.1 in the independent runtime harness.
+  [Detailed notes](docs/changelog/0.50.md#0502).
 
 ## [0.50.1] - 2026-10-20
 

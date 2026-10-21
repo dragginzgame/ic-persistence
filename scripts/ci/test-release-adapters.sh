@@ -147,9 +147,9 @@ kind="${0##*/install-}"
 kind="${kind%-tools.sh}"
 [[ "$1" == --consumer && "$2" == "$(pwd -P)" ]] || exit 1
 if [[ "$kind" == rust && "$3" == --package ]]; then
-    [[ "$*" == "--consumer $PWD --package ic-build --version $IC_BUILD_RELEASE_METADATA_VERSION --bin ic-build-release-metadata --profile debug" ||
-       "$*" == "--consumer $PWD --package ic-build --version $IC_BUILD_RELEASE_METADATA_VERSION --bin ic-build-release-metadata --profile debug --check" ]] || exit 1
-    printf 'editor %s\n' "${11:-install}" >> aggregate-events
+    [[ "$*" == "--consumer $PWD --package ic-build --version $IC_BUILD_RELEASE_METADATA_VERSION --bin ic-build-release-metadata --profile debug --features cli" ||
+       "$*" == "--consumer $PWD --package ic-build --version $IC_BUILD_RELEASE_METADATA_VERSION --bin ic-build-release-metadata --profile debug --features cli --check" ]] || exit 1
+    printf 'editor %s\n' "${13:-install}" >> aggregate-events
     exit 0
 fi
 case "$kind" in
@@ -442,13 +442,13 @@ cp "$ROOT/scripts/dev/run-repo-tool.sh" "$FIXTURE/bootstrap/scripts/dev/"
 # Exercise the real published renderer; substitute only tool-store selection.
 fixture_editor="$(RUSTUP_TOOLCHAIN="$FIXTURE_TOOLCHAIN" bash "$ROOT/scripts/dev/install-rust-tools.sh" \
     --consumer "$ROOT" --package ic-build --version "$IC_BUILD_RELEASE_METADATA_VERSION" \
-    --bin ic-build-release-metadata --profile debug --check)"
+    --bin ic-build-release-metadata --profile debug --features cli --check)"
 export FIXTURE_RELEASE_EDITOR="$fixture_editor"
 cat > "$FIXTURE/bootstrap/scripts/dev/install-rust-tools.sh" <<'STUB'
 #!/usr/bin/env bash
 set -euo pipefail
-[[ "$*" == "--consumer $PWD --package ic-build --version $IC_BUILD_RELEASE_METADATA_VERSION --bin ic-build-release-metadata --profile debug" ||
-   "$*" == "--consumer $PWD --package ic-build --version $IC_BUILD_RELEASE_METADATA_VERSION --bin ic-build-release-metadata --profile debug --check" ]] || exit 1
+[[ "$*" == "--consumer $PWD --package ic-build --version $IC_BUILD_RELEASE_METADATA_VERSION --bin ic-build-release-metadata --profile debug --features cli" ||
+   "$*" == "--consumer $PWD --package ic-build --version $IC_BUILD_RELEASE_METADATA_VERSION --bin ic-build-release-metadata --profile debug --features cli --check" ]] || exit 1
 [[ "${CARGO_NET_OFFLINE-unset}" == "$CALLER_OFFLINE" ]] || exit 1
 exit_status="${EDITOR_STATUS:-0}"
 [[ "$exit_status" == 0 ]] || exit "$exit_status"
