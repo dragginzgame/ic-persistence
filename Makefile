@@ -4,7 +4,7 @@
         lint-tooling test-hooks test-tooling test-fixture-cell validate validate-toolchain wasm-size \
         install-runtime-server runtime-server-check test-runtime \
         install-release-tools release-tools-check \
-        test-release-adapters test-package-admission \
+        test-release-adapters test-package-admission validation-compilers-check \
         release-version release-preflight release-verify release-prepare-version \
         release-prepared-check release-files release-commit-check release-committed-check \
         release-tagged-check release-push-check qualify-release package publish publish-dry-run
@@ -41,8 +41,8 @@ fmt fmt-check format-tools-check: export RUSTUP_TOOLCHAIN := $(VALIDATION_TOOLCH
 
 # The published Testkit CLI owns PocketIC selection, admission and lifecycle.
 # Keep this tool graph outside both maintained workspace lockfiles.
-IC_TESTKIT_VERSION := 0.62.1
-TESTKIT_CLI := RUSTUP_TOOLCHAIN=$(VALIDATION_TOOLCHAIN) bash scripts/dev/install-rust-tools.sh --consumer "$(CURDIR)" --package ic-testkit --version $(IC_TESTKIT_VERSION) --bin ic-testkit-server --profile release
+IC_TESTKIT_VERSION := 0.63.0
+TESTKIT_CLI := RUSTUP_TOOLCHAIN=$(VALIDATION_TOOLCHAIN) bash scripts/dev/install-rust-tools.sh --consumer "$(CURDIR)" --package ic-testkit --version $(IC_TESTKIT_VERSION) --bin ic-testkit-server --profile release --features cli
 TESTKIT_SERVER_DIRECTORY := $(CURDIR)/.tools/ic-testkit-server
 
 help:
@@ -55,10 +55,10 @@ help:
 
 # Explicit preparation; normal checks only admit the selected published editor.
 install-release-tools:
-	+RUSTUP_TOOLCHAIN=$(VALIDATION_TOOLCHAIN) bash scripts/dev/install-rust-tools.sh --consumer "$(CURDIR)" --package ic-build --version $(IC_BUILD_RELEASE_METADATA_VERSION) --bin ic-build-release-metadata --profile debug
+	+RUSTUP_TOOLCHAIN=$(VALIDATION_TOOLCHAIN) bash scripts/dev/install-rust-tools.sh --consumer "$(CURDIR)" --package ic-build --version $(IC_BUILD_RELEASE_METADATA_VERSION) --bin ic-build-release-metadata --profile debug --features cli
 
 release-tools-check:
-	+RUSTUP_TOOLCHAIN=$(VALIDATION_TOOLCHAIN) bash scripts/dev/install-rust-tools.sh --consumer "$(CURDIR)" --package ic-build --version $(IC_BUILD_RELEASE_METADATA_VERSION) --bin ic-build-release-metadata --profile debug --check
+	+RUSTUP_TOOLCHAIN=$(VALIDATION_TOOLCHAIN) bash scripts/dev/install-rust-tools.sh --consumer "$(CURDIR)" --package ic-build --version $(IC_BUILD_RELEASE_METADATA_VERSION) --bin ic-build-release-metadata --profile debug --features cli --check
 
 # Explicit network setup; ordinary tool/library gates never provision a server.
 install-runtime-server: host-tools-check
@@ -137,7 +137,11 @@ test-release-adapters:
 	bash scripts/ci/test-release-adapters.sh
 	bash scripts/ci/test-consolidated-bootstrap.sh
 
+validation-compilers-check:
+	bash scripts/ci/check-validation-compilers.sh $(VALIDATION_TOOLCHAIN)
+
 test-package-admission:
+	bash scripts/ci/test-validation-compilers.sh
 	bash scripts/ci/test-package-admission.sh
 
 test-hooks: format-tools-check
@@ -165,6 +169,7 @@ validate:
 
 validate-toolchain:
 	$(MAKE) --no-print-directory shared-tooling-check tools-check format-tools-check
+	$(MAKE) --no-print-directory validation-compilers-check
 	+cargo +$(VALIDATION_TOOLCHAIN) clippy --workspace --locked --offline --all-targets -- -D warnings
 	$(MAKE) --no-print-directory check-production-graph check-pins check-storage-boundary check-license check-doc-links test-release-adapters
 	$(MAKE) --no-print-directory test-tools test-tooling test-hooks fmt-check test-fixture-cell test-package-admission

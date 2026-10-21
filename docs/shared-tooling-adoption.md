@@ -9,11 +9,11 @@ local baseline. Future policy changes require reviewed snapshot adoption.
 
 ## Current source selection
 
-This draft selects committed Shared Tooling 0.26.1 at
-`67d4f25d1a613a27d7dfd7b5a4ae119e0e529fc7`, with 74 explicit roots and 113 payloads.
-It must remain unintegrated until Shared's native macOS qualification is repaired
-and the selected producer revision is qualified; snapshot integrity alone is not
-native acceptance. See [the adoption issue](https://github.com/dragginzgame/ic-persistence/issues/127).
+This draft selects committed Shared Tooling 0.26.2 at
+`1959ef75d0b86ed7725d41ae5056303d35eb633d`, with 74 explicit roots and 113 payloads.
+Exact-source producer and consumer hosted acceptance remain required before
+integration; snapshot integrity alone is not native acceptance.
+See [the adoption issue](https://github.com/dragginzgame/ic-persistence/issues/127).
 The canonical takeover exporter retires the imported Storage snapshot after
 verifying its original bytes. Storage PR #18's release retry protection is
 therefore included; uncommitted Shared sibling changes are excluded.
@@ -28,9 +28,11 @@ also remains in its focused target. Release notes may use a numbered
 ` - Unreleased` heading, which the shared finalizer dates during preparation.
 
 Shared 0.25.3 binds explicit Cargo feature sets to selected tool installations
-and admission receipts. Memory's current tools need no feature arguments. Rerun
-`make install-tools` for the updated build policy; previous installations and
-failed attempts remain retained, and ordinary checks never repair tools.
+and admission receipts. Build and Testkit 0.63 binaries select `--features cli`
+in setup, offline admission and bootstrap calls. Library dependencies retain
+disabled defaults. Prepare the selections with `make install-tools` and
+`make install-runtime-server`; previous installations and failed attempts remain
+retained, and ordinary checks never repair tools.
 
 Memory's failure collector delegates tool selection and archiving to Shared's
 `collect-tool-evidence.sh`. Failed selector output remains diagnostic data;

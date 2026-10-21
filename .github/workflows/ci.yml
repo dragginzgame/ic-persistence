@@ -68,6 +68,13 @@ jobs:
           components: clippy, rustfmt
           targets: wasm32-unknown-unknown
       - run: make shared-tooling-check
+      - name: Prepare declared compiler for archive consumers
+        shell: bash
+        run: |
+          msrv="$(sed -n 's/^rust-version = "\([^"]*\)"$/\1/p' Cargo.toml)"
+          [[ "$msrv" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || exit 1
+          rustup toolchain install "$msrv" --profile minimal --no-self-update
+          rustup run "$msrv" rustc -Vv
       - name: Prepare host tools and identify common Cargo tool cache
         id: common-tool-cache-key
         shell: bash

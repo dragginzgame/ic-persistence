@@ -1,10 +1,18 @@
 # Changelog
 
-## [0.50.4]
+## [0.50.5]
 
 - Select only `wasm-opt` for installed qualification, native offline reuse and
-  compact evidence through Shared Tooling 0.26.1; preserve full retention and
-  existing optimizer/runtime checks. [Details](docs/changelog/0.50.md#0504).
+  compact evidence through Shared Tooling 0.26.2; preserve full retention and
+  existing optimizer/runtime checks. [Details](docs/changelog/0.50.md#0505).
+- Prepare the declared MSRV for native archive qualification and admit both
+  required compilers before expensive validation or packaging.
+  [Details](docs/changelog/0.50.md#0505).
+
+## [0.50.4] - 2026-10-21
+
+- Adopt IC Tooling 0.63, selecting the required `cli` feature for the release
+  metadata editor and Testkit server. [Details](docs/changelog/0.50.md#0504).
 
 ## [0.50.3] - 2026-10-21
 

@@ -35,6 +35,10 @@ when recording release qualification; retain failed runs and their limitations.
 The current library declares Rust 1.91.0, including its native IC Build metadata dependency.
 The older matrix evidence above retains its original Rust 1.88.0 identity;
 current-source Rust 1.91 native CI acceptance must be recorded separately.
+Native CI prepares both the development compiler and the declared MSRV because
+archive consumers run on both. `make validation-compilers-check` admits those
+installed compilers offline before expensive validation; standalone archive
+qualification performs the same check. Neither check installs a compiler.
 
 - Rustup with Rust 1.99.1, Clippy, rustfmt and `wasm32-unknown-unknown`; also
   install the declared MSRV, Rust 1.91.0. Toolchain changes need a demonstrated
@@ -128,7 +132,7 @@ already tracked by Git. Adopt new locks through an explicitly authorized commit
 or PR before the real-checkout declaration/release gate can pass; qualification
 alone does not authorize staging them.
 
-Installed runtime qualification uses the published `ic-testkit` 0.62.1 server CLI
+Installed runtime qualification uses the published `ic-testkit` 0.63.0 server CLI
 selected in the root Makefile, installed through Shared Tooling's exact Cargo
 binary installer. It has a separate locked registry tool graph, outside both
 Memory lockfiles. Prepare it and Testkit's authenticated server selection explicitly:
