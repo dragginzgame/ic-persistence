@@ -1,6 +1,6 @@
 # Changelog
 
-## [0.50.8] - Unreleased
+## [0.50.8] - 2026-10-21
 
 - Adopt IC Tooling 0.63.2 and replace the local test IO observer with its published
   optional stable-memory support, preserving measured workloads and exact reports
