@@ -1,6 +1,6 @@
 # Changelog
 
-## [0.50.3]
+## [0.50.3] - 2026-10-21
 
 - Adopt IC Platform 0.6 in the independent runtime harness, retaining PocketIC
   16.1.0 and the existing client feature. [Details](docs/changelog/0.50.md#0503).
