@@ -7,9 +7,13 @@ use ic_stable_structures::{
     Memory, VectorMemory,
     memory_manager::{MemoryId, MemoryManager},
 };
-#[path = "../../examples/support/metered.rs"]
-mod metered;
-use metered::Metered;
+use ic_testkit_native::memory::{MemoryIoCounts, MeteredMemory};
+
+fn checked_counts(memory: &MeteredMemory) -> MemoryIoCounts {
+    let counts = memory.counts();
+    assert!(!counts.overflowed);
+    counts
+}
 
 fn conservation(report: &super::MemoryAllocations) {
     assert_eq!(report.memories.len(), 255);
@@ -50,16 +54,16 @@ fn conservation(report: &super::MemoryAllocations) {
     }
 }
 
-fn summary_matches_report(runtime: &MemoryRuntime<Metered>, memory: &Metered) {
+fn summary_matches_report(runtime: &MemoryRuntime<MeteredMemory>, memory: &MeteredMemory) {
     let report = runtime.memory_allocations().unwrap();
-    let before = memory.bytes.borrow().clone();
+    let before = memory.backing().borrow().clone();
     memory.reset();
     let summary = runtime.memory_allocation_summary().unwrap();
-    assert_eq!(memory.counts().reads, 2);
-    assert_eq!(memory.counts().read_bytes, 34_848);
-    assert_eq!(memory.counts().writes, 0);
-    assert_eq!(memory.counts().grows, 0);
-    assert_eq!(*memory.bytes.borrow(), before);
+    assert_eq!(checked_counts(memory).reads, 2);
+    assert_eq!(checked_counts(memory).read_bytes, 34_848);
+    assert_eq!(checked_counts(memory).writes, 0);
+    assert_eq!(checked_counts(memory).grows, 0);
+    assert_eq!(*memory.backing().borrow(), before);
     assert_eq!(crate::MemoryAllocationSummary::MEMORIES_MEASURED, 255);
     // Compare every shared numeric field; independently project the detailed
     // rows into provenance partitions, including zero-sized and unknown IDs.
@@ -92,7 +96,7 @@ fn summary_matches_report(runtime: &MemoryRuntime<Metered>, memory: &Metered) {
 
 #[test]
 fn numeric_summary_matches_detailed_accounting_before_and_after_bootstrap_and_reopen() {
-    let memory = Metered::default();
+    let memory: MeteredMemory = MeteredMemory::default();
     let mut runtime =
         MemoryRuntime::new_with_config(memory.clone(), super::MemoryManagerConfig::new(8).unwrap())
             .unwrap();
@@ -122,9 +126,9 @@ fn numeric_summary_matches_detailed_accounting_before_and_after_bootstrap_and_re
     );
     assert_eq!(runtime.committed_allocations().unwrap().len(), 1);
     assert_eq!(runtime.memory_id("app.rows.v1"), Ok(10));
-    assert_eq!(memory.counts().reads, 0);
-    assert_eq!(memory.counts().writes, 0);
-    assert_eq!(memory.counts().grows, 0);
+    assert_eq!(checked_counts(&memory).reads, 0);
+    assert_eq!(checked_counts(&memory).writes, 0);
+    assert_eq!(checked_counts(&memory).grows, 0);
     assert_eq!(
         runtime
             .bootstrap(
@@ -139,9 +143,9 @@ fn numeric_summary_matches_detailed_accounting_before_and_after_bootstrap_and_re
         allocation_ptr,
         runtime.committed_allocations().unwrap().as_ptr()
     );
-    assert_eq!(memory.counts().reads, 0);
-    assert_eq!(memory.counts().writes, 0);
-    assert_eq!(memory.counts().grows, 0);
+    assert_eq!(checked_counts(&memory).reads, 0);
+    assert_eq!(checked_counts(&memory).writes, 0);
+    assert_eq!(checked_counts(&memory).grows, 0);
     runtime.open_memory("app.rows.v1").unwrap().grow(9).unwrap();
     runtime.memory(121).unwrap().grow(1).unwrap();
     memory.grow(3);
@@ -179,7 +183,7 @@ fn full_external_id_domain_preserves_bounded_read_only_attribution() {
         .map(|id| crate::MemoryRequest::new("app", &format!("app.slot{id:03}.v1")).unwrap())
         .collect();
     let snapshot = crate::SealedDeclarationSnapshot::new(declarations).unwrap();
-    let memory = Metered::default();
+    let memory: MeteredMemory = MeteredMemory::default();
     let mut runtime =
         MemoryRuntime::new_with_config(memory.clone(), super::MemoryManagerConfig::new(1).unwrap())
             .unwrap();
@@ -201,7 +205,7 @@ fn full_external_id_domain_preserves_bounded_read_only_attribution() {
         .grow(2)
         .unwrap();
 
-    let before = memory.bytes.borrow().clone();
+    let before = memory.backing().borrow().clone();
     memory.reset();
     let report = runtime.memory_allocations().unwrap();
     conservation(&report);
@@ -216,18 +220,18 @@ fn full_external_id_domain_preserves_bounded_read_only_attribution() {
         );
         assert!(runtime.allocation_pool().unwrap().contains(id));
     }
-    assert_eq!(memory.counts().read_bytes, 34_848);
-    assert_eq!(memory.counts().reads, 2);
-    assert_eq!(memory.counts().writes, 0);
-    assert_eq!(memory.counts().grows, 0);
-    assert_eq!(*memory.bytes.borrow(), before);
+    assert_eq!(checked_counts(&memory).read_bytes, 34_848);
+    assert_eq!(checked_counts(&memory).reads, 2);
+    assert_eq!(checked_counts(&memory).writes, 0);
+    assert_eq!(checked_counts(&memory).grows, 0);
+    assert_eq!(*memory.backing().borrow(), before);
     summary_matches_report(&runtime, &memory);
 }
 
 #[test]
 fn bounded_conservation_bindings_and_no_effects() {
     let declarations = super::tests::declarations();
-    let memory = Metered::default();
+    let memory: MeteredMemory = MeteredMemory::default();
     let mut runtime = MemoryRuntime::new(memory.clone()).unwrap();
     runtime
         .bootstrap(
@@ -244,7 +248,7 @@ fn bounded_conservation_bindings_and_no_effects() {
     // Test-only unmanaged backing tail and an ID with no current declaration.
     assert_eq!(runtime.memory(121).unwrap().grow(1), Ok(0));
     memory.grow(3);
-    let before = memory.bytes.borrow().clone();
+    let before = memory.backing().borrow().clone();
     let generation = runtime.committed_generation().unwrap();
     memory.reset();
     let report = runtime.memory_allocations().unwrap();
@@ -265,11 +269,11 @@ fn bounded_conservation_bindings_and_no_effects() {
             "virtual_extent": serde_json::to_value(row.virtual_extent).unwrap(),
         })
     );
-    assert_eq!(memory.counts().read_bytes, 34_848);
-    assert_eq!(memory.counts().reads, 2);
-    assert_eq!(memory.counts().writes, 0);
-    assert_eq!(memory.counts().grows, 0);
-    assert_eq!(memory.bytes.borrow().as_slice(), before);
+    assert_eq!(checked_counts(&memory).read_bytes, 34_848);
+    assert_eq!(checked_counts(&memory).reads, 2);
+    assert_eq!(checked_counts(&memory).writes, 0);
+    assert_eq!(checked_counts(&memory).grows, 0);
+    assert_eq!(memory.backing().borrow().as_slice(), before);
     assert_eq!(report.summary.current_generation, Some(generation));
     assert!(matches!(
         runtime.open_memory(IC_MEMORY_LEDGER_STABLE_KEY),
@@ -285,7 +289,7 @@ fn bounded_conservation_bindings_and_no_effects() {
 #[test]
 fn diagnostics_never_read_even_a_corrupt_unbounded_ledger() {
     let declarations = super::tests::declarations();
-    let memory = Metered::default();
+    let memory: MeteredMemory = MeteredMemory::default();
     let mut runtime = MemoryRuntime::new(memory.clone()).unwrap();
     runtime
         .bootstrap(
@@ -301,15 +305,15 @@ fn diagnostics_never_read_even_a_corrupt_unbounded_ledger() {
         .write(4, &u32::MAX.to_le_bytes());
     memory.reset();
     conservation(&runtime.memory_allocations().unwrap());
-    assert_eq!(memory.counts().read_bytes, 34_848);
-    assert_eq!(memory.counts().writes, 0);
-    assert_eq!(memory.counts().grows, 0);
+    assert_eq!(checked_counts(&memory).read_bytes, 34_848);
+    assert_eq!(checked_counts(&memory).writes, 0);
+    assert_eq!(checked_counts(&memory).grows, 0);
 }
 
 #[test]
 fn bucket_boundaries_and_same_release_reopen() {
     for bucket in [1_u16, 8, 16, 128] {
-        let memory = Metered::default();
+        let memory: MeteredMemory = MeteredMemory::default();
         let manager = MemoryManager::init_with_bucket_size(memory.clone(), bucket);
         let rows = manager.get(MemoryId::new(120));
         assert_eq!(rows.grow(1), 0);
@@ -332,8 +336,8 @@ fn bucket_boundaries_and_same_release_reopen() {
             .unwrap()
             .read(u64::from(bucket) * 65_536 - 1, &mut bytes);
         assert_eq!(bytes, [1, 2, 3]);
-        assert_eq!(memory.counts().writes, 0);
-        assert_eq!(memory.counts().grows, 0);
+        assert_eq!(checked_counts(&memory).writes, 0);
+        assert_eq!(checked_counts(&memory).grows, 0);
     }
 }
 
@@ -372,17 +376,17 @@ fn corrupt_layouts_are_typed_and_never_reinitialized() {
         ),
     ];
     for &(offset, bytes, expected) in fixtures {
-        let memory = Metered::default();
+        let memory: MeteredMemory = MeteredMemory::default();
         drop(MemoryRuntime::new(memory.clone()).unwrap());
         memory.write(offset, bytes);
-        let before = memory.bytes.borrow().clone();
+        let before = memory.backing().borrow().clone();
         memory.reset();
         assert!(
             matches!(MemoryRuntime::new(memory.clone()), Err(RuntimeConstructionError::Layout(error)) if error == expected)
         );
-        assert_eq!(memory.counts().writes, 0);
-        assert_eq!(memory.counts().grows, 0);
-        assert_eq!(memory.bytes.borrow().as_slice(), before);
+        assert_eq!(checked_counts(&memory).writes, 0);
+        assert_eq!(checked_counts(&memory).grows, 0);
+        assert_eq!(memory.backing().borrow().as_slice(), before);
     }
 }
 
@@ -402,7 +406,7 @@ fn diagnostic_revalidates_foreign_unsupported_and_stale_metadata() {
 #[test]
 fn explicit_configuration_validates_before_effects_and_replays() {
     let declarations = super::tests::declarations();
-    let memory = Metered::default();
+    let memory: MeteredMemory = MeteredMemory::default();
     assert_eq!(
         super::MemoryManagerConfig::new(0),
         Err(RuntimeConstructionError::InvalidBucketSize)
@@ -432,8 +436,8 @@ fn explicit_configuration_validates_before_effects_and_replays() {
         )
         .unwrap();
     assert_eq!(runtime.committed_generation().unwrap(), generation);
-    assert_eq!(memory.counts().writes, 0);
-    assert_eq!(memory.counts().grows, 0);
+    assert_eq!(checked_counts(&memory).writes, 0);
+    assert_eq!(checked_counts(&memory).grows, 0);
     let before = runtime.memory_allocations().unwrap();
     drop(runtime);
     assert!(matches!(
@@ -443,8 +447,8 @@ fn explicit_configuration_validates_before_effects_and_replays() {
             requested: 128
         })
     ));
-    assert_eq!(memory.counts().writes, 0);
-    assert_eq!(memory.counts().grows, 0);
+    assert_eq!(checked_counts(&memory).writes, 0);
+    assert_eq!(checked_counts(&memory).grows, 0);
     let mut runtime = MemoryRuntime::new_with_config(memory.clone(), config).unwrap();
     let unbound = runtime.memory_allocations().unwrap();
     assert_eq!(
@@ -469,14 +473,14 @@ fn explicit_configuration_validates_before_effects_and_replays() {
         before.summary.physical_extent
     );
     assert!(recovered.summary.current_generation > before.summary.current_generation);
-    let stable_before = memory.bytes.borrow().clone();
+    let stable_before = memory.backing().borrow().clone();
     memory.reset();
     for _ in 0..3 {
         assert_eq!(runtime.memory_allocations().unwrap(), recovered);
     }
-    assert_eq!(memory.bytes.borrow().as_slice(), stable_before);
-    assert_eq!(memory.counts().writes, 0);
-    assert_eq!(memory.counts().grows, 0);
+    assert_eq!(memory.backing().borrow().as_slice(), stable_before);
+    assert_eq!(checked_counts(&memory).writes, 0);
+    assert_eq!(checked_counts(&memory).grows, 0);
 }
 
 #[test]

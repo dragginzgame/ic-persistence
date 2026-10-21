@@ -1,5 +1,20 @@
 # Runtime IO and maintainer improvements qualification
 
+## IC Tooling 0.63.2 installed qualification — 2026-10-21
+
+The pending 0.50.8 working tree based on released 0.50.7 `4dda4c1` passes
+installed Linux qualification with Testkit 0.63.2 (`cli`), Platform 0.6.0 in the
+independent runner and PocketIC client/server 16.1.0. Original, O3, Os and Oz
+variants each pass 12 invalid-IO traps without retained mutation, both failed
+upgrade rollback cases, clean retry and all nine valid-IO measurements.
+
+Exact input/tool/Wasm hashes and server/runtime logs remain in
+`target/qualification/runtime/attempt.gKHXbF/`. The earlier sandbox attempt
+`attempt.9PPNhW/` retains its local-port bind failure; host execution passed.
+Native observer adoption separately preserves all 40 non-timing IO rows and 86
+allocation rows. This is Linux working-tree evidence, not hosted/macOS consumer
+acceptance or release execution. The independent selected lock is unchanged.
+
 ## IC Tooling 0.63 installed qualification — 2026-10-21
 
 Linux qualification passed with Testkit 0.63.0 (`cli`), Platform 0.6.0,

@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.50.8] - Unreleased
+
+- Adopt IC Tooling 0.63.2 and replace the local test IO observer with its published
+  optional stable-memory support, preserving measured workloads and exact reports
+  ([#98 — Adopt canonical Testkit memory IO instrumentation](https://github.com/dragginzgame/ic-persistence/issues/98)).
+  [Details](docs/changelog/0.50.md#0508).
+
 ## [0.50.7] - 2026-10-21
 
 - Select only `wasm-opt` for installed qualification, native offline reuse and

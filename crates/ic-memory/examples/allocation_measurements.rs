@@ -1,20 +1,19 @@
 //! Disposable native fixtures, not Toko live attribution or IC instruction costs.
-#[path = "support/metered.rs"]
-mod metered;
 use ic_memory::{
     GenericAllocationPolicy, MemoryAllocations, MemoryManagerConfig, MemoryRuntime, RuntimeMemory,
 };
 use ic_stable_structures::{Cell, Memory, StableVec};
-use metered::Metered;
+use ic_testkit_native::memory::{MemoryIoCounts, MeteredMemory};
 use std::{hint::black_box, time::Instant};
 
 fn record(
     bucket: u16,
     phase: &str,
-    counts: metered::Counts,
+    counts: MemoryIoCounts,
     elapsed: u128,
     report: &MemoryAllocations,
 ) {
+    assert!(!counts.overflowed);
     assert_eq!(
         report.summary.physical_extent.bytes(),
         ic_memory::MemoryAllocationSummary::MANAGER_METADATA_BYTES
@@ -48,7 +47,7 @@ fn main() {
         "bucket_pages,phase,physical_bytes,virtual_bytes,buckets,ledger_bucket_bytes,grows,grown_pages,reads,read_bytes,writes,write_bytes,elapsed_us"
     );
     for bucket in [128, 16, 8, 1] {
-        let memory = Metered::default();
+        let memory = MeteredMemory::default();
         let start = Instant::now();
         let mut runtime = MemoryRuntime::new_with_config(
             memory.clone(),
@@ -97,7 +96,7 @@ fn main() {
             0
         );
         let handle = runtime.open_memory("fixture.store128.v1").unwrap();
-        let growing = StableVec::<[u8; 1024], RuntimeMemory<Metered>>::init(handle);
+        let growing = StableVec::<[u8; 1024], RuntimeMemory<MeteredMemory>>::init(handle);
         memory.reset();
         let start = Instant::now();
         for index in 0..8192_u64 {

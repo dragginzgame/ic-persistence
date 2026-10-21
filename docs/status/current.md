@@ -15,24 +15,31 @@ publication to the new public `dragginzgame/ic-persistence` repository on
 2026-10-20. The destination exists with collaborator-only PR creation; the
 consolidated branch was selected for its `main`. Downstream consumers retain their own dependency adoption decisions.
 
-Both packages now inherit the released workspace version, 0.50.3. The completed
-0.50.0 conversion no longer needs a version exception or a manifest-rewrite path.
-Current development selects IC Tooling 0.63.0 and Platform 0.6.0 for the independent
-runtime runner. This isolated draft selects committed Shared Tooling 0.26.2
-(`1959ef75d0b86ed7725d41ae5056303d35eb633d`) for optimizer-only setup and compact
-evidence. It includes compiler-preparation PR #122; producer and exact-source
-consumer qualification remain required before integration. Dirty sibling work
-is not adopted.
+Both packages inherit released workspace version 0.50.7. The completed 0.50.0
+conversion needs no version exception or manifest-rewrite path. Shared Tooling
+0.26.2 (`1959ef75d0b86ed7725d41ae5056303d35eb633d`) owns optimizer-only setup
+and evidence; release 0.50.7 passed all ten hosted checks on Linux and both macOS
+architectures. Dirty sibling work is not adopted.
+
+Pending compatible 0.50.8 notes cover published IC Tooling 0.63.2 and native IO
+observer adoption under [#98](https://github.com/dragginzgame/ic-persistence/issues/98).
+Both selected CLIs require `cli`. Production dependencies and the independent
+runtime lock remain unchanged; its Platform 0.6.0 client boundary and PocketIC
+16.1.0 selections are separate from the native observer's Platform dependency.
+Local qualification passes Clippy, 192 library tests, nine Rust 1.91 IO tests,
+all 60 release-tool tests, release/bootstrap fixtures and Wasm checks. All 40 IO
+and 86 allocation rows match. Installed four-variant Linux evidence is in
+`target/qualification/runtime/attempt.gKHXbF/`; see [runtime notes](../runtime-io-qualification.md).
+Hosted/macOS consumer acceptance remains required after delivery.
 
 CI retains its failure-evidence fixture from the main validation pass for the
 hosted round trip. Archive rejection cases share prepared, hashed archives;
 normal packaging and archive-consumer qualification remain independent gates.
 
 Storage's original handoff and changelog remain under
-[historical evidence](../history/ic-storage/handoff.md). Platform #30/#32 and
-the former Storage #12 (now Persistence #118) remain upstream/consumer work.
-Memory PR #125/#126 heads are retained for review; main already contains their
-capabilities through later releases.
+[historical evidence](../history/ic-storage/handoff.md). Remaining technical
+blockers and upstream acceptance belong to the linked GitHub issues rather than
+another local queue.
 
 ## Repository retirement
 
@@ -55,43 +62,10 @@ verified, including all 21 associated comments, before retrying deletion.
 
 ## Historical consolidation qualification
 
-The following records describe the original integration checks, not qualification
-of later dependency or tooling changes.
-
-The archive helper now seeds fixture locks from the repository selection,
-rejects external version/source/checksum drift and duplicate or substituted
-package identities, and builds with `--locked`. Native, Rust 1.91 and Wasm
-archive-consumer checks pass, as do the injected drift/duplicate rejection
-fixtures and final archive, unpacked-file and source-input integrity checks.
-
-Linux: the focused workspace run passed 267 tests (including 60 release tests)
-and 13 doctests; six existing allocation-measurement tests remain intentionally
-ignored. Strict all-target Clippy and the Rust 1.91 all-target check passed, as
-did the Wasm test build and production graph exclusions. The final publication
-change was rechecked with the 12 publication/failure cases.
-
-Both archives build independently. The extracted-archive consumer passes native
-selected-compiler and Rust 1.91 execution, plus Wasm compilation, with one Memory
-identity, exclusive leases and retained collection values. The independent runtime
-runner builds with its original selected lockfile. Real offline Cargo/editor
-checks admit all three interrupted two-package bootstrap states without input
-mutation. Product sources, current fixtures and Storage's README/license remain
-byte-identical to the inventoried releases.
-
-Evidence is retained under `/tmp/ic-persistence-preservation/` and the integration
-checkout's `target/package-qualification/`; bootstrap fixtures retain their own
-input hashes and command output. Hosted CI, native macOS, installed PocketIC
-execution and real registry publication are not claimed by these checks. The
-existing installed-runtime CI lanes remain configured; no server/tool refresh
-or deployed-canister reset is part of this migration.
-
-Snapshot integrity, dependency inheritance/pins, licenses, current/archive links,
-formatting, action/shell lint, fixture/evidence retention, index hook selection
-and release adapter dispatch checks pass. Strict rustdoc passes for both packages.
-The formatter and bootstrap fixtures cover the added archive-consumer source.
-
-The independent runtime runner also passes Rust 1.91. Memory's four raw Wasm
-probes pass the existing budgets: core 238,134 bytes; diagnostics 247,808; admission
-241,968; runtime integration 244,157. These are current measurements, not a claim
-of a measured size improvement. All 98 original saved release plans are complete;
-no original release-state lock is active. Those plans remain in their old checkout.
+The original integration's archive/MSRV/Wasm, source-preservation and bootstrap
+proofs retain their source scope in
+[the release-time handoff](https://github.com/dragginzgame/ic-persistence/blob/4dda4c1511f09f6bd14d1ea8ae8d428dccdd2f75/docs/status/current.md#historical-consolidation-qualification).
+Evidence remains under `/tmp/ic-persistence-preservation/` and the integration
+checkout's `target/package-qualification/`; original plans and checkout artifacts
+remain in the verified retirement backups above. Preserve failed attempts and
+input hashes. These historical results do not qualify later changes.

@@ -15,7 +15,7 @@ pub mod fixture_diagnostics;
 mod layout;
 mod policy;
 
-#[cfg(test)]
+#[cfg(all(test, not(target_arch = "wasm32")))]
 mod allocation_tests;
 #[cfg(test)]
 mod growth_tests;

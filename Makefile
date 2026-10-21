@@ -41,7 +41,7 @@ fmt fmt-check format-tools-check: export RUSTUP_TOOLCHAIN := $(VALIDATION_TOOLCH
 
 # The published Testkit CLI owns PocketIC selection, admission and lifecycle.
 # Keep this tool graph outside both maintained workspace lockfiles.
-IC_TESTKIT_VERSION := 0.63.0
+IC_TESTKIT_VERSION := 0.63.2
 TESTKIT_CLI := RUSTUP_TOOLCHAIN=$(VALIDATION_TOOLCHAIN) bash scripts/dev/install-rust-tools.sh --consumer "$(CURDIR)" --package ic-testkit --version $(IC_TESTKIT_VERSION) --bin ic-testkit-server --profile release --features cli
 TESTKIT_SERVER_DIRECTORY := $(CURDIR)/.tools/ic-testkit-server
 

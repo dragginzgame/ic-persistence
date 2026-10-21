@@ -9,10 +9,10 @@ local baseline. Future policy changes require reviewed snapshot adoption.
 
 ## Current source selection
 
-This draft selects committed Shared Tooling 0.26.2 at
+IC Persistence selects committed Shared Tooling 0.26.2 at
 `1959ef75d0b86ed7725d41ae5056303d35eb633d`, with 74 explicit roots and 113 payloads.
-Exact-source producer and consumer hosted acceptance remain required before
-integration; snapshot integrity alone is not native acceptance.
+Release 0.50.7 passed the complete native, MSRV and installed-runtime matrix
+on Linux and both macOS architectures; snapshot integrity alone is not acceptance.
 See [the adoption issue](https://github.com/dragginzgame/ic-persistence/issues/127).
 The canonical takeover exporter retires the imported Storage snapshot after
 verifying its original bytes. Storage PR #18's release retry protection is
@@ -28,7 +28,7 @@ also remains in its focused target. Release notes may use a numbered
 ` - Unreleased` heading, which the shared finalizer dates during preparation.
 
 Shared 0.25.3 binds explicit Cargo feature sets to selected tool installations
-and admission receipts. Build and Testkit 0.63 binaries select `--features cli`
+and admission receipts. Build and Testkit 0.63.2 binaries select `--features cli`
 in setup, offline admission and bootstrap calls. Library dependencies retain
 disabled defaults. Prepare the selections with `make install-tools` and
 `make install-runtime-server`; previous installations and failed attempts remain
