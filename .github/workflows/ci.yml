@@ -94,7 +94,7 @@ jobs:
           path: |
             ${{ steps.common-tool-cache-key.outputs.root }}/cargo-cache
             ${{ steps.common-tool-cache-key.outputs.root }}/rust-*
-          key: common-tools-${{ runner.os }}-${{ runner.arch }}-${{ steps.common-tool-cache-key.outputs.key }}
+          key: common-tools-${{ runner.os }}-${{ runner.arch }}-${{ steps.common-tool-cache-key.outputs.key }}-${{ hashFiles('ci/release-tools.env') }}
       - name: Install and verify selected common tools
         shell: bash
         run: |
@@ -114,7 +114,7 @@ jobs:
           path: |
             ${{ steps.common-tool-cache-key.outputs.root }}/cargo-cache
             ${{ steps.common-tool-cache-key.outputs.root }}/rust-*
-          key: common-tools-${{ runner.os }}-${{ runner.arch }}-${{ steps.common-tool-cache-key.outputs.key }}
+          key: common-tools-${{ runner.os }}-${{ runner.arch }}-${{ steps.common-tool-cache-key.outputs.key }}-${{ hashFiles('ci/release-tools.env') }}
       - name: Qualify native shared host, IC and Cargo reuse offline
         shell: bash
         run: |

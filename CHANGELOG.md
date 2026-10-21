@@ -1,10 +1,18 @@
 # Changelog
 
-## [0.50.5]
+## [0.50.6] - Unreleased
 
 - Select only `wasm-opt` for installed qualification, native offline reuse and
   compact evidence through Shared Tooling 0.26.2; preserve full retention and
-  existing optimizer/runtime checks. [Details](docs/changelog/0.50.md#0505).
+  existing optimizer/runtime checks. [Details](docs/changelog/0.50.md#0506).
+
+## [0.50.5] - 2026-10-21
+
+- Include the release-editor selection in native CI cache keys ([#126](https://github.com/dragginzgame/ic-persistence/issues/126)).
+- Update runtime-only certificate trust dependencies for the emSign advisories
+  ([#125](https://github.com/dragginzgame/ic-persistence/issues/125)).
+  [Details](docs/changelog/0.50.md#0505).
+
 - Prepare the declared MSRV for native archive qualification and admit both
   required compilers before expensive validation or packaging.
   [Details](docs/changelog/0.50.md#0505).
