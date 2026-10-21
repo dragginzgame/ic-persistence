@@ -7,7 +7,7 @@ exclude = ["testing/runtime-qualification"]
 [workspace.package]
 edition = "2024"
 rust-version = "1.91.0"
-version = "0.50.8"
+version = "0.50.9"
 license = "MIT"
 authors = ["borovan <84897664+borovan@users.noreply.github.com>"]
 description = "Durable stable-memory allocation governance for Internet Computer canisters"
@@ -20,7 +20,7 @@ categories = ["wasm", "data-structures"]
 
 [workspace.dependencies]
 # Production dependencies
-ic-memory = { path = "crates/ic-memory", version = "0.50.8" }
+ic-memory = { path = "crates/ic-memory", version = "0.50.9" }
 ic-platform = { version = "0.6.5", default-features = false }
 serde = { version = "1.0", default-features = false, features = [
     "alloc",

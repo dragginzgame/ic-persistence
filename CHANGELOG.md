@@ -1,6 +1,6 @@
 # Changelog
 
-## [0.50.9] - Unreleased
+## [0.50.9] - 2026-10-21
 
 - Route Memory and Storage through IC Platform 0.6.5, preserving their substrate
   types, stored formats and explicit 0.7.2 protocol admission
