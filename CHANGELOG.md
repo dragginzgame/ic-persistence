@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.50.5]
+
+- Prepare the declared MSRV for native archive qualification and admit both
+  required compilers before expensive validation or packaging.
+  [Details](docs/changelog/0.50.md#0505).
+
 ## [0.50.4] - 2026-10-21
 
 - Adopt IC Tooling 0.63, selecting the required `cli` feature for the release

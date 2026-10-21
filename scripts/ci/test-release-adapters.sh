@@ -203,6 +203,7 @@ for lint_status in 23 0; do
         > "$FIXTURE/lint-ordering-$lint_status.log" 2>&1 || status=$?
     printf '%s\n' \
         'make --no-print-directory shared-tooling-check tools-check format-tools-check' \
+        'make --no-print-directory validation-compilers-check' \
         "cargo +$FIXTURE_TOOLCHAIN clippy --workspace --locked --offline --all-targets -- -D warnings" \
         > "$FIXTURE/lint-expected"
     if [[ "$lint_status" == 0 ]]; then
