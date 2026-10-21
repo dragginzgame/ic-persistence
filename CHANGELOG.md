@@ -1,6 +1,6 @@
 # Changelog
 
-## [0.50.10] - Unreleased
+## [0.50.10] - 2026-10-21
 
 - Retire single-crate release bootstrap paths and narrow runtime CI cache keys
   to tool selections, preserving interrupted recovery and offline admission.
