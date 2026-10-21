@@ -413,33 +413,8 @@ fn toml_string(text: &str, section: &str, field: &str) -> Result<String> {
         .ok_or_else(|| format!("missing {section}.{field}").into())
 }
 
-fn locked_storage_version(text: &str) -> Result<String> {
-    let lock: toml::Value = toml::from_str(text)?;
-    let packages = lock
-        .get("package")
-        .and_then(toml::Value::as_array)
-        .ok_or("missing lock packages")?;
-    let selected: Vec<_> = packages
-        .iter()
-        .filter(|p| {
-            p.get("name").and_then(toml::Value::as_str) == Some("ic-storage")
-                && p.get("source").is_none()
-        })
-        .collect();
-    require(
-        selected.len() == 1,
-        "expected one local Storage lock record",
-    )?;
-    Ok(selected[0]
-        .get("version")
-        .and_then(toml::Value::as_str)
-        .ok_or("missing Storage version")?
-        .to_owned())
-}
-
 fn check_lock_update(before: &[u8], after: &str, previous: &str, version: &str) -> Result<()> {
     let before = std::str::from_utf8(before)?;
-    let storage = locked_storage_version(before)?;
     verify_workspace_release_projection(
         before,
         after,
@@ -451,12 +426,8 @@ fn check_lock_update(before: &[u8], after: &str, previous: &str, version: &str) 
             },
             WorkspaceVersionProjection {
                 package: "ic-storage",
-                previous: &storage,
-                next: if previous == version {
-                    &storage
-                } else {
-                    version
-                },
+                previous,
+                next: version,
             },
         ],
     )?;
@@ -592,7 +563,6 @@ impl<E: Execute> Repository<E> {
     }
 
     fn replace_lock_version(text: &str, previous: &str, version: &str) -> Result<String> {
-        let storage = locked_storage_version(text)?;
         let updated = render_workspace_lock(
             text,
             &[
@@ -603,7 +573,7 @@ impl<E: Execute> Repository<E> {
                 },
                 WorkspaceVersionProjection {
                     package: "ic-storage",
-                    previous: &storage,
+                    previous,
                     next: version,
                 },
             ],
@@ -858,42 +828,21 @@ impl<E: Execute> Repository<E> {
         )
     }
 
-    fn storage_release_manifest(&self, source: &str, next: &str) -> Result<String> {
+    fn storage_release_manifest(&self, source: &str) -> Result<String> {
         let text = self.text(STORAGE_MANIFEST, Some(source))?;
-        let mut expected: toml::Value = toml::from_str(&text)?;
+        let manifest: toml::Value = toml::from_str(&text)?;
         require(
-            expected["package"]["name"].as_str() == Some("ic-storage"),
+            manifest["package"]["name"].as_str() == Some("ic-storage"),
             "unexpected Storage package",
         )?;
-        if let Some(previous) = expected["package"]["version"].as_str() {
-            require(
-                previous == "0.5.9",
-                "unexpected pre-consolidation Storage version",
-            )?;
-            require(
-                self.version_parts(next)? > self.version_parts(previous)?,
-                "Storage release must advance",
-            )?;
-            expected["package"]["version"] = toml::Value::Table(toml::map::Map::from_iter([(
-                "workspace".to_owned(),
-                toml::Value::Boolean(true),
-            )]));
-            let rendered = text.replacen("version = \"0.5.9\"", "version.workspace = true", 1);
-            require(
-                toml::from_str::<toml::Value>(&rendered)? == expected,
-                "Storage transition changed other metadata",
-            )?;
-            Ok(rendered)
-        } else {
-            require(
-                expected["package"]["version"]
-                    .get("workspace")
-                    .and_then(toml::Value::as_bool)
-                    == Some(true),
-                "expected inherited Storage version",
-            )?;
-            Ok(text)
-        }
+        require(
+            manifest["package"]["version"]
+                .get("workspace")
+                .and_then(toml::Value::as_bool)
+                == Some(true),
+            "expected inherited Storage version",
+        )?;
+        Ok(text)
     }
 
     fn surfaces(&self, selection: &ReleaseSelection) -> Result<BTreeMap<String, String>> {
@@ -925,7 +874,7 @@ impl<E: Execute> Repository<E> {
             (PACKAGE_README.to_owned(), readme),
             (
                 STORAGE_MANIFEST.to_owned(),
-                self.storage_release_manifest(source, version)?,
+                self.storage_release_manifest(source)?,
             ),
             (
                 "CHANGELOG.md".to_owned(),

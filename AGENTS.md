@@ -140,7 +140,7 @@ substrate protocol boundary recorded exactly in
 `runtime/layout.rs` and `stable_cell.rs`; a change requires layout, corruption,
 growth and installed IO/upgrade qualification. The independent qualification
 workspace consumes PocketIC through IC Platform's optional native client
-boundary; its lockfile selects client 16.1.0. Testkit 0.25.4 owns the reviewed
+boundary; its lockfile selects client 16.1.0. Testkit 0.62.1 owns the reviewed
 16.1.0 server selection. Changing that pair requires repeating installed
 qualification; historical 16.0.0 client/server evidence cannot qualify the new
 pairing. Keep both lockfiles, sources, features and toolchains unchanged during
@@ -175,11 +175,10 @@ pub struct SchemaMetadata {
 Keep this shape for new or edited item-level docs unless local context clearly
 requires a different style.
 
-## Consolidation transition
+## Consolidated release identity
 
-Read [the migration map](docs/migration/ic-persistence.md) and current handoff.
-Storage temporarily retains explicit package version 0.5.9 while Memory remains
-0.49.4: consolidation does not authorize a version bump. The first coordinated
-release is 0.50.0; the release adapter then changes Storage to workspace version
-inheritance. Keep both public APIs, collection formats and allocation custody
-unchanged. Storage retains its existing lint policy and declaration boundary.
+Memory and Storage share the workspace version and advance together. Keep both
+public APIs, collection formats and allocation custody unchanged during tooling
+cleanup. Storage retains its existing lint policy and declaration boundary.
+The completed import and preserved history are recorded in the
+[migration map](docs/migration/ic-persistence.md).

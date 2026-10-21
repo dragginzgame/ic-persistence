@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.50.2]
+
+- Retire completed consolidation paths and reuse prepared CI evidence and archive
+  fixtures while preserving release recovery and admission checks.
+
+- Align native dependencies and selected release/runtime tools on IC Tooling
+  0.62.1; adopt Platform 0.5.1 in the independent runtime harness.
+  [Detailed notes](docs/changelog/0.50.md#0502).
+
 ## [0.50.1] - 2026-10-20
 
 - Run release-tool tests once during validation, removing their duplicate serial run.

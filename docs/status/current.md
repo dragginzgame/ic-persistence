@@ -13,14 +13,17 @@ The import commit preserves Storage's original history as a second parent;
 workspace/tooling edits are separate. The maintainer authorized
 publication to the new public `dragginzgame/ic-persistence` repository on
 2026-10-20. The destination exists with collaborator-only PR creation; the
-consolidated branch was selected for its `main`. Package versions and downstream
-consumers remain unchanged by this local setup.
+consolidated branch was selected for its `main`. Downstream consumers retain their own dependency adoption decisions.
 
-Current package versions remain Memory 0.49.4 and Storage 0.5.9. The proposed
-coordinated release is 0.50.0. The temporary explicit Storage version disappears
-through authorized release preparation, not during repository consolidation.
-The root snapshot selects committed Shared Tooling 0.25.9, including Storage
-PR #18's release retry protection. Dirty Shared sibling work is not adopted.
+Both packages now inherit the released workspace version, 0.50.1. The completed
+0.50.0 conversion no longer needs a version exception or a manifest-rewrite path.
+Current development selects IC Tooling 0.62.1 and Platform 0.5.1 for the independent
+runtime runner. The root snapshot remains Shared Tooling 0.25.9; dirty sibling
+work is not adopted.
+
+CI retains its failure-evidence fixture from the main validation pass for the
+hosted round trip. Archive rejection cases share prepared, hashed archives;
+normal packaging and archive-consumer qualification remain independent gates.
 
 Storage's original handoff and changelog remain under
 [historical evidence](../history/ic-storage/handoff.md). Platform #30/#32 and
@@ -47,7 +50,10 @@ current CLI token lacks `delete_repo`. Both old trackers report no remaining
 issues; the nine source copies flagged during approval review were independently
 verified, including all 21 associated comments, before retrying deletion.
 
-## Qualification
+## Historical consolidation qualification
+
+The following records describe the original integration checks, not qualification
+of later dependency or tooling changes.
 
 The archive helper now seeds fixture locks from the repository selection,
 rejects external version/source/checksum drift and duplicate or substituted

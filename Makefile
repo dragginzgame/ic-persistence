@@ -40,7 +40,7 @@ fmt fmt-check format-tools-check: export RUSTUP_TOOLCHAIN := $(VALIDATION_TOOLCH
 
 # The published Testkit CLI owns PocketIC selection, admission and lifecycle.
 # Keep this tool graph outside both maintained workspace lockfiles.
-IC_TESTKIT_VERSION := 0.25.4
+IC_TESTKIT_VERSION := 0.62.1
 TESTKIT_CLI := RUSTUP_TOOLCHAIN=$(VALIDATION_TOOLCHAIN) bash scripts/dev/install-rust-tools.sh --consumer "$(CURDIR)" --package ic-testkit --version $(IC_TESTKIT_VERSION) --bin ic-testkit-server --profile release
 TESTKIT_SERVER_DIRECTORY := $(CURDIR)/.tools/ic-testkit-server
 
@@ -101,7 +101,7 @@ test-runtime: runtime-server-check ic-tools-check
 	  done && cat "$$evidence/inputs.sha256"
 
 test-failure-evidence:
-	bash scripts/ci/test-failure-evidence.sh
+	bash scripts/ci/test-failure-evidence.sh $${FAILURE_EVIDENCE_DIRECTORY:+"$$FAILURE_EVIDENCE_DIRECTORY"}
 
 # Memory owns its archive bindings and fixture retention. Generic installer,
 # runner, Make/LOC and parser matrices qualify at Shared Tooling's owner.
@@ -113,7 +113,7 @@ fetch-dependencies:
 	+cargo +$(VALIDATION_TOOLCHAIN) fetch --locked
 
 check-pins:
-	+RUSTUP_TOOLCHAIN=$(VALIDATION_TOOLCHAIN) RUSTUP_AUTO_INSTALL=0 CARGO_NET_OFFLINE=true bash scripts/ci/check-workspace-pins.sh
+	+RUSTUP_TOOLCHAIN=$(VALIDATION_TOOLCHAIN) RUSTUP_AUTO_INSTALL=0 CARGO_NET_OFFLINE=true bash scripts/ci/check-dependency-pins.sh --cargo-inheritance
 
 # Product policy stays here; Shared observes the locked normal/build graph.
 check-production-graph:
