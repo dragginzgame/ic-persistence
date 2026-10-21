@@ -116,9 +116,10 @@ compiler. Use `make shared-tooling-check` for snapshot integrity and
 Existing jq/yq/ripgrep-only checkouts must run `make install-host-tools` once to
 add pinned cloc 2.10, then `make host-tools-check` before offline qualification.
 See [common local setup](local-setup.md) for system bootstrap packages and
-[IC tools](ic-tools.md) for the selected Quill, ICP CLI, didc, ic-wasm
-and wasm-opt set. Shared Tooling 0.2.0 requires an explicit `make install-ic-tools`
-refresh: an old six-tool bundle fails the new offline check and stays retained.
+[IC tools](ic-tools.md) for selection and admission. Runtime qualification selects
+only `wasm-opt` through `IC_TOOLS`; direct IC installer calls also pass
+`--tool wasm-opt`. Run explicit `make install-ic-tools` after adoption to prepare
+this selection. Earlier bundles and failed attempts remain retained.
 PocketIC setup belongs to Testkit and is separate from `install-tools`.
 Host and IC setup activate independently. Verified payloads and failed candidates
 live in the shared per-user store, with retained references under `.tools/`;

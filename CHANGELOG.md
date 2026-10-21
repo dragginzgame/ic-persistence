@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.50.7] - Unreleased
+
+- Select only `wasm-opt` for installed qualification, native offline reuse and
+  compact evidence through Shared Tooling 0.26.2; preserve full retention and
+  existing optimizer/runtime checks. [Details](docs/changelog/0.50.md#0507).
+
 ## [0.50.6] - 2026-10-21
 
 - Replace duplicated native allocation measurement with published Testkit support,

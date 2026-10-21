@@ -125,7 +125,8 @@ jobs:
           for kind in host ic; do
             for mode in install check; do
               options=()
-              if [[ "$mode" == check ]]; then options=(--check); fi
+              if [[ "$kind" == ic ]]; then options+=(--tool wasm-opt); fi
+              if [[ "$mode" == check ]]; then options+=(--check); fi
               PATH="$sharing/bin:$PATH" bash "scripts/dev/install-$kind-tools.sh" \
                 --consumer "$sharing/consumer" ${options[@]+"${options[@]}"} \
                 > "$sharing/$kind-$mode.log" 2>&1

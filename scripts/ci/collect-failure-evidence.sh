@@ -80,9 +80,12 @@ if [[ "$select_tools" == true ]]; then
     diagnostics="$(mktemp -d "$temp_root/tool-evidence.XXXXXX")"
     archive_dir="$(mktemp -d "$temp_root/ic-memory-evidence.XXXXXX")"
     collection_status=0
+    ic_selection=()
+    [[ "$mode" != compact ]] || ic_selection=(wasm-opt)
     bash "$ROOT/scripts/ci/collect-tool-evidence.sh" "$archive_dir/evidence.tar.gz" \
         "$repository_root" "$diagnostics" "$mode" "$ROOT/ci/tool-versions.env" \
-        "$ROOT/ci/ic-tools.tsv" ${inputs[@]+"${inputs[@]}"} || collection_status=$?
+        "$ROOT/ci/ic-tools.tsv" ${ic_selection[@]+"${ic_selection[@]}"} \
+        ${inputs[@]+"${inputs[@]}"} || collection_status=$?
     case "$collection_status" in
         0) ;;
         1) complete=false ;;

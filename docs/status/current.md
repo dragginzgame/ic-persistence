@@ -18,8 +18,11 @@ consolidated branch was selected for its `main`. Downstream consumers retain the
 Both packages now inherit the released workspace version, 0.50.3. The completed
 0.50.0 conversion no longer needs a version exception or a manifest-rewrite path.
 Current development selects IC Tooling 0.63.0 and Platform 0.6.0 for the independent
-runtime runner. The root snapshot remains Shared Tooling 0.25.9; dirty sibling
-work is not adopted.
+runtime runner. This isolated draft selects committed Shared Tooling 0.26.2
+(`1959ef75d0b86ed7725d41ae5056303d35eb633d`) for optimizer-only setup and compact
+evidence. It includes compiler-preparation PR #122; producer and exact-source
+consumer qualification remain required before integration. Dirty sibling work
+is not adopted.
 
 CI retains its failure-evidence fixture from the main validation pass for the
 hosted round trip. Archive rejection cases share prepared, hashed archives;
