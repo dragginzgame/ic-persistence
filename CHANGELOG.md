@@ -2,6 +2,11 @@
 
 ## [0.50.5]
 
+- Include the release-editor selection in native CI cache keys ([#126](https://github.com/dragginzgame/ic-persistence/issues/126)).
+- Update runtime-only certificate trust dependencies for the emSign advisories
+  ([#125](https://github.com/dragginzgame/ic-persistence/issues/125)).
+  [Details](docs/changelog/0.50.md#0505).
+
 - Prepare the declared MSRV for native archive qualification and admit both
   required compilers before expensive validation or packaging.
   [Details](docs/changelog/0.50.md#0505).
