@@ -8,95 +8,23 @@ use ic_stable_structures::{
     Memory, Storable, VectorMemory,
     memory_manager::{MemoryId, MemoryManager},
 };
-use std::{
-    alloc::{GlobalAlloc, Layout, System},
-    cell::Cell,
-    hint::black_box,
-    time::Instant,
-};
-
-#[derive(Clone, Copy, Default)]
-struct Counts {
-    enabled: bool,
-    allocations: usize,
-    reallocations: usize,
-    live: usize,
-    peak: usize,
-}
-
-thread_local! {
-    static COUNTS: Cell<Counts> = const { Cell::new(Counts {
-        enabled: false, allocations: 0, reallocations: 0, live: 0, peak: 0,
-    }) };
-}
-
-fn account(old: usize, new: usize, reallocation: bool) {
-    let _ = COUNTS.try_with(|cell| {
-        let mut counts = cell.get();
-        if counts.enabled {
-            counts.live = counts.live - old + new;
-            counts.peak = counts.peak.max(counts.live);
-            counts.allocations += usize::from(old == 0 && new != 0);
-            counts.reallocations += usize::from(reallocation);
-            cell.set(counts);
-        }
-    });
-}
-
-struct MeasuredAllocator;
-
-#[expect(
-    unsafe_code,
-    reason = "count this thread's System allocator operations in an explicit benchmark"
-)]
-unsafe impl GlobalAlloc for MeasuredAllocator {
-    unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
-        // SAFETY: Preserve System's allocator contract and arguments.
-        let ptr = unsafe { System.alloc(layout) };
-        if !ptr.is_null() {
-            account(0, layout.size(), false);
-        }
-        ptr
-    }
-    unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout) {
-        account(layout.size(), 0, false);
-        // SAFETY: Forward the allocation and its matching layout unchanged.
-        unsafe { System.dealloc(ptr, layout) };
-    }
-    unsafe fn realloc(&self, ptr: *mut u8, layout: Layout, size: usize) -> *mut u8 {
-        // SAFETY: Forward the valid allocation and requested size unchanged.
-        let result = unsafe { System.realloc(ptr, layout, size) };
-        if !result.is_null() {
-            account(layout.size(), size, true);
-        }
-        result
-    }
-}
+use ic_testkit_native::{MeasuredAllocator, measure as measure_allocations};
+use std::{alloc::System, hint::black_box};
 
 #[global_allocator]
-static ALLOCATOR: MeasuredAllocator = MeasuredAllocator;
+static ALLOCATOR: MeasuredAllocator = MeasuredAllocator::new(System);
 
-fn measure(phase: &str, generations: u64, iterations: usize, mut operation: impl FnMut()) {
-    COUNTS.with(|cell| {
-        cell.set(Counts {
-            enabled: true,
-            ..Counts::default()
-        });
-    });
-    let start = Instant::now();
-    for _ in 0..iterations {
-        operation();
-    }
-    let elapsed = start.elapsed().as_micros();
-    let counts = COUNTS.with(|cell| {
-        let counts = cell.get();
-        cell.set(Counts::default());
-        counts
-    });
-    assert_eq!(counts.live, 0, "all measured allocations must be released");
+fn measure(phase: &str, generations: u64, iterations: usize, operation: impl FnMut()) {
+    let counts =
+        measure_allocations(iterations, operation).expect("non-nested allocation workload");
+    let elapsed = counts.elapsed.as_micros();
+    assert_eq!(
+        counts.net_bytes, 0,
+        "all measured allocations must be released"
+    );
     println!(
         "{phase},{generations},{iterations},{},{},{},{elapsed}",
-        counts.allocations, counts.reallocations, counts.peak
+        counts.allocations, counts.reallocations, counts.peak_bytes
     );
 }
 

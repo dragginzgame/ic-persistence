@@ -173,7 +173,7 @@ pub use stable_cell::{
 use stable_cell::{decode_stable_cell_commit_store, decode_stable_cell_commit_store_from_memory};
 pub use validation::AllocationValidationError;
 
-#[cfg(test)]
+#[cfg(all(test, not(target_arch = "wasm32")))]
 mod allocation_measurements_tests;
 
 #[cfg(any(test, feature = "test-support"))]

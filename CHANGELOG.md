@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.50.6] - Unreleased
+
+- Replace duplicated native allocation measurement with published Testkit support,
+  preserving workloads and counters. [Details](docs/changelog/0.50.md#0506).
+
 ## [0.50.5] - 2026-10-21
 
 - Include the release-editor selection in native CI cache keys ([#126](https://github.com/dragginzgame/ic-persistence/issues/126)).
