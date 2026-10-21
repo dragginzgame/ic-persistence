@@ -4,7 +4,7 @@ use crate::{
     MemoryManagerConfig, MemoryRuntime, SealedDeclarationSnapshot,
     stable_cell::EncodedLedgerRecord,
 };
-use ic_stable_structures::{
+use ic_platform::stable_structures::{
     Memory, Storable, VectorMemory,
     memory_manager::{MemoryId, MemoryManager},
 };
@@ -307,7 +307,7 @@ fn steady_state_snapshot_allocations() {
             ));
         });
         let memory = VectorMemory::default();
-        drop(ic_stable_structures::Cell::new(
+        drop(ic_platform::stable_structures::Cell::new(
             memory.clone(),
             EncodedLedgerRecord::new(&record).unwrap(),
         ));
@@ -320,7 +320,7 @@ fn steady_state_snapshot_allocations() {
             let mut next = decoded.recover().unwrap().into_ledger();
             next.current_generation += 1;
             decoded.commit_generation(&next).unwrap();
-            drop(ic_stable_structures::Cell::new(
+            drop(ic_platform::stable_structures::Cell::new(
                 memory.clone(),
                 EncodedLedgerRecord::new(&decoded).unwrap(),
             ));

@@ -177,6 +177,49 @@ for target in install-tools tools-check; do
         > "$FIXTURE/$target-ic-failure.log" 2>&1 || status=$?
     [[ "$status" == 2 ]] || exit 1
 done
+# Consumer protocol admission must reject drift and failed observations before
+# the generic graph observer, including a failed command with plausible stdout.
+mkdir "$FIXTURE/protocol-bin"
+cp "$ROOT/Cargo.toml" "$FIXTURE/"
+cp "$ROOT/scripts/ci/check-cargo-graph.pl" "$FIXTURE/scripts/ci/"
+cat > "$FIXTURE/protocol-bin/cargo" <<'STUB'
+#!/usr/bin/env bash
+set -euo pipefail
+if [[ "$*" == "+$FIXTURE_TOOLCHAIN pkgid --locked --offline -p ic-stable-structures" ]]; then
+    printf 'pkgid\n' >> protocol-events
+    printf '%s\n' "$SUBSTRATE_ID"
+    exit "$SUBSTRATE_STATUS"
+fi
+[[ "$1" == tree ]] || exit 99
+printf 'tree\n' >> protocol-events
+printf '%s\n' 'ic-storage v0.0.0' 'ic-memory v0.0.0' \
+    'ic-platform v0.6.5' 'ic-stable-structures v0.7.2'
+STUB
+chmod +x "$FIXTURE/protocol-bin/cargo"
+for result in valid wrong-version wrong-source missing failed-observation; do
+    identity='registry+https://github.com/rust-lang/crates.io-index#ic-stable-structures@0.7.2'
+    observation=0
+    case "$result" in
+        wrong-version) identity="${identity%0.7.2}0.7.3" ;;
+        wrong-source) identity='path+file:///unreviewed#ic-stable-structures@0.7.2' ;;
+        missing) identity='' ;;
+        failed-observation) observation=23 ;;
+    esac
+    rm -f "$FIXTURE/protocol-events"
+    status=0
+    (cd "$FIXTURE"; PATH="$FIXTURE/protocol-bin:$PATH" \
+        SUBSTRATE_ID="$identity" SUBSTRATE_STATUS="$observation" \
+        make --no-print-directory check-production-graph) \
+        > "$FIXTURE/protocol-$result.log" 2>&1 || status=$?
+    printf 'pkgid\n' > "$FIXTURE/protocol-expected"
+    if [[ "$result" == valid ]]; then
+        [[ "$status" == 0 ]] || exit 1
+        printf 'tree\n' >> "$FIXTURE/protocol-expected"
+    else
+        [[ "$status" == 2 ]] || exit 1
+    fi
+    cmp "$FIXTURE/protocol-expected" "$FIXTURE/protocol-events"
+done
 # The actual validation recipe must finish Clippy before later stages, even with
 # parallel Make. Substitute recursive leaves and Cargo, never the parent recipe.
 mkdir "$FIXTURE/lint-bin"

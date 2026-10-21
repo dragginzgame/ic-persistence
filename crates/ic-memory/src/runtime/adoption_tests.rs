@@ -6,7 +6,7 @@ use crate::{
     BootstrapAdmission, MemoryAllocationPool, MemoryAuthority, MemoryManagerSlot, MemoryRequest,
     PolicyIdentity, RuntimeBootstrapPolicy, SealedDeclarationSnapshot, StableKey,
 };
-use ic_stable_structures::VectorMemory;
+use ic_platform::stable_structures::VectorMemory;
 use std::{cell::Cell, convert::Infallible};
 const KEY: &str = "db.rows.v1";
 const CONTROL: &str = "db.control.v1";

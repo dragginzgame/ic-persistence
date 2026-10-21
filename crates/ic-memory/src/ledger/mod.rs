@@ -228,7 +228,7 @@ mod tests {
         declaration::AllocationDeclaration, key::StableKey, physical::CommittedGenerationBytes,
         requests::DeclarationSnapshot, slot::MemoryManagerSlot,
     };
-    use ic_stable_structures::Storable;
+    use ic_platform::stable_structures::Storable;
     fn declaration(key: &str, id: u8) -> AllocationDeclaration {
         AllocationDeclaration::new(key, MemoryManagerSlot::new(id).expect("usable slot"))
             .expect("declaration")

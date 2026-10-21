@@ -1,5 +1,5 @@
 use ic_memory::RuntimeMemory;
-use ic_stable_structures::DefaultMemoryImpl;
+use ic_platform::stable_structures::DefaultMemoryImpl;
 use std::cell::RefCell;
 
 const MACRO_AUTHORITY: &str = "runtime_macros";
@@ -35,14 +35,14 @@ fn host_injects_component_memory_that_outlives_its_runtime() {
     let logical = host
         .open_memory("macro.logical.rows.v1")
         .expect("key-only host adoption");
-    assert_eq!(ic_stable_structures::Memory::size(&logical), 0);
+    assert_eq!(ic_platform::stable_structures::Memory::size(&logical), 0);
     assert_eq!(host.memory_id("macro.logical.rows.v1").unwrap(), 11);
     let component_memory = host.open_memory("macro.integration.users.v1").unwrap();
     MACRO_MEMORY.with(|memory| *memory.borrow_mut() = Some(component_memory));
     drop(host);
     MACRO_MEMORY.with(|memory| {
         assert_eq!(
-            ic_stable_structures::Memory::size(memory.borrow().as_ref().unwrap()),
+            ic_platform::stable_structures::Memory::size(memory.borrow().as_ref().unwrap()),
             0,
         );
     });

@@ -36,7 +36,7 @@ does not depend on Storage.
 
 | Owner | Boundary |
 | --- | --- |
-| `ic-stable-structures` | Pinned manager/Cell substrate and backing `Memory` interface. Memory retains the checked layout adapters needed for bounded reads and fallible growth. |
+| `ic-platform::stable_structures` | Exact 0.7.2 manager/Cell substrate and backing `Memory` identities. Memory retains the checked layout adapters needed for bounded reads and fallible growth; product admission checks the transitive protocol identity. |
 | `ic-storage::adapter` | Production typed collections over `RuntimeMemory`. Storage depends on Memory; Memory must not depend back on Storage or expose its raw collection substrate. |
 | `ic-metrics-stable` | Metric identities, records and restoration over governed Storage collections. Memory supplies allocation facts, not a second metric store. |
 | Hosts such as Canic; components such as IcyDB | Complete component composition, policy identity, application admission, lifecycle, database schemas and operator response assembly. |

@@ -137,7 +137,7 @@ mod test_cbor {
 /// not admission: implementing `Memory` does not construct a checked handle.
 /// Collection codec traits belong to Storage; metric records and restoration
 /// belong to IC Metrics Stable.
-pub use ic_stable_structures::{DefaultMemoryImpl, Memory, VectorMemory};
+pub use ic_platform::stable_structures::{DefaultMemoryImpl, Memory, VectorMemory};
 
 pub use allocation_pool::{MemoryAllocationPool, MemoryAllocationPoolError, MemoryAuthority};
 pub use constants::{

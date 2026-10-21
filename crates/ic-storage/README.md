@@ -158,7 +158,7 @@ fn extract(map: ic_storage::adapter::StableBTreeMap<u64, u64>) {
 
 ```compile_fail
 fn bypass(map: &ic_storage::adapter::StableBTreeMap<u64, u64>) {
-    let _: &ic_stable_structures::BTreeMap<u64, u64, ic_memory::RuntimeMemory<ic_memory::DefaultMemoryImpl>> = map;
+    let _: &ic_platform::stable_structures::BTreeMap<u64, u64, ic_memory::RuntimeMemory<ic_memory::DefaultMemoryImpl>> = map;
 }
 ```
 

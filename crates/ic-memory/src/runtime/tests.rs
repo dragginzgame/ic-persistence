@@ -7,7 +7,7 @@ use crate::{
     RuntimeBootstrapPolicy, SealedDeclarationSnapshot, StableKey,
     testing::{DiagnosticCheck, DiagnosticCode},
 };
-use ic_stable_structures::{Cell, Memory, VectorMemory};
+use ic_platform::stable_structures::{Cell, Memory, VectorMemory};
 use std::convert::Infallible;
 
 pub(super) fn declarations() -> SealedDeclarationSnapshot {

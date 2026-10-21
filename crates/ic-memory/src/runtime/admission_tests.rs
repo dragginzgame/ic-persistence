@@ -4,7 +4,7 @@ use crate::{
     BootstrapAdmissionError as AdmissionError, MemoryDeclarationError as DeclarationError,
     MemoryManagerSlot, RuntimeBootstrapPolicy, StableKey,
 };
-use ic_stable_structures::VectorMemory;
+use ic_platform::stable_structures::VectorMemory;
 use std::cell::Cell as Counter;
 
 #[derive(Default)]

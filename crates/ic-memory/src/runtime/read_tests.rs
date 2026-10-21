@@ -1,5 +1,5 @@
 use super::{MemoryManagerConfig, MemoryRuntime, RuntimeMemory};
-use ic_stable_structures::{Memory, VectorMemory};
+use ic_platform::stable_structures::{Memory, VectorMemory};
 use std::{
     cell::{Cell, RefCell},
     mem::MaybeUninit,

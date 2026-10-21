@@ -7,7 +7,7 @@ use crate::{
     physical::CommitSnapshotDiagnostic, slot::MEMORY_MANAGER_LEDGER_ID,
     stable_cell::decode_stable_cell_commit_store_from_memory,
 };
-use ic_stable_structures::{Memory, memory_manager::MemoryId};
+use ic_platform::stable_structures::{Memory, memory_manager::MemoryId};
 use serde::Serialize;
 use std::{borrow::Cow, fmt::Display};
 

@@ -1,4 +1,4 @@
-use ic_stable_structures::{Memory, memory_manager::VirtualMemory};
+use ic_platform::stable_structures::{Memory, memory_manager::VirtualMemory};
 use std::{
     cell::{Cell, RefCell},
     rc::Rc,

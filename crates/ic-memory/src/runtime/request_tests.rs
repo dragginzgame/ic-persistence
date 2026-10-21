@@ -3,7 +3,7 @@ use crate::{
     AllocationDeclaration, AllocationLedger, GenericAllocationPolicy, LedgerCommitStore,
     MemoryAllocationPool, MemoryAuthority, MemoryRequest, SealedDeclarationSnapshot,
 };
-use ic_stable_structures::{
+use ic_platform::stable_structures::{
     Cell, Memory, VectorMemory,
     memory_manager::{MemoryId, MemoryManager},
 };

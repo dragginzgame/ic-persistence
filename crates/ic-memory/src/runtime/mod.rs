@@ -52,7 +52,7 @@ use crate::{
     slot::MEMORY_MANAGER_LEDGER_ID,
     stable_cell::{EncodedLedgerRecord, decode_stable_cell_commit_store_from_memory},
 };
-use ic_stable_structures::{
+use ic_platform::stable_structures::{
     Cell, Memory,
     memory_manager::{MemoryId, MemoryManager},
 };
@@ -111,7 +111,7 @@ impl<M: Memory> MemoryRuntime<M> {
     /// Construct an unbootstrapped runtime without overwriting foreign memory.
     ///
     /// Empty backing memory is initialized as an
-    /// `ic_stable_structures::MemoryManager`. Nonempty memory must pass bounded
+    /// [`MemoryManager`]. Nonempty memory must pass bounded
     /// validation of the current manager header, bucket table, and extents; otherwise
     /// construction returns a typed error before the manager can
     /// write its header or allocation table. A pre-grown blank memory is

@@ -118,12 +118,15 @@ check-pins:
 
 # Product policy stays here; Shared observes the locked normal/build graph.
 check-production-graph:
+	+@substrate="$$(cargo +$(VALIDATION_TOOLCHAIN) pkgid --locked --offline -p ic-stable-structures)" && \
+	  [ "$$substrate" = 'registry+https://github.com/rust-lang/crates.io-index#ic-stable-structures@0.7.2' ] || \
+	  { printf 'Unsupported stable-memory substrate identity: %s\n' "$$substrate" >&2; exit 1; }
 	+RUSTUP_TOOLCHAIN=$(VALIDATION_TOOLCHAIN) RUSTUP_AUTO_INSTALL=0 perl scripts/ci/check-cargo-graph.pl \
 		--consumer "$(CURDIR)" --package ic-storage --target wasm32-unknown-unknown \
 		--forbid ic-build --forbid-pattern '^ic-host-' --forbid-pattern '^ic-testkit(?:-|$$)' \
 		--forbid-pattern '^clap(?:_|$$)' \
 		--forbid pocket-ic --forbid serde_json --forbid toml --forbid trybuild \
-		--require ic-stable-structures=1 --require ic-memory=1
+		--require ic-stable-structures=1 --require ic-memory=1 --require ic-platform=1
 
 # Install exact, checksum-verified tools separately; these checks are offline.
 lint-tooling:

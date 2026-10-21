@@ -21,8 +21,7 @@ categories = ["wasm", "data-structures"]
 [workspace.dependencies]
 # Production dependencies
 ic-memory = { path = "crates/ic-memory", version = "0.50.8" }
-# Qualified manager/Cell layout boundary; see AGENTS.md#dependency-exceptions.
-ic-stable-structures = "=0.7.2"
+ic-platform = { version = "0.6.5", default-features = false }
 serde = { version = "1.0", default-features = false, features = [
     "alloc",
     "derive",

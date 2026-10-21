@@ -26,7 +26,7 @@ ic-testkit-native = { workspace = true, features = ["stable-memory"] }
 test-support = []
 
 [dependencies]
-ic-stable-structures.workspace = true
+ic-platform = { workspace = true, features = ["stable-structures"] }
 serde.workspace = true
 serde_cbor.workspace = true
 thiserror.workspace = true

@@ -1,6 +1,6 @@
 use super::{MemoryManagerLayoutError, MemoryRuntime, RuntimeDiagnosticError, layout};
 use crate::{DiagnosticMemorySize, MEMORY_MANAGER_LEDGER_ID, WASM_PAGE_SIZE_BYTES};
-use ic_stable_structures::Memory;
+use ic_platform::stable_structures::Memory;
 use serde::Serialize;
 
 ///

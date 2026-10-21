@@ -2,7 +2,7 @@
 use ic_memory::{
     GenericAllocationPolicy, MemoryAllocations, MemoryManagerConfig, MemoryRuntime, RuntimeMemory,
 };
-use ic_stable_structures::{Cell, Memory, StableVec};
+use ic_platform::stable_structures::{Cell, Memory, Vec as StableVec};
 use ic_testkit_native::memory::{MemoryIoCounts, MeteredMemory};
 use std::{hint::black_box, time::Instant};
 

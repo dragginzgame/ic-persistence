@@ -12,7 +12,7 @@ mod runtime;
 pub use runtime::{FixtureRuntimeError, fixture_runtime};
 
 use crate::{Memory, MemoryManagerConfig, RuntimeMemory};
-use ic_stable_structures::Cell;
+use ic_platform::stable_structures::Cell;
 
 use crate::{
     AllocationDeclaration, MemoryManagerSlot, MemoryManagerSlotError, StableKey, StableKeyError,

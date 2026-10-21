@@ -3,7 +3,7 @@ use super::{
     RuntimeOpenError, layout, policy::GenericAllocationPolicy,
 };
 use crate::{IC_MEMORY_LEDGER_STABLE_KEY, MEMORY_MANAGER_LEDGER_ID};
-use ic_stable_structures::{
+use ic_platform::stable_structures::{
     Memory, VectorMemory,
     memory_manager::{MemoryId, MemoryManager},
 };

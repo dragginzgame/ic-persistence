@@ -1,5 +1,22 @@
 # Runtime IO and maintainer improvements qualification
 
+## IC Platform 0.6.5 boundary qualification — 2026-10-21
+
+The pending 0.50.9 working tree based on released 0.50.8 `5910f64` consumes
+published Platform 0.6.5 in both libraries and the independent runner. Memory's
+manager/backing and Storage's collection identities still resolve to the same
+registry stable-structures 0.7.2. The new product guard refuses protocol identity
+drift or failed observations before singleton graph admission.
+
+Installed Linux original/O3/Os/Oz checks pass 12 invalid-IO traps per variant,
+post-persistence/geometry rollback, clean retry and all nine valid-IO cases.
+The 36 valid-IO rows match the earlier qualified instruction observations.
+Native IO and allocation workloads separately retain all 40 and 86 non-timing
+rows. Exact inputs, tools, server logs and Wasm variants are retained at
+`target/qualification/runtime/attempt.hElm2V/`; focused logs are under
+`/tmp/ic-persistence-platform065-*`. This qualifies local working-tree behavior,
+not delivery, native macOS or release execution.
+
 ## IC Tooling 0.63.2 installed qualification — 2026-10-21
 
 The pending 0.50.8 working tree based on released 0.50.7 `4dda4c1` passes

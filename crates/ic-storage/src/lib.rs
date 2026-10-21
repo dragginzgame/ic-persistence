@@ -4,4 +4,4 @@
 
 pub mod adapter;
 
-use ic_stable_structures as substrate;
+use ic_platform::stable_structures as substrate;

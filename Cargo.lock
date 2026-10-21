@@ -256,7 +256,7 @@ dependencies = [
  "ic-host-artifacts",
  "ic-host-fs",
  "ic-host-process",
- "ic-stable-structures",
+ "ic-platform",
  "ic-testkit-native",
  "serde",
  "serde_cbor",
@@ -268,9 +268,9 @@ dependencies = [
 
 [[package]]
 name = "ic-platform"
-version = "0.6.4"
+version = "0.6.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7b93443bb7de4ed1e4bcb371d3ec592dd1bff427d5aeec5ee737992a6710004f"
+checksum = "cb1b0dc845cdc300ed1cc8f31caab640a7fee430078bb7f54c748e904e0030b0"
 dependencies = [
  "ic-stable-structures",
 ]
@@ -289,7 +289,7 @@ name = "ic-storage"
 version = "0.50.8"
 dependencies = [
  "ic-memory",
- "ic-stable-structures",
+ "ic-platform",
 ]
 
 [[package]]

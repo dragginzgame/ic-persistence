@@ -15,22 +15,34 @@ publication to the new public `dragginzgame/ic-persistence` repository on
 2026-10-20. The destination exists with collaborator-only PR creation; the
 consolidated branch was selected for its `main`. Downstream consumers retain their own dependency adoption decisions.
 
-Both packages inherit released workspace version 0.50.7. The completed 0.50.0
+Both packages inherit released workspace version 0.50.8. The completed 0.50.0
 conversion needs no version exception or manifest-rewrite path. Shared Tooling
 0.26.2 (`1959ef75d0b86ed7725d41ae5056303d35eb633d`) owns optimizer-only setup
-and evidence; release 0.50.7 passed all ten hosted checks on Linux and both macOS
-architectures. Dirty sibling work is not adopted.
+and evidence. Release 0.50.8 passed all ten native/MSRV/installed-runtime checks;
+the supplying Tooling 0.63.2 matrix also passed after its Intel DNS retry.
 
-Pending compatible 0.50.8 notes cover published IC Tooling 0.63.2 and native IO
-observer adoption under [#98](https://github.com/dragginzgame/ic-persistence/issues/98).
-Both selected CLIs require `cli`. Production dependencies and the independent
-runtime lock remain unchanged; its Platform 0.6.0 client boundary and PocketIC
-16.1.0 selections are separate from the native observer's Platform dependency.
-Local qualification passes Clippy, 192 library tests, nine Rust 1.91 IO tests,
-all 60 release-tool tests, release/bootstrap fixtures and Wasm checks. All 40 IO
-and 86 allocation rows match. Installed four-variant Linux evidence is in
-`target/qualification/runtime/attempt.gKHXbF/`; see [runtime notes](../runtime-io-qualification.md).
-Hosted/macOS consumer acceptance remains required after delivery.
+Pending compatible 0.50.9 notes cover both crates and the independent runner
+selecting published Platform 0.6.5. All maintained library/tests/example imports
+use its exports. Direct substrate declarations and allowances are retired;
+production admission checks exact registry 0.7.2 identity and singleton graphs.
+Memory retains layout/growth safeguards; changes stop at the Platform boundary.
+
+Local qualification passes strict Clippy for both workspaces, 207 product tests,
+13 doctests, all 60 release-tool tests, adapter/bootstrap fixtures and MSRV/Wasm
+checks. Actual Rust 1.91 library execution passes. Drift/failing-observation
+fixtures exercise the protocol guard. All 40 native IO, 86 allocation and 36
+installed valid-IO rows match the prior qualified baseline.
+
+Installed original/O3/Os/Oz IO/upgrade evidence is retained at
+`target/qualification/runtime/attempt.hElm2V/`; see
+[runtime notes](../runtime-io-qualification.md). Both locks change only intended
+Platform selections and consumer edges; PocketIC remains 16.1.0.
+
+[Platform #45](https://github.com/dragginzgame/ic-platform/issues/45) supplies the
+manager exports. Its exact release CI is still asynchronous; installed-runtime
+producer acceptance passes. Local source is uncommitted. Delivery and native
+consumer acceptance remain under
+[Persistence #130](https://github.com/dragginzgame/ic-persistence/issues/130).
 
 CI retains its failure-evidence fixture from the main validation pass for the
 hosted round trip. Archive rejection cases share prepared, hashed archives;

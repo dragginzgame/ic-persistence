@@ -3,7 +3,7 @@
 //! this adapter; layout changes require a new review, not a fallback decoder.
 use super::RuntimeConstructionError;
 use crate::WASM_PAGE_SIZE_BYTES;
-use ic_stable_structures::Memory;
+use ic_platform::stable_structures::Memory;
 
 pub(super) const IDS: usize = 255;
 pub(super) const BUCKET_CAPACITY: u16 = 32_768;

@@ -31,7 +31,7 @@ impl RuntimeBootstrapPolicy for CustomPolicy {
 #[test]
 fn custom_policy_bootstrap_is_identity_bound_and_idempotent() {
     let mut runtime = ic_memory::MemoryRuntime::new_with_config(
-        ic_stable_structures::VectorMemory::default(),
+        ic_platform::stable_structures::VectorMemory::default(),
         ic_memory::MemoryManagerConfig::new(16).unwrap(),
     )
     .unwrap();

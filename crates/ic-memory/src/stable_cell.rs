@@ -1,5 +1,5 @@
 use crate::{LedgerCommitStore, constants::WASM_PAGE_SIZE_BYTES};
-use ic_stable_structures::{Memory, Storable, storable::Bound};
+use ic_platform::stable_structures::{Memory, Storable, storable::Bound};
 use std::borrow::Cow;
 use thiserror::Error;
 
@@ -205,7 +205,7 @@ impl Storable for EncodedLedgerRecord {
 mod tests {
     use super::*;
     use crate::test_cbor::hex_fixture;
-    use ic_stable_structures::{Cell, VectorMemory};
+    use ic_platform::stable_structures::{Cell, VectorMemory};
 
     #[test]
     fn publication_payload_refuses_oversized_chunks_before_buffering() {

@@ -2,7 +2,7 @@ use super::{MemoryRuntime, RuntimeDiagnosticError};
 use crate::{
     DiagnosticExport, DiagnosticMemorySize, RecoveredLedger, physical::CommitSnapshotDiagnostic,
 };
-use ic_stable_structures::Memory;
+use ic_platform::stable_structures::Memory;
 
 impl<M: Memory> MemoryRuntime<M> {
     /// Export this runtime's recovered ledger and live virtual-memory sizes.

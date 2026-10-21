@@ -2,7 +2,7 @@ use ic_memory::{
     Memory, MemoryManagerSlot, MemoryRuntime, PolicyIdentity, RuntimeBootstrapPolicy, StableKey,
     VectorMemory,
 };
-use ic_stable_structures::Cell;
+use ic_platform::stable_structures::Cell;
 
 const AUTHORITY: &str = "explicit_runtime";
 
@@ -146,7 +146,7 @@ fn failed_collection_construction_and_unwinding_release_the_lease() {
     memory.grow(1).unwrap();
     memory.write(0, b"bad");
     let refused = std::panic::catch_unwind(std::panic::AssertUnwindSafe(move || {
-        ic_stable_structures::StableVec::<u64, _>::init(memory)
+        ic_platform::stable_structures::Vec::<u64, _>::init(memory)
     }));
     assert!(refused.is_err());
     let failure = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
@@ -206,14 +206,14 @@ fn all_application_slots_have_independent_leases() {
     let refused = runtime.open_memory(&keys[0]).and_then(|index| {
         runtime
             .open_memory(&keys[1])
-            .map(|data| ic_stable_structures::StableLog::<u64, _, _>::new(index, data))
+            .map(|data| ic_platform::stable_structures::Log::<u64, _, _>::new(index, data))
     });
     assert!(matches!(
         refused,
         Err(ic_memory::RuntimeOpenError::AlreadyOpen { id: 11 })
     ));
     drop(held_data);
-    let log = ic_stable_structures::StableLog::<u64, _, _>::new(
+    let log = ic_platform::stable_structures::Log::<u64, _, _>::new(
         runtime.open_memory(&keys[0]).unwrap(),
         runtime.open_memory(&keys[1]).unwrap(),
     );

@@ -1,6 +1,6 @@
 use super::{MemoryRuntime, RuntimeLifecycle, RuntimeOpenError};
 use crate::{SealedDeclarationSnapshot, StableKey};
-use ic_stable_structures::Memory;
+use ic_platform::stable_structures::Memory;
 
 ///
 /// RuntimeAdoptionError

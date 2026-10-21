@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.50.9] - Unreleased
+
+- Route Memory and Storage through IC Platform 0.6.5, preserving their substrate
+  types, stored formats and explicit 0.7.2 protocol admission
+  ([#130 — Route stable-memory substrate dependencies through IC Platform](https://github.com/dragginzgame/ic-persistence/issues/130)).
+  [Details](docs/changelog/0.50.md#0509).
+
 ## [0.50.8] - 2026-10-21
 
 - Adopt IC Tooling 0.63.2 and replace the local test IO observer with its published
