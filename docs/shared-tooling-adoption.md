@@ -25,9 +25,11 @@ also remains in its focused target. Release notes may use a numbered
 ` - Unreleased` heading, which the shared finalizer dates during preparation.
 
 Shared 0.25.3 binds explicit Cargo feature sets to selected tool installations
-and admission receipts. Memory's current tools need no feature arguments. Rerun
-`make install-tools` for the updated build policy; previous installations and
-failed attempts remain retained, and ordinary checks never repair tools.
+and admission receipts. Build and Testkit 0.63 binaries select `--features cli`
+in setup, offline admission and bootstrap calls. Library dependencies retain
+disabled defaults. Prepare the selections with `make install-tools` and
+`make install-runtime-server`; previous installations and failed attempts remain
+retained, and ordinary checks never repair tools.
 
 Memory's failure collector delegates tool selection and archiving to Shared's
 `collect-tool-evidence.sh`. Failed selector output remains diagnostic data;

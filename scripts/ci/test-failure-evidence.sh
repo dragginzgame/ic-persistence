@@ -35,7 +35,12 @@ fixture="${fixture%/.}"
 yq -o=json '.jobs.test' "$ROOT/.github/workflows/ci.yml" > "$fixture/workflow.json"
 jq -e '
     [.steps[] | select(.id == "evidence-download")] as $downloads
+    | [.steps[] | select(.id == "evidence")] as $producers
     | .permissions.actions == "read"
+    and ($producers | length) == 1 and ($producers[0] |
+        .run == "make validate-toolchain 2>&1 | tee \"$RUNNER_TEMP/validation.log\""
+        and .env.FAILURE_EVIDENCE_DIRECTORY == "${{ runner.temp }}/ic-memory-fixtures/native-upload")
+    and ([.steps[] | select((.run // "") | contains("bash scripts/ci/test-failure-evidence.sh"))] | length) == 0
     and ($downloads | length) == 1 and ($downloads[0] |
         .if == "${{ !cancelled() && steps.evidence-upload.outputs.artifact-id != '\'''\'' }}"
         and .run == "bash scripts/ci/download-evidence.sh \"$EVIDENCE_REPOSITORY\" \"$EVIDENCE_RUN\" \"$EVIDENCE_ARTIFACT\" \"$EVIDENCE_DIGEST\" \"$RUNNER_TEMP/ic-memory-evidence-downloaded\""

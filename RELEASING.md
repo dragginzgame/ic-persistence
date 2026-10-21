@@ -334,13 +334,11 @@ Current focused evidence is recorded in
 
 ## Coordinated Memory and Storage publication
 
-The first consolidated release is 0.50.0 (use `release-minor` after authorized
-cutover). Until then, Storage retains its published 0.5.9 manifest version while
-Memory remains 0.49.4. Preparation converts Storage to workspace inheritance and
-updates both local lock records and the internal Memory version requirement.
-These are saved, source-bound release surfaces with the existing rollback rules.
-Subsequent releases use the common workspace version. Older single-package
-receipts must be resumed in their original checkout/tooling, never converted.
+Memory and Storage inherit the common workspace version. Preparation updates
+both local lock records and the internal Memory requirement; Storage’s manifest
+is admitted unchanged as a source-bound release surface. The initial 0.50.0
+conversion is complete. Pre-consolidation receipts and plans retain their
+original source/tooling; do not convert them with the current adapter.
 
 Both qualified archive digests are retained in every package receipt. Packaging
 creates both archives offline and independently builds extracted packages and a

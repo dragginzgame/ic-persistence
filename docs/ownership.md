@@ -72,3 +72,18 @@ The [adoption guide](shared-tooling-adoption.md) records selected tooling and
 consumer qualification. Historical reports under `docs/changelog`, `docs/audits`
 and the qualification guides retain their original source/version scope; use the
 current API and safety contract for present integration.
+
+## Release tooling review — 0.62.1
+
+The release adapter already delegates manifest rendering and lock projection to
+IC Build, durable receipt/archive writes to Host FS, digests to Host Artifacts,
+and bounded capture to Host Process. Saved intent, package ordering, source-bound
+receipts and retry admission remain Persistence policy. Removing those checks
+would remove consumer proofs rather than eliminate a duplicate implementation.
+
+IC Build’s `qualify_package_archives` also owns packaging and runs all-target
+and doctest suites. It cannot replace the current extracted-package checks and
+native/MSRV/Wasm consumer runner without changing that qualification roster.
+A future adoption needs a composable archive-admission boundary that retains
+source/archive custody while leaving consumer commands explicit. Keep the
+current gate until that boundary is available and qualified.
