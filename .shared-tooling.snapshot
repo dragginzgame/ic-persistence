@@ -1,8 +1,8 @@
 # Shared Tooling snapshot v1
-# version	0.26.1
+# version	0.26.2
 format	1
 source	https://github.com/dragginzgame/shared-tooling
-revision	67d4f25d1a613a27d7dfd7b5a4ae119e0e529fc7
+revision	1959ef75d0b86ed7725d41ae5056303d35eb633d
 # entrypoint	DRAGGINZGAME.md
 # entrypoint	rules/contributions.md
 # entrypoint	rules/changelogs.md
@@ -124,7 +124,7 @@ file	6365435bd2f265d41b3ff31fd1e433b73c0c6cba550bb6d6c9706d3cab5d099c	-	docs/con
 file	24ae0ec5c25a4d1d1b073e626b2706c69c3af9e46f1339d14e8e927a1649d44e	-	docs/provenance.md
 file	a9a23fe1071fee32f0cf59488d09629e484d77961b6ac84417c699a7317ebd19	-	docs/verification-helpers.md
 file	f280d8dcb6b92d5ac3d051c7456a158ba8a724722e50cb252bf0ea754ad2b9be	-	docs/ic-tools.md
-file	46cb64d720fb8a314645ad8de3f8201f0d439962a5a23bd192e4ae30c72734e1	-	docs/local-setup.md
+file	86550e8e7e4dee30f6c17014cfa1c8100ecc4e3879175f45aa9ddb55bca40b99	-	docs/local-setup.md
 file	b504048aee31664bb51cfeb14061a43d13fbc1cfff6d84aa6951f1809d424294	-	docs/make-interface.md
 file	bed4a3ec58de41956039b2b04baf357024ae7901c1f7d301b294cb35a8c44bcd	-	docs/supported-hosts.md
 file	1063002468575e2f821cfec71524bde06a64634bf30455d64d2d9fed872969d6	-	docs/tag-maintenance.md
