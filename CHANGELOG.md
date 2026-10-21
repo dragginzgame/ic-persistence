@@ -1,6 +1,6 @@
 # Changelog
 
-## [0.50.6] - Unreleased
+## [0.50.6] - 2026-10-21
 
 - Replace duplicated native allocation measurement with published Testkit support,
   preserving workloads and counters. [Details](docs/changelog/0.50.md#0506).
