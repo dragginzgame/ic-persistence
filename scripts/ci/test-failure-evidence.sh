@@ -375,7 +375,7 @@ for selection_mode in full compact; do
 if [[ "$1" == compact ]]; then
     snapshot_root="${0%/scripts/ci/select-tool-evidence.sh}"
     [[ "$4" == "$snapshot_root/ci/tool-versions.env" &&
-        "$5" == "$snapshot_root/ci/ic-tools.tsv" ]] || exit 18
+        "$5" == "$snapshot_root/ci/ic-tools.tsv" && "$6" == wasm-opt ]] || exit 18
 fi
 printf '%s\0%s\0%s\0' "${2%/*}/outside" 'secret' "$2"
 printf 'controlled partial selector failure\n' >&2

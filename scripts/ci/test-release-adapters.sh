@@ -154,7 +154,10 @@ if [[ "$kind" == rust && "$3" == --package ]]; then
 fi
 case "$kind" in
     host|rust) [[ "$3" == --versions && "$4" == "$PWD/ci/tool-versions.env" ]] || exit 1 ;;
-    ic) [[ "$3" == --pins && "$4" == "$PWD/ci/ic-tools.tsv" ]] || exit 1 ;;
+    ic)
+        [[ "$3" == --pins && "$4" == "$PWD/ci/ic-tools.tsv" &&
+            "$5" == --tool && "$6" == wasm-opt ]] || exit 1
+        shift 2 ;;
 esac
 printf '%s %s\n' "$kind" "${5:-install}" >> aggregate-events
 [[ "$kind" != ic || "${IC_ADMISSION_FAIL:-0}" != 1 ]] || exit 23
@@ -164,7 +167,7 @@ for target in install-tools tools-check; do
     rm -f "$FIXTURE/aggregate-events"
     (cd "$FIXTURE"; make -j2 --no-print-directory "$target") > "$FIXTURE/$target.log" 2>&1
     if [[ "$target" == install-tools ]]; then
-        printf 'rust --preflight\nhost install\nrust install\nic install\neditor install\n' > "$FIXTURE/aggregate-expected"
+        printf 'ic --preflight\nrust --preflight\nhost install\nrust install\nic install\neditor install\n' > "$FIXTURE/aggregate-expected"
     else
         printf 'host --check\nrust --check\nic --check\neditor --check\n' > "$FIXTURE/aggregate-expected"
     fi

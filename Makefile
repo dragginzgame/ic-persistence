@@ -32,6 +32,7 @@ FORMAT_CHECK_COMMAND = bash -ec 'cargo "+$$1" sort --workspace --grouped --check
     cargo "+$$1" fmt --all -- --check; rustfmt "+$$1" --edition 2024 --check testing/package-consumer.rs; \
     cargo "+$$1" fmt --manifest-path testing/runtime-qualification/Cargo.toml --all -- --check' -- "$(VALIDATION_TOOLCHAIN)"
 # Memory uses IC executables for installed runtime qualification.
+IC_TOOLS := wasm-opt
 LOCAL_TOOL_INSTALL_TARGETS += install-ic-tools install-release-tools
 LOCAL_TOOL_CHECK_TARGETS += ic-tools-check release-tools-check
 include make/consumer.mk

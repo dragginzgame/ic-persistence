@@ -9,8 +9,11 @@ local baseline. Future policy changes require reviewed snapshot adoption.
 
 ## Current source selection
 
-IC Persistence selects Shared Tooling 0.25.9 at
-`85aded191d85ac4a8c0e5deab207f6be18895862`, with 74 explicit roots and 113 payloads.
+This draft selects committed Shared Tooling 0.26.1 at
+`67d4f25d1a613a27d7dfd7b5a4ae119e0e529fc7`, with 74 explicit roots and 113 payloads.
+It must remain unintegrated until Shared's native macOS qualification is repaired
+and the selected producer revision is qualified; snapshot integrity alone is not
+native acceptance. See [the adoption issue](https://github.com/dragginzgame/ic-persistence/issues/127).
 The canonical takeover exporter retires the imported Storage snapshot after
 verifying its original bytes. Storage PR #18's release retry protection is
 therefore included; uncommitted Shared sibling changes are excluded.
@@ -88,6 +91,10 @@ and Testkit CLI in its own manifests and Makefile. Follow
 Source adoption, explicit setup, local activation and native qualification are
 separate; an exported script or configured CI job is not acceptance evidence.
 
+Memory selects only `wasm-opt` for installed runtime qualification, including
+native offline reuse and compact failure evidence. The full canonical catalog
+remains admitted; unselected tools are not downloaded or required. Full evidence
+retention and prior installations remain unchanged.
 Memory extends the common ordered setup/check targets with `install-ic-tools`
 and `ic-tools-check`, and exports `.tools/ic/bin`. Common setup supplies
 `.tools/host/bin` and `.tools/rust/common/bin`. Prepared bundles, failed attempts

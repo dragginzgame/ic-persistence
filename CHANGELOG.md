@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.50.4]
+
+- Select only `wasm-opt` for installed qualification, native offline reuse and
+  compact evidence through Shared Tooling 0.26.1; preserve full retention and
+  existing optimizer/runtime checks. [Details](docs/changelog/0.50.md#0504).
+
 ## [0.50.3] - 2026-10-21
 
 - Adopt IC Platform 0.6 in the independent runtime harness, retaining PocketIC
