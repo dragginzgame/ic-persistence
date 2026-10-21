@@ -1,6 +1,6 @@
 # Changelog
 
-## [0.50.5]
+## [0.50.5] - 2026-10-21
 
 - Include the release-editor selection in native CI cache keys ([#126](https://github.com/dragginzgame/ic-persistence/issues/126)).
 - Update runtime-only certificate trust dependencies for the emSign advisories
