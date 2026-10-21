@@ -1,6 +1,6 @@
 # Changelog
 
-## [0.50.2]
+## [0.50.2] - 2026-10-21
 
 - Retire completed consolidation paths and reuse prepared CI evidence and archive
   fixtures while preserving release recovery and admission checks.
