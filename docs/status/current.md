@@ -15,9 +15,9 @@ publication to the new public `dragginzgame/ic-persistence` repository on
 2026-10-20. The destination exists with collaborator-only PR creation; the
 consolidated branch was selected for its `main`. Downstream consumers retain their own dependency adoption decisions.
 
-Both packages now inherit the released workspace version, 0.50.1. The completed
+Both packages now inherit the released workspace version, 0.50.2. The completed
 0.50.0 conversion no longer needs a version exception or a manifest-rewrite path.
-Current development selects IC Tooling 0.62.1 and Platform 0.5.1 for the independent
+Current development selects IC Tooling 0.62.1 and Platform 0.6.0 for the independent
 runtime runner. The root snapshot remains Shared Tooling 0.25.9; dirty sibling
 work is not adopted.
 
