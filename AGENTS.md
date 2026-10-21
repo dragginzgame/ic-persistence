@@ -140,7 +140,7 @@ substrate protocol boundary recorded exactly in
 `runtime/layout.rs` and `stable_cell.rs`; a change requires layout, corruption,
 growth and installed IO/upgrade qualification. The independent qualification
 workspace consumes PocketIC through IC Platform's optional native client
-boundary; its lockfile selects client 16.1.0. Testkit 0.62.1 owns the reviewed
+boundary; its lockfile selects client 16.1.0. Testkit 0.63.0 owns the reviewed
 16.1.0 server selection. Changing that pair requires repeating installed
 qualification; historical 16.0.0 client/server evidence cannot qualify the new
 pairing. Keep both lockfiles, sources, features and toolchains unchanged during

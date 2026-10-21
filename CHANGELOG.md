@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.50.4]
+
+- Adopt IC Tooling 0.63, selecting the required `cli` feature for the release
+  metadata editor and Testkit server. [Details](docs/changelog/0.50.md#0504).
+
 ## [0.50.3] - 2026-10-21
 
 - Adopt IC Platform 0.6 in the independent runtime harness, retaining PocketIC

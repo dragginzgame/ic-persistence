@@ -7,7 +7,7 @@ pin="$(sed -n 's/^channel = "\([^"]*\)"$/\1/p' rust-toolchain.toml)"
 # shellcheck source=ci/release-tools.env
 source ci/release-tools.env
 editor="$(RUSTUP_TOOLCHAIN="$pin" bash scripts/dev/install-rust-tools.sh --consumer "$root" \
-    --package ic-build --version "$IC_BUILD_RELEASE_METADATA_VERSION" --bin ic-build-release-metadata --profile debug --check)"
+    --package ic-build --version "$IC_BUILD_RELEASE_METADATA_VERSION" --bin ic-build-release-metadata --profile debug --features cli --check)"
 fixture="$(mktemp -d "${TMPDIR:-/tmp}/ic-persistence-bootstrap.XXXXXX")"
 echo "Retained coordinated bootstrap fixture: $fixture"
 cp Cargo.toml Cargo.lock LICENSE rust-toolchain.toml "$fixture/"

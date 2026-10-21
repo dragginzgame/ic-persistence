@@ -40,8 +40,8 @@ fmt fmt-check format-tools-check: export RUSTUP_TOOLCHAIN := $(VALIDATION_TOOLCH
 
 # The published Testkit CLI owns PocketIC selection, admission and lifecycle.
 # Keep this tool graph outside both maintained workspace lockfiles.
-IC_TESTKIT_VERSION := 0.62.1
-TESTKIT_CLI := RUSTUP_TOOLCHAIN=$(VALIDATION_TOOLCHAIN) bash scripts/dev/install-rust-tools.sh --consumer "$(CURDIR)" --package ic-testkit --version $(IC_TESTKIT_VERSION) --bin ic-testkit-server --profile release
+IC_TESTKIT_VERSION := 0.63.0
+TESTKIT_CLI := RUSTUP_TOOLCHAIN=$(VALIDATION_TOOLCHAIN) bash scripts/dev/install-rust-tools.sh --consumer "$(CURDIR)" --package ic-testkit --version $(IC_TESTKIT_VERSION) --bin ic-testkit-server --profile release --features cli
 TESTKIT_SERVER_DIRECTORY := $(CURDIR)/.tools/ic-testkit-server
 
 help:
@@ -54,10 +54,10 @@ help:
 
 # Explicit preparation; normal checks only admit the selected published editor.
 install-release-tools:
-	+RUSTUP_TOOLCHAIN=$(VALIDATION_TOOLCHAIN) bash scripts/dev/install-rust-tools.sh --consumer "$(CURDIR)" --package ic-build --version $(IC_BUILD_RELEASE_METADATA_VERSION) --bin ic-build-release-metadata --profile debug
+	+RUSTUP_TOOLCHAIN=$(VALIDATION_TOOLCHAIN) bash scripts/dev/install-rust-tools.sh --consumer "$(CURDIR)" --package ic-build --version $(IC_BUILD_RELEASE_METADATA_VERSION) --bin ic-build-release-metadata --profile debug --features cli
 
 release-tools-check:
-	+RUSTUP_TOOLCHAIN=$(VALIDATION_TOOLCHAIN) bash scripts/dev/install-rust-tools.sh --consumer "$(CURDIR)" --package ic-build --version $(IC_BUILD_RELEASE_METADATA_VERSION) --bin ic-build-release-metadata --profile debug --check
+	+RUSTUP_TOOLCHAIN=$(VALIDATION_TOOLCHAIN) bash scripts/dev/install-rust-tools.sh --consumer "$(CURDIR)" --package ic-build --version $(IC_BUILD_RELEASE_METADATA_VERSION) --bin ic-build-release-metadata --profile debug --features cli --check
 
 # Explicit network setup; ordinary tool/library gates never provision a server.
 install-runtime-server: host-tools-check
