@@ -1,6 +1,6 @@
 # Changelog
 
-## [0.50.11] - Unreleased
+## [0.50.11] - 2026-10-22
 
 - Adopt Platform 0.6.7 and Tooling 0.64.0 across dependency catalogs and selected
   helper CLIs, retaining substrate, compiler and PocketIC identities.
