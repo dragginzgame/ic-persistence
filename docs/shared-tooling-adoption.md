@@ -9,8 +9,8 @@ local baseline. Future policy changes require reviewed snapshot adoption.
 
 ## Current source selection
 
-IC Persistence selects committed Shared Tooling 0.26.2 at
-`1959ef75d0b86ed7725d41ae5056303d35eb633d`, with 74 explicit roots and 113 payloads.
+IC Persistence selects committed Shared Tooling 0.26.6 at
+`4cb9bc907154225a3f7e4c33fd8d75fbeaa125c8`, with 75 explicit roots and 114 payloads.
 Release 0.50.7 passed the complete native, MSRV and installed-runtime matrix
 on Linux and both macOS architectures; snapshot integrity alone is not acceptance.
 See [the adoption issue](https://github.com/dragginzgame/ic-persistence/issues/127).
@@ -21,6 +21,20 @@ The canonical [preview and refresh procedure](consuming-snapshots.md#preview-bef
 exports committed bytes from a clean source checkout. Direct callers remain
 explicit roots and required companions are derived by the exporter.
 
+The refresh uses the canonical exporter from a clean detached copy of that
+commit. It retains the existing roots and adds `audits/ci-release-integrity.md`;
+that audit is guidance, not another automatic gate. Shared's source CI passes
+at the selected revision. This export carries checksum backend NUL refusal,
+single-document artifact metadata admission and overlapping-root feature graph
+handling. The unselected validation-target runner remains outside this snapshot.
+Tool catalogs, compiler selections and installed host coverage are unchanged.
+
+Ordinary expensive hosted integration follows Shared's asynchronous cadence.
+Focused checks, enforced GitHub requirements and separate release/publication/
+deployment and issue-specific acceptance remain in force. No CI dispatch or
+branch-protection change is part of adoption. DFINITY work stops at the owned
+Platform boundary and does not depend on future DFINITY contributions.
+
 Validation runs the existing all-target Clippy gate after prerequisite admission
 and before fixture suites, tests, Wasm builds and packaging. Sequential recipes
 preserve that ordering under parallel Make; the feature-specific fixture lint
@@ -28,7 +42,7 @@ also remains in its focused target. Release notes may use a numbered
 ` - Unreleased` heading, which the shared finalizer dates during preparation.
 
 Shared 0.25.3 binds explicit Cargo feature sets to selected tool installations
-and admission receipts. Build and Testkit 0.63.2 binaries select `--features cli`
+and admission receipts. Build and Testkit 0.64.0 binaries select `--features cli`
 in setup, offline admission and bootstrap calls. Library dependencies retain
 disabled defaults. Prepare the selections with `make install-tools` and
 `make install-runtime-server`; previous installations and failed attempts remain

@@ -36,9 +36,10 @@ for delay in 0 2 4 8 16 30; do
     request "repos/$repository/actions/artifacts/$artifact_id" "$attempt/metadata.json" || status=$?
     if [[ "$retryable" == true ]]; then continue; fi
     [[ "$status" == 0 ]] || exit "$status"
-    jq -e --arg id "$artifact_id" --arg run "$run_id" --arg digest "sha256:$digest" '
-        (.id | tostring) == $id and (.workflow_run.id | tostring) == $run and
-        .expired == false and .digest == $digest
+    jq -se --arg id "$artifact_id" --arg run "$run_id" --arg digest "sha256:$digest" '
+        length == 1 and (.[0] |
+            (.id | tostring) == $id and (.workflow_run.id | tostring) == $run and
+            .expired == false and .digest == $digest)
     ' "$attempt/metadata.json" >/dev/null || { echo 'Evidence artifact identity or digest mismatch' >&2; exit 1; }
     request "repos/$repository/actions/artifacts/$artifact_id/zip" "$attempt/artifact.zip" || status=$?
     if [[ "$retryable" == true ]]; then continue; fi

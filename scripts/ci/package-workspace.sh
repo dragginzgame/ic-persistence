@@ -6,7 +6,7 @@ pin="$1"
 shift
 [[ $# -eq 0 || "$1" == --allow-dirty ]] || exit 2
 export RUSTUP_AUTO_INSTALL=0
-bash scripts/ci/check-validation-compilers.sh "$pin"
+msrv="$(bash scripts/ci/check-validation-compilers.sh "$pin")"
 source_root="$(pwd -P)"
 cargo "+$pin" package --workspace --registry crates-io --locked --offline --no-verify "$@"
 metadata="$(cargo "+$pin" metadata --no-deps --locked --offline --format-version 1)"
@@ -61,15 +61,15 @@ done
 mkdir -p "$attempt/consumer/src"
 cp testing/package-consumer.rs "$attempt/consumer/src/main.rs"
 perl -MJSON::PP -e '
-    my ($memory,$storage,$file)=@ARGV;
+    my ($memory,$storage,$msrv,$file)=@ARGV;
     open my $out, ">", $file or die $!;
-    print $out "[workspace]\n[package]\nname = \"persistence-package-consumer\"\nversion = \"0.0.0\"\nedition = \"2024\"\nrust-version = \"1.91\"\n[dependencies]\n";
+    print $out "[workspace]\n[package]\nname = \"persistence-package-consumer\"\nversion = \"0.0.0\"\nedition = \"2024\"\nrust-version = \"$msrv\"\n[dependencies]\n";
     print $out "ic-memory = { path = ",encode_json($memory),", features = [\"test-support\"] }\n";
     print $out "ic-storage = { path = ",encode_json($storage)," }\n";
     close $out or die $!;
-' "$memory" "$storage" "$attempt/consumer/Cargo.toml"
+' "$memory" "$storage" "$msrv" "$attempt/consumer/Cargo.toml"
 admit_graph "$attempt/consumer/Cargo.toml" "$attempt/consumer"
-for compiler in "$pin" 1.91.0; do
+for compiler in "$pin" "$msrv"; do
     cargo "+$compiler" run --locked --offline --manifest-path "$attempt/consumer/Cargo.toml" --config "$attempt/patch.toml" --target-dir "$attempt/consumer-build"
 done
 cargo "+$pin" check --locked --offline --target wasm32-unknown-unknown --manifest-path "$attempt/consumer/Cargo.toml" --config "$attempt/patch.toml" --target-dir "$attempt/consumer-build"

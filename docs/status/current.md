@@ -15,41 +15,61 @@ publication to the new public `dragginzgame/ic-persistence` repository on
 2026-10-20. The destination exists with collaborator-only PR creation; the
 consolidated branch was selected for its `main`. Downstream consumers retain their own dependency adoption decisions.
 
-Both packages inherit released workspace version 0.50.9. The completed 0.50.0
-conversion needs no version exception or manifest-rewrite path. Shared Tooling
-0.26.2 (`1959ef75d0b86ed7725d41ae5056303d35eb633d`) owns optimizer-only setup
-and evidence. Release 0.50.8 passed all ten native/MSRV/installed-runtime checks;
-the supplying Tooling 0.63.2 matrix also passed after its Intel DNS retry.
+Both packages inherit released workspace version 0.50.10. Its complete ten-job
+native/MSRV/installed-runtime matrix passed at
+`fbe1208518950c8f81a8dc8475852d7c330fcaa7`. The Platform boundary adoption in
+[Persistence #130](https://github.com/dragginzgame/ic-persistence/issues/130)
+is delivered and closed. Pending compatible 0.50.11 selects Shared Tooling
+0.26.6 at `4cb9bc907154225a3f7e4c33fd8d75fbeaa125c8` through canonical export,
+with 75 roots and 114 payloads. The CI/release integrity audit is added as
+inspection guidance. Shared's selected-source CI passes; catalog pins and
+consumer workflow coverage are unchanged.
 
-Release 0.50.9 delivers both crates and the independent runner
-selecting published Platform 0.6.5. All maintained library/tests/example imports
-use its exports. Direct substrate declarations and allowances are retired;
-production admission checks exact registry 0.7.2 identity and singleton graphs.
-Memory retains layout/growth safeguards; changes stop at the Platform boundary.
+Both workspaces retain Platform 0.6.7. The root catalog and selected helper CLIs
+advance to Tooling 0.64.0 at `036da0cdf3d3b35297fbc26031e373f386a2f2de`.
+The consumed Build/Host/native Testkit library Rust sources match 0.63.3; removed
+Testkit forwarding/policy APIs are not called here. The root lock changes only
+those five versions/checksums from the incoming graph; the independent lock is
+unchanged by this adoption. Compiler identities, features, substrate 0.7.2 and
+PocketIC client/server 16.1.0 remain selected.
 
-Local qualification passes strict Clippy for both workspaces, 207 product tests,
-13 doctests, all 60 release-tool tests, adapter/bootstrap fixtures and MSRV/Wasm
-checks. Actual Rust 1.91 library execution passes. Drift/failing-observation
-fixtures exercise the protocol guard. All 40 native IO, 86 allocation and 36
-installed valid-IO rows match the prior qualified baseline.
+Ordinary hosted integration follows the new asynchronous baseline; release and
+issue-specific acceptance remain separate. Tooling 0.64's Testkit runtime CI
+passes; its native matrix is pending. No publication or hosted acceptance of
+these working-tree changes is claimed. Previous focused 0.63.3 qualification is retained at
+`target/qualification/runtime/attempt.nNsun8/` and
+`/tmp/ic-persistence-deps0633/` with its exact source/version scope.
 
-Installed original/O3/Os/Oz IO/upgrade evidence is retained at
+Current local qualification passes strict Clippy, Rust 1.91 all-target compilation,
+60 release-tool and nine Memory IO/accounting tests, release/bootstrap/admission,
+hooks, formatting, snapshot/pin/graph checks and failure-evidence retention.
+Both 0.64.0 CLIs are prepared/admitted. Installed original/O3/Os/Oz IO/upgrade
+checks pass at `target/qualification/runtime/attempt.xqpBJd/`; all 36 IO rows and
+four Wasm artifacts match the prior 0.63.3 baseline. Logs are retained at
+`/tmp/ic-persistence-shared0266-host064/`. Full release and hosted native
+qualification remain separate.
+
+The pending tooling cleanup rejects split crate versions before bootstrap and
+copies inherited member manifests without rewriting them. Archive qualification
+uses the MSRV returned by compiler admission for both fixture metadata and the
+consumer compiler, preserving the workspace catalog's authority. Admission and
+recovery fixtures pass. Real development archives pass native execution on both
+compilers and the Wasm check with unchanged source/archive hashes; evidence is
+at `target/package-qualification/attempt.wxlFXl/` and
+`/tmp/ic-persistence-cleanup0511/`.
+
+The 0.50.9 qualification retains its exact source/version scope: strict Clippy,
+207 product tests, 13 doctests, 60 release-tool tests and MSRV/Wasm checks passed.
+All 40 native IO, 86 allocation and 36 installed valid-IO rows matched their
+previous baseline. Installed original/O3/Os/Oz IO/upgrade evidence remains at
 `target/qualification/runtime/attempt.hElm2V/`; see
-[runtime notes](../runtime-io-qualification.md). Both locks change only intended
-Platform selections and consumer edges; PocketIC remains 16.1.0.
+[runtime notes](../runtime-io-qualification.md). These historical observations
+are not relabelled as executions of the pending dependency update.
 
-[Platform #45](https://github.com/dragginzgame/ic-platform/issues/45) supplies the
-manager exports. Its exact release CI is still asynchronous; installed-runtime
-producer acceptance passes. The adoption was delivered at
-`7ac7f78c7b8846c65c40a73a3fb10a3f824bdd63`; remaining native acceptance is tracked
-under
-[Persistence #130](https://github.com/dragginzgame/ic-persistence/issues/130).
-
-Pending compatible 0.50.10 tooling cleanup requires both inherited package
-manifests during bootstrap while preserving interrupted metadata recovery.
-Testkit's unchanged CLI pin lives in `ci/runtime-tools.env`; runtime CI keys
-use that selection and IC pins with Shared's build identity, so unrelated
-Makefile changes no longer select an empty tool cache.
+The delivered 0.50.10 bootstrap requires both inherited package manifests and
+retains interrupted metadata recovery. `ci/runtime-tools.env` owns the selected
+Testkit CLI; runtime cache keys bind tool selections and Shared's build identity
+rather than unrelated Make recipes.
 
 CI retains its failure-evidence fixture from the main validation pass for the
 hosted round trip. Archive rejection cases share prepared, hashed archives;

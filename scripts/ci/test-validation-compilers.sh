@@ -39,6 +39,7 @@ for missing in 1.99.1 1.91.0; do
 done
 rm compiler-events
 MISSING_COMPILER=none bash scripts/ci/check-validation-compilers.sh 1.99.1 > success.log
+[[ "$(cat success.log)" == 1.91.0 ]] || exit 1
 printf '1.99.1\n1.91.0\n' > expected
 cmp expected compiler-events
 rm compiler-events

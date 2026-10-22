@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.50.11] - Unreleased
+
+- Adopt Platform 0.6.7 and Tooling 0.64.0 across dependency catalogs and selected
+  helper CLIs, retaining substrate, compiler and PocketIC identities.
+- Adopt Shared Tooling 0.26.6 with reviewed policy and checksum/evidence hardening.
+- Remove scratch Storage manifest rewriting and derive archive qualification's
+  compiler floor from the admitted workspace MSRV.
+  [Details](docs/changelog/0.50.md#05011).
+
 ## [0.50.10] - 2026-10-21
 
 - Retire single-crate release bootstrap paths and narrow runtime CI cache keys

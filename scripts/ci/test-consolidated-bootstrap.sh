@@ -30,7 +30,6 @@ previous="$(yq -p toml -o yaml -r '.workspace.package.version' Cargo.toml)"
 next="$(bash "$root/scripts/ci/next-release-version.sh" "$previous" minor)"
 cp Cargo.toml original.toml
 cp Cargo.lock original.lock
-cp crates/ic-storage/Cargo.toml storage.toml
 cargo "+$pin" metadata --locked --offline --no-deps --format-version 1 > metadata.json
 yq -p toml -o json '.' Cargo.toml | jq --slurpfile metadata metadata.json '{manifest: ., members: ($metadata[0].packages | map({name, manifest_path}))}' > context.json
 "$editor" --max-input-bytes "$CARGO_RELEASE_METADATA_MAX_BYTES" manifest Cargo.toml "$previous" "$next" context.json > candidate.toml
@@ -42,13 +41,12 @@ storage_previous="$(yq -p toml -o json '.' Cargo.lock | jq -er '.package[] | sel
 for state in lock-first manifest-first; do
     cp original.toml Cargo.toml
     cp original.lock Cargo.lock
-    cp storage.toml crates/ic-storage/Cargo.toml
     expected="$previous"
     case "$state" in
         lock-first) cp candidate.lock Cargo.lock ;;
         manifest-first) cp candidate.toml Cargo.toml; expected="$next" ;;
     esac
-    shasum -a 256 Cargo.toml Cargo.lock crates/ic-storage/Cargo.toml > "$state.inputs.sha256"
+    shasum -a 256 Cargo.toml Cargo.lock crates/ic-memory/Cargo.toml crates/ic-storage/Cargo.toml > "$state.inputs.sha256"
     bash scripts/dev/run-repo-tool.sh "$pin" version > "$state.stdout" 2> "$state.stderr"
     [[ "$(cat "$state.stdout")" == "$expected" ]] || exit 1
     shasum -a 256 -c "$state.inputs.sha256"

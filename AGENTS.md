@@ -145,7 +145,7 @@ growth and installed IO/upgrade checks. Memory keeps its local layout/growth
 safeguards. Changes stop at the owned IC Platform boundary.
 
 The independent qualification workspace consumes PocketIC through IC Platform's
-optional native client boundary; its lockfile selects client 16.1.0. Testkit 0.63.2 owns the reviewed
+optional native client boundary; its lockfile selects client 16.1.0. Testkit 0.64.0 owns the reviewed
 16.1.0 server selection. Changing that pair requires repeating installed
 qualification; historical 16.0.0 client/server evidence cannot qualify the new
 pairing. Keep both lockfiles, sources, features and toolchains unchanged during

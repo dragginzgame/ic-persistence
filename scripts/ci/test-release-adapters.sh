@@ -597,9 +597,7 @@ case "$2" in
             cmp crates/ic-memory/src/lib.rs "$(dirname "$7")/crates/ic-memory/src/lib.rs"
             cmp crates/ic-storage/src/lib.rs "$(dirname "$7")/crates/ic-storage/src/lib.rs"
             cmp crates/ic-storage/README.md "$(dirname "$7")/crates/ic-storage/README.md"
-            storage_version="$("$FIXTURE_TOML_YQ" -p toml -o json '.' Cargo.lock | jq -er '.package[] | select(.name == "ic-storage") | .version')"
-            "$FIXTURE_TOML_YQ" -p toml -o json '.' "$(dirname "$7")/crates/ic-storage/Cargo.toml" |
-                jq -e --arg version "$storage_version" '.package == {name: "ic-storage", version: $version}' > /dev/null
+            cmp crates/ic-storage/Cargo.toml "$(dirname "$7")/crates/ic-storage/Cargo.toml"
             echo bootstrap >> calls
         else
             [[ "$6" == --example && "$7" == repo-tool && "$8" == -- ]] || exit 1
@@ -703,8 +701,22 @@ version = "0.13.0"
 ic-memory = { path = "crates/ic-memory", version = "0.13.0" }
 other = "0.12.3"
 MANIFEST
-awk '!changed && $0 == "version = \"0.12.3\"" { $0 = "version = \"0.13.0\""; changed = 1 } { print }' \
-    Cargo.lock > prepared-lock
+"$FIXTURE_RELEASE_EDITOR" --max-input-bytes "$CARGO_RELEASE_METADATA_MAX_BYTES" lock Cargo.lock 0.12.3 0.13.0 ic-memory > split-lock
+cp calls split-calls
+# A split lock is never a valid interrupted publication of the coordinated file.
+for manifest in original-manifest expected-manifest; do
+    cp "$manifest" Cargo.toml
+    cp split-lock Cargo.lock
+    status=0
+    bash scripts/dev/run-repo-tool.sh "$FIXTURE_TOOLCHAIN" version > split-lock.log 2>&1 || status=$?
+    [[ "$status" == 1 && ! -e "$BOOTSTRAP_TARGET/repo-tool-bootstrap" ]] || exit 1
+    grep -F 'Memory and Storage lock versions differ' split-lock.log
+    cmp split-calls calls
+    cmp "$manifest" Cargo.toml
+    cmp split-lock Cargo.lock
+done
+cp original-manifest Cargo.toml
+"$FIXTURE_RELEASE_EDITOR" --max-input-bytes "$CARGO_RELEASE_METADATA_MAX_BYTES" lock split-lock 0.12.3 0.13.0 ic-storage > prepared-lock
 cp prepared-lock Cargo.lock
 [[ "$(make --no-print-directory -s release-version 2> bootstrap.log)" == 0.12.3 ]] || exit 1
 printf '%s\n' metadata bootstrap-cache bootstrap >> saved-calls

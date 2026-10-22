@@ -198,8 +198,11 @@ exact prepared metadata to match saved intent.
 
 The root `[workspace.package]` owns the release version and MSRV;
 both package manifests inherit them and stay unchanged during a bump.
-The helper launcher requires both inherited declarations; interrupted metadata
-recovery uses regular copies of both packages and leaves tracked inputs intact.
+The helper launcher requires both inherited declarations and matching local lock
+versions. Interrupted metadata recovery copies both member manifests unchanged
+and leaves tracked inputs intact; the root manifest is rendered for the selected
+coordinated lock. Split package versions are conflicting input, because both
+lock entries are published together in one atomic file replacement.
 The canonical dependency example is in the package README.
 
 Metadata writes use same-directory atomic replacement, with `Cargo.toml` last.
@@ -218,6 +221,9 @@ in the real checkout; compilation alone grants no release authority. Preflight
 requires the saved source-bound successful validation before accepting this
 partial state. Metadata and builds remain under `repo-tool-bootstrap/` in the
 selected target directory. Normal helper calls use the original workspace.
+Compiler admission returns the checked workspace MSRV on stdout, with compiler
+identities/errors on stderr. Archive qualification carries that value into its
+consumer manifest and native compiler dispatch rather than repeating a floor.
 
 `release-version`, `release-files` and the other named adapters are runner
 interfaces, not alternative maintainer orchestration. They require the saved

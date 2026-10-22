@@ -25,7 +25,7 @@ schemas, decoding semantics and recovery remain consumer-owned. Map reservation
 accepts caller-owned page budgets and makes no node-layout entry-capacity promise.
 
 Shared Tooling's external-IC dependency policy requires the substrate to pass
-through Platform. Both packages select published Platform 0.6.5 with defaults
+through Platform. Both packages select published Platform 0.6.7 with defaults
 disabled and the `stable-structures` feature. Existing manager identities are
 provided by [Platform #45](https://github.com/dragginzgame/ic-platform/issues/45).
 The direct-dependency allowances and exact-declaration exception are retired;
