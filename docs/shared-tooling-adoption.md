@@ -9,8 +9,8 @@ local baseline. Future policy changes require reviewed snapshot adoption.
 
 ## Current source selection
 
-IC Persistence selects Shared Tooling 0.26.7 with the merged owner-cleanup fix at
-`35bc5a90e528ea2f60312997ea99a5969296248c`, with 75 explicit roots and 114 payloads.
+IC Persistence selects committed Shared Tooling 0.26.8 at
+`0b07c2a3163a5a66328e100b553baf93afd8ed07`, with 75 explicit roots and 114 payloads.
 Release 0.50.7 passed the complete native, MSRV and installed-runtime matrix
 on Linux and both macOS architectures; snapshot integrity alone is not acceptance.
 See [the adoption issue](https://github.com/dragginzgame/ic-persistence/issues/127).
@@ -29,15 +29,21 @@ budget. Offline checks/preflight and Host/IC setup remain immediate. No foreign
 lock is removed and no owner is killed. After waiting, compiler/source/lock and
 completed receipts are admitted again before reuse or activation.
 
-[Shared PR #302](https://github.com/dragginzgame/shared-tooling/pull/302) fixes
-the owner-cleanup race found by 0.26.7's Intel macOS fixture. A missing record is
-tolerated only for the same previously admitted physical lock; a disappeared
-lock goes back through atomic acquisition. Invalid claims, timeouts and losing
-acquisitions still refuse. The maintainer authorized this merged source adoption;
-its focused producer tests pass, while native hosted acceptance remains pending.
-Tool pins, build-policy digest, compiler selections and installed host coverage
-are unchanged. Earlier checksum/evidence/feature-graph hardening and the existing
-CI/release audit remain selected; the validation-target runner stays unselected.
+The merged [Shared PR #302](https://github.com/dragginzgame/shared-tooling/pull/302)
+owner-cleanup fix remains selected. Cache initialization now uses idempotent
+private directory creation with existing path/configuration admission, without a
+global source-preparation lock. Cargo owns download serialization; exact selected
+tool slots still serialize builds. Old source-preparation slots and generations
+remain retained.
+
+The 0.26.8 build-helper change alters the policy digest. Explicitly rerun
+`make install-tools` and `make install-runtime-server` after adoption; offline
+checks do not activate older-policy binaries or repair selections. Tool pins and
+compiler selections are unchanged. Source/receipt admission and bounded waits
+remain in force. Focused producer and consumer acceptance stays separate from
+native hosted qualification. Earlier checksum/evidence/feature-graph hardening
+and the CI/release audit remain selected; the validation-target runner stays
+unselected.
 
 Ordinary expensive hosted integration follows Shared's asynchronous cadence.
 Focused checks, enforced GitHub requirements and separate release/publication/
@@ -52,7 +58,7 @@ also remains in its focused target. Release notes may use a numbered
 ` - Unreleased` heading, which the shared finalizer dates during preparation.
 
 Shared 0.25.3 binds explicit Cargo feature sets to selected tool installations
-and admission receipts. Build and Testkit 0.65.0 binaries select `--features cli`
+and admission receipts. Build and Testkit 0.66.0 binaries select `--features cli`
 in setup, offline admission and bootstrap calls. Library dependencies retain
 disabled defaults. Prepare the selections with `make install-tools` and
 `make install-runtime-server`; previous installations and failed attempts remain
