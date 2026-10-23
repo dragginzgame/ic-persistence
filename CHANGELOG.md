@@ -1,6 +1,6 @@
 # Changelog
 
-## [0.50.13] - Unreleased
+## [0.50.13] - 2026-10-23
 
 - Adopt Host/Tooling 0.66.0 and Shared Tooling 0.26.8, retaining library and runtime
   contracts. Rerun explicit tool setup once for Shared’s new build-policy identity.
