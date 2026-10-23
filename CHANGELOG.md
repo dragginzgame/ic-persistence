@@ -1,6 +1,6 @@
 # Changelog
 
-## [0.50.12] - Unreleased
+## [0.50.12] - 2026-10-23
 
 - Require Platform 0.6.8 in both dependency catalogs and adopt Host/Tooling 0.65.0
   in the root catalog and helper CLIs, preserving substrate, compiler and runtime selections.
