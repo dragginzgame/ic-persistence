@@ -21,7 +21,7 @@ categories = ["wasm", "data-structures"]
 [workspace.dependencies]
 # Production dependencies
 ic-memory = { path = "crates/ic-memory", version = "0.50.11" }
-ic-platform = { version = "0.6.7", default-features = false }
+ic-platform = { version = "0.6.8", default-features = false }
 serde = { version = "1.0", default-features = false, features = [
     "alloc",
     "derive",
@@ -31,11 +31,11 @@ thiserror = "2.0"
 
 # Tests and tooling only
 clap = { version = "4.6", default-features = false, features = ["derive", "std", "help", "usage", "error-context"] }
-ic-build = { version = "0.64.0", default-features = false }
-ic-host-artifacts = { version = "0.64.0", default-features = false }
-ic-host-fs = { version = "0.64.0", default-features = false }
-ic-host-process = { version = "0.64.0", default-features = false }
-ic-testkit-native = { version = "0.64.0", default-features = false }
+ic-build = { version = "0.65.0", default-features = false }
+ic-host-artifacts = { version = "0.65.0", default-features = false }
+ic-host-fs = { version = "0.65.0", default-features = false }
+ic-host-process = { version = "0.65.0", default-features = false }
+ic-testkit-native = { version = "0.65.0", default-features = false }
 serde_json = "1.0"
 toml = "1.1.6"
 trybuild = "1.0.121"

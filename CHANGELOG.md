@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.50.12] - Unreleased
+
+- Require Platform 0.6.8 in both dependency catalogs and adopt Host/Tooling 0.65.0
+  in the root catalog and helper CLIs, preserving substrate, compiler and runtime selections.
+- Adopt Shared Tooling 0.26.7 with its merged lock-cleanup fix and bounded
+  Cargo-tool setup waits, retaining immediate offline checks.
+  [Details](docs/changelog/0.50.md#05012).
+
 ## [0.50.11] - 2026-10-22
 
 - Adopt Platform 0.6.7 and Tooling 0.64.0 across dependency catalogs and selected

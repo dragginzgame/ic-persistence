@@ -9,8 +9,8 @@ local baseline. Future policy changes require reviewed snapshot adoption.
 
 ## Current source selection
 
-IC Persistence selects committed Shared Tooling 0.26.6 at
-`4cb9bc907154225a3f7e4c33fd8d75fbeaa125c8`, with 75 explicit roots and 114 payloads.
+IC Persistence selects Shared Tooling 0.26.7 with the merged owner-cleanup fix at
+`35bc5a90e528ea2f60312997ea99a5969296248c`, with 75 explicit roots and 114 payloads.
 Release 0.50.7 passed the complete native, MSRV and installed-runtime matrix
 on Linux and both macOS architectures; snapshot integrity alone is not acceptance.
 See [the adoption issue](https://github.com/dragginzgame/ic-persistence/issues/127).
@@ -22,12 +22,22 @@ exports committed bytes from a clean source checkout. Direct callers remain
 explicit roots and required companions are derived by the exporter.
 
 The refresh uses the canonical exporter from a clean detached copy of that
-commit. It retains the existing roots and adds `audits/ci-release-integrity.md`;
-that audit is guidance, not another automatic gate. Shared's source CI passes
-at the selected revision. This export carries checksum backend NUL refusal,
-single-document artifact metadata admission and overlapping-root feature graph
-handling. The unselected validation-target runner remains outside this snapshot.
-Tool catalogs, compiler selections and installed host coverage are unchanged.
+commit and retains the existing roots and payload closure. Explicit Cargo-tool
+setup waits up to 60 seconds for an admitted exact-slot owner;
+`SHARED_TOOLING_SETUP_WAIT_SECONDS=0..300` selects another canonical integer
+budget. Offline checks/preflight and Host/IC setup remain immediate. No foreign
+lock is removed and no owner is killed. After waiting, compiler/source/lock and
+completed receipts are admitted again before reuse or activation.
+
+[Shared PR #302](https://github.com/dragginzgame/shared-tooling/pull/302) fixes
+the owner-cleanup race found by 0.26.7's Intel macOS fixture. A missing record is
+tolerated only for the same previously admitted physical lock; a disappeared
+lock goes back through atomic acquisition. Invalid claims, timeouts and losing
+acquisitions still refuse. The maintainer authorized this merged source adoption;
+its focused producer tests pass, while native hosted acceptance remains pending.
+Tool pins, build-policy digest, compiler selections and installed host coverage
+are unchanged. Earlier checksum/evidence/feature-graph hardening and the existing
+CI/release audit remain selected; the validation-target runner stays unselected.
 
 Ordinary expensive hosted integration follows Shared's asynchronous cadence.
 Focused checks, enforced GitHub requirements and separate release/publication/
@@ -42,7 +52,7 @@ also remains in its focused target. Release notes may use a numbered
 ` - Unreleased` heading, which the shared finalizer dates during preparation.
 
 Shared 0.25.3 binds explicit Cargo feature sets to selected tool installations
-and admission receipts. Build and Testkit 0.64.0 binaries select `--features cli`
+and admission receipts. Build and Testkit 0.65.0 binaries select `--features cli`
 in setup, offline admission and bootstrap calls. Library dependencies retain
 disabled defaults. Prepare the selections with `make install-tools` and
 `make install-runtime-server`; previous installations and failed attempts remain
