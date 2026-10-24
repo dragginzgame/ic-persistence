@@ -350,3 +350,48 @@ fn bounded_cell_validates_retained_bytes_without_rewriting_or_leaking_lease() {
         }
     }
 }
+
+#[test]
+fn map_sequences_match_model_across_splits_removals_and_reopens() {
+    use std::collections::BTreeMap;
+    let backing = VectorMemory::default();
+    let mut model = BTreeMap::new();
+    let mut state = 0x1C50_u64;
+    for generation in 0..8 {
+        let host = runtime(backing.clone());
+        let mut map = StableBTreeMap::<u64, u64>::init(host.open_memory("test.map.v1").unwrap());
+        for step in 0..500 {
+            state = state
+                .wrapping_mul(6_364_136_223_846_793_005)
+                .wrapping_add(1);
+            let key = (state >> 32) % 400;
+            if step % 3 == 0 && generation > 0 {
+                assert_eq!(map.remove(&key), model.remove(&key));
+            } else {
+                assert_eq!(map.insert(key, state), model.insert(key, state));
+            }
+            assert_eq!(map.get(&key), model.get(&key).copied());
+        }
+        assert_eq!(map.len(), model.len() as u64);
+        assert_eq!(
+            map.iter()
+                .map(<MapIter<'_, u64, u64> as Iterator>::Item::into_pair)
+                .collect::<Vec<_>>(),
+            model
+                .iter()
+                .map(|(&key, &value)| (key, value))
+                .collect::<Vec<_>>()
+        );
+        assert_eq!(
+            map.range(100..200)
+                .map(<MapIter<'_, u64, u64> as Iterator>::Item::into_pair)
+                .collect::<Vec<_>>(),
+            model
+                .range(100..200)
+                .map(|(&key, &value)| (key, value))
+                .collect::<Vec<_>>()
+        );
+        drop(map);
+        drop(host);
+    }
+}

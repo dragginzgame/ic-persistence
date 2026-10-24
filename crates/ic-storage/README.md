@@ -74,7 +74,11 @@ application's disjoint frame owner. Construction performs no IO and grants no
 new allocation authority. The view implements neither `Memory` nor raw extraction.
 Every collection operation reloads the current root and allocator. `keys_range`
 returns an owned, ordered snapshot, so application/checkpoint views can interleave
-mutations without keeping stale roots or iterators. Applications choose and enforce
+mutations without keeping stale roots or iterators. For bounded batches use
+`keys_range_limited(bounds, limit)`: it stops collection at the requested key
+count; applying `.take(limit)` to `keys_range` does not. Resume with an excluded
+last key and expect intervening mutations to be visible. Key count does not
+bound encoded bytes or instructions. Applications choose and enforce
 their namespace ranges; `len` counts the whole physical tree.
 
 For `IcyDB`'s retained control layout, select `257..4_194_304`. Bytes have exactly

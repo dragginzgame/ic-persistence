@@ -1,4 +1,6 @@
 //! Explicit installed qualification of the supplied current-graph fixture.
+mod storage;
+
 use clap::Parser;
 use ic_platform::pocket_ic::{ErrorCode, PocketIcBuilder, RejectResponse};
 use std::{env, fs, time::Duration};
@@ -103,6 +105,9 @@ fn main() {
     assert_eq!(&final_snapshot[8..10], &[0x99, 0x6D]);
     assert_eq!(&final_snapshot[10..], &initial[10..]);
     println!("fixture_wasm_bytes,{}", wasm.len());
+    if !arguments.measure_valid_io {
+        storage::qualify(&pic);
+    }
 }
 
 #[cfg(test)]

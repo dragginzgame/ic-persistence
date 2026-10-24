@@ -24,6 +24,8 @@ FIXTURE="$(CDPATH="" cd -P -- "$FIXTURE" && printf '%s/.' "$PWD")"
 FIXTURE="${FIXTURE%/.}"
 # shellcheck source=scripts/ci/fixture-lifecycle.sh
 source "$ROOT/scripts/ci/fixture-lifecycle.sh"
+# shellcheck source=scripts/ci/make-adapter-probes.sh
+source "$ROOT/scripts/ci/make-adapter-probes.sh"
 fixture_complete=false
 finish_fixture() {
     local status="$1" command="$2" path
@@ -225,49 +227,41 @@ done
 mkdir "$FIXTURE/lint-bin"
 cat > "$FIXTURE/lint-gate" <<'STUB'
 #!/usr/bin/env bash
-printf 'make %s\n' "$*" >> lint-events
+printf 'make %s\n' "$*" >> "$MAKE_PROBE_EVENTS"
 STUB
 cat > "$FIXTURE/lint-bin/cargo" <<'STUB'
 #!/usr/bin/env bash
 set -euo pipefail
-printf 'cargo %s\n' "$*" >> lint-events
+printf 'cargo %s\n' "$*" >> "$MAKE_PROBE_EVENTS"
 if [[ "${2:-}" == clippy ]]; then
     [[ "$*" == "+$FIXTURE_TOOLCHAIN clippy --workspace --locked --offline --all-targets -- -D warnings" ]] || exit 1
-    exit "$CLIPPY_STATUS"
+    exit "$MAKE_PROBE_LINT_STATUS"
 fi
 STUB
 chmod +x "$FIXTURE/lint-gate" "$FIXTURE/lint-bin/cargo"
 cat > "$FIXTURE/scripts/ci/package-workspace.sh" <<'STUB'
 #!/usr/bin/env bash
-printf 'package %s\n' "$*" >> lint-events
+printf 'package %s\n' "$*" >> "$MAKE_PROBE_EVENTS"
 STUB
-for lint_status in 23 0; do
-    rm -f "$FIXTURE/lint-events"
-    status=0
-    (cd "$FIXTURE"; PATH="$FIXTURE/lint-bin:$PATH" CLIPPY_STATUS="$lint_status" \
-        make -j2 --no-print-directory validate-toolchain MAKE=./lint-gate) \
-        > "$FIXTURE/lint-ordering-$lint_status.log" 2>&1 || status=$?
-    printf '%s\n' \
-        'make --no-print-directory shared-tooling-check tools-check format-tools-check' \
-        'make --no-print-directory validation-compilers-check' \
-        "cargo +$FIXTURE_TOOLCHAIN clippy --workspace --locked --offline --all-targets -- -D warnings" \
-        > "$FIXTURE/lint-expected"
-    if [[ "$lint_status" == 0 ]]; then
-        [[ "$status" == 0 ]] || exit 1
-        printf '%s\n' \
-            'make --no-print-directory check-production-graph check-pins check-storage-boundary check-license check-doc-links test-release-adapters' \
-            'make --no-print-directory test-tools test-tooling test-hooks fmt-check test-fixture-cell test-package-admission' \
-            "cargo +$FIXTURE_TOOLCHAIN test --workspace --locked --offline -- --test-threads=1 --skip repo_tool::tests::" \
-            "cargo +$FIXTURE_TOOLCHAIN doc --workspace --locked --offline --no-deps" \
-            "cargo +$FIXTURE_TOOLCHAIN check --workspace --locked --offline --target wasm32-unknown-unknown --tests" \
-            'make --no-print-directory wasm-size' \
-            "package $FIXTURE_TOOLCHAIN --allow-dirty" \
-            >> "$FIXTURE/lint-expected"
-    else
-        [[ "$status" == 2 ]] || exit 1
-    fi
-    cmp "$FIXTURE/lint-expected" "$FIXTURE/lint-events"
-done
+printf '%s\n' \
+    'make --no-print-directory shared-tooling-check tools-check format-tools-check' \
+    'make --no-print-directory validation-compilers-check' \
+    "cargo +$FIXTURE_TOOLCHAIN clippy --workspace --locked --offline --all-targets -- -D warnings" \
+    > "$FIXTURE/lint-failure-expected"
+cp "$FIXTURE/lint-failure-expected" "$FIXTURE/lint-success-expected"
+printf '%s\n' \
+    'make --no-print-directory check-production-graph check-pins check-storage-boundary check-license check-doc-links test-release-adapters' \
+    'make --no-print-directory test-tools test-tooling test-hooks fmt-check test-fixture-cell test-package-admission' \
+    "cargo +$FIXTURE_TOOLCHAIN test --workspace --locked --offline -- --test-threads=1 --skip repo_tool::tests::" \
+    "cargo +$FIXTURE_TOOLCHAIN doc --workspace --locked --offline --no-deps" \
+    "cargo +$FIXTURE_TOOLCHAIN check --workspace --locked --offline --target wasm32-unknown-unknown --tests" \
+    'make --no-print-directory wasm-size' \
+    "package $FIXTURE_TOOLCHAIN --allow-dirty" \
+    >> "$FIXTURE/lint-success-expected"
+(cd "$FIXTURE"; PATH="$FIXTURE/lint-bin:$PATH" MAKE=./lint-gate \
+    make_probe_lint_order "$(command -v make)" "$FIXTURE/Makefile" "$FIXTURE" \
+    "$FIXTURE/lint-events" validate-toolchain \
+    "$FIXTURE/lint-failure-expected" "$FIXTURE/lint-success-expected")
 # MSRV output is usable only when its helper succeeds. Substitute the preceding
 # recursive command while retaining the actual consumer's single validate recipe.
 mkdir "$FIXTURE/msrv-bin"
@@ -317,7 +311,7 @@ for result in gate-failure read-failure success compiler-failure; do
     fi
 done
 # Diagnostics stay intact; unintended duplicate recipes must still be visible.
-if grep -E 'warning: (overriding|ignoring old) recipe' "$FIXTURE/tool-ordering.log" "$FIXTURE"/lint-ordering-*.log "$FIXTURE"/msrv-*.log; then
+if grep -E 'warning: (overriding|ignoring old) recipe' "$FIXTURE/tool-ordering.log" "$FIXTURE"/lint-*.log "$FIXTURE"/msrv-*.log; then
     echo 'consumer admission fixtures replaced a production recipe' >&2; exit 1
 fi
 (cd "$FIXTURE"; make --no-print-directory release-patch)
@@ -372,8 +366,9 @@ mkdir -p "$jobserver/bin" "$jobserver/make" "$jobserver/ci" "$jobserver/scripts/
 cp "$ROOT/Makefile" "$ROOT/rust-toolchain.toml" "$jobserver/"
 cp "$ROOT/make/consumer.mk" "$ROOT/make/tools.mk" "$ROOT/make/release.mk" "$ROOT/make/rust-format.mk" "$ROOT/make/execution.mk" "$jobserver/make/"
 cp "$ROOT/ci/release-tools.env" "$ROOT/ci/runtime-tools.env" "$ROOT/ci/tool-versions.env" "$jobserver/ci/"
-cp "$ROOT/scripts/ci/check-make-execution.sh" "$ROOT/scripts/ci/check-release-delivery.sh" "$ROOT/scripts/ci/check-format-tools.sh" \
-    "$ROOT/scripts/ci/run-formatting.sh" "$jobserver/scripts/ci/"
+# Follow the formatter's declared closure, including catalog admission helpers.
+bash "$ROOT/scripts/ci/prepare-script-fixture.sh" "$ROOT" "$jobserver" \
+    make/rust-format.mk scripts/ci/check-release-delivery.sh
 mkdir -p "$jobserver/testing"
 cp "$ROOT/testing/package-consumer.rs" "$jobserver/testing/"
 cat > "$jobserver/scripts/ci/package-workspace.sh" <<'STUB'

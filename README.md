@@ -20,6 +20,13 @@ retains its host-only lockfile. Archive consumer qualification uses isolated,
 generated workspaces so a workspace path dependency cannot mask missing package
 contents or a second Memory identity.
 
+Recovery mutation smoke cases run with the library tests. Run the longer,
+reproducible campaign explicitly with
+`cargo test --locked --offline -p ic-memory --lib recovery_mutation_campaign -- --ignored --nocapture --test-threads=1`.
+Set `IC_MEMORY_FUZZ_SEED` to a decimal `u64` to replay another seed; each campaign
+performs 10,000 mutations plus corpus truncation cases. This is bounded mutation
+testing, not coverage-guided fuzzing.
+
 [Setup](docs/host-support.md) · [Releasing](RELEASING.md) ·
 [Documentation](docs/README.md) · [Migration map](docs/migration/ic-persistence.md) ·
 [Current handoff](docs/status/current.md) · [Contributing](rules/contributions.md)

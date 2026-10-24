@@ -15,51 +15,45 @@ publication to the new public `dragginzgame/ic-persistence` repository on
 2026-10-20. The destination exists with collaborator-only PR creation; the
 consolidated branch was selected for its `main`. Downstream consumers retain their own dependency adoption decisions.
 
-Both packages inherit released workspace version 0.50.12 at
-`a1cbd568e315f4f2f461f00a656738460ca79b8c`. Its complete
-[hosted CI](https://github.com/dragginzgame/ic-persistence/actions/runs/39925986223)
-passed. Historical consolidation, dependency and runtime qualification retains
-its original scope in the numbered changelogs and
-[runtime notes](../runtime-io-qualification.md).
+Both packages inherit released workspace version 0.50.13 at
+`650d98c1fe0ab144d5f4a83bab92e0ebd2c4f538`. Shared Tooling remains the reviewed
+0.26.10 snapshot `a8141e775983c7fe504c4dd911e978152e657fdf`.
 
-Pending compatible 0.50.13 selects Host/Tooling 0.66.0 in the root catalog and
-both helper CLIs. The root lock changes only five Tooling versions/checksums;
-their Rust sources match 0.65.0. The independent lock is unchanged. Platform
-requirements/selections, effective features, compiler identities, substrate 0.7.2,
-PocketIC client/server 16.1.0, public APIs and stored formats remain selected.
-The PocketIC owner-transfer API change is outside this consumer's calls.
+The incoming root lock update selects Host libraries 0.66.2 and Platform 0.6.11.
+Their published Rust sources match the previous 0.66.0 and 0.6.10 selections.
+Existing compatible requirements and prepared 0.66.0 release/Testkit CLIs remain
+intentional; this update needs no helper rebuild. The independent runtime lock,
+PocketIC 16.1.0 pairing, substrate 0.7.2 and compiler selections are unchanged.
 
-Shared 0.26.8 is adopted at `0b07c2a3163a5a66328e100b553baf93afd8ed07`
-through canonical preview/refresh (75 roots, 114 payloads). Cache bootstrap no
-longer takes a global installation lock; selected-tool slots and bounded waits
-still serialize actual builds. The policy digest changes, so explicit setup has
-prepared the common tools and both 0.66.0 CLIs under the new identity. Offline
-admission passes. Older generations, preparation slots and failure evidence are
-retained. The complete producer Rust installer and bounded-wait fixtures pass.
+Pending 0.50.14 adds bounded region snapshots, explicit collection constructor
+contracts, deterministic recovery mutation campaigns and collection model tests.
+Installed qualification now includes a separate Storage-owned fixture, preserving
+Memory's dependency direction. The release helper separates metadata,
+qualification and publication, bounds captured output and reports command time.
+Fine-grained installer reporting belongs to
+[Shared #303 — Report Cargo tool setup phases and durations](https://github.com/dragginzgame/shared-tooling/issues/303).
+The 0.26.10 snapshot adds aggregate offline tool reports and read-only selection
+JSON, literal formatter catalog admission and composed external IC dependency
+checks. The current prepared tool selections retain their build identity.
+The consumer release fixture uses Shared's companion-copy and parallel lint-order
+helpers, with stage rosters and stubs still owned here. Adoption qualification
+passes actual offline tool admission/reporting, formatter/hooks, declaration and
+production-graph checks, release adapters and both interrupted bootstrap states.
+Focused producer installer, formatter, selection, graph, boundary and Make probes
+pass at the selected source. Logs remain at `/tmp/ic-persistence-shared02610/`.
+Upstream hosted CI was still running at review; this is focused Linux acceptance.
+No vendored implementation is patched for that follow-up.
 
-Tooling source `d71f4690c7e8e3ffe99f72467bc35cbadce33042` has passing optimizer,
-installed runtime and browser workflows. Its
-[native matrix](https://github.com/dragginzgame/ic-tooling/actions/runs/39930549305)
-passes Linux and MSRV, with both macOS jobs pending at review. Shared's
-[current CI](https://github.com/dragginzgame/shared-tooling/actions/runs/39928847334)
-passes Linux and ARM macOS, with Intel macOS pending. The earlier #302 Intel installer fixture passed; that job failed
-later on an artifact-download HTTP 503. It remains failed evidence, not native
-acceptance. #301 stays open until applicable hosted qualification passes.
-
-Focused Linux qualification passes all-target Clippy, actual Rust 1.91 compilation,
-pin/production-graph checks, three selected release metadata/setup tests, nine
-native IO/accounting tests, release/bootstrap, hooks and failure-evidence/
-retention fixtures, formatting, tooling lint and documentation links. All four
-installed Wasm variants pass at `target/qualification/runtime/attempt.eheuzs/`;
-the 36 IO/instruction rows match the retained 0.65.0 log. Logs remain at
-`/tmp/ic-persistence-shared0268-host066/`. Full release and hosted consumer/native
-acceptance retain their separate scope.
-
-The delivered tooling requires inherited member manifests and matching local lock
-versions before bootstrap. Archive qualification consumes the checked catalog
-MSRV. Runtime CI cache keys bind tool selections and Shared's build identity.
-CI retains its failure-evidence fixture for the hosted archive round trip;
-normal packaging and archive-consumer qualification remain independent gates.
+Audit implementation qualification logs are retained at
+`/tmp/ic-persistence-audit-improvements/`; focused qualification passes all-target
+Clippy, Rust 1.91 all-target compilation,
+183 Memory and 12 Storage library tests, the 10,000-mutation recovery campaign,
+61 release-helper regressions, pin/graph/Storage-boundary checks and both actual
+interrupted bootstrap states. Installed Memory/Storage checks pass original,
+O3, Os and Oz at `target/qualification/runtime/attempt.mEWmdj/`. Earlier evidence
+remains tied to its
+original source in [the runtime notes](../runtime-io-qualification.md) and published
+changelogs. No new release, publication or hosted matrix pass is implied.
 
 ## Repository retirement
 

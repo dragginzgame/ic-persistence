@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.50.14] - Unreleased
+
+- Adopt Shared Tooling 0.26.10 with offline tool diagnostics, literal formatter
+  catalog admission and common external IC dependency checks.
+
+- Add bounded region key snapshots and clarify collection initialization contracts.
+- Qualify Storage adapters through installed upgrades and trapped writes; expand
+  native collection and recovery mutation coverage.
+- Bound release-helper output and report command durations, preserving release
+  ordering and prepared helper selections. [Details](docs/changelog/0.50.md#05014).
+
 ## [0.50.13] - 2026-10-23
 
 - Adopt Host/Tooling 0.66.0 and Shared Tooling 0.26.8, retaining library and runtime

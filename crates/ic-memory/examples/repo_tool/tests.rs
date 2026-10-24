@@ -3241,74 +3241,6 @@ fn coordinated_publication_resumes_only_matching_packages_in_dependency_order() 
 }
 
 #[test]
-fn publication_reconciles_a_lost_upload_response_without_reuploading_memory() {
-    let fixture = Fixture::new();
-    fixture.release();
-    fixture.fail("upload-response-lost");
-    assert!(fixture.repo.publish(false).is_err());
-    fixture.repo.exec.state.borrow_mut().fail = None;
-    fixture.repo.publish(false).unwrap();
-    assert_eq!(fixture.repo.exec.state.borrow().published.len(), 2);
-    assert_eq!(
-        fixture
-            .repo
-            .exec
-            .state
-            .borrow()
-            .calls
-            .iter()
-            .filter(|call| call.get(2).is_some_and(|arg| arg == "publish"))
-            .count(),
-        2
-    );
-}
-
-#[test]
-fn registry_conflicts_or_unknown_status_refuse_before_any_upload() {
-    for failure in [
-        "registry-forbidden",
-        "registry-error",
-        "registry-yanked",
-        "checksum",
-    ] {
-        let fixture = Fixture::new();
-        fixture.release();
-        let evidence = fixture
-            .repo
-            .verify_evidence(&fixture.selection, "release", false, true)
-            .unwrap();
-        fixture.repo.exec.state.borrow_mut().published.insert(
-            "ic-storage".to_owned(),
-            if failure == "checksum" {
-                "wrong".to_owned()
-            } else {
-                evidence.storage_sha256
-            },
-        );
-        fixture.fail(failure);
-        let error = fixture.repo.publish(false).unwrap_err().to_string();
-        if let Some(status) = match failure {
-            "registry-forbidden" => Some("403"),
-            "registry-error" => Some("503"),
-            _ => None,
-        } {
-            assert!(error.contains(&format!("HTTP {status}")));
-            assert!(error.contains(&format!("ic-memory {}", fixture.selection.version)));
-        }
-        assert!(
-            !fixture
-                .repo
-                .exec
-                .state
-                .borrow()
-                .calls
-                .iter()
-                .any(|call| call.get(2).is_some_and(|arg| arg == "publish"))
-        );
-    }
-}
-
-#[test]
 fn storage_archive_and_manifest_are_bound_to_the_coordinated_release() {
     let fixture = Fixture::new();
     fixture.release();
@@ -3332,4 +3264,41 @@ fn storage_archive_and_manifest_are_bound_to_the_coordinated_release() {
     )
     .unwrap();
     assert!(fixture.repo.publish(true).is_err());
+}
+
+mod publication;
+
+#[test]
+fn process_capture_rejects_oversized_output_instead_of_returning_truncation() {
+    let root = std::env::current_dir().unwrap();
+    assert_eq!(
+        Processes
+            .run(&root, "sh", &["-c", "exit 0"], false)
+            .unwrap(),
+        ""
+    );
+    assert!(
+        Processes
+            .run(&root, "sh", &["-c", "exit 23"], false)
+            .is_err()
+    );
+    assert_eq!(
+        Processes
+            .run(&root, "sh", &["-c", "printf complete"], true)
+            .unwrap(),
+        "complete"
+    );
+    for command in [
+        "dd if=/dev/zero bs=1048576 count=9 2>/dev/null",
+        "dd if=/dev/zero bs=1048576 count=1 1>&2 2>/dev/null",
+    ] {
+        let error = Processes
+            .run(&root, "sh", &["-c", command], true)
+            .unwrap_err();
+        assert!(matches!(
+            error.downcast_ref::<ToolError>(),
+            Some(ToolError::Execution(error))
+                if matches!(error.failure, ic_host_process::tool::ExecutionFailure::OutputLimit { .. })
+        ));
+    }
 }

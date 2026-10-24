@@ -27,19 +27,33 @@ pub struct StableBTreeMap<K: Storable + Ord + Clone, V: Storable, M: Memory = De
     inner: substrate::BTreeMap<K, V, RuntimeMemory<M>>,
 }
 impl<K: Storable + Ord + Clone, V: Storable, M: Memory> StableBTreeMap<K, V, M> {
-    /// Delegates to upstream `BTreeMap::new` with the governed allocation.
+    /// Create a new collection, replacing any prior collection in the selected memory.
+    /// This is destructive even when a valid collection already exists.
+    ///
+    /// # Panics
+    /// Panics on insufficient memory or codec/backing failure.
     pub fn new(memory: RuntimeMemory<M>) -> Self {
         Self {
             inner: substrate::BTreeMap::new(memory),
         }
     }
-    /// Delegates to upstream `BTreeMap::init` with the governed allocation.
+    /// Open a recognized retained collection; initialize a new one when memory
+    /// is empty or has foreign magic. Foreign contents may be overwritten.
+    /// This is not a corruption-recovery or schema-admission operation.
+    ///
+    /// # Panics
+    /// Panics for unsupported recognized layouts, invalid retained contents,
+    /// insufficient memory or codec/backing failure.
     pub fn init(memory: RuntimeMemory<M>) -> Self {
         Self {
             inner: substrate::BTreeMap::init(memory),
         }
     }
-    /// Delegates to upstream `BTreeMap::load` with the governed allocation.
+    /// Load an existing tree without initializing a replacement.
+    ///
+    /// # Panics
+    /// Panics for missing/foreign headers, unsupported layouts or backing failure.
+    /// Record decoding can also panic when records are subsequently accessed.
     pub fn load(memory: RuntimeMemory<M>) -> Self {
         Self {
             inner: substrate::BTreeMap::load(memory),
@@ -141,19 +155,33 @@ pub struct StableBTreeSet<K: Storable + Ord + Clone, M: Memory = DefaultMemoryIm
     inner: substrate::BTreeSet<K, RuntimeMemory<M>>,
 }
 impl<K: Storable + Ord + Clone, M: Memory> StableBTreeSet<K, M> {
-    /// Delegates to upstream `BTreeSet::new` with the governed allocation.
+    /// Create a new collection, replacing any prior collection in the selected memory.
+    /// This is destructive even when a valid collection already exists.
+    ///
+    /// # Panics
+    /// Panics on insufficient memory or codec/backing failure.
     pub fn new(memory: RuntimeMemory<M>) -> Self {
         Self {
             inner: substrate::BTreeSet::new(memory),
         }
     }
-    /// Delegates to upstream `BTreeSet::init` with the governed allocation.
+    /// Open a recognized retained collection; initialize a new one when memory
+    /// is empty or has foreign magic. Foreign contents may be overwritten.
+    /// This is not a corruption-recovery or schema-admission operation.
+    ///
+    /// # Panics
+    /// Panics for unsupported recognized layouts, invalid retained contents,
+    /// insufficient memory or codec/backing failure.
     pub fn init(memory: RuntimeMemory<M>) -> Self {
         Self {
             inner: substrate::BTreeSet::init(memory),
         }
     }
-    /// Delegates to upstream `BTreeSet::load` with the governed allocation.
+    /// Load an existing tree without initializing a replacement.
+    ///
+    /// # Panics
+    /// Panics for missing/foreign headers, unsupported layouts or backing failure.
+    /// Record decoding can also panic when records are subsequently accessed.
     pub fn load(memory: RuntimeMemory<M>) -> Self {
         Self {
             inner: substrate::BTreeSet::load(memory),
@@ -214,13 +242,23 @@ pub struct StableCell<T: Storable, M: Memory = DefaultMemoryImpl> {
     inner: substrate::Cell<T, RuntimeMemory<M>>,
 }
 impl<T: Storable, M: Memory> StableCell<T, M> {
-    /// Delegates to upstream `Cell::new` with the governed allocation.
+    /// Create a new collection, replacing any prior collection in the selected memory.
+    /// This is destructive even when a valid collection already exists.
+    ///
+    /// # Panics
+    /// Panics on insufficient memory or codec/backing failure.
     pub fn new(memory: RuntimeMemory<M>, value: T) -> Self {
         Self {
             inner: substrate::Cell::new(memory, value),
         }
     }
-    /// Delegates to upstream `Cell::init` with the governed allocation.
+    /// Open a recognized retained collection; initialize a new one when memory
+    /// is empty or has foreign magic. Foreign contents may be overwritten.
+    /// This is not a corruption-recovery or schema-admission operation.
+    ///
+    /// # Panics
+    /// Panics for unsupported recognized layouts, invalid retained contents,
+    /// insufficient memory or codec/backing failure.
     pub fn init(memory: RuntimeMemory<M>, default_value: T) -> Self {
         Self {
             inner: substrate::Cell::init(memory, default_value),
@@ -241,13 +279,21 @@ pub struct StableVec<T: Storable, M: Memory = DefaultMemoryImpl> {
     inner: substrate::Vec<T, RuntimeMemory<M>>,
 }
 impl<T: Storable, M: Memory> StableVec<T, M> {
-    /// Delegates to upstream `Vec::new` with the governed allocation.
+    /// Create a new collection, replacing any prior collection in the selected memory.
+    /// This is destructive even when a valid collection already exists.
+    ///
+    /// # Panics
+    /// Panics on insufficient memory or codec/backing failure.
     pub fn new(memory: RuntimeMemory<M>) -> Self {
         Self {
             inner: substrate::Vec::new(memory),
         }
     }
-    /// Delegates to upstream `Vec::init` with the governed allocation.
+    /// Open a valid retained collection, or create one in zero-page memory.
+    ///
+    /// # Panics
+    /// Panics for foreign magic, unsupported layout, incompatible element bounds,
+    /// insufficient memory or codec/backing failure. Foreign memory is not reset.
     pub fn init(memory: RuntimeMemory<M>) -> Self {
         Self {
             inner: substrate::Vec::init(memory),
@@ -294,13 +340,21 @@ pub struct StableMinHeap<T: Storable + Ord, M: Memory = DefaultMemoryImpl> {
     inner: substrate::MinHeap<T, RuntimeMemory<M>>,
 }
 impl<T: Storable + Ord, M: Memory> StableMinHeap<T, M> {
-    /// Delegates to upstream `MinHeap::new` with the governed allocation.
+    /// Create a new collection, replacing any prior collection in the selected memory.
+    /// This is destructive even when a valid collection already exists.
+    ///
+    /// # Panics
+    /// Panics on insufficient memory or codec/backing failure.
     pub fn new(memory: RuntimeMemory<M>) -> Self {
         Self {
             inner: substrate::MinHeap::new(memory),
         }
     }
-    /// Delegates to upstream `MinHeap::init` with the governed allocation.
+    /// Open a valid retained collection, or create one in zero-page memory.
+    ///
+    /// # Panics
+    /// Panics for foreign magic, unsupported layout, incompatible element bounds,
+    /// insufficient memory or codec/backing failure. Foreign memory is not reset.
     pub fn init(memory: RuntimeMemory<M>) -> Self {
         Self {
             inner: substrate::MinHeap::init(memory),
@@ -337,13 +391,22 @@ pub struct StableLog<T: Storable, M: Memory = DefaultMemoryImpl> {
     inner: substrate::Log<T, RuntimeMemory<M>, RuntimeMemory<M>>,
 }
 impl<T: Storable, M: Memory> StableLog<T, M> {
-    /// Delegates to upstream `Log::new` with the governed allocation.
+    /// Create a new collection, replacing any prior collection in the selected memory.
+    /// This is destructive even when a valid collection already exists.
+    ///
+    /// # Panics
+    /// Panics on insufficient memory or codec/backing failure.
     pub fn new(index_memory: RuntimeMemory<M>, data_memory: RuntimeMemory<M>) -> Self {
         Self {
             inner: substrate::Log::new(index_memory, data_memory),
         }
     }
-    /// Delegates to upstream `Log::init` with the governed allocation.
+    /// Open a retained log, or initialize both memories when data memory is
+    /// empty or has foreign magic. The latter overwrites previous contents.
+    ///
+    /// # Panics
+    /// With recognized data magic, panics for an invalid index or unsupported
+    /// layout. Growth and codec/backing failures also retain upstream panics.
     pub fn init(index_memory: RuntimeMemory<M>, data_memory: RuntimeMemory<M>) -> Self {
         Self {
             inner: substrate::Log::init(index_memory, data_memory),
@@ -424,9 +487,12 @@ pub struct BoundedCell<T: Storable, M: Memory = DefaultMemoryImpl> {
 
 impl<T: Storable, M: Memory> BoundedCell<T, M> {
     /// Open a current cell or initialize a fresh bounded record.
+    /// Empty memory or foreign magic initializes the supplied value, potentially
+    /// overwriting foreign contents. Recognized incompatible layouts are refused.
     ///
     /// # Panics
     /// Panics for unbounded records or encodings that violate the declared bound.
+    /// Also retains [`StableCell::init`] layout, growth and codec/backing panics.
     #[must_use]
     pub fn init(memory: RuntimeMemory<M>, value: T) -> Self {
         assert!(matches!(T::BOUND, Bound::Bounded { .. }));

@@ -153,8 +153,26 @@ impl<K: Storable + Ord + Clone, V: Storable, M: Memory> BTreeMapRegion<K, V, M> 
     /// The scan completes before returning; the iterator retains owned keys,
     /// with no collection cache, memory handle or borrow across later mutations.
     pub fn keys_range(&self, bounds: impl RangeBounds<K>) -> std::vec::IntoIter<K> {
+        self.keys_range_limited(bounds, usize::MAX)
+    }
+
+    /// Snapshot at most `limit` ordered keys, stopping iteration at that bound.
+    ///
+    /// Unlike `keys_range(bounds).take(limit)`, this bounds collection work before
+    /// allocating the snapshot. Zero returns without loading the tree. Resume
+    /// with an excluded last key; intervening mutations are visible to each call.
+    /// The limit bounds key count, not encoded bytes or instruction cost.
+    pub fn keys_range_limited(
+        &self,
+        bounds: impl RangeBounds<K>,
+        limit: usize,
+    ) -> std::vec::IntoIter<K> {
+        if limit == 0 {
+            return Vec::new().into_iter();
+        }
         self.current_map()
             .keys_range(bounds)
+            .take(limit)
             .collect::<Vec<_>>()
             .into_iter()
     }

@@ -262,3 +262,31 @@ fn retained_region_bounds_and_growth_refusal_preserve_bytes_and_leases() {
     assert_eq!(view.get(&7), Some(vec![11]));
     assert_eq!(view.get(&8), Some(vec![12]));
 }
+
+#[test]
+fn limited_snapshots_resume_and_survive_intervening_mutations() {
+    use std::ops::Bound::{Excluded, Unbounded};
+    let host = runtime(VectorMemory::default());
+    let lease = Rc::new(host.open_memory("test.map.v1").unwrap());
+    let mut view = BTreeMapRegion::<u64, u64>::new(lease, 0..END);
+    // Zero must not try loading an uninitialized header.
+    assert_eq!(view.keys_range_limited(.., 0).len(), 0);
+    view.initialize();
+    for key in 0..200 {
+        view.insert(key, key + 1);
+    }
+    let first = view.keys_range_limited(20..100, 3);
+    view.remove(&21);
+    view.insert(201, 202);
+    assert_eq!(first.collect::<Vec<_>>(), [20, 21, 22]);
+    assert_eq!(
+        view.keys_range_limited((Excluded(22), Unbounded), 3)
+            .collect::<Vec<_>>(),
+        [23, 24, 25]
+    );
+    assert_eq!(
+        view.keys_range_limited(199.., 20).collect::<Vec<_>>(),
+        [199, 201]
+    );
+    assert_eq!(view.keys_range_limited(300.., 20).len(), 0);
+}

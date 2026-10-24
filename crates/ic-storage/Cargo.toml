@@ -16,6 +16,11 @@ ic-platform = { workspace = true, features = ["stable-structures"] }
 [dev-dependencies]
 ic-memory = { workspace = true, features = ["test-support"] }
 
+[[example]]
+name = "wasm-storage-qualification"
+path = "examples/wasm_storage_qualification.rs"
+crate-type = ["cdylib"]
+
 [lints.rust]
 missing_docs = "warn"
 unsafe_code = "deny"

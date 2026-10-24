@@ -9,8 +9,8 @@ local baseline. Future policy changes require reviewed snapshot adoption.
 
 ## Current source selection
 
-IC Persistence selects committed Shared Tooling 0.26.8 at
-`0b07c2a3163a5a66328e100b553baf93afd8ed07`, with 75 explicit roots and 114 payloads.
+IC Persistence selects committed Shared Tooling 0.26.10 at
+`a8141e775983c7fe504c4dd911e978152e657fdf`, with 77 explicit roots and 118 payloads.
 Release 0.50.7 passed the complete native, MSRV and installed-runtime matrix
 on Linux and both macOS architectures; snapshot integrity alone is not acceptance.
 See [the adoption issue](https://github.com/dragginzgame/ic-persistence/issues/127).
@@ -22,7 +22,9 @@ exports committed bytes from a clean source checkout. Direct callers remain
 explicit roots and required companions are derived by the exporter.
 
 The refresh uses the canonical exporter from a clean detached copy of that
-commit and retains the existing roots and payload closure. Explicit Cargo-tool
+commit and retains the existing capabilities. The companion-copy and Make-adapter helpers become explicit roots because the
+consumer release fixture calls them for formatter closure and parallel lint-order
+qualification, keeping its target roster and effect stubs local. Explicit Cargo-tool
 setup waits up to 60 seconds for an admitted exact-slot owner;
 `SHARED_TOOLING_SETUP_WAIT_SECONDS=0..300` selects another canonical integer
 budget. Offline checks/preflight and Host/IC setup remain immediate. No foreign
@@ -36,14 +38,27 @@ global source-preparation lock. Cargo owns download serialization; exact selecte
 tool slots still serialize builds. Old source-preparation slots and generations
 remain retained.
 
-The 0.26.8 build-helper change alters the policy digest. Explicitly rerun
-`make install-tools` and `make install-runtime-server` after adoption; offline
-checks do not activate older-policy binaries or repair selections. Tool pins and
-compiler selections are unchanged. Source/receipt admission and bounded waits
-remain in force. Focused producer and consumer acceptance stays separate from
-native hosted qualification. Earlier checksum/evidence/feature-graph hardening
-and the CI/release audit remain selected; the validation-target runner stays
-unselected.
+The 0.26.10 refresh retains tool pins, compiler selections and the tool-store
+build-policy identity. Existing prepared tools can be admitted without rebuilding.
+The retired checkout-local Rust build directory no longer affects admission;
+current shared-store checks and retained evidence remain in force.
+
+`make tools-report` runs every existing offline checker and retains individual
+failures and durations. It is diagnostic; fail-fast `tools-check` remains release
+admission. The validation-target runner is selected only as its required companion,
+without changing this consumer's validation/release ordering. Installer `--describe`
+reports admitted selection inputs as JSON without executing or preparing tools.
+It does not replace installed-tool checks or implement the finer setup-phase
+reporting requested in Shared #303.
+
+Formatting now uses the same literal catalog parser as installation, rejecting
+duplicate assignments and executable configuration. Both local workspace adapters
+remain selected. `check-storage-boundary` opts into the shared external IC package
+inventory while preserving this consumer's stricter no-direct-substrate rule.
+The existing production graph policy remains local; structured graph explanations
+are available for diagnosis. The existing consumer lint-order fixture uses the shared parallel-Make probe;
+its expected stages and effect stubs remain local. Optional common CI cache setup
+does not replace this consumer's current cache bindings.
 
 Ordinary expensive hosted integration follows Shared's asynchronous cadence.
 Focused checks, enforced GitHub requirements and separate release/publication/

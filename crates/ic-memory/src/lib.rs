@@ -178,3 +178,6 @@ mod allocation_measurements_tests;
 
 #[cfg(any(test, feature = "test-support"))]
 pub mod testing;
+
+#[cfg(test)]
+mod recovery_fuzz_tests;
