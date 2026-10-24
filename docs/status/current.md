@@ -15,34 +15,39 @@ publication to the new public `dragginzgame/ic-persistence` repository on
 2026-10-20. The destination exists with collaborator-only PR creation; the
 consolidated branch was selected for its `main`. Downstream consumers retain their own dependency adoption decisions.
 
-Both packages inherit released workspace version 0.50.15 at
-`7deafe9c42926c8ecd01952277b571813c21a04f`. IC Tooling 0.67.0 and Shared
-revision `4c0f198e56d4c6d27b12a5c2d515e0e01070151e` remain selected.
-Published changelogs retain earlier adoption/qualification scope.
+Both packages inherit released workspace version 0.50.16 at
+`5856e8dfc431f92cc0e6159e4fda0b2a8074f810`. All ten
+[delivered CI jobs](https://github.com/dragginzgame/ic-persistence/actions/runs/40086649292)
+passed, including library/MSRV and installed runtime checks on all three native
+hosts. The delivered Tokio 1.53.3 lock matches the earlier local audit and runtime
+qualification for [#132 — Qualify Tokio AsyncFd I/O safety](https://github.com/dragginzgame/ic-persistence/issues/132).
+Earlier source/evidence scopes remain in published changelogs.
 
-Pending compatible 0.50.16 updates only Tokio 1.53.2 to 1.53.3 in the independent
-runtime lock. All other dependency identities and edges, the root library lock,
-PocketIC 16.1.0, both Platform selections, substrate and compiler pins remain.
-A fresh isolated RustSec database at `21d909e4c8bd4e14c7aea58bf980c881a0053ab1`
-reports the AsyncFd advisory before the patch and no longer reports it afterward.
-The selected Linux dependency source scan found no `AsyncFd` references outside
-Tokio; this is source reachability evidence, not proof of complete exploitability
-or security. Existing unrelated unmaintained warnings are retained separately.
-See [#132 — Qualify Tokio AsyncFd I/O safety](https://github.com/dragginzgame/ic-persistence/issues/132).
+Pending compatible 0.50.17 selects IC Tooling 0.68.0 in the root native catalog
+and both helper CLIs at `8f281177faaeee0adc51edc1031d4a7b268b0ce0`. The five
+consumed libraries' published Rust sources match 0.67.0. The optional Testkit Wire
+feature owns the upstream breaking change and remains unselected here. The
+producer's dirty 0.68.1 work is excluded; no source API adaptation is needed.
 
-The map insertion review retains caller-owned key copies where post-insert
-metadata needs the original key and returned previous value. The current
-Platform boundary exposes no single-pass key-retaining hook; adding a copy
-wrapper would not resolve that cost. The owned-key contract is documented without
-a new API, engine or format. See
-[#131 — Evaluate caller key access across returning insertion](https://github.com/dragginzgame/ic-persistence/issues/131).
+Only five native tooling versions/checksums change in the root lock. Platform
+remains 0.6.14 in the root and 0.6.8 in the independent runtime lock, whose bytes
+are unchanged. Tokio 1.53.3, PocketIC 16.1.0 pairing, substrate 0.7.2, compiler
+pins, feature selections, public APIs and retained formats remain selected.
+Shared snapshot `4c0f198e56d4c6d27b12a5c2d515e0e01070151e` is unchanged.
 
-Qualification evidence is retained at `/tmp/ic-persistence-issues131132/`.
-Installed Memory/Storage IO, upgrade and rollback checks pass all four original,
-O3, Os and Oz Wasm variants at `target/qualification/runtime/attempt.0OtT2b/`.
-The independent graph also passes all-target compilation on Rust 1.91.0.
-The dependency change is still a working-tree selection; release/publication and
-native macOS acceptance retain their own authority.
+Both new CLI selections are prepared and pass offline admission using the existing
+server and shared caches. Strict all-target Clippy, actual Rust 1.91 all-target
+compilation, nine native IO/accounting cases and three selected metadata/setup
+admission tests pass. Pin/production/declaration checks, both actual interrupted
+bootstrap states, release adapters, hooks, evidence retention, formatting and
+tooling lint pass. Installed Memory/Storage IO, upgrade and rollback checks pass
+original, O3, Os and Oz at `target/qualification/runtime/attempt.2FpNKI/`.
+
+Focused qualification logs are retained under
+`/tmp/ic-persistence-tooling068/`. Producer optimizer, browser and runtime
+workflows pass at the selected source; its native hosted matrix was still
+running at review. Release/publication and native macOS acceptance retain their
+separate authority.
 
 ## Repository retirement
 

@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.50.17] - Unreleased
+
+- Adopt IC Tooling 0.68.0 in native dependencies and helper CLIs, preserving
+  current library and runtime contracts. [Details](docs/changelog/0.50.md#05017).
+
 ## [0.50.16] - 2026-10-24
 
 - Qualify Tokio 1.53.3 in the independent runtime graph to remove the AsyncFd
