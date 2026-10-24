@@ -21,7 +21,7 @@ categories = ["wasm", "data-structures"]
 [workspace.dependencies]
 # Production dependencies
 ic-memory = { path = "crates/ic-memory", version = "0.50.16" }
-ic-platform = { version = "0.6.8", default-features = false }
+ic-platform = { version = "0.6.15", default-features = false }
 serde = { version = "1.0", default-features = false, features = [
     "alloc",
     "derive",

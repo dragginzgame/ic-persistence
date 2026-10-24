@@ -23,31 +23,41 @@ hosts. The delivered Tokio 1.53.3 lock matches the earlier local audit and runti
 qualification for [#132 — Qualify Tokio AsyncFd I/O safety](https://github.com/dragginzgame/ic-persistence/issues/132).
 Earlier source/evidence scopes remain in published changelogs.
 
-Pending compatible 0.50.17 selects IC Tooling 0.68.0 in the root native catalog
-and both helper CLIs at `8f281177faaeee0adc51edc1031d4a7b268b0ce0`. The five
-consumed libraries' published Rust sources match 0.67.0. The optional Testkit Wire
-feature owns the upstream breaking change and remains unselected here. The
-producer's dirty 0.68.1 work is excluded; no source API adaptation is needed.
+Pending compatible 0.50.17 selects Platform 0.6.15 at
+`6dcf54a229201f85775d218b7a9f41809297878f` in both maintained dependency catalogs.
+The incoming root lock already selected it and is retained. The independent lock
+updates only Platform 0.6.8 to 0.6.15, preserving Tokio 1.53.3, PocketIC 16.1.0,
+all other package records and dependency edges. Stable-structures remains 0.7.2;
+its Platform facade and the PocketIC facade are unchanged between those releases.
+Wire/schema features remain unselected, so no source API adaptation is needed.
 
-Only five native tooling versions/checksums change in the root lock. Platform
-remains 0.6.14 in the root and 0.6.8 in the independent runtime lock, whose bytes
-are unchanged. Tokio 1.53.3, PocketIC 16.1.0 pairing, substrate 0.7.2, compiler
-pins, feature selections, public APIs and retained formats remain selected.
-Shared snapshot `4c0f198e56d4c6d27b12a5c2d515e0e01070151e` is unchanged.
+IC Tooling 0.68.0 at `8f281177faaeee0adc51edc1031d4a7b268b0ce0` remains the latest
+published release, confirmed against the official registry. Its selected five
+native dependencies and both helper CLIs are retained. The sibling's local
+0.68.1 preparation still declares package version 0.68.0 and is not a new
+published selection. Earlier 0.68 qualification remains recorded in
+`/tmp/ic-persistence-tooling068/` and the numbered changelog.
 
-Both new CLI selections are prepared and pass offline admission using the existing
-server and shared caches. Strict all-target Clippy, actual Rust 1.91 all-target
-compilation, nine native IO/accounting cases and three selected metadata/setup
-admission tests pass. Pin/production/declaration checks, both actual interrupted
-bootstrap states, release adapters, hooks, evidence retention, formatting and
-tooling lint pass. Installed Memory/Storage IO, upgrade and rollback checks pass
-original, O3, Os and Oz at `target/qualification/runtime/attempt.2FpNKI/`.
+Shared snapshot `4c0f198e56d4c6d27b12a5c2d515e0e01070151e`, compiler pins,
+effective feature scopes, public APIs, allocation custody and retained formats
+remain unchanged. Strict all-target Clippy, all 195 library tests, actual Rust 1.91
+all-target checks for both workspaces, pin/graph/declaration boundaries and actual
+offline tool/server admission pass. Installed Memory/Storage IO, upgrades and
+rollback pass original/O3/Os/Oz at `target/qualification/runtime/attempt.HQqpM2/`.
+Formatting and documentation links pass. Logs remain at
+`/tmp/ic-persistence-platform0615/`.
 
-Focused qualification logs are retained under
-`/tmp/ic-persistence-tooling068/`. Producer optimizer, browser and runtime
-workflows pass at the selected source; its native hosted matrix was still
-running at review. Release/publication and native macOS acceptance retain their
-separate authority.
+Fresh isolated RustSec revision `21d909e4c8bd4e14c7aea58bf980c881a0053ab1`
+reports zero vulnerability-list matches for both maintained locks with explicit
+`--no-fetch --no-yanked`; existing unmaintained warnings remain. This does not
+qualify yanked-package status. Platform's separate all-feature crypto finding is
+tracked by [#50 — Qualify the crypto-bigint advisory](https://github.com/dragginzgame/ic-platform/issues/50);
+crypto-bigint is absent from these two selected graphs. The advisory workflow's
+missing registry-index records are separately reported as
+[#56 — Prepare registry index coverage before yanked-package audit checks](https://github.com/dragginzgame/ic-platform/issues/56).
+Upstream native CI remains in progress and its advisory workflow is not passing;
+local qualification, release/publication and native macOS acceptance retain their
+separate scope.
 
 ## Repository retirement
 
