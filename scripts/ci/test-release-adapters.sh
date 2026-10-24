@@ -195,6 +195,7 @@ fi
 [[ "$1" == tree ]] || exit 99
 printf 'tree\n' >> protocol-events
 printf '%s\n' 'ic-storage v0.0.0' 'ic-memory v0.0.0' \
+    'ic-metrics-stable v0.0.0' 'ic-metrics v0.15.8' \
     'ic-platform v0.6.5' 'ic-stable-structures v0.7.2'
 STUB
 chmod +x "$FIXTURE/protocol-bin/cargo"
@@ -280,7 +281,7 @@ exit "$MSRV_OBSERVATION_STATUS"
 STUB
 cat > "$FIXTURE/msrv-bin/cargo" <<'STUB'
 #!/usr/bin/env bash
-[[ "$#" == 5 && "$*" == '+1.88.0 check --locked --offline --all-targets' ]] || exit 1
+[[ "$#" == 6 && "$*" == '+1.88.0 check --workspace --locked --offline --all-targets' ]] || exit 1
 printf '%s\n' "$*" >> msrv-cargo-events
 exit "$MSRV_CARGO_STATUS"
 STUB
@@ -302,7 +303,7 @@ for result in gate-failure read-failure success compiler-failure; do
     elif [[ "$result" == read-failure ]]; then
         [[ "$status" == 2 && ! -e "$FIXTURE/msrv-cargo-events" ]] || exit 1
     else
-        [[ "$(cat "$FIXTURE/msrv-cargo-events")" == '+1.88.0 check --locked --offline --all-targets' ]] || exit 1
+        [[ "$(cat "$FIXTURE/msrv-cargo-events")" == '+1.88.0 check --workspace --locked --offline --all-targets' ]] || exit 1
         if [[ "$result" == success ]]; then [[ "$status" == 0 ]] || exit 1
         else [[ "$status" == 2 ]] || exit 1; fi
     fi
@@ -498,11 +499,12 @@ STUB
 cd "$FIXTURE/bootstrap"
 cat > Cargo.toml <<'MANIFEST'
 [workspace]
-members = ["crates/ic-memory", "crates/ic-storage"]
+members = ["crates/ic-memory", "crates/ic-storage", "crates/ic-metrics-stable"]
 [workspace.package]
 version = "0.12.3"
 [workspace.dependencies]
 ic-memory = { path = "crates/ic-memory", version = "0.12.3" }
+ic-storage = { path = "crates/ic-storage", version = "0.12.3" }
 other = "0.12.3"
 MANIFEST
 cat > Cargo.lock <<'LOCK'
@@ -512,6 +514,9 @@ name = "ic-memory"
 version = "0.12.3"
 [[package]]
 name = "ic-storage"
+version = "0.12.3"
+[[package]]
+name = "ic-metrics-stable"
 version = "0.12.3"
 [[package]]
 name = "other"
@@ -529,6 +534,10 @@ mkdir -p crates/ic-storage/src
 printf '[package]\nname = "ic-storage"\nversion.workspace = true\n' > crates/ic-storage/Cargo.toml
 echo fixture > crates/ic-storage/README.md
 touch crates/ic-storage/src/lib.rs
+mkdir -p crates/ic-metrics-stable/src
+printf '[package]\nname = "ic-metrics-stable"\nversion.workspace = true\n' > crates/ic-metrics-stable/Cargo.toml
+echo fixture > crates/ic-metrics-stable/README.md
+touch crates/ic-metrics-stable/src/lib.rs
 cp Cargo.toml original-manifest
 cat > bin/cargo <<'STUB'
 #!/usr/bin/env bash
@@ -593,6 +602,8 @@ case "$2" in
             cmp crates/ic-storage/src/lib.rs "$(dirname "$7")/crates/ic-storage/src/lib.rs"
             cmp crates/ic-storage/README.md "$(dirname "$7")/crates/ic-storage/README.md"
             cmp crates/ic-storage/Cargo.toml "$(dirname "$7")/crates/ic-storage/Cargo.toml"
+            cmp crates/ic-metrics-stable/Cargo.toml "$(dirname "$7")/crates/ic-metrics-stable/Cargo.toml"
+            cmp crates/ic-metrics-stable/src/lib.rs "$(dirname "$7")/crates/ic-metrics-stable/src/lib.rs"
             echo bootstrap >> calls
         else
             [[ "$6" == --example && "$7" == repo-tool && "$8" == -- ]] || exit 1
@@ -689,11 +700,12 @@ cmp original-manifest Cargo.toml
 cp calls saved-calls
 cat > expected-manifest <<'MANIFEST'
 [workspace]
-members = ["crates/ic-memory", "crates/ic-storage"]
+members = ["crates/ic-memory", "crates/ic-storage", "crates/ic-metrics-stable"]
 [workspace.package]
 version = "0.13.0"
 [workspace.dependencies]
 ic-memory = { path = "crates/ic-memory", version = "0.13.0" }
+ic-storage = { path = "crates/ic-storage", version = "0.13.0" }
 other = "0.12.3"
 MANIFEST
 "$FIXTURE_RELEASE_EDITOR" --max-input-bytes "$CARGO_RELEASE_METADATA_MAX_BYTES" lock Cargo.lock 0.12.3 0.13.0 ic-memory > split-lock
@@ -705,13 +717,14 @@ for manifest in original-manifest expected-manifest; do
     status=0
     bash scripts/dev/run-repo-tool.sh "$FIXTURE_TOOLCHAIN" version > split-lock.log 2>&1 || status=$?
     [[ "$status" == 1 && ! -e "$BOOTSTRAP_TARGET/repo-tool-bootstrap" ]] || exit 1
-    grep -F 'Memory and Storage lock versions differ' split-lock.log
+    grep -F 'Persistence lock versions differ' split-lock.log
     cmp split-calls calls
     cmp "$manifest" Cargo.toml
     cmp split-lock Cargo.lock
 done
 cp original-manifest Cargo.toml
-"$FIXTURE_RELEASE_EDITOR" --max-input-bytes "$CARGO_RELEASE_METADATA_MAX_BYTES" lock split-lock 0.12.3 0.13.0 ic-storage > prepared-lock
+"$FIXTURE_RELEASE_EDITOR" --max-input-bytes "$CARGO_RELEASE_METADATA_MAX_BYTES" lock split-lock 0.12.3 0.13.0 ic-storage > storage-lock
+"$FIXTURE_RELEASE_EDITOR" --max-input-bytes "$CARGO_RELEASE_METADATA_MAX_BYTES" lock storage-lock 0.12.3 0.13.0 ic-metrics-stable > prepared-lock
 cp prepared-lock Cargo.lock
 [[ "$(make --no-print-directory -s release-version 2> bootstrap.log)" == 0.12.3 ]] || exit 1
 printf '%s\n' metadata bootstrap-cache bootstrap >> saved-calls
@@ -773,28 +786,30 @@ export BOOTSTRAP_TARGET="$normal_target"
 cp calls saved-format-calls
 cat > Cargo.toml <<'MANIFEST'
 [workspace]
-members = ["crates/ic-memory", "crates/ic-storage"]
+members = ["crates/ic-memory", "crates/ic-storage", "crates/ic-metrics-stable"]
 [ workspace.package ] # selected metadata
   version   = "0.12.3" # keep this comment
 [workspace.dependencies]
 ic-memory = { path = "crates/ic-memory", version = "0.12.3" }
+ic-storage = { path = "crates/ic-storage", version = "0.12.3" }
 other = "0.12.3"
 MANIFEST
 cp Cargo.toml formatted-manifest
 cat > expected-manifest <<'MANIFEST'
 [workspace]
-members = ["crates/ic-memory", "crates/ic-storage"]
+members = ["crates/ic-memory", "crates/ic-storage", "crates/ic-metrics-stable"]
 [ workspace.package ] # selected metadata
   version   = "0.13.0" # keep this comment
 [workspace.dependencies]
 ic-memory = { path = "crates/ic-memory", version = "0.13.0" }
+ic-storage = { path = "crates/ic-storage", version = "0.13.0" }
 other = "0.12.3"
 MANIFEST
 [[ "$(make --no-print-directory -s release-version 2> formatted.log)" == 0.12.3 ]] || exit 1
 cmp formatted-manifest Cargo.toml
 cmp prepared-lock Cargo.lock
 # A parser emitting plausible facts before failing cannot start Cargo preparation.
-for input in Cargo.toml Cargo.lock crates/ic-memory/Cargo.toml crates/ic-storage/Cargo.toml; do
+for input in Cargo.toml Cargo.lock crates/ic-memory/Cargo.toml crates/ic-storage/Cargo.toml crates/ic-metrics-stable/Cargo.toml; do
     cp calls saved-parser-calls
     status=0
     TOML_PARSER_FAILURE="$input" bash scripts/dev/run-repo-tool.sh "$FIXTURE_TOOLCHAIN" version \
@@ -817,12 +832,14 @@ cmp duplicate-manifest Cargo.toml
 cmp prepared-lock Cargo.lock
 cp original-manifest Cargo.toml
 # Reject malformed lock values before shell capture can trim or discard bytes.
-for package in ic-memory ic-storage; do
+for package in ic-memory ic-storage ic-metrics-stable; do
     for version in '13' '"0.13.0\n"' '"0.13.0\u0000"'; do
-        other=ic-memory
-        [[ "$package" == ic-memory ]] && other=ic-storage
-        printf 'version = 4\n[[package]]\nname = "%s"\nversion = %s\n[[package]]\nname = "%s"\nversion = "0.12.3"\n' \
-            "$package" "$version" "$other" > Cargo.lock
+        printf 'version = 4\n' > Cargo.lock
+        for other in ic-memory ic-storage ic-metrics-stable; do
+            value='"0.12.3"'
+            if [[ "$other" == "$package" ]]; then value="$version"; fi
+            printf '[[package]]\nname = "%s"\nversion = %s\n' "$other" "$value" >> Cargo.lock
+        done
         cp Cargo.lock malformed-lock
         if bash scripts/dev/run-repo-tool.sh "$FIXTURE_TOOLCHAIN" version > malformed-lock.log 2>&1; then
             echo 'launcher accepted malformed locked version' >&2; exit 1
@@ -848,7 +865,7 @@ cmp saved-calls calls
 cmp original-manifest Cargo.toml
 cmp conflicting-lock Cargo.lock
 cp prepared-lock Cargo.lock
-for package in ic-memory ic-storage; do
+for package in ic-memory ic-storage ic-metrics-stable; do
     manifest="crates/$package/Cargo.toml"
     cp "$manifest" saved-member
     for refusal in missing explicit-version; do

@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.50.17]
+
+- Maintain and release `ic-metrics-stable` alongside Memory and Storage. The
+  imported adapter retains its API, V1 records and original license; arithmetic
+  remains independently owned by IC Metrics. Packaging, release recovery and
+  publication now qualify all three packages.
+- **Upgrade:** select the adapter, Memory and Storage from the same published
+  Persistence release line. No retained-data conversion or reset is required.
+  [Details](docs/changelog/0.50.md#05017).
+
 ## [0.50.16] - 2026-10-24
 
 - Qualify Tokio 1.53.3 in the independent runtime graph to remove the AsyncFd

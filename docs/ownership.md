@@ -1,6 +1,6 @@
 # Implementation ownership
 
-IC Persistence maintains two published crates. IC Memory owns durable allocation governance for one backing memory: permanent
+IC Persistence maintains three published crates. IC Memory owns durable allocation governance for one backing memory: permanent
 key-to-ID bindings, host-wide placement, admission before commitment, protected
 ledger recovery and exclusive checked handles. It does not own application data,
 collection semantics, component lifecycle or deployment policy.
@@ -31,6 +31,12 @@ IC Storage owns the governed collection adapters in `crates/ic-storage/src/adapt
 Its existing source and formats are unchanged by the repository consolidation.
 Storage depends on Memory through the root path-plus-version catalog; Memory
 does not depend on Storage.
+
+IC Metrics Stable owns validated V1 metric records and restoration in
+`crates/ic-metrics-stable`. It depends on Memory, Storage and the independently
+published `ic-metrics` arithmetic crate. Hosts own sampling, attribution,
+allocation keys, bootstrap, collection lifecycle, cadence and resets. Neither
+Memory nor Storage depends on the adapter. See [the import guide](migration/ic-metrics-stable.md).
 
 ## Dependencies and external capabilities
 
@@ -64,7 +70,7 @@ establish that every published consumer or deployed application has adopted them
 - Fixture Cells exercise governed byte storage and caller-selected limits; they
   are not a general production collection API. Installed IO/upgrade tests qualify
   this crate's behavior rather than duplicating Testkit's server implementation.
-- Native repo-tool owns both packages' release proofs and recovery transaction. Shared
+- Native repo-tool owns all packages' release proofs and recovery transaction. Shared
   runner delegation does not replace those proofs. A pending upstream editor or
   receipt proposal is not an available compatible dependency.
 
