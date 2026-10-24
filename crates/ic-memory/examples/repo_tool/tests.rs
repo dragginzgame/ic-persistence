@@ -270,22 +270,6 @@ impl Fixture {
             ("Cargo.toml".to_owned(), MANIFEST.to_owned()),
             (PACKAGE_MANIFEST.to_owned(), PACKAGE.to_owned()),
             (
-                STORAGE_MANIFEST.to_owned(),
-                "[package]\nname = \"ic-storage\"\nversion.workspace = true\n".to_owned(),
-            ),
-            (
-                METRICS_MANIFEST.to_owned(),
-                "[package]\nname = \"ic-metrics-stable\"\nversion.workspace = true\n".to_owned(),
-            ),
-            (
-                "crates/ic-metrics-stable/src/lib.rs".to_owned(),
-                "// metrics fixture\n".to_owned(),
-            ),
-            (
-                "crates/ic-storage/src/lib.rs".to_owned(),
-                "// storage fixture\n".to_owned(),
-            ),
-            (
                 PACKAGE_README.to_owned(),
                 "# Fixture\n\nic-memory = \"0.12.3\"\n".to_owned(),
             ),
@@ -300,6 +284,20 @@ impl Fixture {
                 "# Detail\n\n## [0.13.0]\n\nFixture changes.\n".to_owned(),
             ),
         ]);
+        for (name, manifest, library) in [
+            ("ic-storage", STORAGE_MANIFEST, "// storage fixture\n"),
+            (
+                "ic-metrics-stable",
+                METRICS_MANIFEST,
+                "// metrics fixture\n",
+            ),
+        ] {
+            source.insert(
+                manifest.to_owned(),
+                format!("[package]\nname = {name:?}\nversion.workspace = true\n"),
+            );
+            source.insert(format!("crates/{name}/src/lib.rs"), library.to_owned());
+        }
         for helper in [
             CHANGELOG_FINALIZER,
             RELEASE_INPUT_ADMISSION,

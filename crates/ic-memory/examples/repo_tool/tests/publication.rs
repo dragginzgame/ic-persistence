@@ -42,12 +42,10 @@ fn registry_conflicts_or_unknown_status_refuse_before_any_upload() {
                 package.to_owned(),
                 if failure == "checksum" {
                     "wrong".to_owned()
+                } else if package == "ic-storage" {
+                    evidence.storage_sha256
                 } else {
-                    if package == "ic-storage" {
-                        evidence.storage_sha256
-                    } else {
-                        evidence.metrics_sha256
-                    }
+                    evidence.metrics_sha256
                 },
             );
             fixture.fail(failure);
