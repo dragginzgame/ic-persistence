@@ -1,6 +1,6 @@
 # Changelog
 
-## [0.50.15] - Unreleased
+## [0.50.15] - 2026-10-24
 
 - Adopt IC Tooling 0.67.0 across native dependencies and helper CLIs, with explicit
   Cargo configuration admission limits.
