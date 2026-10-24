@@ -1,6 +1,6 @@
 # Changelog
 
-## [0.50.16] - Unreleased
+## [0.50.16] - 2026-10-24
 
 - Qualify Tokio 1.53.3 in the independent runtime graph to remove the AsyncFd
   advisory match ([#132 — Qualify Tokio AsyncFd I/O safety](https://github.com/dragginzgame/ic-persistence/issues/132)).
