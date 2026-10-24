@@ -10,7 +10,7 @@ local baseline. Future policy changes require reviewed snapshot adoption.
 ## Current source selection
 
 IC Persistence selects committed Shared Tooling 0.26.10 at
-`a8141e775983c7fe504c4dd911e978152e657fdf`, with 77 explicit roots and 118 payloads.
+`4c0f198e56d4c6d27b12a5c2d515e0e01070151e`, with 77 explicit roots and 118 payloads.
 Release 0.50.7 passed the complete native, MSRV and installed-runtime matrix
 on Linux and both macOS architectures; snapshot integrity alone is not acceptance.
 See [the adoption issue](https://github.com/dragginzgame/ic-persistence/issues/127).
@@ -38,7 +38,9 @@ global source-preparation lock. Cargo owns download serialization; exact selecte
 tool slots still serialize builds. Old source-preparation slots and generations
 remain retained.
 
-The 0.26.10 refresh retains tool pins, compiler selections and the tool-store
+The selected revision includes the committed 0.26.11 timing work; its committed
+`VERSION` still declares 0.26.10. The sibling's uncommitted version edit is excluded.
+The refresh retains common tool pins, compiler selections and the tool-store
 build-policy identity. Existing prepared tools can be admitted without rebuilding.
 The retired checkout-local Rust build directory no longer affects admission;
 current shared-store checks and retained evidence remain in force.
@@ -48,8 +50,12 @@ failures and durations. It is diagnostic; fail-fast `tools-check` remains releas
 admission. The validation-target runner is selected only as its required companion,
 without changing this consumer's validation/release ordering. Installer `--describe`
 reports admitted selection inputs as JSON without executing or preparing tools.
-It does not replace installed-tool checks or implement the finer setup-phase
-reporting requested in Shared #303.
+It does not replace installed-tool checks. Explicit Cargo setup now reports source
+preparation, lock waiting, selection/cache reuse, compilation and receipt/build
+admission with start/outcome/duration on stderr, delivering
+[Shared #303 — Report Cargo tool setup phases and durations](https://github.com/dragginzgame/shared-tooling/issues/303).
+Checks remain quiet and offline; stdout remains the selected executable path.
+No owner is killed, no deadline extended and no build identity changed.
 
 Formatting now uses the same literal catalog parser as installation, rejecting
 duplicate assignments and executable configuration. Both local workspace adapters
@@ -73,7 +79,7 @@ also remains in its focused target. Release notes may use a numbered
 ` - Unreleased` heading, which the shared finalizer dates during preparation.
 
 Shared 0.25.3 binds explicit Cargo feature sets to selected tool installations
-and admission receipts. Build and Testkit 0.66.0 binaries select `--features cli`
+and admission receipts. Build and Testkit 0.67.0 binaries select `--features cli`
 in setup, offline admission and bootstrap calls. Library dependencies retain
 disabled defaults. Prepare the selections with `make install-tools` and
 `make install-runtime-server`; previous installations and failed attempts remain

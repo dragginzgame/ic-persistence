@@ -7,7 +7,8 @@
 use clap::{Parser, Subcommand};
 use ic_build::cargo::{
     environment::{
-        configuration_directories, is_build_variable, is_compiler_override, observe_configurations,
+        ConfigurationLimits, configuration_directories, is_build_variable, is_compiler_override,
+        observe_configurations,
     },
     lock_projection::{WorkspaceVersionProjection, verify_workspace_release_projection},
     observation::{CargoMetadataSpec, decode_metadata},
@@ -42,6 +43,14 @@ mod qualification;
 mod tests;
 
 type Result<T> = std::result::Result<T, Box<dyn Error>>;
+
+// Consumer admission budgets for complete Cargo configuration observation.
+const CONFIGURATION_LIMITS: ConfigurationLimits = ConfigurationLimits {
+    file_bytes: 1024 * 1024,
+    total_bytes: 4 * 1024 * 1024,
+    files: 64,
+    depth: 16,
+};
 
 ///
 /// Arguments
@@ -640,7 +649,7 @@ impl<E: Execute> Repository<E> {
                 .flat_map(|directory| [directory.join("config"), directory.join("config.toml")])
                 .filter(|path| path.exists())
                 .collect();
-        for file in observe_configurations(&roots)? {
+        for file in observe_configurations(&roots, CONFIGURATION_LIMITS)? {
             if let Some(field) = file.compiler_overrides.first() {
                 return Err(format!(
                     "remove build.{field} from {} before release qualification; use the declared toolchains",

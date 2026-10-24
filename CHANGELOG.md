@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.50.15] - Unreleased
+
+- Adopt IC Tooling 0.67.0 across native dependencies and helper CLIs, with explicit
+  Cargo configuration admission limits.
+- Adopt committed Shared Tooling installer phase reporting so setup shows cache
+  reuse, lock waiting and compilation durations. [Details](docs/changelog/0.50.md#05015).
+
 ## [0.50.14] - 2026-10-24
 
 - Adopt Shared Tooling 0.26.10 with offline tool diagnostics, literal formatter

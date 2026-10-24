@@ -1278,6 +1278,80 @@ fn compiler_configuration_overrides_refuse_preparation() {
 }
 
 #[test]
+fn configuration_budgets_refuse_before_gates_or_metadata_mutation() {
+    for budget in ["file", "total", "files", "depth"] {
+        let fixture = Fixture::new();
+        let directory = fixture.repo.root.join(".cargo");
+        fs::create_dir(&directory).unwrap();
+        let root = directory.join("config.toml");
+        match budget {
+            "file" => {
+                fs::write(
+                    &root,
+                    format!("#{}", "x".repeat(CONFIGURATION_LIMITS.file_bytes)),
+                )
+                .unwrap();
+            }
+            "total" | "files" => {
+                let count = if budget == "total" {
+                    5
+                } else {
+                    CONFIGURATION_LIMITS.files
+                };
+                let contents = if budget == "total" {
+                    format!("#{}", "x".repeat(CONFIGURATION_LIMITS.file_bytes - 1))
+                } else {
+                    String::new()
+                };
+                let includes: Vec<_> = (0..count)
+                    .map(|index| format!("part-{index}.toml"))
+                    .collect();
+                fs::write(&root, format!("include = {includes:?}\n")).unwrap();
+                for name in includes {
+                    fs::write(directory.join(name), &contents).unwrap();
+                }
+            }
+            "depth" => {
+                fs::write(&root, "include = 'part-0.toml'\n").unwrap();
+                for index in 0..=CONFIGURATION_LIMITS.depth {
+                    fs::write(
+                        directory.join(format!("part-{index}.toml")),
+                        format!("include = 'part-{}.toml'\n", index + 1),
+                    )
+                    .unwrap();
+                }
+                fs::write(
+                    directory.join(format!("part-{}.toml", CONFIGURATION_LIMITS.depth + 1)),
+                    "",
+                )
+                .unwrap();
+            }
+            _ => unreachable!(),
+        }
+        let before = fs::read(&root).unwrap();
+        let error = fixture.prepare().unwrap_err();
+        assert!(
+            error
+                .downcast_ref::<ic_build::cargo::environment::ConfigurationError>()
+                .is_some(),
+            "{budget}: {error}"
+        );
+        fixture.assert_original();
+        assert_eq!(fs::read(root).unwrap(), before);
+        assert!(
+            !fixture
+                .repo
+                .exec
+                .state
+                .borrow()
+                .calls
+                .iter()
+                .any(|call| call[0] == "make")
+        );
+    }
+}
+
+#[test]
 fn included_compiler_configuration_refuses_preparation() {
     let fixture = Fixture::new();
     let directory = fixture.repo.root.join(".cargo");
