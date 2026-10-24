@@ -187,7 +187,7 @@ They validate source/input identities, finalize the root and detail notes with
 the saved UTC date, update Cargo metadata, preserve the saved README and qualify the packages. The
 explicit staged file set is `Cargo.toml`, `Cargo.lock`, `crates/ic-memory/README.md`, `CHANGELOG.md`
 and the candidate minor-line detail file. The root lock edit changes only the
-local `ic-memory` and `ic-storage` package versions; the independent qualification
+local `ic-memory`, `ic-storage` and `ic-metrics-stable` package versions; the independent qualification
 lock is not a release edit. Git mutations belong exclusively to the common runner.
 
 Preflight checks both working files and the entire index. Restoring a working
@@ -197,11 +197,11 @@ metadata from the selected SHA and require its sole parent, release subject and
 exact prepared metadata to match saved intent.
 
 The root `[workspace.package]` owns the release version and MSRV;
-both package manifests inherit them and stay unchanged during a bump.
-The helper launcher requires both inherited declarations and matching local lock
-versions. Interrupted metadata recovery copies both member manifests unchanged
+all three package manifests inherit them and stay unchanged during a bump.
+The helper launcher requires all inherited declarations and matching local lock
+versions. Interrupted metadata recovery copies all member manifests unchanged
 and leaves tracked inputs intact; the root manifest is rendered for the selected
-coordinated lock. Split package versions are conflicting input, because both
+coordinated lock. Split package versions are conflicting input, because all packages
 lock entries are published together in one atomic file replacement.
 The canonical dependency example is in the package README.
 
@@ -340,27 +340,27 @@ Release, publication and installed runtime qualification retain their separate a
 Current focused evidence is recorded in
 [release workflow qualification](docs/release-workflow-qualification.md).
 
-## Coordinated Memory and Storage publication
+## Coordinated package publication
 
-Memory and Storage inherit the common workspace version. Preparation updates
-both local lock records and the internal Memory requirement; Storage’s manifest
-is admitted unchanged as a source-bound release surface. The initial 0.50.0
+Memory, Storage and Metrics Stable inherit the common workspace version. Preparation updates
+all three local lock records and the internal Memory/Storage requirements; the Storage and Metrics Stable manifests
+are admitted unchanged as a source-bound release surface. The initial 0.50.0
 conversion is complete. Pre-consolidation receipts and plans retain their
 original source/tooling; do not convert them with the current adapter.
 
-Both qualified archive digests are retained in every package receipt. Packaging
-creates both archives offline and independently builds extracted packages and a
+All three qualified archive digests are retained in every package receipt. Packaging
+creates all three archives offline and independently builds extracted packages and a
 consumer on native Rust 1.91 and the selected compiler, then checks Wasm. The
 consumer patches registry names only to those extracted archives, avoiding Cargo's
 temporary-registry offline download failure and preventing accidental use of an
 older published Memory. Its manifest/lock/logs are retained under
 `target/package-qualification/`; the maintained root lock is unchanged.
 
-`make publish` admits clean release source, exact tag, both archives and receipts
-before registry effects. It observes both crates.io versions; only HTTP 404 means
+`make publish` admits clean release source, exact tag, all three archives and receipts
+before registry effects. It observes all three crates.io versions; only HTTP 404 means
 absent. A conflicting checksum, yanked version or failed observation stops the
 command before uploading. It uploads Memory first, confirms the expected registry
-checksum, then uploads Storage. `--no-verify` avoids repeating compilation during
+checksum, then uploads Storage and finally Metrics Stable. `--no-verify` avoids repeating compilation during
 upload: the exact archives already have independent package qualification.
 
 Shared's canonical publication runner retains each attempt, exact package selector,

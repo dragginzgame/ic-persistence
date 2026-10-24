@@ -96,15 +96,24 @@ impl<E: Execute> Repository<E> {
         expected["workspace"]["package"]["version"] = toml::Value::String(version.to_owned());
         expected["workspace"]["dependencies"]["ic-memory"]["version"] =
             toml::Value::String(version.to_owned());
+        expected["workspace"]["dependencies"]["ic-storage"]["version"] =
+            toml::Value::String(version.to_owned());
         let updated = render_workspace_manifest(
             text,
             previous,
             version,
-            &[DependencyVersionProjection {
-                alias: "ic-memory",
-                previous,
-                next: version,
-            }],
+            &[
+                DependencyVersionProjection {
+                    alias: "ic-memory",
+                    previous,
+                    next: version,
+                },
+                DependencyVersionProjection {
+                    alias: "ic-storage",
+                    previous,
+                    next: version,
+                },
+            ],
         )?;
         require(
             expected == toml::from_str::<toml::Value>(&updated)?,
@@ -128,6 +137,11 @@ impl<E: Execute> Repository<E> {
                 },
                 WorkspaceVersionProjection {
                     package: "ic-storage",
+                    previous,
+                    next: version,
+                },
+                WorkspaceVersionProjection {
+                    package: "ic-metrics-stable",
                     previous,
                     next: version,
                 },

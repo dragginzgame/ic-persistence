@@ -148,7 +148,8 @@ impl Error for PreparationError {
 
 const PACKAGE_MANIFEST: &str = "crates/ic-memory/Cargo.toml";
 const STORAGE_MANIFEST: &str = "crates/ic-storage/Cargo.toml";
-const PACKAGES: [&str; 2] = ["ic-memory", "ic-storage"];
+const METRICS_MANIFEST: &str = "crates/ic-metrics-stable/Cargo.toml";
+const PACKAGES: [&str; 3] = ["ic-memory", "ic-storage", "ic-metrics-stable"];
 const PACKAGE_README: &str = "crates/ic-memory/README.md";
 const CHANGELOG_FINALIZER: &str = "scripts/ci/finalize-release-changelog.awk";
 const RELEASE_INPUT_ADMISSION: &str = "scripts/ci/validate-release-inputs.pl";
@@ -217,6 +218,7 @@ struct PackageEvidence {
     lock_sha256: String,
     package_sha256: String,
     storage_sha256: String,
+    metrics_sha256: String,
     commands: Vec<Vec<String>>,
 }
 
@@ -458,6 +460,11 @@ fn check_lock_update(before: &[u8], after: &str, previous: &str, version: &str) 
                 previous,
                 next: version,
             },
+            WorkspaceVersionProjection {
+                package: "ic-metrics-stable",
+                previous,
+                next: version,
+            },
         ],
     )?;
     Ok(())
@@ -689,19 +696,19 @@ impl<E: Execute> Repository<E> {
         )
     }
 
-    fn storage_release_manifest(&self, source: &str) -> Result<String> {
-        let text = self.text(STORAGE_MANIFEST, Some(source))?;
+    fn member_release_manifest(&self, source: &str, name: &str) -> Result<String> {
+        let text = self.text(&format!("crates/{name}/Cargo.toml"), Some(source))?;
         let manifest: toml::Value = toml::from_str(&text)?;
         require(
-            manifest["package"]["name"].as_str() == Some("ic-storage"),
-            "unexpected Storage package",
+            manifest["package"]["name"].as_str() == Some(name),
+            "unexpected Persistence package",
         )?;
         require(
             manifest["package"]["version"]
                 .get("workspace")
                 .and_then(toml::Value::as_bool)
                 == Some(true),
-            "expected inherited Storage version",
+            "expected inherited Persistence version",
         )?;
         Ok(text)
     }
@@ -735,7 +742,11 @@ impl<E: Execute> Repository<E> {
             (PACKAGE_README.to_owned(), readme),
             (
                 STORAGE_MANIFEST.to_owned(),
-                self.storage_release_manifest(source)?,
+                self.member_release_manifest(source, "ic-storage")?,
+            ),
+            (
+                METRICS_MANIFEST.to_owned(),
+                self.member_release_manifest(source, "ic-metrics-stable")?,
             ),
             (
                 "CHANGELOG.md".to_owned(),
@@ -943,6 +954,7 @@ impl<E: Execute> Repository<E> {
         evidence.package_head = head;
         evidence.package_sha256 = self.record_package("ic-memory", &version)?;
         evidence.storage_sha256 = self.record_package("ic-storage", &version)?;
+        evidence.metrics_sha256 = self.record_package("ic-metrics-stable", &version)?;
         evidence.commands.push(command);
         self.write_evidence(&evidence, false)
     }

@@ -30,18 +30,18 @@ check_dependency_cache() {
 }
 manifest_version="$(RUSTUP_TOOLCHAIN="$toolchain" \
     bash scripts/ci/read-cargo-workspace-version.sh --stable Cargo.toml)"
-# Both published packages inherit the one workspace release identity.
-for package in ic-memory ic-storage; do
+# All published packages inherit the one workspace release identity.
+for package in ic-memory ic-storage ic-metrics-stable; do
     "${YQ:-yq}" -p toml -o json '.' "crates/$package/Cargo.toml" | jq -e --arg name "$package" '
         .package | if .name == $name and .version == {workspace: true}
         then true else error("expected inherited version for " + $name) end
     ' > /dev/null
 done
-# Admit both local lock identities in one observation before shell capture.
+# Admit all local lock identities in one observation before shell capture.
 lock_versions="$("${YQ:-yq}" -p toml -o json -I 0 '.' Cargo.lock | jq -ers '
     if length != 1 then error("expected one lock document") else .[0] end
     | .package as $packages
-    | ["ic-memory", "ic-storage"] | map(. as $name |
+    | ["ic-memory", "ic-storage", "ic-metrics-stable"] | map(. as $name |
         [$packages[] | select(.name == $name and .source == null)]
         | if length != 1 then error("expected one local " + $name + " package") else .[0].version end
         | if type != "string" then error("locked version must be a string")
@@ -50,10 +50,10 @@ lock_versions="$("${YQ:-yq}" -p toml -o json -I 0 '.' Cargo.lock | jq -ers '
           else . end)
     | @tsv
 ')"
-IFS=$'\t' read -r lock_version storage_lock <<< "$lock_versions"
+IFS=$'\t' read -r lock_version storage_lock metrics_lock <<< "$lock_versions"
 perl scripts/ci/validate-release-inputs.pl version "$lock_version" > /dev/null
-# The release adapter atomically publishes one lock containing both versions.
-[[ "$lock_version" == "$storage_lock" ]] || { echo 'Memory and Storage lock versions differ' >&2; exit 1; }
+# The release adapter atomically publishes one lock containing all versions.
+[[ "$lock_version" == "$storage_lock" && "$lock_version" == "$metrics_lock" ]] || { echo 'Persistence lock versions differ' >&2; exit 1; }
 if [[ "$manifest_version" == "$lock_version" ]]; then
     check_dependency_cache
     exec cargo "+$toolchain" run --locked --offline --quiet --example repo-tool -- "$@"
@@ -83,9 +83,12 @@ editor="$(RUSTUP_TOOLCHAIN="$toolchain" bash scripts/dev/install-rust-tools.sh \
     --bin ic-build-release-metadata --profile debug --features cli ${editor_admission[@]+"${editor_admission[@]}"})"
 mkdir -p "$scratch/crates/ic-storage"
 cp -R crates/ic-storage/src crates/ic-storage/README.md crates/ic-storage/Cargo.toml "$scratch/crates/ic-storage/"
+mkdir -p "$scratch/crates/ic-metrics-stable"
+cp -R crates/ic-metrics-stable/src crates/ic-metrics-stable/README.md crates/ic-metrics-stable/Cargo.toml "$scratch/crates/ic-metrics-stable/"
 "${YQ:-yq}" -p toml -o json '.' Cargo.toml | jq --arg root "$PWD" '{manifest: ., members: [
     {name: "ic-memory", manifest_path: ($root + "/crates/ic-memory/Cargo.toml")},
-    {name: "ic-storage", manifest_path: ($root + "/crates/ic-storage/Cargo.toml")}
+    {name: "ic-storage", manifest_path: ($root + "/crates/ic-storage/Cargo.toml")},
+    {name: "ic-metrics-stable", manifest_path: ($root + "/crates/ic-metrics-stable/Cargo.toml")}
 ]}' > "$scratch/workspace-input.json"
 "$editor" --max-input-bytes "$CARGO_RELEASE_METADATA_MAX_BYTES" manifest Cargo.toml \
     "$manifest_version" "$lock_version" "$scratch/workspace-input.json" > "$scratch/Cargo.toml"

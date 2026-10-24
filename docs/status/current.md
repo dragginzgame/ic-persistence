@@ -1,5 +1,27 @@
 # Current handoff
 
+The pending 0.50.17 batch imports `ic-metrics-stable` from IC Metrics
+`92ff804125fb07370fad4cb24cc620f52122ac36`, retaining its Rust source, tests,
+API, V1 bytes and MIT notice. It joins Memory and Storage under the existing
+workspace release identity; dependency-free `ic-metrics` stays external.
+[The import guide](../migration/ic-metrics-stable.md) owns cutover and verification.
+Integrate and publish this addition before the separate Metrics retirement PR.
+No workspace version bump, release or publication is performed by the migration.
+
+The import's source-preservation and three-archive proofs retain their scope in
+the migration guide. [PR #133](https://github.com/dragginzgame/ic-persistence/pull/133)
+passed all ten hosted CI jobs at `7b4752692bc7ef995200495af15c8c89423c19e9`
+before merge `8bf4c1facfbf642a20f04f41993f20a0baf383e1`. That evidence applies
+to the PR source, separately from the combined Platform/Tooling updates below.
+
+The combined merge working files retain all three workspace members, Platform
+0.6.15 and IC Tooling 0.68.0. Strict all-target Clippy, all 222 library tests,
+Rust 1.91 all-target compilation, pin/graph/declaration boundaries, licenses,
+formatting and documentation links pass locally. Evidence remains at
+`/tmp/ic-persistence-merge133/`. This is a working-tree qualification; the merge
+index and merge commit remain maintainer-owned.
+
+
 IC Persistence combines the Memory and Storage repositories. Memory owns
 allocation governance, bootstrap and exclusive leases; Storage owns governed
 collection adapters over those leases. Crate names and public responsibilities
@@ -15,7 +37,7 @@ publication to the new public `dragginzgame/ic-persistence` repository on
 2026-10-20. The destination exists with collaborator-only PR creation; the
 consolidated branch was selected for its `main`. Downstream consumers retain their own dependency adoption decisions.
 
-Both packages inherit released workspace version 0.50.16 at
+The released Memory/Storage baseline is workspace version 0.50.16 at
 `5856e8dfc431f92cc0e6159e4fda0b2a8074f810`. All ten
 [delivered CI jobs](https://github.com/dragginzgame/ic-persistence/actions/runs/40086649292)
 passed, including library/MSRV and installed runtime checks on all three native
@@ -40,7 +62,8 @@ published selection. Earlier 0.68 qualification remains recorded in
 
 Shared snapshot `4c0f198e56d4c6d27b12a5c2d515e0e01070151e`, compiler pins,
 effective feature scopes, public APIs, allocation custody and retained formats
-remain unchanged. Strict all-target Clippy, all 195 library tests, actual Rust 1.91
+remain selected. Before the Metrics Stable import, strict all-target Clippy,
+all 195 Memory/Storage library tests and actual Rust 1.91
 all-target checks for both workspaces, pin/graph/declaration boundaries and actual
 offline tool/server admission pass. Installed Memory/Storage IO, upgrades and
 rollback pass original/O3/Os/Oz at `target/qualification/runtime/attempt.HQqpM2/`.

@@ -14,10 +14,14 @@ Before changing tooling, formatting, release adapters or retention, read
 vendored files or attribute dirty shared source to a committed export.
 
 The virtual repository-root workspace owns shared package metadata and the
-dependency catalog. The library packages are `crates/ic-memory/` and `crates/ic-storage/`.
+dependency catalog. The library packages are `crates/ic-memory/`,
+`crates/ic-storage/` and `crates/ic-metrics-stable/`.
 Memory owns allocation governance, bootstrap and exclusive leases; Storage owns
-governed collections over those leases. Storage depends on Memory, never the
-reverse. Package source, tests and canonical READMEs live under their packages.
+governed collections over those leases. Metrics Stable owns validated V1 metric
+snapshots over Storage maps and depends on the external, dependency-free
+`ic-metrics` arithmetic crate. Hosts own metric attribution, lifecycle and cadence.
+Storage depends on Memory, never the reverse. Package source, tests and canonical
+READMEs live under their packages.
 The repository is IC Persistence; published crate identities remain unchanged.
 Follow the [workspace layout rules](rules/rust-workspaces.md).
 
@@ -182,8 +186,9 @@ requires a different style.
 
 ## Consolidated release identity
 
-Memory and Storage share the workspace version and advance together. Keep both
+All three packages share the workspace version and advance together. Keep the
 public APIs, collection formats and allocation custody unchanged during tooling
 cleanup. Storage retains its existing lint policy and declaration boundary.
 The completed import and preserved history are recorded in the
-[migration map](docs/migration/ic-persistence.md).
+[migration map](docs/migration/ic-persistence.md). The later stable-adapter
+import is recorded in [its migration guide](docs/migration/ic-metrics-stable.md).
