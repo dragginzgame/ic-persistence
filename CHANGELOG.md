@@ -1,6 +1,6 @@
 # Changelog
 
-## [0.50.14] - Unreleased
+## [0.50.14] - 2026-10-24
 
 - Adopt Shared Tooling 0.26.10 with offline tool diagnostics, literal formatter
   catalog admission and common external IC dependency checks.
