@@ -1,6 +1,6 @@
 # Changelog
 
-## [0.51.0] - Unreleased
+## [0.51.0] - 2026-10-24
 
 - **Breaking:** adopt IC Metrics 0.16 for the stable adapter's public arithmetic
   types. Adapter callers must select `ic-metrics = "0.16"` too. V1 records and
