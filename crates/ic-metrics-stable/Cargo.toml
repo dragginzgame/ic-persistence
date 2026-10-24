@@ -1,0 +1,29 @@
+[package]
+name = "ic-metrics-stable"
+edition.workspace = true
+rust-version.workspace = true
+version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+description = "Optional single-map stable storage for IC Metrics"
+readme = "README.md"
+publish = ["crates-io"]
+
+[dependencies]
+ic-memory.workspace = true
+ic-metrics.workspace = true
+ic-storage.workspace = true
+
+[dev-dependencies]
+# Native backing support, excluded from the production feature set.
+ic-memory = { workspace = true, features = ["test-support"] }
+
+[lints.rust]
+missing_docs = "warn"
+unsafe_code = "forbid"
+
+[lints.clippy]
+all = { level = "warn", priority = -1 }
+pedantic = { level = "warn", priority = -1 }
+nursery = { level = "warn", priority = -1 }

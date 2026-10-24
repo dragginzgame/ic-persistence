@@ -364,6 +364,7 @@ impl<E: Execute> Repository<E> {
         for (package, digest) in [
             ("ic-memory", &evidence.package_sha256),
             ("ic-storage", &evidence.storage_sha256),
+            ("ic-metrics-stable", &evidence.metrics_sha256),
         ] {
             require(
                 Self::sha256(&self.retained_package(digest)?)? == *digest,
@@ -425,6 +426,7 @@ impl<E: Execute> Repository<E> {
             lock_sha256,
             package_sha256: self.record_package("ic-memory", &selection.version)?,
             storage_sha256: self.record_package("ic-storage", &selection.version)?,
+            metrics_sha256: self.record_package("ic-metrics-stable", &selection.version)?,
             commands,
         };
         self.write_evidence(&evidence, true)?;

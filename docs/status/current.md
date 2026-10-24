@@ -1,5 +1,19 @@
 # Current handoff
 
+The pending 0.50.17 batch imports `ic-metrics-stable` from IC Metrics
+`92ff804125fb07370fad4cb24cc620f52122ac36`, retaining its Rust source, tests,
+API, V1 bytes and MIT notice. It joins Memory and Storage under the existing
+workspace release identity; dependency-free `ic-metrics` stays external.
+[The import guide](../migration/ic-metrics-stable.md) owns cutover and verification.
+Integrate and publish this addition before the separate Metrics retirement PR.
+No workspace version bump, release or publication is performed by the migration.
+
+Focused Linux qualification passes imported stable tests/doctests, native/Wasm
+strict Clippy and Rust 1.91 compilation, three-archive consumer execution,
+production policy, release/recovery fixtures, snapshot, format, license and links.
+Full release/runtime gates, hosted CI and native macOS are not claimed.
+
+
 IC Persistence combines the Memory and Storage repositories. Memory owns
 allocation governance, bootstrap and exclusive leases; Storage owns governed
 collection adapters over those leases. Crate names and public responsibilities
@@ -15,12 +29,12 @@ publication to the new public `dragginzgame/ic-persistence` repository on
 2026-10-20. The destination exists with collaborator-only PR creation; the
 consolidated branch was selected for its `main`. Downstream consumers retain their own dependency adoption decisions.
 
-Both packages inherit released workspace version 0.50.15 at
-`7deafe9c42926c8ecd01952277b571813c21a04f`. IC Tooling 0.67.0 and Shared
+The source base is released workspace version 0.50.16 at
+`5856e8dfc431f92cc0e6159e4fda0b2a8074f810`. IC Tooling 0.67.0 and Shared
 revision `4c0f198e56d4c6d27b12a5c2d515e0e01070151e` remain selected.
 Published changelogs retain earlier adoption/qualification scope.
 
-Pending compatible 0.50.16 updates only Tokio 1.53.2 to 1.53.3 in the independent
+Released 0.50.16 updated only Tokio 1.53.2 to 1.53.3 in the independent
 runtime lock. All other dependency identities and edges, the root library lock,
 PocketIC 16.1.0, both Platform selections, substrate and compiler pins remain.
 A fresh isolated RustSec database at `21d909e4c8bd4e14c7aea58bf980c881a0053ab1`
@@ -41,8 +55,8 @@ Qualification evidence is retained at `/tmp/ic-persistence-issues131132/`.
 Installed Memory/Storage IO, upgrade and rollback checks pass all four original,
 O3, Os and Oz Wasm variants at `target/qualification/runtime/attempt.0OtT2b/`.
 The independent graph also passes all-target compilation on Rust 1.91.0.
-The dependency change is still a working-tree selection; release/publication and
-native macOS acceptance retain their own authority.
+Those preceding qualification results retain their original source scope;
+they do not qualify the Metrics Stable addition or native macOS execution.
 
 ## Repository retirement
 
