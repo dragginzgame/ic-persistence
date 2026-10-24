@@ -58,6 +58,24 @@ The supplier's Linux and macOS ARM native checks and MSRV pass at inspection;
 macOS Intel remains in progress in
 [the supplier run](https://github.com/dragginzgame/ic-metrics/actions/runs/40104719356).
 
+## Archive-admission repair
+
+The retained release failure at
+`target/release-validation/attempts/verify.b610gU` correctly rejected a generated
+consumer that still selected Metrics 0.15 alongside the adapter's 0.16 dependency.
+The local archive adapter now reads that requirement from the exact extracted
+Metrics Stable manifest, preserving selected-lock and package-identity admission.
+
+The compiler/admission fixtures pass, including drift/duplicate refusal and
+catalog MSRV dispatch. Actual archive qualification passes at
+`target/package-qualification/attempt.ztRWSo/`: all three extracted packages
+compile, the consumer runs on Rust 1.99.1 and 1.91.0 and checks for Wasm, and final
+archive/unpacked/source hashes match. ShellCheck passes. Logs remain in
+`/tmp/ic-persistence-package-fix/`; the original failed fixture and release log
+remain retained. This is focused qualification, not a rerun of the full release
+gate or a release operation. No Shared Tooling payload, dependency selection,
+package version or real Git index was changed by this repair.
+
 ## Repository retirement
 
 All 121 original issues are now in IC Persistence, preserving their open/closed

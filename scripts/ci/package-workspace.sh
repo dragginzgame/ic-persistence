@@ -66,15 +66,17 @@ for package in "$memory" "$storage" "$metrics"; do
 done
 mkdir -p "$attempt/consumer/src"
 cp testing/package-consumer.rs "$attempt/consumer/src/main.rs"
+# Match the public arithmetic types selected by the exact extracted adapter.
+metrics_requirement="$(yq -p toml -o yaml -r '.dependencies.ic-metrics.version' "$metrics/Cargo.toml")"
 perl -MJSON::PP -e '
-    my ($memory,$storage,$metrics,$msrv,$file)=@ARGV;
+    my ($memory,$storage,$metrics,$metrics_requirement,$msrv,$file)=@ARGV;
     open my $out, ">", $file or die $!;
     print $out "[workspace]\n[package]\nname = \"persistence-package-consumer\"\nversion = \"0.0.0\"\nedition = \"2024\"\nrust-version = \"$msrv\"\n[dependencies]\n";
     print $out "ic-memory = { path = ",encode_json($memory),", features = [\"test-support\"] }\n";
     print $out "ic-storage = { path = ",encode_json($storage)," }\n";
-    print $out "ic-metrics-stable = { path = ",encode_json($metrics)," }\nic-metrics = \"0.15\"\n";
+    print $out "ic-metrics-stable = { path = ",encode_json($metrics)," }\nic-metrics = ",encode_json($metrics_requirement),"\n";
     close $out or die $!;
-' "$memory" "$storage" "$metrics" "$msrv" "$attempt/consumer/Cargo.toml"
+' "$memory" "$storage" "$metrics" "$metrics_requirement" "$msrv" "$attempt/consumer/Cargo.toml"
 admit_graph "$attempt/consumer/Cargo.toml" "$attempt/consumer"
 for compiler in "$pin" "$msrv"; do
     cargo "+$compiler" run --locked --offline --manifest-path "$attempt/consumer/Cargo.toml" --config "$attempt/patch.toml" --target-dir "$attempt/consumer-build"
