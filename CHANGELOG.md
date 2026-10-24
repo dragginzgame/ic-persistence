@@ -1,6 +1,6 @@
 # Changelog
 
-## [0.50.17] - Unreleased
+## [0.50.17] - 2026-10-24
 
 - Adopt Platform 0.6.15 across both workspaces and IC Tooling 0.68.0 in native
   dependencies and helper CLIs, preserving library and runtime contracts.
