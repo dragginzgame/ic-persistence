@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.50.16] - Unreleased
+
+- Qualify Tokio 1.53.3 in the independent runtime graph to remove the AsyncFd
+  advisory match ([#132 — Qualify Tokio AsyncFd I/O safety](https://github.com/dragginzgame/ic-persistence/issues/132)).
+- Document caller key custody for returning insertion; retain the bounded copy
+  after the API review ([#131 — Evaluate caller key access across returning insertion](https://github.com/dragginzgame/ic-persistence/issues/131)).
+  [Details](docs/changelog/0.50.md#05016).
+
 ## [0.50.15] - 2026-10-24
 
 - Adopt IC Tooling 0.67.0 across native dependencies and helper CLIs, with explicit

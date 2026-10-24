@@ -58,6 +58,11 @@ without extracting the lease. Neither operation promises entry capacity or free
 space. Callers own their byte/page budget and must qualify it against their codecs;
 upstream node-layout constants are not a supported entry-reservation guarantee.
 
+Returning map insertion consumes its owned key and returns the previous value.
+Callers whose post-insert metadata needs both retain a caller-owned key copy
+before insertion. The caller owns that copy's bounds and metadata transaction
+policy. The collection's key/value encoding and insertion failure contracts apply.
+
 `BoundedCell` supports `init`, `get` and `set`, enforcing declared maximum or
 exact encoded sizes before writes and before decoding retained values. It rejects
 unbounded types. Rejected replacements preserve cached values and stored bytes;

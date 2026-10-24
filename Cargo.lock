@@ -268,9 +268,9 @@ dependencies = [
 
 [[package]]
 name = "ic-platform"
-version = "0.6.13"
+version = "0.6.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5ab36c233d4cf865bf888c66f374c9a9959f9cbef456fc35fb2481518d4dd6aa"
+checksum = "f8a573232e49513639fcff89999a2439d8216c58efee4abc4b89f53917f6708d"
 dependencies = [
  "ic-stable-structures",
 ]

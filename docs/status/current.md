@@ -15,43 +15,34 @@ publication to the new public `dragginzgame/ic-persistence` repository on
 2026-10-20. The destination exists with collaborator-only PR creation; the
 consolidated branch was selected for its `main`. Downstream consumers retain their own dependency adoption decisions.
 
-Both packages inherit released workspace version 0.50.14 at
-`ccb062dc7ad0d27d7112c1e115186a76275e1cc9`. Historical consolidation, tooling
-adoption and installed qualification retain their source scopes in the published
-changelogs and [runtime notes](../runtime-io-qualification.md).
+Both packages inherit released workspace version 0.50.15 at
+`7deafe9c42926c8ecd01952277b571813c21a04f`. IC Tooling 0.67.0 and Shared
+revision `4c0f198e56d4c6d27b12a5c2d515e0e01070151e` remain selected.
+Published changelogs retain earlier adoption/qualification scope.
 
-Pending compatible 0.50.15 selects IC Tooling 0.67.0 in the root native catalog
-and both helper CLIs, with only those five selected lock packages changing.
-Platform remains 0.6.13 in the root lock and 0.6.8 in the independent runtime
-lock. The PocketIC 16.1.0 pairing, substrate 0.7.2, feature boundaries and
-compiler selections remain. The release adapter selects explicit configuration
-budgets (1 MiB/file, 4 MiB total, 64 files, include depth 16); source hashes and
-compiler override admission retain their existing contracts.
+Pending compatible 0.50.16 updates only Tokio 1.53.2 to 1.53.3 in the independent
+runtime lock. All other dependency identities and edges, the root library lock,
+PocketIC 16.1.0, both Platform selections, substrate and compiler pins remain.
+A fresh isolated RustSec database at `21d909e4c8bd4e14c7aea58bf980c881a0053ab1`
+reports the AsyncFd advisory before the patch and no longer reports it afterward.
+The selected Linux dependency source scan found no `AsyncFd` references outside
+Tokio; this is source reachability evidence, not proof of complete exploitability
+or security. Existing unrelated unmaintained warnings are retained separately.
+See [#132 — Qualify Tokio AsyncFd I/O safety](https://github.com/dragginzgame/ic-persistence/issues/132).
 
-Shared revision `4c0f198e56d4c6d27b12a5c2d515e0e01070151e` is exported from a
-clean detached source with 77 roots and 118 payloads. The committed version label
-is still 0.26.10; the dirty sibling 0.26.11 version edit is excluded. Setup now
-reports phase/outcome/duration on stderr, delivering
-[Shared #303 — Report Cargo tool setup phases and durations](https://github.com/dragginzgame/shared-tooling/issues/303).
-Common build identities and prepared tool reuse remain intact. Build
-and Testkit 0.67.0 reused completed shared caches. The first Testkit wait timed
-out after 61 seconds behind IC Jobs; its retry admitted the completed cache once
-that owner exited. The failed attempt remains retained.
+The map insertion review retains caller-owned key copies where post-insert
+metadata needs the original key and returned previous value. The current
+Platform boundary exposes no single-pass key-retaining hook; adding a copy
+wrapper would not resolve that cost. The owned-key contract is documented without
+a new API, engine or format. See
+[#131 — Evaluate caller key access across returning insertion](https://github.com/dragginzgame/ic-persistence/issues/131).
 
-Focused qualification passes strict all-target Clippy, actual Rust 1.91
-all-target compilation, all five configuration-admission tests (including four
-budget failures), three selected metadata/setup-order tests and nine native
-IO/accounting tests. Pins, production graph and declaration boundaries, release
-adapters, both actual interrupted bootstrap states, hooks, failure evidence,
-formatting and tooling lint pass. Installed Memory/Storage qualification passes
-original, O3, Os and Oz at `target/qualification/runtime/attempt.gdjAtr/`.
-All 36 Memory IO rows match the prior retained qualification log.
-
-Qualification and setup logs are retained under
-`/tmp/ic-persistence-shared-timing-tooling067/`. Upstream native hosted matrices
-were still running at review; Tooling's optimizer, installed runtime and browser
-workflows had passed at the selected source. Local qualification does not imply
-a release, publication or native macOS acceptance.
+Qualification evidence is retained at `/tmp/ic-persistence-issues131132/`.
+Installed Memory/Storage IO, upgrade and rollback checks pass all four original,
+O3, Os and Oz Wasm variants at `target/qualification/runtime/attempt.0OtT2b/`.
+The independent graph also passes all-target compilation on Rust 1.91.0.
+The dependency change is still a working-tree selection; release/publication and
+native macOS acceptance retain their own authority.
 
 ## Repository retirement
 
