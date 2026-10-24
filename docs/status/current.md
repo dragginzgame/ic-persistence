@@ -1,86 +1,62 @@
 # Current handoff
 
-The pending 0.50.17 batch imports `ic-metrics-stable` from IC Metrics
-`92ff804125fb07370fad4cb24cc620f52122ac36`, retaining its Rust source, tests,
-API, V1 bytes and MIT notice. It joins Memory and Storage under the existing
-workspace release identity; dependency-free `ic-metrics` stays external.
-[The import guide](../migration/ic-metrics-stable.md) owns cutover and verification.
-Integrate and publish this addition before the separate Metrics retirement PR.
-No workspace version bump, release or publication is performed by the migration.
+The local release baseline is 0.50.17 at
+`e0a32af`, including the Metrics Stable import alongside Memory and Storage.
+[The import guide](../migration/ic-metrics-stable.md) records its source and
+cutover obligations; arithmetic `ic-metrics` stays external. Previous source,
+merge and installed qualification scopes remain in
+[the release-time handoff](https://github.com/dragginzgame/ic-persistence/blob/e0a32af/docs/status/current.md)
+and the published 0.50 notes.
 
-The import's source-preservation and three-archive proofs retain their scope in
-the migration guide. [PR #133](https://github.com/dragginzgame/ic-persistence/pull/133)
-passed all ten hosted CI jobs at `7b4752692bc7ef995200495af15c8c89423c19e9`
-before merge `8bf4c1facfbf642a20f04f41993f20a0baf383e1`. That evidence applies
-to the PR source, separately from the combined Platform/Tooling updates below.
+The pending 0.51.0 batch adopts IC Tooling 0.68.1 at
+`c9c5ef7c44e3d0c3b23c8531a5d43c1800656c0a` for all five native development
+dependencies and both helper CLIs. The incoming root lock already selected those
+five versions/checksums; the subsequent Metrics adoption changes only its own
+package version/checksum. The independent runtime
+lock is unchanged. All six consumed packages, including the two CLI owners,
+have identical published Rust sources to 0.68.0. Platform remains 0.6.15,
+stable-structures 0.7.2 and PocketIC client/server 16.1.0. Optional Wire support
+remains off; APIs, allocation custody, V1 metrics records and collection formats
+are unchanged. The Shared snapshot remains
+`4c0f198e56d4c6d27b12a5c2d515e0e01070151e`.
 
-The combined merge working files retain all three workspace members, Platform
-0.6.15 and IC Tooling 0.68.0. Strict all-target Clippy, all 222 library tests,
-Rust 1.91 all-target compilation, pin/graph/declaration boundaries, licenses,
-formatting and documentation links pass locally. Evidence remains at
-`/tmp/ic-persistence-merge133/`. This is a working-tree qualification; the merge
-index and merge commit remain maintainer-owned.
+Both selected CLIs reuse admitted installations without compilation. Explicit
+setup, release-editor admission and PocketIC server admission pass with the
+existing selected server. Full locked metadata for both maintained graphs,
+pin/inheritance checks, production singleton/exclusion checks, declaration
+boundaries, affected Memory all-target Clippy, all 62 release-helper tests,
+Rust 1.91 all-target compilation and formatting pass. Evidence is retained at
+`/tmp/ic-persistence-deps0681/`; this does not claim a new full release
+gate, installed IO/upgrade run or macOS qualification.
 
+At inspection, the supplier's Linux native, MSRV, lint/security, optimizer,
+PocketIC and browser/session jobs pass. Both macOS native jobs remain in progress
+in [the supplier CI run](https://github.com/dragginzgame/ic-tooling/actions/runs/40103517968).
+No shared snapshot adoption, workspace version bump, release or Git effect is
+performed by this dependency change.
 
-IC Persistence combines the Memory and Storage repositories. Memory owns
-allocation governance, bootstrap and exclusive leases; Storage owns governed
-collection adapters over those leases. Crate names and public responsibilities
-are unchanged. See the [migration map](../migration/ic-persistence.md) for exact
-source revisions, preserved branches/PRs, exceptions and cutover instructions.
+## Metrics 0.16 adoption
 
-The consolidated checkout is `/home/adam/projects/ic-persistence`, on `main`,
-with origin `https://github.com/dragginzgame/ic-persistence`. Integration was
-prepared on `integration/ic-persistence` in `/tmp/ic-persistence-integration`.
-The import commit preserves Storage's original history as a second parent;
-workspace/tooling edits are separate. The maintainer authorized
-publication to the new public `dragginzgame/ic-persistence` repository on
-2026-10-20. The destination exists with collaborator-only PR creation; the
-consolidated branch was selected for its `main`. Downstream consumers retain their own dependency adoption decisions.
+The pending minor release also selects published IC Metrics 0.16.0 at
+`c0f033a8f41c280fd0fc77b2ec934d2f2b8176ed`. All 15 published Rust source files
+match 0.15.8; there are no production dependencies. The root lock changes only
+Metrics' version/checksum from the preceding Tooling adoption state. The
+independent runtime graph has no Metrics dependency and remains unchanged.
 
-The released Memory/Storage baseline is workspace version 0.50.16 at
-`5856e8dfc431f92cc0e6159e4fda0b2a8074f810`. All ten
-[delivered CI jobs](https://github.com/dragginzgame/ic-persistence/actions/runs/40086649292)
-passed, including library/MSRV and installed runtime checks on all three native
-hosts. The delivered Tokio 1.53.3 lock matches the earlier local audit and runtime
-qualification for [#132 — Qualify Tokio AsyncFd I/O safety](https://github.com/dragginzgame/ic-persistence/issues/132).
-Earlier source/evidence scopes remain in published changelogs.
+This raises the pending candidate from 0.50.18 to 0.51.0 because the adapter's
+public arithmetic/state-error types now belong to the distinct 0.16 Cargo
+identity. Callers must adopt `ic-metrics = "0.16"` together with the adapter.
+V1 codec bytes, continuity checks and storage formats remain unchanged.
+The earlier Tooling notes move into the same pending minor; released notes and
+package versions are untouched. Full locked metadata for both workspaces,
+pin/graph/declaration policy, native and Wasm all-target adapter Clippy, all 27
+adapter regression tests, three doctests, Rust 1.91 all-target compilation,
+formatting and local documentation links pass. Focused evidence is retained at
+`/tmp/ic-persistence-metrics016/`.
 
-Pending compatible 0.50.17 selects Platform 0.6.15 at
-`6dcf54a229201f85775d218b7a9f41809297878f` in both maintained dependency catalogs.
-The incoming root lock already selected it and is retained. The independent lock
-updates only Platform 0.6.8 to 0.6.15, preserving Tokio 1.53.3, PocketIC 16.1.0,
-all other package records and dependency edges. Stable-structures remains 0.7.2;
-its Platform facade and the PocketIC facade are unchanged between those releases.
-Wire/schema features remain unselected, so no source API adaptation is needed.
-
-IC Tooling 0.68.0 at `8f281177faaeee0adc51edc1031d4a7b268b0ce0` remains the latest
-published release, confirmed against the official registry. Its selected five
-native dependencies and both helper CLIs are retained. The sibling's local
-0.68.1 preparation still declares package version 0.68.0 and is not a new
-published selection. Earlier 0.68 qualification remains recorded in
-`/tmp/ic-persistence-tooling068/` and the numbered changelog.
-
-Shared snapshot `4c0f198e56d4c6d27b12a5c2d515e0e01070151e`, compiler pins,
-effective feature scopes, public APIs, allocation custody and retained formats
-remain selected. Before the Metrics Stable import, strict all-target Clippy,
-all 195 Memory/Storage library tests and actual Rust 1.91
-all-target checks for both workspaces, pin/graph/declaration boundaries and actual
-offline tool/server admission pass. Installed Memory/Storage IO, upgrades and
-rollback pass original/O3/Os/Oz at `target/qualification/runtime/attempt.HQqpM2/`.
-Formatting and documentation links pass. Logs remain at
-`/tmp/ic-persistence-platform0615/`.
-
-Fresh isolated RustSec revision `21d909e4c8bd4e14c7aea58bf980c881a0053ab1`
-reports zero vulnerability-list matches for both maintained locks with explicit
-`--no-fetch --no-yanked`; existing unmaintained warnings remain. This does not
-qualify yanked-package status. Platform's separate all-feature crypto finding is
-tracked by [#50 — Qualify the crypto-bigint advisory](https://github.com/dragginzgame/ic-platform/issues/50);
-crypto-bigint is absent from these two selected graphs. The advisory workflow's
-missing registry-index records are separately reported as
-[#56 — Prepare registry index coverage before yanked-package audit checks](https://github.com/dragginzgame/ic-platform/issues/56).
-Upstream native CI remains in progress and its advisory workflow is not passing;
-local qualification, release/publication and native macOS acceptance retain their
-separate scope.
+The supplier's Linux and macOS ARM native checks and MSRV pass at inspection;
+macOS Intel remains in progress in
+[the supplier run](https://github.com/dragginzgame/ic-metrics/actions/runs/40104719356).
 
 ## Repository retirement
 

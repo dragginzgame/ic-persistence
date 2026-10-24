@@ -21,7 +21,10 @@ for the selected dependency's declaration and lifecycle APIs.
 Memory and Storage are published from IC Persistence with their existing crate
 names. Hosts select `ic-metrics-stable`, `ic-memory` and `ic-storage` from the same
 Persistence release line when supplying a map to this adapter. The adapter now
-inherits Persistence's version; `ic-metrics` retains its independent 0.15 line. Earlier dependency generations have
+inherits Persistence's version; `ic-metrics` retains its independent 0.16 line.
+Hosts passing arithmetic values to the adapter must also select
+`ic-metrics = "0.16"`; 0.15 values have a different Rust type identity.
+Earlier dependency generations have
 different Rust handle/map type identities; update them together. The 0.50
 alignment preserves the preceding library implementations and stored formats.
 

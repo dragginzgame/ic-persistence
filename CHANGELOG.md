@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.51.0] - Unreleased
+
+- **Breaking:** adopt IC Metrics 0.16 for the stable adapter's public arithmetic
+  types. Adapter callers must select `ic-metrics = "0.16"` too. V1 records and
+  collection formats are unchanged; no retained-data conversion or reset is needed.
+- Adopt IC Tooling 0.68.1 in native dependencies and helper CLIs.
+  [Details](docs/changelog/0.51.md#0510).
+
 ## [0.50.17] - 2026-10-24
 
 - Adopt Platform 0.6.15 across both workspaces and IC Tooling 0.68.0 in native
