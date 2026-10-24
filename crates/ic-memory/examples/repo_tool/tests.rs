@@ -90,9 +90,9 @@ fn package_retention_refuses_a_replaced_fifo_without_a_writer() {
     assert_eq!(fs::read(result).unwrap(), b"refused");
 }
 
-const MANIFEST: &str = "[workspace]\nmembers = [\"crates/ic-memory\", \"crates/ic-storage\"]\n[workspace.package]\nversion = \"0.12.3\"\nrust-version = \"1.88.0\"\n[workspace.dependencies]\nic-memory = { path = \"crates/ic-memory\", version = \"0.12.3\" }\nother = \"0.12.3\"\n";
+const MANIFEST: &str = "[workspace]\nmembers = [\"crates/ic-memory\", \"crates/ic-storage\", \"crates/ic-metrics-stable\"]\n[workspace.package]\nversion = \"0.12.3\"\nrust-version = \"1.88.0\"\n[workspace.dependencies]\nic-memory = { path = \"crates/ic-memory\", version = \"0.12.3\" }\nic-storage = { path = \"crates/ic-storage\", version = \"0.12.3\" }\nother = \"0.12.3\"\n";
 const PACKAGE: &str = "[package]\nname = \"ic-memory\"\nversion.workspace = true\n";
-const LOCK: &str = "version = 4\n[[package]]\nname = \"ic-storage\"\nversion = \"0.12.3\"\ndependencies = [\"ic-memory\"]\n[[package]]\nname = \"ic-memory\"\nversion = \"0.12.3\"\n[[package]]\nname = \"other\"\nversion = \"0.12.3\"\n";
+const LOCK: &str = "version = 4\n[[package]]\nname = \"ic-metrics-stable\"\nversion = \"0.12.3\"\ndependencies = [\"ic-memory\", \"ic-storage\"]\n[[package]]\nname = \"ic-storage\"\nversion = \"0.12.3\"\ndependencies = [\"ic-memory\"]\n[[package]]\nname = \"ic-memory\"\nversion = \"0.12.3\"\n[[package]]\nname = \"other\"\nversion = \"0.12.3\"\n";
 
 #[test]
 fn native_metadata_refuses_invalid_selected_manifest_without_touching_lock() {
@@ -159,7 +159,7 @@ fn helper_output_cannot_change_locked_dependency_selection() {
             .unwrap();
     assert_eq!(
         rendered,
-        same_name_registry.replacen("version = \"0.12.3\"", "version = \"0.13.0\"", 2)
+        same_name_registry.replacen("version = \"0.12.3\"", "version = \"0.13.0\"", 3)
     );
     let changed = LOCK.replace("0.12.3", "0.13.0");
     let error = check_lock_update(LOCK.as_bytes(), &changed, "0.12.3", "0.13.0").unwrap_err();
@@ -270,14 +270,6 @@ impl Fixture {
             ("Cargo.toml".to_owned(), MANIFEST.to_owned()),
             (PACKAGE_MANIFEST.to_owned(), PACKAGE.to_owned()),
             (
-                STORAGE_MANIFEST.to_owned(),
-                "[package]\nname = \"ic-storage\"\nversion.workspace = true\n".to_owned(),
-            ),
-            (
-                "crates/ic-storage/src/lib.rs".to_owned(),
-                "// storage fixture\n".to_owned(),
-            ),
-            (
                 PACKAGE_README.to_owned(),
                 "# Fixture\n\nic-memory = \"0.12.3\"\n".to_owned(),
             ),
@@ -292,6 +284,20 @@ impl Fixture {
                 "# Detail\n\n## [0.13.0]\n\nFixture changes.\n".to_owned(),
             ),
         ]);
+        for (name, manifest, library) in [
+            ("ic-storage", STORAGE_MANIFEST, "// storage fixture\n"),
+            (
+                "ic-metrics-stable",
+                METRICS_MANIFEST,
+                "// metrics fixture\n",
+            ),
+        ] {
+            source.insert(
+                manifest.to_owned(),
+                format!("[package]\nname = {name:?}\nversion.workspace = true\n"),
+            );
+            source.insert(format!("crates/{name}/src/lib.rs"), library.to_owned());
+        }
         for helper in [
             CHANGELOG_FINALIZER,
             RELEASE_INPUT_ADMISSION,
@@ -846,6 +852,10 @@ impl Execute for Substitute {
                 fs::write(
                     directory.join(format!("ic-storage-{}.crate", version()?)),
                     format!("storage-{bytes}"),
+                )?;
+                fs::write(
+                    directory.join(format!("ic-metrics-stable-{}.crate", version()?)),
+                    format!("metrics-{bytes}"),
                 )?;
                 if state.fail.as_deref() == Some("package") {
                     return Err("fixture package failure".into());
@@ -2453,6 +2463,7 @@ fn all_release_kinds_finalize_root_and_detail_notes_at_saved_date() {
                 "Cargo.lock",
                 "Cargo.toml",
                 PACKAGE_README,
+                METRICS_MANIFEST,
                 STORAGE_MANIFEST,
                 detail
             ],
@@ -2517,7 +2528,7 @@ fn archive_publication_errors_preserve_validation_and_reconcile_visible_bytes() 
         assert_eq!(fs::read(&foreign).unwrap(), b"unrelated evidence");
         assert_eq!(
             transfers() - before_retry,
-            usize::from(phase == "archive-before") + 1
+            usize::from(phase == "archive-before") + 2
         );
         fs::write(&retained, b"corrupted retained archive").unwrap();
         assert!(fixture.repo.record_package("ic-memory", "0.13.0").is_err());
@@ -3297,8 +3308,11 @@ fn coordinated_publication_resumes_only_matching_packages_in_dependency_order() 
         .filter(|call| call.get(2).is_some_and(|arg| arg == "publish"))
         .map(|call| call[call.iter().position(|arg| arg == "--package").unwrap() + 1].as_str())
         .collect();
-    assert_eq!(uploads, ["ic-memory", "ic-storage", "ic-storage"]);
-    assert_eq!(state.published.len(), 2);
+    assert_eq!(
+        uploads,
+        ["ic-memory", "ic-storage", "ic-storage", "ic-metrics-stable"]
+    );
+    assert_eq!(state.published.len(), 3);
     let requests: Vec<_> = state
         .calls
         .iter()
@@ -3316,28 +3330,38 @@ fn coordinated_publication_resumes_only_matching_packages_in_dependency_order() 
 
 #[test]
 fn storage_archive_and_manifest_are_bound_to_the_coordinated_release() {
-    let fixture = Fixture::new();
-    fixture.release();
-    assert_eq!(
-        toml::from_str::<toml::Value>(
-            &fs::read_to_string(fixture.repo.root.join(STORAGE_MANIFEST)).unwrap()
+    for (package, path) in [
+        ("ic-storage", STORAGE_MANIFEST),
+        ("ic-metrics-stable", METRICS_MANIFEST),
+    ] {
+        let fixture = Fixture::new();
+        fixture.release();
+        assert_eq!(
+            toml::from_str::<toml::Value>(
+                &fs::read_to_string(fixture.repo.root.join(path)).unwrap()
+            )
+            .unwrap()["package"]["version"]["workspace"]
+                .as_bool(),
+            Some(true)
+        );
+        let manifest: toml::Value =
+            toml::from_str(&fs::read_to_string(fixture.repo.root.join("Cargo.toml")).unwrap())
+                .unwrap();
+        assert_eq!(
+            manifest["workspace"]["dependencies"]["ic-memory"]["version"].as_str(),
+            Some("0.13.0")
+        );
+        assert_eq!(
+            manifest["workspace"]["dependencies"]["ic-storage"]["version"].as_str(),
+            Some("0.13.0")
+        );
+        fs::write(
+            fixture.repo.package_path(package, "0.13.0").unwrap(),
+            b"foreign archive",
         )
-        .unwrap()["package"]["version"]["workspace"]
-            .as_bool(),
-        Some(true)
-    );
-    let manifest: toml::Value =
-        toml::from_str(&fs::read_to_string(fixture.repo.root.join("Cargo.toml")).unwrap()).unwrap();
-    assert_eq!(
-        manifest["workspace"]["dependencies"]["ic-memory"]["version"].as_str(),
-        Some("0.13.0")
-    );
-    fs::write(
-        fixture.repo.package_path("ic-storage", "0.13.0").unwrap(),
-        b"foreign archive",
-    )
-    .unwrap();
-    assert!(fixture.repo.publish(true).is_err());
+        .unwrap();
+        assert!(fixture.repo.publish(true).is_err());
+    }
 }
 
 mod publication;

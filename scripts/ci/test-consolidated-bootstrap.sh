@@ -34,10 +34,11 @@ cargo "+$pin" metadata --locked --offline --no-deps --format-version 1 > metadat
 yq -p toml -o json '.' Cargo.toml | jq --slurpfile metadata metadata.json '{manifest: ., members: ($metadata[0].packages | map({name, manifest_path}))}' > context.json
 "$editor" --max-input-bytes "$CARGO_RELEASE_METADATA_MAX_BYTES" manifest Cargo.toml "$previous" "$next" context.json > candidate.toml
 # Only these disposable fixture inputs are edited; production release metadata
-# remains unchanged. Both members inherit the coordinated workspace version.
+# remains unchanged. All members inherit the coordinated workspace version.
 storage_previous="$(yq -p toml -o json '.' Cargo.lock | jq -er '.package[] | select(.name == "ic-storage" and .source == null) | .version')"
 "$editor" --max-input-bytes "$CARGO_RELEASE_METADATA_MAX_BYTES" lock Cargo.lock "$previous" "$next" ic-memory > candidate-memory.lock
-"$editor" --max-input-bytes "$CARGO_RELEASE_METADATA_MAX_BYTES" lock candidate-memory.lock "$storage_previous" "$next" ic-storage > candidate.lock
+"$editor" --max-input-bytes "$CARGO_RELEASE_METADATA_MAX_BYTES" lock candidate-memory.lock "$storage_previous" "$next" ic-storage > candidate-storage.lock
+"$editor" --max-input-bytes "$CARGO_RELEASE_METADATA_MAX_BYTES" lock candidate-storage.lock "$previous" "$next" ic-metrics-stable > candidate.lock
 for state in lock-first manifest-first; do
     cp original.toml Cargo.toml
     cp original.lock Cargo.lock
@@ -46,7 +47,7 @@ for state in lock-first manifest-first; do
         lock-first) cp candidate.lock Cargo.lock ;;
         manifest-first) cp candidate.toml Cargo.toml; expected="$next" ;;
     esac
-    shasum -a 256 Cargo.toml Cargo.lock crates/ic-memory/Cargo.toml crates/ic-storage/Cargo.toml > "$state.inputs.sha256"
+    shasum -a 256 Cargo.toml Cargo.lock crates/ic-memory/Cargo.toml crates/ic-storage/Cargo.toml crates/ic-metrics-stable/Cargo.toml > "$state.inputs.sha256"
     bash scripts/dev/run-repo-tool.sh "$pin" version > "$state.stdout" 2> "$state.stderr"
     [[ "$(cat "$state.stdout")" == "$expected" ]] || exit 1
     shasum -a 256 -c "$state.inputs.sha256"

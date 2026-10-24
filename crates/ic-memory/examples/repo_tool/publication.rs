@@ -52,15 +52,17 @@ impl<E: Execute> Repository<E> {
         let packages = [
             ("ic-memory", &evidence.package_sha256),
             ("ic-storage", &evidence.storage_sha256),
+            ("ic-metrics-stable", &evidence.metrics_sha256),
         ];
-        // Observe both before any effect. Conflicting Storage must not allow a
-        // Memory upload; absent Memory must be confirmed before Storage uploads.
+        // Observe every package before any effect. A conflict in a later package
+        // must not permit an earlier upload; dependencies publish first.
         let published = if dry_run {
-            [false, false]
+            [false, false, false]
         } else {
             [
                 self.registry_contains(packages[0].0, version, packages[0].1)?,
                 self.registry_contains(packages[1].0, version, packages[1].1)?,
+                self.registry_contains(packages[2].0, version, packages[2].1)?,
             ]
         };
         for ((name, digest), exists) in packages.into_iter().zip(published) {

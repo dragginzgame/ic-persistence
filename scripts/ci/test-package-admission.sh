@@ -17,7 +17,7 @@ target="$(printf '%s' "$metadata" | jq -er '.target_directory')"
 PREPARED_ARCHIVES="$fixture/archives.sha256"
 PACKAGE_TOOLCHAIN="$pin"
 export PREPARED_ARCHIVES PACKAGE_TOOLCHAIN
-for package in ic-memory ic-storage; do
+for package in ic-memory ic-storage ic-metrics-stable; do
     version="$(printf '%s' "$metadata" | jq -er --arg name "$package" '.packages[] | select(.name == $name) | .version')"
     shasum -a 256 "$target/package/$package-$version.crate" >> "$PREPARED_ARCHIVES"
 done
@@ -86,7 +86,7 @@ for mode in drift duplicate; do
     fi
     case "$mode" in
         drift) expected='archive dependency selection drift' ;;
-        duplicate) expected='archive graph must use exactly the extracted Memory and Storage packages' ;;
+        duplicate) expected='archive graph must use exactly the extracted Persistence packages' ;;
     esac
     rg -q "$expected" "$fixture/$mode.log" || { cat "$fixture/$mode.log" >&2; exit 1; }
     echo "Rejected $mode before compilation"
@@ -97,7 +97,7 @@ export FIXTURE_MSRV=1.90.0 MSRV_EVENTS="$fixture/msrv-events" MSRV_ADMISSION_EVE
 REJECT_MODE=selected-msrv PATH="$fixture/bin:$PATH" bash scripts/ci/package-workspace.sh "$pin" --allow-dirty > "$fixture/msrv.log" 2>&1
 printf '%s\n' "$pin" "$FIXTURE_MSRV" > "$fixture/expected-admission"
 cmp "$fixture/expected-admission" "$MSRV_ADMISSION_EVENTS"
-printf '+%s\n' "$pin" "$pin" "$pin" "$FIXTURE_MSRV" "$pin" > "$fixture/expected-compilers"
+printf '+%s\n' "$pin" "$pin" "$pin" "$pin" "$FIXTURE_MSRV" "$pin" > "$fixture/expected-compilers"
 cut -d ' ' -f 1 "$MSRV_EVENTS" > "$fixture/observed-compilers"
 cmp "$fixture/expected-compilers" "$fixture/observed-compilers"
 echo 'Archive fixture metadata and compiler dispatch follow the admitted catalog MSRV (substitutes only).'
