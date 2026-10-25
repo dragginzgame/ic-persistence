@@ -1,6 +1,6 @@
 # Changelog
 
-## [0.51.3] - Unreleased
+## [0.51.3] - 2026-10-25
 
 - Simplify bootstrap return flow, allocation reporting and release observations
   without changing APIs, stored formats or qualification boundaries.

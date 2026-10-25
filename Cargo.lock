@@ -249,7 +249,7 @@ dependencies = [
 
 [[package]]
 name = "ic-memory"
-version = "0.51.2"
+version = "0.51.3"
 dependencies = [
  "clap",
  "ic-build",
@@ -274,7 +274,7 @@ checksum = "5434237fd713fb583f4f5ad09c7bdd862875da7be71af316411ad110527288cf"
 
 [[package]]
 name = "ic-metrics-stable"
-version = "0.51.2"
+version = "0.51.3"
 dependencies = [
  "ic-memory",
  "ic-metrics",
@@ -301,7 +301,7 @@ dependencies = [
 
 [[package]]
 name = "ic-storage"
-version = "0.51.2"
+version = "0.51.3"
 dependencies = [
  "ic-memory",
  "ic-platform",
