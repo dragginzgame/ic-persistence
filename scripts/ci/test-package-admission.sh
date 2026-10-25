@@ -1,7 +1,11 @@
 #!/usr/bin/env bash
 # Exercise the real archive admission before any compilation, with bad observations.
 set -euo pipefail
-fixture="$(mktemp -d "${TMPDIR:-/tmp}/ic-persistence-package-admission.XXXXXX")"
+source scripts/ci/fixture-lifecycle.sh
+fixture="$(fixture_create "${TMPDIR:-/tmp}/ic-persistence-package-admission.XXXXXX")"
+trap 'status=$?; if [[ "$status" != 0 ]]; then
+    fixture_replay_logs "$fixture/package.log" "$fixture/drift.log" "$fixture/duplicate.log" "$fixture/msrv.log"
+fi; exit "$status"' EXIT
 echo "Retained archive-admission fixture: $fixture"
 mkdir -p "$fixture/bin"
 REAL_CARGO="$(command -v cargo)"

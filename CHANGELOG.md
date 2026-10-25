@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.51.1] - Unreleased
+
+- Adopt Shared Tooling 0.26.16 recovery and tool-admission fixes, and qualify
+  IC Metrics 0.16.1 without changing stored formats or public type identities.
+- Preserve busy-tool diagnostics during runtime admission and surface retained
+  archive-fixture failures. [Details](docs/changelog/0.51.md#0511).
+
 ## [0.51.0] - 2026-10-24
 
 - **Breaking:** adopt IC Metrics 0.16 for the stable adapter's public arithmetic

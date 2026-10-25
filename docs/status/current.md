@@ -1,80 +1,54 @@
 # Current handoff
 
-The local release baseline is 0.50.17 at
-`e0a32af`, including the Metrics Stable import alongside Memory and Storage.
-[The import guide](../migration/ic-metrics-stable.md) records its source and
-cutover obligations; arithmetic `ic-metrics` stays external. Previous source,
-merge and installed qualification scopes remain in
-[the release-time handoff](https://github.com/dragginzgame/ic-persistence/blob/e0a32af/docs/status/current.md)
-and the published 0.50 notes.
+The released baseline is 0.51.0 at
+`e3939cd`, with Memory, Storage and Metrics Stable sharing the release identity.
+All ten [release CI jobs](https://github.com/dragginzgame/ic-persistence/actions/runs/40106916102)
+pass, including native/MSRV and installed runtime checks on Linux and both macOS
+architectures. Metrics uses the independent 0.16 arithmetic line; consumers must
+match that public type identity. Earlier source/import/recovery evidence remains
+in [the release-time handoff](https://github.com/dragginzgame/ic-persistence/blob/e3939cd/docs/status/current.md)
+and the published changelogs.
 
-The pending 0.51.0 batch adopts IC Tooling 0.68.1 at
-`c9c5ef7c44e3d0c3b23c8531a5d43c1800656c0a` for all five native development
-dependencies and both helper CLIs. The incoming root lock already selected those
-five versions/checksums; the subsequent Metrics adoption changes only its own
-package version/checksum. The independent runtime
-lock is unchanged. All six consumed packages, including the two CLI owners,
-have identical published Rust sources to 0.68.0. Platform remains 0.6.15,
-stable-structures 0.7.2 and PocketIC client/server 16.1.0. Optional Wire support
-remains off; APIs, allocation custody, V1 metrics records and collection formats
-are unchanged. The Shared snapshot remains
-`4c0f198e56d4c6d27b12a5c2d515e0e01070151e`.
+## Pending 0.51.1 review
 
-Both selected CLIs reuse admitted installations without compilation. Explicit
-setup, release-editor admission and PocketIC server admission pass with the
-existing selected server. Full locked metadata for both maintained graphs,
-pin/inheritance checks, production singleton/exclusion checks, declaration
-boundaries, affected Memory all-target Clippy, all 62 release-helper tests,
-Rust 1.91 all-target compilation and formatting pass. Evidence is retained at
-`/tmp/ic-persistence-deps0681/`; this does not claim a new full release
-gate, installed IO/upgrade run or macOS qualification.
+The incoming root lock selects registry IC Metrics 0.16.1 at
+`b6193cb18b137f1764e9bcf5dbbb5c6f2329cd81`. Its 15 published Rust files match
+0.16.0 and it retains no production dependencies. The root requirement remains
+compatible `0.16`; its incoming lockfile bytes and the independent runtime lock
+are preserved. Public APIs, V1 metrics records, allocation custody, collection
+formats, Platform 0.6.15, Tooling 0.68.1, PocketIC client/server 16.1.0 and compiler
+pins remain selected. No runtime code change was warranted by the paths reviewed.
 
-At inspection, the supplier's Linux native, MSRV, lint/security, optimizer,
-PocketIC and browser/session jobs pass. Both macOS native jobs remain in progress
-in [the supplier CI run](https://github.com/dragginzgame/ic-tooling/actions/runs/40103517968).
-No shared snapshot adoption, workspace version bump, release or Git effect is
-performed by this dependency change.
+Reviewed Shared Tooling 0.26.16 at
+`2077c934efb82b181bea58fe50078dbad289c1aa` replaces the earlier snapshot through
+the canonical clean-source exporter after impact review. The 77 roots now select
+119 payloads. Actual tool and server checks reuse admitted installations.
+Shared's [portable CI](https://github.com/dragginzgame/shared-tooling/actions/runs/40171556775)
+passes on all three hosts; this consumer's new working files have local focused
+qualification, separately from that supplier evidence.
 
-## Metrics 0.16 adoption
-
-The pending minor release also selects published IC Metrics 0.16.0 at
-`c0f033a8f41c280fd0fc77b2ec934d2f2b8176ed`. All 15 published Rust source files
-match 0.15.8; there are no production dependencies. The root lock changes only
-Metrics' version/checksum from the preceding Tooling adoption state. The
-independent runtime graph has no Metrics dependency and remains unchanged.
-
-This raises the pending candidate from 0.50.18 to 0.51.0 because the adapter's
-public arithmetic/state-error types now belong to the distinct 0.16 Cargo
-identity. Callers must adopt `ic-metrics = "0.16"` together with the adapter.
-V1 codec bytes, continuity checks and storage formats remain unchanged.
-The earlier Tooling notes move into the same pending minor; released notes and
-package versions are untouched. Full locked metadata for both workspaces,
-pin/graph/declaration policy, native and Wasm all-target adapter Clippy, all 27
-adapter regression tests, three doctests, Rust 1.91 all-target compilation,
-formatting and local documentation links pass. Focused evidence is retained at
-`/tmp/ic-persistence-metrics016/`.
-
-The supplier's Linux and macOS ARM native checks and MSRV pass at inspection;
-macOS Intel remains in progress in
-[the supplier run](https://github.com/dragginzgame/ic-metrics/actions/runs/40104719356).
-
-## Archive-admission repair
-
-The retained release failure at
-`target/release-validation/attempts/verify.b610gU` correctly rejected a generated
-consumer that still selected Metrics 0.15 alongside the adapter's 0.16 dependency.
-The local archive adapter now reads that requirement from the exact extracted
-Metrics Stable manifest, preserving selected-lock and package-identity admission.
-
-The compiler/admission fixtures pass, including drift/duplicate refusal and
-catalog MSRV dispatch. Actual archive qualification passes at
-`target/package-qualification/attempt.ztRWSo/`: all three extracted packages
+Runtime-server admission preserves busy status 75 without recommending setup;
+ready, busy and missing CLI/server selections are exercised through the actual
+Make target with substituted tool effects. Exact-archive consumer qualification
+also passes at `target/package-qualification/attempt.ozDTjn/`: all three archives
 compile, the consumer runs on Rust 1.99.1 and 1.91.0 and checks for Wasm, and final
-archive/unpacked/source hashes match. ShellCheck passes. Logs remain in
-`/tmp/ic-persistence-package-fix/`; the original failed fixture and release log
-remain retained. This is focused qualification, not a rerun of the full release
-gate or a release operation. No Shared Tooling payload, dependency selection,
-package version or real Git index was changed by this repair.
+archive/unpacked/source hashes match. Archive-admission fixture failures
+replay retained diagnostics and preserve the original status. The explicit
+failure probe retains status 29 and the original packaging diagnostic.
+
+Full locked metadata for both workspaces, pin/graph/declaration policies, actual
+offline tool/server admission, native and Wasm adapter Clippy, all 27 adapter
+regression tests, three development and three MSRV doctests, package-admission
+and release/bootstrap fixtures, Git hook behavior, formatting and tooling lint
+pass. Evidence remains at `/tmp/ic-persistence-review-20261025/`. The complete
+release suite and installed IO/upgrade qualification are separate; no release,
+package version change, staging, commit or push is part of this review.
+
+GitHub inspection found no open Persistence issues or pull requests. Stable-map
+and metric codec/continuity paths were inspected without a demonstrated runtime
+defect; this bounded maintenance review is not a complete storage/security audit.
+The independent PocketIC workspace and product-owned governance boundaries remain
+intentional; no workspace split or new abstraction is introduced.
 
 ## Repository retirement
 

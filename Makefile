@@ -67,7 +67,9 @@ install-runtime-server: host-tools-check
 # Both CLI receipt/bytes and server archive/bytes are checked without downloads.
 runtime-server-check:
 	+@{ cli="$$($(TESTKIT_CLI) --check)" && "$$cli" check --directory "$(TESTKIT_SERVER_DIRECTORY)"; } || \
-	  { status=$$?; echo 'Prepare the selected CLI and server with make install-runtime-server.' >&2; exit "$$status"; }
+	  { status=$$?; if [ "$$status" -ne 75 ]; then \
+	      echo 'Prepare the selected CLI and server with make install-runtime-server.' >&2; \
+	    fi; exit "$$status"; }
 
 # Focused installed IO/upgrade qualification, separate from the library gates.
 # Build before launch so compilation does not consume the server lifetime.

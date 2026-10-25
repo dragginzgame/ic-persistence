@@ -179,6 +179,48 @@ for target in install-tools tools-check; do
         > "$FIXTURE/$target-ic-failure.log" 2>&1 || status=$?
     [[ "$status" == 2 ]] || exit 1
 done
+# Runtime admission must preserve busy status without suggesting installation.
+cat > "$FIXTURE/runtime-cli" <<'STUB'
+#!/usr/bin/env bash
+set -euo pipefail
+printf '%s\n' "$*" >> "$RUNTIME_EVENTS"
+if [[ "$1" == --check ]]; then status="$RUNTIME_CLI_STATUS"
+else status="$RUNTIME_SERVER_STATUS"; fi
+if [[ "$status" != 0 ]]; then
+    printf 'runtime admission refused: %s\n' "$status" >&2
+    exit "$status"
+fi
+printf '%s\n' "$0"
+STUB
+chmod +x "$FIXTURE/runtime-cli"
+for selection in ready busy-cli busy-server missing-cli missing-server; do
+    cli_status=0 server_status=0
+    case "$selection" in
+        busy-cli) cli_status=75 ;;
+        busy-server) server_status=75 ;;
+        missing-cli) cli_status=1 ;;
+        missing-server) server_status=1 ;;
+    esac
+    status=0
+    (cd "$FIXTURE"; RUNTIME_CLI_STATUS="$cli_status" RUNTIME_SERVER_STATUS="$server_status" \
+        RUNTIME_EVENTS="$FIXTURE/runtime-$selection.events" \
+        make --no-print-directory runtime-server-check TESTKIT_CLI="$FIXTURE/runtime-cli") \
+        > "$FIXTURE/runtime-$selection.log" 2>&1 || status=$?
+    if [[ "$selection" == ready ]]; then
+        [[ "$status" == 0 ]] || exit 1
+    else
+        [[ "$status" == 2 ]] || exit 1
+        if [[ "$selection" == busy-* ]]; then
+            rg -q 'Error 75' "$FIXTURE/runtime-$selection.log" || exit 1
+            if rg -q 'Prepare the selected CLI' "$FIXTURE/runtime-$selection.log"; then exit 1; fi
+        else
+            rg -q 'Prepare the selected CLI' "$FIXTURE/runtime-$selection.log" || exit 1
+        fi
+    fi
+    expected_calls=2
+    if [[ "$selection" == *-cli ]]; then expected_calls=1; fi
+    [[ "$(wc -l < "$FIXTURE/runtime-$selection.events" | tr -d ' ')" == "$expected_calls" ]] || exit 1
+done
 # Consumer protocol admission must reject drift and failed observations before
 # the generic graph observer, including a failed command with plausible stdout.
 mkdir "$FIXTURE/protocol-bin"

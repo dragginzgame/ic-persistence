@@ -1,4 +1,5 @@
 # Dragginzgame Engineering Baseline
+<!-- Shared companions: rules/rpc-budgets.md -->
 
 Shared Tooling is the authoritative source of mandatory common engineering rules
 and canonical shared tooling for all `dragginzgame` repositories. This file is
@@ -205,6 +206,10 @@ Consumer choices described in those guides remain subject to this baseline.
   both ends of the actual integration, including zero-argument RPCs and lifecycle
   argument decoding. Explicit codec hooks alone do not prove Wire framing or
   binding conformance, endpoint behavior or instruction/size savings.
+- Generated cross-runtime RPC clients derive byte, node and depth budgets from
+  one product policy owner. Follow the [RPC budget qualification rule](rules/rpc-budgets.md)
+  for intentional asymmetry, generated-policy drift checks and actual runtime
+  boundaries; equal numbers alone do not establish equivalent admission.
 - Changing existing message bytes requires an explicit consumer migration with
   affected callers, generated bindings and retained retry bytes accounted for.
   Follow the [pre-1.0 contract rules](#pre-10-contracts); do not silently change a
@@ -425,7 +430,7 @@ Consumer choices described in those guides remain subject to this baseline.
   source with fresh preflight and complete validation; retain earlier evidence.
   Persist exact release intent before preparation may begin, then reconcile an
   interrupted release automatically when a normal target is rerun, at its saved
-  version and commit. In direct delivery, if that release is committed and HEAD
+  version and commit. In direct delivery, if its runner-recorded release commit exists and HEAD
   has newer fixes or a different increment is requested, reconcile it first,
   then run fresh preflight and complete validation for the requested increment
   from the actual local version. PR delivery finishes only the saved release; an open PR returns
@@ -436,7 +441,11 @@ Consumer choices described in those guides remain subject to this baseline.
   computing another increment. A newer clean descendant commit can supersede
   direct preparation before staging: archive its local-metadata-only intent,
   select the requested increment from current metadata, and repeat preflight and
-  complete validation. Stop for identity, payload, destination or concurrency conflicts.
+  complete validation. A manually committed candidate can be that base even when
+  earlier tags or Git delivery are missing; preserve its original plan and
+  uncertainty without marking it complete or replaying its effects. Registry
+  publication and Git delivery need not agree. Stop for actual source/ref,
+  payload, destination or concurrency conflicts.
   Do not force-push, overwrite tags, silently bump again or add implicit package
   publication, deployment or post-release cleanup.
 
@@ -561,7 +570,11 @@ Consumer choices described in those guides remain subject to this baseline.
   The rule explicitly approves IcyDB's existing `crates/`, `canisters/`, `schema/`
   and `testing/` layout; adoption does not require relocating those packages.
   Repositories without Rust packages do not need a Cargo workspace.
-- Cargo workspace members inherit package versions from the root. Apply the
+- Cargo workspace members inherit package versions from the root. Preserve
+  established groupings and coordinated versions under the
+  [workspace versioning guidance](rules/rust-workspaces.md#coordinated-versions-and-workspace-boundaries);
+  prefer release batching and verified consumer adoption over another split.
+  Apply the
   [Cargo dependency rules](rules/cargo-dependencies.md): every direct dependency
   is declared in root `[workspace.dependencies]`, and every child manifest uses
   `workspace = true`, including development, build and target-specific tables.

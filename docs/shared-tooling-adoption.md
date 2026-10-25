@@ -9,8 +9,8 @@ local baseline. Future policy changes require reviewed snapshot adoption.
 
 ## Current source selection
 
-IC Persistence selects committed Shared Tooling 0.26.10 at
-`4c0f198e56d4c6d27b12a5c2d515e0e01070151e`, with 77 explicit roots and 118 payloads.
+IC Persistence selects committed Shared Tooling 0.26.16 at
+`2077c934efb82b181bea58fe50078dbad289c1aa`, with 77 explicit roots and 119 payloads.
 Release 0.50.7 passed the complete native, MSRV and installed-runtime matrix
 on Linux and both macOS architectures; snapshot integrity alone is not acceptance.
 See [the adoption issue](https://github.com/dragginzgame/ic-persistence/issues/127).
@@ -38,12 +38,29 @@ global source-preparation lock. Cargo owns download serialization; exact selecte
 tool slots still serialize builds. Old source-preparation slots and generations
 remain retained.
 
-The selected revision includes the committed 0.26.11 timing work; its committed
-`VERSION` still declares 0.26.10. The sibling's uncommitted version edit is excluded.
+The earlier snapshot selected 0.26.11 timing work while its committed `VERSION`
+still declared 0.26.10. This refresh records the producer's committed 0.26.16
+identity; sibling working-tree edits remain excluded.
 The refresh retains common tool pins, compiler selections and the tool-store
 build-policy identity. Existing prepared tools can be admitted without rebuilding.
 The retired checkout-local Rust build directory no longer affects admission;
 current shared-store checks and retained evidence remain in force.
+
+Cargo admission now preserves exit status 75 for an admitted busy tool slot.
+Plain checks remain immediate; a direct caller may explicitly select
+`--check --wait-seconds N` for a bounded read-only wait. The runtime-server Make
+adapter preserves the busy diagnostic without recommending installation. Missing
+or invalid preparation retains its setup advice. No automatic wait or installer
+retry is added to normal checks or helper recovery.
+
+The common runner can advance from clean manually committed candidate metadata
+without claiming that an earlier missing tag or Git delivery completed. It
+retains the old plan and uncertainty, checks actual source/ref conflicts and
+requires fresh admission and validation. This adoption executes no release.
+The coordinated-workspace and dependency-identity guidance preserves this
+consumer's established three-package release and independent runtime graph.
+The RPC-budget rule is adopted as governance; Persistence owns no generated
+cross-runtime application RPC client, so no product budget or codec is added.
 
 `make tools-report` runs every existing offline checker and retains individual
 failures and durations. It is diagnostic; fail-fast `tools-check` remains release
@@ -171,7 +188,7 @@ with Testkit. See the [qualification runner](../testing/runtime-qualification/RE
 
 ## Release and evidence boundaries
 
-The unchanged shared runner owns ordering, locks, saved intent and Git effects.
+The shared runner owns ordering, locks, saved intent and Git effects.
 Memory selects direct delivery and owns its Rust source/package receipts,
 metadata transaction and proof admission; IC Build supplies the available Cargo
 observers and projection checks through explicit native development dependencies.

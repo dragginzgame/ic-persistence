@@ -21,7 +21,7 @@ They are historical evidence, not qualification of the relocated graph.
 The crate name, Rust module paths, API, row keys, V1 bytes and B-tree format are
 unchanged. The package now inherits Persistence's 0.50 workspace version and uses
 its local Memory and Storage packages. The 0.50.17 import used published
-`ic-metrics = "0.15"`; the pending 0.51 release adopts `ic-metrics = "0.16"`.
+`ic-metrics = "0.15"`; Persistence 0.51 adopts `ic-metrics = "0.16"`.
 Select the adapter, Memory and Storage from the same Persistence release line.
 Hosts using the adapter's public arithmetic types must select the same Metrics
 minor line: 0.15 and 0.16 have different Rust type identities. Updating these
