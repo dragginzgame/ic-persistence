@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.51.2] - Unreleased
+
+- Adopt IC Tooling 0.68.3, Platform 0.6.16 and Metrics 0.16.2, preserving
+  library type identities, stable formats and the PocketIC client/server pair.
+
+- Finish archive-roster projections and simplify release inspection, source-byte
+  custody and typed fixture faults. Make CI tool-reuse qualification callable locally.
+- Simplify coordinated release configuration, receipt checks and failure
+  fixtures while preserving saved evidence and recovery behavior.
+- Share formatter and installed-qualification flows, and simplify declaration
+  limits and fixture diagnostics without changing public APIs or stored formats.
+  [Details](docs/changelog/0.51.md#0512).
+
 ## [0.51.1] - 2026-10-25
 
 - Adopt Shared Tooling 0.26.16 recovery and tool-admission fixes, and qualify

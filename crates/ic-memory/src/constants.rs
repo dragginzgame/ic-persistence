@@ -7,6 +7,9 @@ pub const WASM_PAGE_SIZE_BYTES: u64 = 65_536;
 /// Maximum allocation identities in the usable ID domain, including governance.
 pub const MAX_ALLOCATIONS: usize = crate::slot::MEMORY_MANAGER_INVALID_ID as usize;
 
+// One allocation identity is reserved for the internal ledger declaration.
+pub const MAX_EXTERNAL_DECLARATIONS: usize = MAX_ALLOCATIONS - 1;
+
 /// Maximum encoded ownership ledger size (64 KiB for at most 255 records).
 pub const MAX_LEDGER_BYTES: usize = 64 * 1024;
 /// Maximum opaque generation payload containing direct logical CBOR.

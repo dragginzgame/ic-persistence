@@ -140,6 +140,12 @@ impl AllocationLedger {
         &self.records
     }
 
+    pub(crate) fn record_for_key(&self, key: &StableKey) -> Option<&AllocationRecord> {
+        self.records
+            .iter()
+            .find(|record| record.stable_key() == key)
+    }
+
     // Every retained binding owns its ID, including omitted keys.
     pub(crate) fn occupied_slots(&self) -> [bool; crate::constants::MAX_ALLOCATIONS] {
         let mut occupied = [false; crate::constants::MAX_ALLOCATIONS];

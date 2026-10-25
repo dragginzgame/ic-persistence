@@ -1,6 +1,6 @@
 .DEFAULT_GOAL := help
 .PHONY: help test version ensure-clean fetch-dependencies check-pins check-production-graph \
-        install-tools tools-check install-host-tools host-tools-check install-ic-tools ic-tools-check test-tools test-failure-evidence \
+        install-tools tools-check install-host-tools host-tools-check install-ic-tools ic-tools-check test-tools test-failure-evidence test-offline-tool-reuse \
         lint-tooling test-hooks test-tooling test-fixture-cell validate validate-toolchain wasm-size \
         install-runtime-server runtime-server-check test-runtime \
         install-release-tools release-tools-check \
@@ -24,14 +24,8 @@ include ci/runtime-tools.env
 TOOL := bash scripts/dev/run-repo-tool.sh $(VALIDATION_TOOLCHAIN)
 override SHARED_TOOLING_ROOT := $(CURDIR)
 # Both maintained workspaces retain the same complete formatter sequence.
-FORMAT_WRITE_COMMAND = bash -ec 'cargo "+$$1" sort --workspace --grouped; \
-    cargo "+$$1" sort --workspace --grouped testing/runtime-qualification; \
-    cargo "+$$1" fmt --all; rustfmt "+$$1" --edition 2024 testing/package-consumer.rs; \
-    cargo "+$$1" fmt --manifest-path testing/runtime-qualification/Cargo.toml --all' -- "$(VALIDATION_TOOLCHAIN)"
-FORMAT_CHECK_COMMAND = bash -ec 'cargo "+$$1" sort --workspace --grouped --check; \
-    cargo "+$$1" sort --workspace --grouped --check testing/runtime-qualification; \
-    cargo "+$$1" fmt --all -- --check; rustfmt "+$$1" --edition 2024 --check testing/package-consumer.rs; \
-    cargo "+$$1" fmt --manifest-path testing/runtime-qualification/Cargo.toml --all -- --check' -- "$(VALIDATION_TOOLCHAIN)"
+FORMAT_WRITE_COMMAND = bash scripts/ci/format-workspaces.sh "$(VALIDATION_TOOLCHAIN)" write
+FORMAT_CHECK_COMMAND = bash scripts/ci/format-workspaces.sh "$(VALIDATION_TOOLCHAIN)" check
 # Memory uses IC executables for installed runtime qualification.
 IC_TOOLS := wasm-opt
 LOCAL_TOOL_INSTALL_TARGETS += install-ic-tools install-release-tools
@@ -76,40 +70,8 @@ runtime-server-check:
 test-runtime: runtime-server-check ic-tools-check
 	+cargo +$(VALIDATION_TOOLCHAIN) build --locked --offline --profile wasm-size --target wasm32-unknown-unknown --example wasm-io-qualification --example wasm-storage-qualification
 	+cargo +$(VALIDATION_TOOLCHAIN) build --locked --offline --manifest-path testing/runtime-qualification/Cargo.toml --target-dir target/runtime-qualification
-	@mkdir -p target/qualification/runtime
 	+@cli="$$($(TESTKIT_CLI) --check)" && \
-	  server="$$("$$cli" check --directory "$(TESTKIT_SERVER_DIRECTORY)")" && \
-	  optimizer="$(CURDIR)/.tools/ic/bin/wasm-opt" && \
-	  evidence="$$(mktemp -d target/qualification/runtime/attempt.XXXXXX)" && \
-	  shasum -a 256 Cargo.toml Cargo.lock .shared-tooling.snapshot ci/runtime-tools.env "$(IC_TOOL_PINS)" \
-	    testing/runtime-qualification/Cargo.toml testing/runtime-qualification/Cargo.lock \
-	    target/wasm32-unknown-unknown/wasm-size/examples/wasm_io_qualification.wasm \
-	    target/wasm32-unknown-unknown/wasm-size/examples/wasm_storage_qualification.wasm \
-	    target/runtime-qualification/debug/ic-memory-runtime-qualification "$$cli" "$$server" "$$optimizer" > "$$evidence/inputs.sha256" && \
-	  for optimization in original O3 Os Oz; do \
-	    wasm="$(CURDIR)/$$evidence/$$optimization.wasm"; \
-	    if [ "$$optimization" = original ]; then \
-	      cp target/wasm32-unknown-unknown/wasm-size/examples/wasm_io_qualification.wasm "$$wasm" || exit "$$?"; \
-	    else \
-	      "$$optimizer" "$$evidence/original.wasm" --enable-bulk-memory-opt "-$$optimization" -o "$$wasm" > "$$evidence/$$optimization.optimizer.log" 2>&1 || \
-	        { status=$$?; cat "$$evidence/$$optimization.optimizer.log"; exit "$$status"; }; \
-	    fi; \
-	    storage_wasm="$(CURDIR)/$$evidence/$$optimization.storage.wasm"; \
-	    if [ "$$optimization" = original ]; then \
-	      cp target/wasm32-unknown-unknown/wasm-size/examples/wasm_storage_qualification.wasm "$$storage_wasm" || exit "$$?"; \
-	    else \
-	      "$$optimizer" "$$evidence/original.storage.wasm" --enable-bulk-memory-opt "-$$optimization" -o "$$storage_wasm" > "$$evidence/$$optimization.storage.optimizer.log" 2>&1 || \
-	        { status=$$?; cat "$$evidence/$$optimization.storage.optimizer.log"; exit "$$status"; }; \
-	    fi; \
-	    shasum -a 256 "$$wasm" "$$storage_wasm" >> "$$evidence/inputs.sha256" || exit "$$?"; \
-	    echo "Runtime qualification: $$optimization ($$evidence)"; \
-	    env -u POCKET_IC_BIN -u IC_TESTKIT_POCKET_IC_URL IC_MEMORY_QUALIFICATION_WASM="$$wasm" IC_STORAGE_QUALIFICATION_WASM="$$storage_wasm" \
-	      "$$cli" run --directory "$(TESTKIT_SERVER_DIRECTORY)" --ttl 900 \
-	      --server-stdout "$$evidence/$$optimization.server.stdout" --server-stderr "$$evidence/$$optimization.server.stderr" \
-	      -- "$(CURDIR)/target/runtime-qualification/debug/ic-memory-runtime-qualification" > "$$evidence/$$optimization.runtime.log" 2>&1; \
-	    status=$$?; cat "$$evidence/$$optimization.runtime.log" || exit "$$?"; \
-	    [ "$$status" = 0 ] || exit "$$status"; \
-	  done && cat "$$evidence/inputs.sha256"
+	  bash scripts/ci/qualify-runtime.sh "$(CURDIR)" "$$cli" "$(TESTKIT_SERVER_DIRECTORY)" "$(CURDIR)/.tools/ic/bin/wasm-opt" "$(IC_TOOL_PINS)"
 
 test-failure-evidence:
 	bash scripts/ci/test-failure-evidence.sh $${FAILURE_EVIDENCE_DIRECTORY:+"$$FAILURE_EVIDENCE_DIRECTORY"}
@@ -118,6 +80,10 @@ test-failure-evidence:
 # runner, Make/LOC and parser matrices qualify at Shared Tooling's owner.
 test-tools: test-failure-evidence
 	bash scripts/ci/test-consumer-fixture-retention.sh
+
+# Uses only explicitly prepared tool generations; never prepares missing selections.
+test-offline-tool-reuse:
+	+bash scripts/ci/test-offline-tool-reuse.sh
 
 # Network preparation is separate from offline checks; preserve tracked locks.
 fetch-dependencies:
@@ -196,9 +162,6 @@ validate-toolchain:
 	+bash scripts/ci/package-workspace.sh $(VALIDATION_TOOLCHAIN) --allow-dirty
 
 wasm-size:
-	+cargo +$(VALIDATION_TOOLCHAIN) build --locked --offline --profile wasm-size --target wasm32-unknown-unknown \
-		--example wasm-core-size-probe --example wasm-diagnostics-size-probe --example wasm-admission-size-probe \
-		--example wasm-runtime-integration-size-probe
 	+@$(TOOL) wasm-size
 
 # Preserve release-only cache preparation for all caller settings.

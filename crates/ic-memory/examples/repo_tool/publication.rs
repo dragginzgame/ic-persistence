@@ -3,7 +3,7 @@ use super::*;
 
 impl<E: Execute> Repository<E> {
     fn registry_contains(&self, name: &str, version: &str, digest: &str) -> Result<bool> {
-        require(PACKAGES.contains(&name), "unknown publication package")?;
+        require(packages().contains(&name), "unknown publication package")?;
         self.version_parts(version)?;
         let response = self.output(
             "curl",
@@ -46,24 +46,20 @@ impl<E: Execute> Repository<E> {
 
     pub(super) fn publish(&self, dry_run: bool) -> Result<()> {
         let release = self.release_commit()?;
-        let (version, head, _) = &release;
+        let version = &release.selection.version;
+        let head = &release.commit;
         let tag = self.check_tag(version, head)?;
-        let evidence = self.verify_evidence(&release.2, head, false, true)?;
-        let packages = [
-            ("ic-memory", &evidence.package_sha256),
-            ("ic-storage", &evidence.storage_sha256),
-            ("ic-metrics-stable", &evidence.metrics_sha256),
-        ];
+        let evidence = self.verify_evidence(&release.selection, head, Final, Working)?;
+        let packages: Vec<_> = evidence.archives().collect();
         // Observe every package before any effect. A conflict in a later package
         // must not permit an earlier upload; dependencies publish first.
         let published = if dry_run {
-            [false, false, false]
+            vec![false; packages.len()]
         } else {
-            [
-                self.registry_contains(packages[0].0, version, packages[0].1)?,
-                self.registry_contains(packages[1].0, version, packages[1].1)?,
-                self.registry_contains(packages[2].0, version, packages[2].1)?,
-            ]
+            packages
+                .iter()
+                .map(|(name, digest)| self.registry_contains(name, version, digest))
+                .collect::<Result<Vec<_>>>()?
         };
         for ((name, digest), exists) in packages.into_iter().zip(published) {
             require(

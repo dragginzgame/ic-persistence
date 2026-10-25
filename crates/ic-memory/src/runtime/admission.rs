@@ -112,15 +112,12 @@ impl<'a> BootstrapAdmission<'a> {
         if self.is_declared(&key) {
             return Err(BootstrapAdmissionError::Duplicate(key));
         }
-        if self.declarations.requests().len() + self.selected.len() >= 254 {
+        if self.declarations.requests().len() + self.selected.len()
+            >= crate::constants::MAX_EXTERNAL_DECLARATIONS
+        {
             return Err(BootstrapAdmissionError::TooManyDeclarations);
         }
-        let Some(record) = self
-            .ledger
-            .records()
-            .iter()
-            .find(|r| r.stable_key() == &key)
-        else {
+        let Some(record) = self.ledger.record_for_key(&key) else {
             return Err(BootstrapAdmissionError::Unknown(key));
         };
         self.pool.validate_authority(&key, authority)?;

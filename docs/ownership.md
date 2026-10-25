@@ -79,6 +79,20 @@ consumer qualification. Historical reports under `docs/changelog`, `docs/audits`
 and the qualification guides retain their original source/version scope; use the
 current API and safety contract for present integration.
 
+The consumer release package roster lives in
+`crates/ic-memory/examples/repo_tool/packages.json`, embedded by the Rust adapter
+and admitted by `scripts/ci/read-persistence-packages.sh` for shell callers.
+The three receipt digest fields retain their existing coordinated-order mapping;
+changing package membership or order requires explicit receipt compatibility
+review. This is release policy, not another dependency or version catalog.
+`format-workspaces.sh` owns the consumer formatter roster; `qualify-runtime.sh`
+owns the installed artifact/optimization loop. Archive qualification derives its
+workspace, patches and package provenance from one extracted-package map. The
+Wasm-size adapter owns both build selectors and budgets through its probe table.
+`test-offline-tool-reuse.sh` owns the consumer's locally callable CI reuse proof.
+Shared keeps formatter admission
+and Testkit keeps server selection/lifecycle.
+
 ## Release tooling review — 0.62.1
 
 The release adapter already delegates manifest rendering and lock projection to

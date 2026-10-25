@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # Actual offline Cargo and the selected editor; no fixture Git/release effects.
 set -euo pipefail
+package_names="$(bash scripts/ci/read-persistence-packages.sh)"
+IFS=$'\t' read -r -a packages <<< "$package_names"
 unset RELEASE_CACHE_PREPARE MAKEFLAGS MFLAGS MAKEOVERRIDES GNUMAKEFLAGS MAKEFILES
 root="$(pwd -P)"
 pin="$(sed -n 's/^channel = "\([^"]*\)"$/\1/p' rust-toolchain.toml)"
@@ -14,7 +16,7 @@ cp Cargo.toml Cargo.lock LICENSE rust-toolchain.toml "$fixture/"
 cp -R crates "$fixture/"
 mkdir -p "$fixture/scripts/dev" "$fixture/scripts/ci" "$fixture/ci"
 cp scripts/dev/run-repo-tool.sh "$fixture/scripts/dev/"
-cp scripts/ci/read-cargo-workspace-version.sh scripts/ci/validate-release-inputs.pl scripts/ci/StableVersion.pm "$fixture/scripts/ci/"
+cp scripts/ci/read-persistence-packages.sh scripts/ci/read-cargo-workspace-version.sh scripts/ci/validate-release-inputs.pl scripts/ci/StableVersion.pm "$fixture/scripts/ci/"
 cp ci/release-tools.env "$fixture/ci/"
 cat > "$fixture/scripts/dev/install-rust-tools.sh" <<'STUB'
 #!/usr/bin/env bash
@@ -35,10 +37,12 @@ yq -p toml -o json '.' Cargo.toml | jq --slurpfile metadata metadata.json '{mani
 "$editor" --max-input-bytes "$CARGO_RELEASE_METADATA_MAX_BYTES" manifest Cargo.toml "$previous" "$next" context.json > candidate.toml
 # Only these disposable fixture inputs are edited; production release metadata
 # remains unchanged. All members inherit the coordinated workspace version.
-storage_previous="$(yq -p toml -o json '.' Cargo.lock | jq -er '.package[] | select(.name == "ic-storage" and .source == null) | .version')"
-"$editor" --max-input-bytes "$CARGO_RELEASE_METADATA_MAX_BYTES" lock Cargo.lock "$previous" "$next" ic-memory > candidate-memory.lock
-"$editor" --max-input-bytes "$CARGO_RELEASE_METADATA_MAX_BYTES" lock candidate-memory.lock "$storage_previous" "$next" ic-storage > candidate-storage.lock
-"$editor" --max-input-bytes "$CARGO_RELEASE_METADATA_MAX_BYTES" lock candidate-storage.lock "$previous" "$next" ic-metrics-stable > candidate.lock
+cp Cargo.lock candidate.lock
+for package in "${packages[@]}"; do
+    package_previous="$(yq -p toml -o json '.' Cargo.lock | jq -er --arg package "$package" '.package[] | select(.name == $package and .source == null) | .version')"
+    "$editor" --max-input-bytes "$CARGO_RELEASE_METADATA_MAX_BYTES" lock candidate.lock "$package_previous" "$next" "$package" > candidate-next.lock
+    mv candidate-next.lock candidate.lock
+done
 for state in lock-first manifest-first; do
     cp original.toml Cargo.toml
     cp original.lock Cargo.lock

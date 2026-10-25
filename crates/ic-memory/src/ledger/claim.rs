@@ -25,11 +25,7 @@ pub fn validate_declaration_claim<'ledger>(
     ledger: &'ledger AllocationLedger,
     declaration: &AllocationDeclaration,
 ) -> Result<ClaimOutcome, ClaimConflict<'ledger>> {
-    if let Some(record) = ledger
-        .records()
-        .iter()
-        .find(|record| record.stable_key == declaration.stable_key)
-    {
+    if let Some(record) = ledger.record_for_key(&declaration.stable_key) {
         if record.slot != declaration.slot {
             return Err(ClaimConflict::StableKeyMoved { record });
         }

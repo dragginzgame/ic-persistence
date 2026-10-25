@@ -160,7 +160,7 @@ impl SealedDeclarationSnapshot {
     /// Take ownership of the host's complete requests, checking the bound and
     /// rejecting duplicate keys before sharing their canonical contents.
     pub fn new(mut requests: Vec<MemoryRequest>) -> Result<Self, MemoryDeclarationError> {
-        if requests.len() > 254 {
+        if requests.len() > crate::constants::MAX_EXTERNAL_DECLARATIONS {
             return Err(MemoryDeclarationError::TooManyDeclarations);
         }
         crate::sort::sort_unstable_by(&mut requests, |a, b| a.stable_key.cmp(&b.stable_key));
@@ -190,7 +190,7 @@ impl SealedDeclarationSnapshot {
         pool: &crate::MemoryAllocationPool,
     ) -> Result<DeclarationSnapshot, crate::MemoryResolutionError> {
         let ledger = recovered.ledger();
-        if self.requests().len() + historical.len() > 254 {
+        if self.requests().len() + historical.len() > crate::constants::MAX_EXTERNAL_DECLARATIONS {
             return Err(MemoryDeclarationError::TooManyDeclarations.into());
         }
         let mut declarations = Vec::with_capacity(self.requests().len() + historical.len() + 1);
@@ -201,10 +201,7 @@ impl SealedDeclarationSnapshot {
         // Admission already resolved historical selections against this ledger
         // and pool. Only the original requests can allocate new slots.
         for request in self.requests() {
-            let historical = ledger
-                .records()
-                .iter()
-                .find(|record| record.stable_key() == &request.stable_key);
+            let historical = ledger.record_for_key(&request.stable_key);
             pool.validate_authority(&request.stable_key, &request.authority)?;
             let id = if let Some(record) = historical {
                 // Durable identity selects placement; the host separately grants

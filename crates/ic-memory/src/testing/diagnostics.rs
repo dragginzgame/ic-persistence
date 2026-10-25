@@ -243,12 +243,19 @@ where
     P: RuntimeBootstrapPolicy,
     P::Error: Display,
 {
-    let stable_cell = runtime.stable_cell_diagnostic();
+    let (memory_size, record) = runtime.stable_cell_diagnostic();
+    // Project the public status from the same read result used for recovery.
+    let status = match &record {
+        Ok(_) if memory_size.wasm_pages == 0 => DiagnosticStableCellStatus::Empty,
+        Ok(_) => DiagnosticStableCellStatus::Readable,
+        Err(error) => DiagnosticStableCellStatus::Corrupt {
+            failure: DiagnosticFailure::new(DiagnosticCode::StableCell, error.to_string()),
+        },
+    };
+    let stable_cell = DiagnosticStableCell::new(status, memory_size);
     // Recovery owns its ledger and diagnostic evidence. Release the decoded
     // physical snapshot before observing memory or invoking custom policy.
-    let recovery = stable_cell
-        .record
-        .map(|record| record.recover_with_diagnostic());
+    let recovery = record.ok().map(|record| record.recover_with_diagnostic());
     // Keep the original observation boundary before policy callbacks, without
     // copying the recovered keys/records merely to retain those observations.
     let mut observed_pages = [0; crate::constants::MAX_ALLOCATIONS];
@@ -288,7 +295,7 @@ where
         tested_policy_identity,
         established_bootstrap_binding,
         bootstrap_binding,
-        stable_cell: stable_cell.diagnostic,
+        stable_cell,
         commit_recovery,
         ledger,
         requests: declarations.requests().to_vec(),
@@ -308,42 +315,21 @@ impl<M: Memory> MemoryRuntime<M> {
         }
     }
 
-    fn stable_cell_diagnostic(&self) -> StableCellDiagnostic {
+    fn stable_cell_diagnostic(
+        &self,
+    ) -> (
+        DiagnosticMemorySize,
+        Result<LedgerCommitStore, crate::StableCellLedgerError>,
+    ) {
         let memory = self
             .memory_manager
             .get(MemoryId::new(MEMORY_MANAGER_LEDGER_ID));
         let memory_size = DiagnosticMemorySize::from_wasm_pages(memory.size());
-        match decode_stable_cell_commit_store_from_memory(&memory) {
-            Ok(record) => StableCellDiagnostic {
-                diagnostic: DiagnosticStableCell::new(
-                    if memory_size.wasm_pages == 0 {
-                        DiagnosticStableCellStatus::Empty
-                    } else {
-                        DiagnosticStableCellStatus::Readable
-                    },
-                    memory_size,
-                ),
-                record: Some(record),
-            },
-            Err(err) => StableCellDiagnostic {
-                diagnostic: DiagnosticStableCell::new(
-                    DiagnosticStableCellStatus::Corrupt {
-                        failure: DiagnosticFailure::new(
-                            DiagnosticCode::StableCell,
-                            err.to_string(),
-                        ),
-                    },
-                    memory_size,
-                ),
-                record: None,
-            },
-        }
+        (
+            memory_size,
+            decode_stable_cell_commit_store_from_memory(&memory),
+        )
     }
-}
-
-struct StableCellDiagnostic {
-    diagnostic: DiagnosticStableCell,
-    record: Option<LedgerCommitStore>,
 }
 
 fn diagnostic_validation<M: Memory, P: RuntimeBootstrapPolicy>(

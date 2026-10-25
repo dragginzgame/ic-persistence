@@ -414,6 +414,7 @@ bash "$ROOT/scripts/ci/prepare-script-fixture.sh" "$ROOT" "$jobserver" \
     make/rust-format.mk scripts/ci/check-release-delivery.sh
 mkdir -p "$jobserver/testing"
 cp "$ROOT/testing/package-consumer.rs" "$jobserver/testing/"
+cp "$ROOT/scripts/ci/format-workspaces.sh" "$jobserver/scripts/ci/"
 cat > "$jobserver/scripts/ci/package-workspace.sh" <<'STUB'
 #!/usr/bin/env bash
 exec cargo package "$@"
@@ -523,6 +524,9 @@ cp "$ROOT/scripts/ci/check-make-execution.sh" "$ROOT/scripts/ci/check-release-de
 cp "$ROOT/scripts/ci/read-cargo-workspace-version.sh" \
     "$ROOT/scripts/ci/validate-release-inputs.pl" "$ROOT/scripts/ci/StableVersion.pm" "$FIXTURE/bootstrap/scripts/ci/"
 cp "$ROOT/scripts/dev/run-repo-tool.sh" "$FIXTURE/bootstrap/scripts/dev/"
+cp "$ROOT/scripts/ci/read-persistence-packages.sh" "$FIXTURE/bootstrap/scripts/ci/"
+mkdir -p "$FIXTURE/bootstrap/crates/ic-memory/examples/repo_tool"
+cp "$ROOT/crates/ic-memory/examples/repo_tool/packages.json" "$FIXTURE/bootstrap/crates/ic-memory/examples/repo_tool/"
 # Exercise the real published renderer; substitute only tool-store selection.
 fixture_editor="$(RUSTUP_TOOLCHAIN="$FIXTURE_TOOLCHAIN" bash "$ROOT/scripts/dev/install-rust-tools.sh" \
     --consumer "$ROOT" --package ic-build --version "$IC_BUILD_RELEASE_METADATA_VERSION" \
@@ -726,6 +730,16 @@ check_release_cache_preparation() {
     cp saved-cache-calls calls
 }
 
+# A failed or malformed roster cannot dispatch cache preparation or the helper.
+roster=crates/ic-memory/examples/repo_tool/packages.json
+cp "$roster" original-roster
+for invalid in 'not-json' '["ic-memory"]' '["ic-memory","ic-memory","ic-storage"]' '["ic-memory","ic-storage","../escape"]'; do
+    printf '%s\n' "$invalid" > "$roster"
+    status=0
+    bash scripts/dev/run-repo-tool.sh "$FIXTURE_TOOLCHAIN" version > roster-refusal.log 2>&1 || status=$?
+    [[ "$status" != 0 && ! -e calls ]] || exit 1
+done
+cp original-roster "$roster"
 [[ "$(make --no-print-directory -s release-version)" == 0.12.3 ]] || exit 1
 [[ "$(cat calls)" == $'normal-cache\nnormal' ]] || exit 1
 check_publication_environment

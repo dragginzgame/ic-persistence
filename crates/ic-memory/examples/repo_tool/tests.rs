@@ -34,7 +34,7 @@ fn package_retention_refuses_a_replaced_fifo_without_a_writer() {
         fs::create_dir_all(package.parent().unwrap()).unwrap();
         fs::write(&package, b"package bytes").unwrap();
         fixture.repo.exec.state.borrow_mut().archive_change = Some(package);
-        fixture.fail("archive-fifo");
+        fixture.fail(Fault::ArchiveFifo);
         let error = fixture
             .repo
             .record_package("ic-memory", "0.13.0")
@@ -115,11 +115,10 @@ fn native_metadata_refuses_invalid_selected_manifest_without_touching_lock() {
 fn captured_failure_preserves_status_and_both_output_streams() {
     let fixture = Fixture::new();
     let error = Processes
-        .run(
+        .capture(
             &fixture.repo.root,
             "sh",
             &["-c", "printf stdout; printf stderr >&2; exit 37"],
-            true,
         )
         .unwrap_err();
     let ToolError::Execution(failure) = error.downcast_ref::<ToolError>().unwrap() else {
@@ -133,14 +132,14 @@ fn captured_failure_preserves_status_and_both_output_streams() {
 #[test]
 fn tag_changes_during_shared_admission_stop_publication() {
     for failure in [
-        "tag-admission-refused",
-        "tag-admission-object",
-        "tag-admission-missing",
+        Fault::TagAdmissionRefused,
+        Fault::TagAdmissionObject,
+        Fault::TagAdmissionMissing,
     ] {
         let fixture = Fixture::new();
         fixture.release();
-        fixture.fail(failure);
-        assert!(fixture.repo.publish(true).is_err(), "{failure}");
+        fixture.fail(failure.clone());
+        assert!(fixture.repo.publish(true).is_err(), "{failure:?}");
         assert!(!fixture.repo.exec.state.borrow().calls.iter().any(|call| {
             call.first().is_some_and(|arg| arg == "cargo")
                 && call.get(2).is_some_and(|arg| arg == "publish")
@@ -284,16 +283,13 @@ impl Fixture {
                 "# Detail\n\n## [0.13.0]\n\nFixture changes.\n".to_owned(),
             ),
         ]);
-        for (name, manifest, library) in [
-            ("ic-storage", STORAGE_MANIFEST, "// storage fixture\n"),
-            (
-                "ic-metrics-stable",
-                METRICS_MANIFEST,
-                "// metrics fixture\n",
-            ),
-        ] {
+        for (name, library) in packages()
+            .into_iter()
+            .skip(1)
+            .zip(["// storage fixture\n", "// metrics fixture\n"])
+        {
             source.insert(
-                manifest.to_owned(),
+                package_manifest(name),
                 format!("[package]\nname = {name:?}\nversion.workspace = true\n"),
             );
             source.insert(format!("crates/{name}/src/lib.rs"), library.to_owned());
@@ -393,8 +389,8 @@ impl Fixture {
         self.commit().unwrap();
     }
 
-    fn fail(&self, effect: &str) {
-        self.repo.exec.state.borrow_mut().fail = Some(effect.to_owned());
+    fn fail(&self, fault: Fault) {
+        self.repo.exec.state.borrow_mut().fail = Some(fault);
     }
 
     fn assert_original(&self) {
@@ -578,8 +574,8 @@ fn streamed_receipts_preserve_json_and_reject_partial_serialization() {
     let validation: ValidationEvidence = serde_json::from_slice(&original).unwrap();
     Processes.write_json(&path, &validation).unwrap();
     assert_eq!(fs::read(&path).unwrap(), original);
-    for prepared in [true, false] {
-        let path = fixture.repo.receipt_path("0.13.0", prepared).unwrap();
+    for stage in [Prepared, Final] {
+        let path = fixture.repo.receipt_path("0.13.0", stage).unwrap();
         let original = fs::read(&path).unwrap();
         let evidence: PackageEvidence = serde_json::from_slice(&original).unwrap();
         Processes.write_json(&path, &evidence).unwrap();
@@ -604,6 +600,48 @@ fn streamed_receipts_preserve_json_and_reject_partial_serialization() {
     assert_eq!(entries(), before);
 }
 
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "kebab-case")]
+enum Fault {
+    ArchiveAfter,
+    ArchiveBefore,
+    ArchiveFifo,
+    ArchiveRead,
+    DependencyUpdate,
+    Formatting,
+    History,
+    MakeExecution,
+    Metadata,
+    Package,
+    PackageHead,
+    Parent,
+    PublishBeforeTag,
+    PublishTagCommit,
+    PublishTagMissing,
+    PublishTagObject,
+    RegistryError,
+    RegistryForbidden,
+    RegistryYanked,
+    RelativeMetadata,
+    RemoteAhead,
+    RemoteLock,
+    Status,
+    StorageUpload,
+    TagAdmissionRefused,
+    TagAdmissionMissing,
+    TagAdmissionObject,
+    TagCommit,
+    TagObject,
+    ToolCheck,
+    ToolSetup,
+    UploadResponseLost,
+    Validate,
+    ValidationLock,
+    Checksum,
+    WriteBefore(PathBuf),
+    WriteAfter(PathBuf),
+}
+
 #[derive(Deserialize, Serialize)]
 struct State {
     published: BTreeMap<String, String>,
@@ -611,7 +649,7 @@ struct State {
     release: Option<BTreeMap<String, String>>,
     staged: bool,
     calls: Vec<Vec<String>>,
-    fail: Option<String>,
+    fail: Option<Fault>,
     archive_change: Option<PathBuf>,
     tag: bool,
     descendant: Option<BTreeMap<String, String>>,
@@ -625,9 +663,9 @@ impl Execute for Substitute {
     fn cargo_target(&self, root: &Path) -> Result<PathBuf> {
         let mut state = self.state.borrow_mut();
         state.calls.push(vec!["cargo-metadata".to_owned()]);
-        match state.fail.as_deref() {
-            Some("metadata") => Err("fixture metadata failure".into()),
-            Some("relative-metadata") => Ok(PathBuf::from("relative output")),
+        match state.fail.as_ref() {
+            Some(Fault::Metadata) => Err("fixture metadata failure".into()),
+            Some(Fault::RelativeMetadata) => Ok(PathBuf::from("relative output")),
             _ => Ok(root.join("configured output")),
         }
     }
@@ -646,10 +684,10 @@ impl Execute for Substitute {
                 .push(vec!["stream-write".to_owned(), path.display().to_string()]);
             let phase = state.fail.clone();
             if let Some(source) = state.archive_change.take() {
-                if phase.as_deref() == Some("archive-read") {
+                if phase.as_ref() == Some(&Fault::ArchiveRead) {
                     fs::remove_file(&source)?;
                     fs::create_dir(source)?;
-                } else if phase.as_deref() == Some("archive-fifo") {
+                } else if phase.as_ref() == Some(&Fault::ArchiveFifo) {
                     fs::remove_file(&source)?;
                     require(
                         Command::new("mkfifo").arg(source).status()?.success(),
@@ -661,31 +699,30 @@ impl Execute for Substitute {
             }
             phase
         };
-        if phase.as_deref() == Some("archive-before") {
+        if phase.as_ref() == Some(&Fault::ArchiveBefore) {
             return Err("fixture failure before archive publication".into());
         }
         Processes.copy_verified(source, path, expected)?;
-        if phase.as_deref() == Some("archive-after") {
+        if phase.as_ref() == Some(&Fault::ArchiveAfter) {
             return Err("fixture failure after archive publication".into());
         }
         Ok(())
     }
 
     fn write_bytes(&self, path: &Path, bytes: &[u8]) -> Result<()> {
-        let failure = self.state.borrow().fail.clone();
-        let phase = failure
-            .as_deref()
-            .and_then(|failure| failure.split_once(':'))
-            .filter(|(_, target)| path.ends_with(target))
-            .map(|(phase, _)| phase);
+        let phase = match &self.state.borrow().fail {
+            Some(Fault::WriteBefore(target)) if path.ends_with(target) => Some(false),
+            Some(Fault::WriteAfter(target)) if path.ends_with(target) => Some(true),
+            _ => None,
+        };
         if phase.is_some() {
             self.state.borrow_mut().fail = None;
         }
-        if phase == Some("write-before") {
+        if phase == Some(false) {
             return Err(std::io::Error::other("fixture failure before publication").into());
         }
         Processes.write_bytes(path, bytes)?;
-        if phase == Some("write-after") {
+        if phase == Some(true) {
             // Model the real writer's error-after-rename contract. The consumer
             // must inspect the visible bytes before rollback or retry.
             assert_eq!(fs::read(path)?, bytes);
@@ -698,48 +735,13 @@ impl Execute for Substitute {
         Ok(())
     }
 
-    #[expect(
-        clippy::too_many_lines,
-        reason = "one explicit process substitute records every permitted effect"
-    )]
-    fn run(&self, root: &Path, program: &str, args: &[&str], _: bool) -> Result<String> {
+    fn execute(&self, root: &Path, program: &str, args: &[&str]) -> Result<()> {
+        self.capture(root, program, args).map(|_| ())
+    }
+
+    fn capture(&self, root: &Path, program: &str, args: &[&str]) -> Result<String> {
         if program == "env" {
-            require(
-                args.len() == 10
-                    && args[0] == "RUSTUP_TOOLCHAIN=1.99.0"
-                    && args[1] == "bash"
-                    && args[2] == "scripts/ci/run-cargo-publication.sh"
-                    && matches!(args[3], "check" | "publish")
-                    && args[5] == "release"
-                    && args[6] == "crates-io"
-                    && args[7] == "--package"
-                    && args[9] == "--no-verify",
-                "unexpected coordinated publication attempt",
-            )?;
-            let (name, version) = args[8].split_once('@').ok_or("missing exact selector")?;
-            require(
-                version
-                    == toml_string(
-                        &fs::read_to_string(root.join("Cargo.toml"))?,
-                        "workspace.package",
-                        "version",
-                    )?,
-                "wrong publication version",
-            )?;
-            let mut forwarded = vec![
-                "+1.99.0",
-                "publish",
-                "--locked",
-                "--registry",
-                "crates-io",
-                "--package",
-                name,
-                "--no-verify",
-            ];
-            if args[3] == "check" {
-                forwarded.push("--dry-run");
-            }
-            return self.run(root, "cargo", &forwarded, false);
+            return self.publication(root, args);
         }
         let mut state = self.state.borrow_mut();
         state.calls.push(
@@ -748,171 +750,44 @@ impl Execute for Substitute {
                 .map(str::to_owned)
                 .collect(),
         );
-        let target = root.join("configured output");
-        let version = || {
-            toml_string(
-                &fs::read_to_string(root.join("Cargo.toml"))?,
-                "workspace.package",
-                "version",
-            )
-        };
-        let changed = |reference: &BTreeMap<String, String>| -> Result<String> {
-            Ok(reference
-                .iter()
-                .filter_map(|(path, text)| match fs::read_to_string(root.join(path)) {
-                    Ok(current) if current == *text => None,
-                    _ => Some(path.as_str()),
-                })
-                .collect::<Vec<_>>()
-                .join("\n"))
-        };
         match program {
-            "bash" if args.first() == Some(&TAG_CHECKER) => {
-                require(
-                    args == [TAG_CHECKER, "release", "0.13.0"],
-                    "unexpected fixture tag selection",
-                )?;
-                match state.fail.as_deref() {
-                    Some("tag-commit" | "tag-admission-refused") => {
-                        Err("fixture shared tag checker refused".into())
-                    }
-                    Some("tag-admission-object") => {
-                        state.fail = Some("tag-object".to_owned());
-                        Ok(String::new())
-                    }
-                    Some("tag-admission-missing") => {
-                        state.tag = false;
-                        Ok(String::new())
-                    }
-                    _ => Ok(String::new()),
-                }
-            }
+            "bash" if args.first() == Some(&TAG_CHECKER) => state.check_tag(args),
             "bash"
                 if args == ["scripts/ci/check-make-execution.sh"]
-                    && state.fail.as_deref() == Some("make-execution") =>
+                    && state.fail.as_ref() == Some(&Fault::MakeExecution) =>
             {
                 Err("fixture Make execution refusal".into())
             }
-            "perl" | "awk" => Processes.run(root, program, args, true),
-            "bash" if args.first() != Some(&"scripts/ci/package-workspace.sh") => Processes.run(
-                &Path::new(env!("CARGO_MANIFEST_DIR")).join("../.."),
-                program,
-                args,
-                true,
-            ),
+            "perl" | "awk" => Processes.capture(root, program, args),
+            "bash" if args.first() != Some(&"scripts/ci/package-workspace.sh") => Processes
+                .capture(
+                    &Path::new(env!("CARGO_MANIFEST_DIR")).join("../.."),
+                    program,
+                    args,
+                ),
             "rustc" => Ok(format!("fixture-rustc {}\n", args[0])),
             "cargo" if args.get(1) == Some(&"--version") => {
                 Ok(format!("fixture-cargo {}\n", args[0]))
             }
-            "cargo" if args.get(1) == Some(&"update") => {
-                let mut lock = fs::read_to_string(root.join("Cargo.lock"))?.replacen(
-                    "name = \"ic-memory\"\nversion = \"0.12.3\"",
-                    &format!("name = \"ic-memory\"\nversion = \"{}\"", version()?),
-                    1,
-                );
-                if state.fail.as_deref() == Some("dependency-update") {
-                    lock = lock.replace(
-                        "name = \"other\"\nversion = \"0.12.3\"",
-                        "name = \"other\"\nversion = \"0.12.4\"",
-                    );
-                }
-                fs::write(root.join("Cargo.lock"), lock)?;
-                Ok(String::new())
-            }
+            "cargo" if args.get(1) == Some(&"build") => State::probe_build(root, args),
+            "cargo" if args.get(1) == Some(&"update") => state.update(root),
             "cargo" if args.get(1) == Some(&"fetch") => Ok(String::new()),
             "cargo" | "bash"
                 if args.get(1) == Some(&"package")
                     || args.first() == Some(&"scripts/ci/package-workspace.sh") =>
             {
-                let directory = target.join("package");
-                fs::create_dir_all(&directory)?;
-                if state.fail.as_deref() == Some("package-head") {
-                    let mut descendant = state.release.clone().ok_or("missing release")?;
-                    descendant.insert(
-                        "source.rs".to_owned(),
-                        "// fix during packaging\n".to_owned(),
-                    );
-                    for (path, text) in &descendant {
-                        fs::write(root.join(path), text)?;
-                    }
-                    state.descendant = Some(descendant);
-                }
-                // Model Cargo's Git metadata changing after the release commit.
-                let bytes = if state.descendant.is_some() {
-                    "descendant-archive"
-                } else if state.release.is_some() {
-                    "release-archive"
-                } else {
-                    "prepared-archive"
-                };
-                fs::write(
-                    directory.join(format!("ic-memory-{}.crate", version()?)),
-                    bytes,
-                )?;
-                fs::write(
-                    directory.join(format!("ic-storage-{}.crate", version()?)),
-                    format!("storage-{bytes}"),
-                )?;
-                fs::write(
-                    directory.join(format!("ic-metrics-stable-{}.crate", version()?)),
-                    format!("metrics-{bytes}"),
-                )?;
-                if state.fail.as_deref() == Some("package") {
-                    return Err("fixture package failure".into());
-                }
-                Ok(String::new())
+                state.package(root)
             }
-            "curl" => {
-                if state.fail.as_deref() == Some("registry-forbidden") {
-                    return Ok("forbidden\n403".to_owned());
-                }
-                if state.fail.as_deref() == Some("registry-error") {
-                    return Ok("unavailable\n503".to_owned());
-                }
-                let url = args.last().unwrap();
-                let name = url.rsplit('/').nth(1).unwrap();
-                let Some(digest) = state.published.get(name) else {
-                    return Ok("missing\n404".to_owned());
-                };
-                Ok(format!(
-                    "{}\n200",
-                    serde_json::json!({"version": {
-                        "crate": name, "num": version()?, "checksum": digest,
-                        "yanked": state.fail.as_deref() == Some("registry-yanked")
-                    }})
-                ))
-            }
-            "cargo" if args.get(1) == Some(&"publish") => {
-                let name = args[args.iter().position(|arg| *arg == "--package").unwrap() + 1];
-                if !args.contains(&"--dry-run") {
-                    if name == "ic-storage" && state.fail.as_deref() == Some("storage-upload") {
-                        return Err("Storage upload refused".into());
-                    }
-                    let archive = target
-                        .join("package")
-                        .join(format!("{name}-{}.crate", version()?));
-                    let digest = Repository::<Self>::sha256(&archive)?;
-                    state.published.insert(name.to_owned(), digest);
-                    if state.fail.as_deref() == Some("upload-response-lost") {
-                        return Err("response lost after accepted upload".into());
-                    }
-                }
-                match state.fail.as_deref() {
-                    Some("publish-tag-missing") => state.tag = false,
-                    Some("publish-tag-commit") => state.fail = Some("tag-commit".to_owned()),
-                    Some("publish-tag-object") => state.fail = Some("tag-object".to_owned()),
-                    _ => {}
-                }
-                Ok(String::new())
-            }
+            "curl" => state.registry(root, args),
+            "cargo" if args.get(1) == Some(&"publish") => state.publish(root, args),
             "make" if args == ["--no-print-directory", "install-tools"] => {
-                if state.fail.as_deref() == Some("tool-setup") {
+                if state.fail.as_ref() == Some(&Fault::ToolSetup) {
                     return Err("fixture tool setup failure".into());
                 }
                 Ok(String::new())
             }
             "make" if args == ["--no-print-directory", "tools-check", "format-tools-check"] => {
-                if state.fail.as_deref() == Some("tool-check") {
+                if state.fail.as_ref() == Some(&Fault::ToolCheck) {
                     return Err("fixture offline tool admission failure".into());
                 }
                 Ok(String::new())
@@ -925,10 +800,10 @@ impl Execute for Substitute {
                         "VALIDATION_TOOLCHAIN=1.99.0",
                     ] =>
             {
-                if state.fail.as_deref() == Some("validate") {
+                if state.fail.as_ref() == Some(&Fault::Validate) {
                     return Err("fixture validation failure".into());
                 }
-                if state.fail.as_deref() == Some("validation-lock") {
+                if state.fail.as_ref() == Some(&Fault::ValidationLock) {
                     fs::write(root.join("Cargo.lock"), "unexpected dependency selection")?;
                 }
                 Ok(String::new())
@@ -941,176 +816,385 @@ impl Execute for Substitute {
                         "VALIDATION_TOOLCHAIN=1.99.0",
                     ] =>
             {
-                if state.fail.as_deref() == Some("formatting") {
+                if state.fail.as_ref() == Some(&Fault::Formatting) {
                     return Err("fixture formatting failure".into());
                 }
                 Ok(String::new())
             }
-            "git" => match args {
-                ["--no-optional-locks", "status", ..]
-                    if state.fail.as_deref() == Some("status") =>
+            "git" => state.git(root, args),
+            _ => Err(format!("unexpected fixture process: {program} {args:?}").into()),
+        }
+    }
+}
+
+impl Substitute {
+    fn publication(&self, root: &Path, args: &[&str]) -> Result<String> {
+        require(
+            args.len() == 10
+                && args[0] == "RUSTUP_TOOLCHAIN=1.99.0"
+                && args[1] == "bash"
+                && args[2] == "scripts/ci/run-cargo-publication.sh"
+                && matches!(args[3], "check" | "publish")
+                && args[5] == "release"
+                && args[6] == "crates-io"
+                && args[7] == "--package"
+                && args[9] == "--no-verify",
+            "unexpected coordinated publication attempt",
+        )?;
+        let (name, version) = args[8].split_once('@').ok_or("missing exact selector")?;
+        require(
+            version
+                == toml_string(
+                    &fs::read_to_string(root.join("Cargo.toml"))?,
+                    "workspace.package",
+                    "version",
+                )?,
+            "wrong publication version",
+        )?;
+        let mut forwarded = vec![
+            "+1.99.0",
+            "publish",
+            "--locked",
+            "--registry",
+            "crates-io",
+            "--package",
+            name,
+            "--no-verify",
+        ];
+        if args[3] == "check" {
+            forwarded.push("--dry-run");
+        }
+        self.capture(root, "cargo", &forwarded)
+    }
+}
+
+impl State {
+    fn probe_build(root: &Path, args: &[&str]) -> Result<String> {
+        require(
+            args[2..8]
+                == [
+                    "--locked",
+                    "--offline",
+                    "--profile",
+                    "wasm-size",
+                    "--target",
+                    "wasm32-unknown-unknown",
+                ],
+            "unexpected probe build options",
+        )?;
+        // Artifacts already supplied by the budget fixture. Only admit
+        // selectors with matching files, so omitting the build cannot pass.
+        for selector in args[8..].chunks(2) {
+            require(
+                selector.len() == 2 && selector[0] == "--example",
+                "unexpected probe selector",
+            )?;
+            require(
+                root.join("configured output/wasm32-unknown-unknown/wasm-size/examples")
+                    .join(format!("{}.wasm", selector[1].replace('-', "_")))
+                    .is_file(),
+                "probe selector has no matching artifact",
+            )?;
+        }
+        Ok(String::new())
+    }
+
+    fn head(&self) -> &str {
+        if self.descendant.is_some() {
+            "fix"
+        } else if self.release.is_some() {
+            "release"
+        } else {
+            "source"
+        }
+    }
+
+    fn revision_files(&self, revision: &str) -> Result<&BTreeMap<String, String>> {
+        match revision {
+            "source" => Ok(&self.source),
+            "release" => self
+                .release
+                .as_ref()
+                .ok_or_else(|| "missing fixture release".into()),
+            "fix" => self
+                .descendant
+                .as_ref()
+                .ok_or_else(|| "missing fixture descendant".into()),
+            _ => Err("unexpected fixture revision".into()),
+        }
+    }
+
+    fn check_tag(&mut self, args: &[&str]) -> Result<String> {
+        require(
+            args == [TAG_CHECKER, "release", "0.13.0"],
+            "unexpected fixture tag selection",
+        )?;
+        match self.fail.as_ref() {
+            Some(Fault::TagCommit | Fault::TagAdmissionRefused) => {
+                Err("fixture shared tag checker refused".into())
+            }
+            Some(Fault::TagAdmissionObject) => {
+                self.fail = Some(Fault::TagObject);
+                Ok(String::new())
+            }
+            Some(Fault::TagAdmissionMissing) => {
+                self.tag = false;
+                Ok(String::new())
+            }
+            _ => Ok(String::new()),
+        }
+    }
+
+    fn version(root: &Path) -> Result<String> {
+        toml_string(
+            &fs::read_to_string(root.join("Cargo.toml"))?,
+            "workspace.package",
+            "version",
+        )
+    }
+    fn update(&self, root: &Path) -> Result<String> {
+        let mut lock = fs::read_to_string(root.join("Cargo.lock"))?.replacen(
+            "name = \"ic-memory\"\nversion = \"0.12.3\"",
+            &format!(
+                "name = \"ic-memory\"\nversion = \"{}\"",
+                Self::version(root)?
+            ),
+            1,
+        );
+        if self.fail.as_ref() == Some(&Fault::DependencyUpdate) {
+            lock = lock.replace(
+                "name = \"other\"\nversion = \"0.12.3\"",
+                "name = \"other\"\nversion = \"0.12.4\"",
+            );
+        }
+        fs::write(root.join("Cargo.lock"), lock)?;
+        Ok(String::new())
+    }
+    fn package(&mut self, root: &Path) -> Result<String> {
+        let target = root.join("configured output");
+
+        let directory = target.join("package");
+        fs::create_dir_all(&directory)?;
+        if self.fail.as_ref() == Some(&Fault::PackageHead) {
+            let mut descendant = self.release.clone().ok_or("missing release")?;
+            descendant.insert(
+                "source.rs".to_owned(),
+                "// fix during packaging\n".to_owned(),
+            );
+            for (path, text) in &descendant {
+                fs::write(root.join(path), text)?;
+            }
+            self.descendant = Some(descendant);
+        }
+        // Model Cargo's Git metadata changing after the release commit.
+        let bytes = if self.descendant.is_some() {
+            "descendant-archive"
+        } else if self.release.is_some() {
+            "release-archive"
+        } else {
+            "prepared-archive"
+        };
+        fs::write(
+            directory.join(format!("ic-memory-{}.crate", Self::version(root)?)),
+            bytes,
+        )?;
+        fs::write(
+            directory.join(format!("ic-storage-{}.crate", Self::version(root)?)),
+            format!("storage-{bytes}"),
+        )?;
+        fs::write(
+            directory.join(format!("ic-metrics-stable-{}.crate", Self::version(root)?)),
+            format!("metrics-{bytes}"),
+        )?;
+        if self.fail.as_ref() == Some(&Fault::Package) {
+            return Err("fixture package failure".into());
+        }
+        Ok(String::new())
+    }
+    fn registry(&self, root: &Path, args: &[&str]) -> Result<String> {
+        if self.fail.as_ref() == Some(&Fault::RegistryForbidden) {
+            return Ok("forbidden\n403".to_owned());
+        }
+        if self.fail.as_ref() == Some(&Fault::RegistryError) {
+            return Ok("unavailable\n503".to_owned());
+        }
+        let url = args.last().unwrap();
+        let name = url.rsplit('/').nth(1).unwrap();
+        let Some(digest) = self.published.get(name) else {
+            return Ok("missing\n404".to_owned());
+        };
+        Ok(format!(
+            "{}\n200",
+            serde_json::json!({"version": {
+                "crate": name, "num": Self::version(root)?, "checksum": digest,
+                "yanked": self.fail.as_ref() == Some(&Fault::RegistryYanked)
+            }})
+        ))
+    }
+    fn publish(&mut self, root: &Path, args: &[&str]) -> Result<String> {
+        let target = root.join("configured output");
+
+        let name = args[args.iter().position(|arg| *arg == "--package").unwrap() + 1];
+        if !args.contains(&"--dry-run") {
+            if name == "ic-storage" && self.fail.as_ref() == Some(&Fault::StorageUpload) {
+                return Err("Storage upload refused".into());
+            }
+            let archive = target
+                .join("package")
+                .join(format!("{name}-{}.crate", Self::version(root)?));
+            let digest = Repository::<Substitute>::sha256(&archive)?;
+            self.published.insert(name.to_owned(), digest);
+            if self.fail.as_ref() == Some(&Fault::UploadResponseLost) {
+                return Err("response lost after accepted upload".into());
+            }
+        }
+        match self.fail.as_ref() {
+            Some(Fault::PublishTagMissing) => self.tag = false,
+            Some(Fault::PublishTagCommit) => self.fail = Some(Fault::TagCommit),
+            Some(Fault::PublishTagObject) => self.fail = Some(Fault::TagObject),
+            _ => {}
+        }
+        Ok(String::new())
+    }
+    #[expect(
+        clippy::too_many_lines,
+        reason = "one explicit Git observation protocol for release fixtures"
+    )]
+    fn git(&mut self, root: &Path, args: &[&str]) -> Result<String> {
+        let changed = |reference: &BTreeMap<String, String>| -> Result<String> {
+            Ok(reference
+                .iter()
+                .filter_map(|(path, text)| match fs::read_to_string(root.join(path)) {
+                    Ok(current) if current == *text => None,
+                    _ => Some(path.as_str()),
+                })
+                .collect::<Vec<_>>()
+                .join("\n"))
+        };
+        match args {
+            ["--no-optional-locks", "status", ..] if self.fail.as_ref() == Some(&Fault::Status) => {
+                Err("fixture Git status observation failure".into())
+            }
+            ["--no-optional-locks", "status", ..] => changed(self.revision_files(self.head())?),
+            ["rev-parse", "HEAD"] => {
+                if self.fail.as_ref() == Some(&Fault::PublishBeforeTag)
+                    && self
+                        .calls
+                        .iter()
+                        .any(|call| call.get(1).is_some_and(|arg| arg == TAG_CHECKER))
                 {
-                    Err("fixture Git status observation failure".into())
+                    self.tag = false;
                 }
-                ["--no-optional-locks", "status", ..] => changed(
-                    state
-                        .descendant
-                        .as_ref()
-                        .or(state.release.as_ref())
-                        .unwrap_or(&state.source),
-                ),
-                ["rev-parse", "HEAD"] => {
-                    if state.fail.as_deref() == Some("publish-before-tag")
-                        && state
-                            .calls
-                            .iter()
-                            .any(|call| call.get(1).is_some_and(|arg| arg == TAG_CHECKER))
-                    {
-                        state.tag = false;
-                    }
-                    Ok(if state.descendant.is_some() {
-                        "fix"
-                    } else if state.release.is_some() {
-                        "release"
-                    } else {
-                        "source"
-                    }
-                    .to_owned())
+                Ok(self.head().to_owned())
+            }
+            ["rev-parse", "HEAD^"] => Ok("source".to_owned()),
+            ["show", object] => {
+                let (revision, path) = object.split_once(':').ok_or("invalid fixture object")?;
+                match revision {
+                    "" if self.staged => Ok(fs::read_to_string(root.join(path))?),
+                    revision => self
+                        .revision_files(revision)?
+                        .get(path)
+                        .cloned()
+                        .ok_or_else(|| "missing fixture path".into()),
                 }
-                ["rev-parse", "HEAD^"] => Ok("source".to_owned()),
-                ["show", object] => {
-                    let (revision, path) =
-                        object.split_once(':').ok_or("invalid fixture object")?;
-                    match revision {
-                        "" if state.staged => Ok(fs::read_to_string(root.join(path))?),
-                        "source" => state
-                            .source
-                            .get(path)
-                            .cloned()
-                            .ok_or_else(|| "missing fixture source".into()),
-                        "release" => state
-                            .release
-                            .as_ref()
-                            .and_then(|files| files.get(path))
-                            .cloned()
-                            .ok_or_else(|| "missing fixture release".into()),
-                        "fix" => state
-                            .descendant
-                            .as_ref()
-                            .and_then(|files| files.get(path))
-                            .cloned()
-                            .ok_or_else(|| "missing fixture descendant".into()),
-                        _ => Err("unexpected fixture revision".into()),
-                    }
-                }
-                ["for-each-ref", ..] => Ok(if state.tag
-                    && state.fail.as_deref() == Some("tag-object")
-                {
+            }
+            ["for-each-ref", ..] => Ok(
+                if self.tag && self.fail.as_ref() == Some(&Fault::TagObject) {
                     "changed-tag-object refs/tags/v0.13.0"
-                } else if state.tag {
+                } else if self.tag {
                     "tag-object refs/tags/v0.13.0"
                 } else {
                     ""
                 }
-                .to_owned()),
-                ["symbolic-ref", ..] => Ok("main".to_owned()),
-                ["merge-base", ..] if state.fail.as_deref() == Some("remote-ahead") => {
-                    Err("fixture remote is ahead".into())
+                .to_owned(),
+            ),
+            ["symbolic-ref", ..] => Ok("main".to_owned()),
+            ["merge-base", ..] if self.fail.as_ref() == Some(&Fault::RemoteAhead) => {
+                Err("fixture remote is ahead".into())
+            }
+            ["fetch", ..] if self.fail.as_ref() == Some(&Fault::RemoteLock) => {
+                if self
+                    .calls
+                    .iter()
+                    .filter(|call| call.get(1).is_some_and(|arg| arg == "fetch"))
+                    .count()
+                    == 2
+                {
+                    fs::write(
+                        root.join("Cargo.lock"),
+                        LOCK.replace(
+                            "name = \"other\"\nversion = \"0.12.3\"",
+                            "name = \"other\"\nversion = \"0.12.4\"",
+                        ),
+                    )?;
                 }
-                ["fetch", ..] if state.fail.as_deref() == Some("remote-lock") => {
-                    if state
-                        .calls
-                        .iter()
-                        .filter(|call| call.get(1).is_some_and(|arg| arg == "fetch"))
-                        .count()
-                        == 2
-                    {
-                        fs::write(
-                            root.join("Cargo.lock"),
-                            LOCK.replace(
-                                "name = \"other\"\nversion = \"0.12.3\"",
-                                "name = \"other\"\nversion = \"0.12.4\"",
-                            ),
-                        )?;
-                    }
+                Ok(String::new())
+            }
+            ["merge-base", "--is-ancestor", _, _]
+                if self.fail.as_ref() == Some(&Fault::History) =>
+            {
+                Err("fixture unrelated history".into())
+            }
+            ["fetch" | "merge-base" | "ls-files", ..]
+            | ["diff", "--cached", "--summary", "source", "--", _] => Ok(String::new()),
+            ["diff", "--cached", "--name-only", "source", "--"] => {
+                if self.staged && self.release.is_none() {
+                    changed(&self.source)
+                } else {
                     Ok(String::new())
                 }
-                ["merge-base", "--is-ancestor", _, _]
-                    if state.fail.as_deref() == Some("history") =>
-                {
-                    Err("fixture unrelated history".into())
-                }
-                ["fetch" | "merge-base" | "ls-files", ..]
-                | ["diff", "--cached", "--summary", "source", "--", _] => Ok(String::new()),
-                ["diff", "--cached", "--name-only", "source", "--"] => {
-                    if state.staged && state.release.is_none() {
-                        changed(&state.source)
-                    } else {
-                        Ok(String::new())
-                    }
-                }
-                ["diff", "--name-only", "source", "release", "--"] => {
-                    let release = state.release.as_ref().ok_or("missing release")?;
-                    Ok(state
-                        .source
-                        .iter()
-                        .filter_map(|(path, original)| {
-                            (release.get(path) != Some(original)).then_some(path.as_str())
-                        })
-                        .collect::<Vec<_>>()
-                        .join("\n"))
-                }
-                ["diff", "--name-only", "source", ..] => changed(&state.source),
-                ["diff", "--name-only", "fix", ..] => changed(
-                    state
-                        .descendant
-                        .as_ref()
-                        .ok_or("missing fixture descendant")?,
-                ),
-                ["diff", "--cached", "--name-only" | "--summary", "fix", ..] => {
-                    if state.staged {
-                        changed(
-                            state
-                                .descendant
-                                .as_ref()
-                                .ok_or("missing fixture descendant")?,
-                        )
-                    } else {
-                        Ok(String::new())
-                    }
-                }
-                ["diff", "--name-only"] => {
-                    if state.staged {
-                        Ok(String::new())
-                    } else {
-                        changed(&state.source)
-                    }
-                }
-                ["diff", "--cached", "--name-only"] => {
-                    if state.staged {
-                        changed(&state.source)
-                    } else {
-                        Ok(String::new())
-                    }
-                }
-                ["log", "-1", "--format=%P", "release"] => {
-                    Ok(if state.fail.as_deref() == Some("parent") {
-                        "wrong-source"
-                    } else {
-                        "source"
-                    }
-                    .to_owned())
-                }
-                ["log", "-1", "--format=%s", "fix"] => Ok("Fix callback".to_owned()),
-                ["log", "-1", "--format=%s", "release"] => Ok(if state.release.is_some() {
-                    "Release 0.13.0"
+            }
+            ["diff", "--name-only", "source", "release", "--"] => {
+                let release = self.revision_files("release")?;
+                Ok(self
+                    .source
+                    .iter()
+                    .filter_map(|(path, original)| {
+                        (release.get(path) != Some(original)).then_some(path.as_str())
+                    })
+                    .collect::<Vec<_>>()
+                    .join("\n"))
+            }
+            ["diff", "--name-only", "source", ..] => changed(&self.source),
+            ["diff", "--name-only", "fix", ..] => changed(self.revision_files("fix")?),
+            ["diff", "--cached", "--name-only" | "--summary", "fix", ..] => {
+                if self.staged {
+                    changed(self.revision_files("fix")?)
                 } else {
-                    "Fixture source"
+                    Ok(String::new())
                 }
-                .to_owned()),
-                _ => Err(format!("unexpected fixture git command: {args:?}").into()),
-            },
-            _ => Err(format!("unexpected fixture process: {program} {args:?}").into()),
+            }
+            ["diff", "--name-only"] => {
+                if self.staged {
+                    Ok(String::new())
+                } else {
+                    changed(&self.source)
+                }
+            }
+            ["diff", "--cached", "--name-only"] => {
+                if self.staged {
+                    changed(&self.source)
+                } else {
+                    Ok(String::new())
+                }
+            }
+            ["log", "-1", "--format=%P", "release"] => {
+                Ok(if self.fail.as_ref() == Some(&Fault::Parent) {
+                    "wrong-source"
+                } else {
+                    "source"
+                }
+                .to_owned())
+            }
+            ["log", "-1", "--format=%s", "fix"] => Ok("Fix callback".to_owned()),
+            ["log", "-1", "--format=%s", "release"] => Ok(if self.release.is_some() {
+                "Release 0.13.0"
+            } else {
+                "Fixture source"
+            }
+            .to_owned()),
+            _ => Err(format!("unexpected fixture git command: {args:?}").into()),
         }
     }
 }
@@ -1151,7 +1235,7 @@ fn compiler_environment_overrides_refuse_preparation_and_release_effects() {
         // Separate processes exercise real inherited environment without
         // unsafe mutation of the concurrent Rust test harness environment.
         let fixture = Fixture::new();
-        let receipt = fixture.repo.receipt_path("0.13.0", true).unwrap();
+        let receipt = fixture.repo.receipt_path("0.13.0", Prepared).unwrap();
         fs::create_dir_all(receipt.parent().unwrap()).unwrap();
         fs::write(&receipt, "previous evidence").unwrap();
         assert!(fixture.prepare().is_err());
@@ -1194,11 +1278,11 @@ fn compiler_environment_overrides_refuse_preparation_and_release_effects() {
     let state = serde_json::to_string(&*fixture.repo.exec.state.borrow()).unwrap();
     let evidence = fixture
         .repo
-        .verify_evidence(&fixture.selection, "release", false, true)
+        .verify_evidence(&fixture.selection, "release", Final, Working)
         .unwrap();
     let paths = [
-        fixture.repo.receipt_path("0.13.0", true).unwrap(),
-        fixture.repo.receipt_path("0.13.0", false).unwrap(),
+        fixture.repo.receipt_path("0.13.0", Prepared).unwrap(),
+        fixture.repo.receipt_path("0.13.0", Final).unwrap(),
         fixture.repo.package_path("ic-memory", "0.13.0").unwrap(),
         fixture
             .repo
@@ -1427,7 +1511,7 @@ fn included_and_shadowed_configuration_changes_invalidate_release_evidence() {
         fs::write(path, bytes).unwrap();
         fixture
             .repo
-            .verify_evidence(&fixture.selection, "release", false, true)
+            .verify_evidence(&fixture.selection, "release", Final, Working)
             .unwrap();
     }
 }
@@ -1484,9 +1568,9 @@ fn inherited_compiler_configuration_refuses_preparation() {
 
 #[test]
 fn release_tool_setup_and_offline_admission_precede_gates_and_version_mutation() {
-    for phase in ["tool-setup", "tool-check"] {
+    for phase in [Fault::ToolSetup, Fault::ToolCheck] {
         let fixture = Fixture::new();
-        fixture.fail(phase);
+        fixture.fail(phase.clone());
         assert!(fixture.prepare().is_err());
         fixture.assert_original();
         assert!(!fixture.repo.exec.state.borrow().calls.iter().any(|call| {
@@ -1532,7 +1616,7 @@ fn release_preserves_saved_readme_bytes_without_interpreting_examples() {
             .insert(PACKAGE_README.to_owned(), readme.to_owned());
         fs::write(fixture.repo.root.join(PACKAGE_README), readme).unwrap();
         // Preserving source bytes must not depend on replacing the same file.
-        fixture.fail(&format!("write-before:{PACKAGE_README}"));
+        fixture.fail(Fault::WriteBefore(PACKAGE_README.into()));
         fixture.release();
         fixture.repo.publish(true).unwrap();
         assert_eq!(
@@ -1782,12 +1866,12 @@ fn preparation_stage_commit_qualification_and_publish_preserve_exact_evidence() 
     let fixture = Fixture::new();
     fixture.release();
     let prepared: PackageEvidence = serde_json::from_slice(
-        &fs::read(fixture.repo.receipt_path("0.13.0", true).unwrap()).unwrap(),
+        &fs::read(fixture.repo.receipt_path("0.13.0", Prepared).unwrap()).unwrap(),
     )
     .unwrap();
     let final_evidence = fixture
         .repo
-        .verify_evidence(&fixture.selection, "release", false, true)
+        .verify_evidence(&fixture.selection, "release", Final, Working)
         .unwrap();
     assert_ne!(prepared.package_sha256, final_evidence.package_sha256);
     assert!(
@@ -1847,17 +1931,22 @@ fn preparation_stage_commit_qualification_and_publish_preserve_exact_evidence() 
 
 #[test]
 fn version_preparation_failures_restore_files_and_preserve_evidence_and_artifacts() {
-    for failure in ["validate", "formatting", "package", "dependency-update"] {
+    for failure in [
+        Fault::Validate,
+        Fault::Formatting,
+        Fault::Package,
+        Fault::DependencyUpdate,
+    ] {
         let fixture = Fixture::new();
-        let receipt = fixture.repo.receipt_path("0.13.0", false).unwrap();
+        let receipt = fixture.repo.receipt_path("0.13.0", Final).unwrap();
         fs::create_dir_all(receipt.parent().unwrap()).unwrap();
         fs::write(&receipt, "previous evidence").unwrap();
         let sentinel = fixture.repo.target().unwrap().join("consumer-evidence");
         fs::write(&sentinel, "keep").unwrap();
-        fixture.fail(failure);
+        fixture.fail(failure.clone());
         assert!(fixture.prepare().is_err());
         assert_eq!(fixture.repo.version(None).unwrap(), "0.12.3");
-        if failure == "dependency-update" {
+        if failure == Fault::DependencyUpdate {
             assert!(
                 fs::read_to_string(fixture.repo.root.join("Cargo.lock"))
                     .unwrap()
@@ -1867,7 +1956,7 @@ fn version_preparation_failures_restore_files_and_preserve_evidence_and_artifact
             fixture.assert_original();
         }
         for (path, text) in &fixture.repo.exec.state.borrow().source {
-            if failure == "dependency-update" && path == "Cargo.lock" {
+            if failure == Fault::DependencyUpdate && path == "Cargo.lock" {
                 continue;
             }
             assert_eq!(
@@ -1877,7 +1966,7 @@ fn version_preparation_failures_restore_files_and_preserve_evidence_and_artifact
         }
         assert_eq!(fs::read_to_string(receipt).unwrap(), "previous evidence");
         assert_eq!(fs::read_to_string(sentinel).unwrap(), "keep");
-        if failure == "formatting" {
+        if failure == Fault::Formatting {
             assert!(
                 !fixture
                     .repo
@@ -1901,8 +1990,12 @@ fn preparation_retains_primary_and_rollback_errors_and_restores_other_owned_file
             self.0.cargo_target(root)
         }
 
-        fn run(&self, root: &Path, program: &str, args: &[&str], capture: bool) -> Result<String> {
-            let result = self.0.run(root, program, args, capture)?;
+        fn capture(&self, root: &Path, program: &str, args: &[&str]) -> Result<String> {
+            self.0.capture(root, program, args)
+        }
+
+        fn execute(&self, root: &Path, program: &str, args: &[&str]) -> Result<()> {
+            self.0.execute(root, program, args)?;
             if program == "bash" && args.first() == Some(&"scripts/ci/package-workspace.sh") {
                 // A missing surface models failed inspection during restoration.
                 fs::rename(root.join("CHANGELOG.md"), root.join("retained-changelog"))?;
@@ -1910,7 +2003,7 @@ fn preparation_retains_primary_and_rollback_errors_and_restores_other_owned_file
                 fs::write(root.join(PACKAGE_README), b"concurrent edit")?;
                 return Err(std::io::Error::from(std::io::ErrorKind::UnexpectedEof).into());
             }
-            Ok(result)
+            Ok(())
         }
 
         fn write_bytes(&self, path: &Path, bytes: &[u8]) -> Result<()> {
@@ -1967,7 +2060,7 @@ fn preparation_retains_primary_and_rollback_errors_and_restores_other_owned_file
     );
     assert_eq!(fs::read(validation).unwrap(), saved);
     assert!(repo.package_path("ic-memory", "0.13.0").unwrap().exists());
-    assert!(!repo.receipt_path("0.13.0", true).unwrap().exists());
+    assert!(!repo.receipt_path("0.13.0", Prepared).unwrap().exists());
     assert!(failure.source().unwrap().is::<std::io::Error>());
     let diagnostic = failure.to_string();
     for path in failures.keys() {
@@ -1995,7 +2088,7 @@ fn failed_first_publication_preserves_untouched_metadata_identity_and_permission
             (path, (metadata.ino(), metadata.mode()))
         })
         .collect();
-    fixture.fail("write-before:CHANGELOG.md");
+    fixture.fail(Fault::WriteBefore("CHANGELOG.md".into()));
     let error = fixture
         .repo
         .prepare_selected(&fixture.selection)
@@ -2007,12 +2100,18 @@ fn failed_first_publication_preserves_untouched_metadata_identity_and_permission
         assert_eq!((actual.ino(), actual.mode()), identity);
     }
     assert_eq!(fs::read(validation).unwrap(), saved);
-    assert!(!fixture.repo.receipt_path("0.13.0", true).unwrap().exists());
+    assert!(
+        !fixture
+            .repo
+            .receipt_path("0.13.0", Prepared)
+            .unwrap()
+            .exists()
+    );
 }
 
 #[test]
 fn metadata_publication_failures_reconcile_visible_bytes_and_retry_saved_intent() {
-    for phase in ["write-before", "write-after"] {
+    for after_publication in [false, true] {
         for path in [
             "Cargo.lock",
             "CHANGELOG.md",
@@ -2025,7 +2124,11 @@ fn metadata_publication_failures_reconcile_visible_bytes_and_retry_saved_intent(
             let saved = fs::read(&receipt).unwrap();
             let sentinel = fixture.repo.target().unwrap().join("consumer-evidence");
             fs::write(&sentinel, "keep").unwrap();
-            fixture.fail(&format!("{phase}:{path}"));
+            fixture.fail(if after_publication {
+                Fault::WriteAfter(path.into())
+            } else {
+                Fault::WriteBefore(path.into())
+            });
             assert!(fixture.repo.prepare_selected(&fixture.selection).is_err());
             for (path, text) in &fixture.repo.exec.state.borrow().source {
                 assert_eq!(
@@ -2044,7 +2147,7 @@ fn metadata_publication_failures_reconcile_visible_bytes_and_retry_saved_intent(
                 .iter()
                 .filter(|call| call[0] == "published-write-error")
                 .count();
-            assert_eq!(published_errors, usize::from(phase == "write-after"));
+            assert_eq!(published_errors, usize::from(after_publication));
             fixture.repo.prepare_selected(&fixture.selection).unwrap();
             fixture.repo.prepared(&fixture.selection).unwrap();
             assert_eq!(fixture.repo.version(None).unwrap(), "0.13.0");
@@ -2072,7 +2175,7 @@ fn validation_refuses_make_modes_before_gates_and_preserves_evidence() {
     fixture.repo.verify(&fixture.selection).unwrap();
     let receipt = fixture.repo.validation_path("0.13.0").unwrap();
     let previous = fs::read(&receipt).unwrap();
-    fixture.fail("make-execution");
+    fixture.fail(Fault::MakeExecution);
     fixture.repo.exec.state.borrow_mut().calls.clear();
     assert!(fixture.repo.verify(&fixture.selection).is_err());
     assert_eq!(fs::read(&receipt).unwrap(), previous);
@@ -2105,7 +2208,7 @@ fn validation_binds_saved_intent_and_retains_previous_attempts() {
         fixture.assert_original();
         assert_eq!(fs::read(&receipt).unwrap(), first);
     }
-    fixture.fail("validate");
+    fixture.fail(Fault::Validate);
     assert!(fixture.repo.verify(&fixture.selection).is_err());
     assert_eq!(fs::read(&receipt).unwrap(), first);
     fixture.repo.exec.state.borrow_mut().fail = None;
@@ -2151,7 +2254,7 @@ fn committed_preparation_restart_retains_receipts_before_fresh_preparation() {
     let mut fixture = Fixture::new();
     fixture.prepare().unwrap();
     let validation = fixture.repo.validation_path("0.13.0").unwrap();
-    let prepared = fixture.repo.receipt_path("0.13.0", true).unwrap();
+    let prepared = fixture.repo.receipt_path("0.13.0", Prepared).unwrap();
     let old_validation = fs::read(&validation).unwrap();
     let old_prepared = fs::read(&prepared).unwrap();
     let old_evidence: PackageEvidence = serde_json::from_slice(&old_prepared).unwrap();
@@ -2170,7 +2273,7 @@ fn committed_preparation_restart_retains_receipts_before_fresh_preparation() {
     fixture.repo.exec.state.borrow_mut().descendant = Some(descendant);
     fixture.selection.source = "fix".to_owned();
     fixture.repo.preflight(&fixture.selection).unwrap();
-    fixture.fail("validate");
+    fixture.fail(Fault::Validate);
     assert!(fixture.repo.verify(&fixture.selection).is_err());
     assert_eq!(fs::read(&validation).unwrap(), old_validation);
     assert_eq!(fs::read(&prepared).unwrap(), old_prepared);
@@ -2192,7 +2295,7 @@ fn committed_preparation_restart_retains_receipts_before_fresh_preparation() {
         assert_eq!(fs::read(&validation).unwrap(), old_validation);
         fs::write(&prepared, &old_prepared).unwrap();
     }
-    fixture.fail("history");
+    fixture.fail(Fault::History);
     assert!(fixture.repo.verify(&fixture.selection).is_err());
     assert_eq!(fs::read(&prepared).unwrap(), old_prepared);
     assert_eq!(fs::read(&validation).unwrap(), old_validation);
@@ -2218,11 +2321,11 @@ fn committed_preparation_restart_retains_receipts_before_fresh_preparation() {
 
 #[test]
 fn preparation_restart_recovers_from_validation_receipt_publication_errors() {
-    for phase in ["write-before", "write-after"] {
+    for after_publication in [false, true] {
         let mut fixture = Fixture::new();
         fixture.prepare().unwrap();
         let validation = fixture.repo.validation_path("0.13.0").unwrap();
-        let prepared = fixture.repo.receipt_path("0.13.0", true).unwrap();
+        let prepared = fixture.repo.receipt_path("0.13.0", Prepared).unwrap();
         let old_validation = fs::read(&validation).unwrap();
         let old_prepared = fs::read(&prepared).unwrap();
         let evidence: PackageEvidence = serde_json::from_slice(&old_prepared).unwrap();
@@ -2239,17 +2342,20 @@ fn preparation_restart_recovers_from_validation_receipt_publication_errors() {
         fixture.repo.exec.state.borrow_mut().descendant = Some(descendant);
         fixture.selection.source = "fix".to_owned();
         fixture.repo.exec.state.borrow_mut().calls.clear();
-        fixture.fail(&format!("{phase}:0.13.0-validated.json"));
-        assert!(fixture.repo.verify(&fixture.selection).is_err(), "{phase}");
+        fixture.fail(if after_publication {
+            Fault::WriteAfter("0.13.0-validated.json".into())
+        } else {
+            Fault::WriteBefore("0.13.0-validated.json".into())
+        });
+        assert!(
+            fixture.repo.verify(&fixture.selection).is_err(),
+            "after_publication={after_publication}"
+        );
         let visible: ValidationEvidence =
             serde_json::from_slice(&fs::read(&validation).unwrap()).unwrap();
         assert_eq!(
             visible.selection.source,
-            if phase == "write-before" {
-                "source"
-            } else {
-                "fix"
-            }
+            if after_publication { "fix" } else { "source" }
         );
         assert!(!fixture.repo.exec.state.borrow().calls.iter().any(|call| {
             call.get(2)
@@ -2286,7 +2392,7 @@ fn interrupted_preparation_finishes_saved_candidate_without_revalidating() {
                 "partial-lock" => path.as_str() <= "Cargo.lock",
                 _ => true,
             } {
-                fs::write(fixture.repo.root.join(path), text).unwrap();
+                fs::write(fixture.repo.root.join(path), &text.expected).unwrap();
             }
         }
         if matches!(interruption, "lock" | "package") {
@@ -2296,7 +2402,7 @@ fn interrupted_preparation_finishes_saved_candidate_without_revalidating() {
                 .unwrap();
         }
         if interruption == "package" {
-            fixture.fail("package");
+            fixture.fail(Fault::Package);
             assert!(fixture.repo.prepared(&fixture.selection).is_err());
             assert!(
                 fixture
@@ -2320,7 +2426,7 @@ fn interrupted_preparation_finishes_saved_candidate_without_revalidating() {
             } else {
                 "Cargo.lock"
             };
-            fixture.fail(&format!("write-before:{unchanged}"));
+            fixture.fail(Fault::WriteBefore(unchanged.into()));
             fixture.repo.prepare_selected(&fixture.selection).unwrap();
         } else {
             fixture.repo.prepared(&fixture.selection).unwrap();
@@ -2328,7 +2434,7 @@ fn interrupted_preparation_finishes_saved_candidate_without_revalidating() {
         for (path, text) in expected {
             assert_eq!(
                 fs::read_to_string(fixture.repo.root.join(path)).unwrap(),
-                text
+                text.expected
             );
         }
         assert_eq!(
@@ -2380,14 +2486,14 @@ fn partial_lock_preflight_requires_saved_validation() {
         let expected = fixture.repo.surfaces(&fixture.selection).unwrap();
         fs::write(
             fixture.repo.root.join("Cargo.lock"),
-            &expected["Cargo.lock"],
+            &expected["Cargo.lock"].expected,
         )
         .unwrap();
         assert!(fixture.repo.preflight(&fixture.selection).is_err());
         assert_eq!(fixture.repo.version(None).unwrap(), "0.12.3");
         assert_eq!(
             fs::read_to_string(fixture.repo.root.join("Cargo.lock")).unwrap(),
-            expected["Cargo.lock"]
+            expected["Cargo.lock"].expected
         );
         assert!(
             !fixture.repo.exec.state.borrow().calls.iter().any(|call| {
@@ -2402,7 +2508,7 @@ fn preparation_recovery_preserves_conflicting_inputs_and_corrupted_evidence() {
     for conflict in ["metadata", "lock", "receipt", "archive"] {
         let fixture = Fixture::new();
         fixture.prepare().unwrap();
-        let receipt = fixture.repo.receipt_path("0.13.0", true).unwrap();
+        let receipt = fixture.repo.receipt_path("0.13.0", Prepared).unwrap();
         let evidence: PackageEvidence =
             serde_json::from_slice(&fs::read(&receipt).unwrap()).unwrap();
         let path = match conflict {
@@ -2463,8 +2569,8 @@ fn all_release_kinds_finalize_root_and_detail_notes_at_saved_date() {
                 "Cargo.lock",
                 "Cargo.toml",
                 PACKAGE_README,
-                METRICS_MANIFEST,
-                STORAGE_MANIFEST,
+                &package_manifest("ic-metrics-stable"),
+                &package_manifest("ic-storage"),
                 detail
             ],
         );
@@ -2483,7 +2589,7 @@ fn all_release_kinds_finalize_root_and_detail_notes_at_saved_date() {
 
 #[test]
 fn archive_publication_errors_preserve_validation_and_reconcile_visible_bytes() {
-    for phase in ["archive-before", "archive-after"] {
+    for phase in [Fault::ArchiveBefore, Fault::ArchiveAfter] {
         let fixture = Fixture::new();
         fixture.repo.verify(&fixture.selection).unwrap();
         let validation = fixture.repo.validation_path("0.13.0").unwrap();
@@ -2493,13 +2599,19 @@ fn archive_publication_errors_preserve_validation_and_reconcile_visible_bytes() 
         fs::create_dir_all(retained.parent().unwrap()).unwrap();
         let foreign = retained.with_extension("crate.tmp");
         fs::write(&foreign, b"unrelated evidence").unwrap();
-        fixture.fail(phase);
+        fixture.fail(phase.clone());
         assert!(fixture.repo.prepare_selected(&fixture.selection).is_err());
         fixture.assert_original();
         assert_eq!(fs::read(&validation).unwrap(), validation_bytes);
-        assert!(!fixture.repo.receipt_path("0.13.0", true).unwrap().exists());
+        assert!(
+            !fixture
+                .repo
+                .receipt_path("0.13.0", Prepared)
+                .unwrap()
+                .exists()
+        );
         assert_eq!(fs::read(&foreign).unwrap(), b"unrelated evidence");
-        if phase == "archive-after" {
+        if phase == Fault::ArchiveAfter {
             assert_eq!(fs::read(&retained).unwrap(), b"prepared-archive");
         } else {
             assert!(!retained.exists());
@@ -2528,7 +2640,7 @@ fn archive_publication_errors_preserve_validation_and_reconcile_visible_bytes() 
         assert_eq!(fs::read(&foreign).unwrap(), b"unrelated evidence");
         assert_eq!(
             transfers() - before_retry,
-            usize::from(phase == "archive-before") + 2
+            usize::from(phase == Fault::ArchiveBefore) + 2
         );
         fs::write(&retained, b"corrupted retained archive").unwrap();
         assert!(fixture.repo.record_package("ic-memory", "0.13.0").is_err());
@@ -2548,7 +2660,7 @@ fn archive_copy_refuses_a_directory_and_preserves_unpublished_state() {
     let foreign = retained.with_extension("crate.tmp");
     fs::write(&foreign, b"unrelated evidence").unwrap();
     fixture.repo.exec.state.borrow_mut().archive_change = Some(package);
-    fixture.fail("archive-read");
+    fixture.fail(Fault::ArchiveRead);
 
     let error = fixture
         .repo
@@ -2572,7 +2684,13 @@ fn archive_copy_refuses_a_directory_and_preserves_unpublished_state() {
     assert!(!retained.exists());
     assert_eq!(fs::read(&foreign).unwrap(), b"unrelated evidence");
     assert_eq!(fs::read_dir(retained.parent().unwrap()).unwrap().count(), 1);
-    assert!(!fixture.repo.receipt_path("0.13.0", true).unwrap().exists());
+    assert!(
+        !fixture
+            .repo
+            .receipt_path("0.13.0", Prepared)
+            .unwrap()
+            .exists()
+    );
 }
 
 #[test]
@@ -2587,7 +2705,13 @@ fn changed_archive_source_stops_before_publication_or_receipt() {
     fixture.assert_original();
     let digest = Sha256Digest::compute(b"prepared-archive").to_string();
     assert!(!fixture.repo.retained_package(&digest).unwrap().exists());
-    assert!(!fixture.repo.receipt_path("0.13.0", true).unwrap().exists());
+    assert!(
+        !fixture
+            .repo
+            .receipt_path("0.13.0", Prepared)
+            .unwrap()
+            .exists()
+    );
     assert_eq!(fs::read(&validation).unwrap(), validation_bytes);
     assert_eq!(
         fs::read(&package).unwrap(),
@@ -2609,7 +2733,7 @@ fn source_admission_reports_actual_status_and_preserves_git_failures() {
     let fixture = Fixture::new();
     let checkout = fixture.repo.root.join("status-checkout");
     Processes
-        .run(
+        .capture(
             &fixture.repo.root,
             "git",
             &[
@@ -2622,7 +2746,6 @@ fn source_admission_reports_actual_status_and_preserves_git_failures() {
                     .unwrap(),
                 checkout.to_str().unwrap(),
             ],
-            true,
         )
         .unwrap();
     let repo = Repository {
@@ -2676,7 +2799,7 @@ fn source_admission_reports_actual_status_and_preserves_git_failures() {
         b"untracked fixture"
     );
 
-    fixture.fail("status");
+    fixture.fail(Fault::Status);
     assert_eq!(
         fixture.repo.clean().unwrap_err().to_string(),
         "fixture Git status observation failure"
@@ -2723,12 +2846,13 @@ fn release_admission_rejects_whitespace_only_paths() {
         ..fixture.selection.clone()
     };
     let surfaces = repo.surfaces(&selection).unwrap();
-    repo.check_surfaces(&selection, None, true).unwrap();
+    repo.check_surfaces(&selection, &repo.surfaces(&selection).unwrap(), None, true)
+        .unwrap();
     repo.check_index(&selection, &surfaces).unwrap();
 
     fs::write(repo.root.join("  "), b"retained untracked bytes\n").unwrap();
     assert_eq!(
-        repo.check_surfaces(&selection, None, true)
+        repo.check_surfaces(&selection, &repo.surfaces(&selection).unwrap(), None, true)
             .unwrap_err()
             .to_string(),
         "release candidate has untracked files"
@@ -2742,7 +2866,7 @@ fn release_admission_rejects_whitespace_only_paths() {
 
     fs::write(repo.root.join(" "), b"changed tracked bytes\n").unwrap();
     assert_eq!(
-        repo.check_surfaces(&selection, None, true)
+        repo.check_surfaces(&selection, &repo.surfaces(&selection).unwrap(), None, true)
             .unwrap_err()
             .to_string(),
         "release candidate contains changes outside its version surfaces"
@@ -2756,7 +2880,8 @@ fn release_admission_rejects_whitespace_only_paths() {
     repo.git(&["add", "--", " "]).unwrap();
     let staged = repo.git(&["write-tree"]).unwrap();
     fs::write(repo.root.join(" "), b"original tracked bytes\n").unwrap();
-    repo.check_surfaces(&selection, None, true).unwrap();
+    repo.check_surfaces(&selection, &repo.surfaces(&selection).unwrap(), None, true)
+        .unwrap();
     assert_eq!(
         repo.check_index(&selection, &surfaces)
             .unwrap_err()
@@ -2780,7 +2905,7 @@ fn dirty_sources_and_changed_validation_inputs_prevent_version_edits() {
         MANIFEST
     );
     let fixture = Fixture::new();
-    fixture.fail("validation-lock");
+    fixture.fail(Fault::ValidationLock);
     assert!(fixture.prepare().is_err());
     assert_eq!(
         fs::read_to_string(fixture.repo.root.join("Cargo.toml")).unwrap(),
@@ -2791,7 +2916,7 @@ fn dirty_sources_and_changed_validation_inputs_prevent_version_edits() {
 #[test]
 fn lockfile_changes_during_post_validation_remote_inspection_stop_before_mutation() {
     let fixture = Fixture::new();
-    fixture.fail("remote-lock");
+    fixture.fail(Fault::RemoteLock);
     assert!(fixture.prepare().is_err());
     assert_eq!(fixture.repo.version(None).unwrap(), "0.12.3");
     for (path, text) in &fixture.repo.exec.state.borrow().source {
@@ -2811,7 +2936,13 @@ fn lockfile_changes_during_post_validation_remote_inspection_stop_before_mutatio
             "name = \"other\"\nversion = \"0.12.4\""
         )
     );
-    assert!(!fixture.repo.receipt_path("0.13.0", true).unwrap().exists());
+    assert!(
+        !fixture
+            .repo
+            .receipt_path("0.13.0", Prepared)
+            .unwrap()
+            .exists()
+    );
     assert!(!fixture.repo.exec.state.borrow().calls.iter().any(|call| {
         call.get(2)
             .is_some_and(|arg| matches!(arg.as_str(), "update" | "package"))
@@ -2833,7 +2964,7 @@ fn changed_missing_and_wrong_source_receipts_never_dispatch_publication() {
     ] {
         let fixture = Fixture::new();
         fixture.release();
-        let receipt = fixture.repo.receipt_path("0.13.0", false).unwrap();
+        let receipt = fixture.repo.receipt_path("0.13.0", Final).unwrap();
         match changed {
             "lock" => {
                 fs::remove_file(fixture.repo.root.join("Cargo.lock")).unwrap();
@@ -2903,17 +3034,17 @@ fn changed_missing_and_wrong_source_receipts_never_dispatch_publication() {
 #[test]
 fn publication_rechecks_tag_identity_without_replaying_effects_or_replacing_evidence() {
     for change in [
-        "publish-before-tag",
-        "publish-tag-missing",
-        "publish-tag-commit",
-        "publish-tag-object",
+        Fault::PublishBeforeTag,
+        Fault::PublishTagMissing,
+        Fault::PublishTagCommit,
+        Fault::PublishTagObject,
     ] {
         let fixture = Fixture::new();
         fixture.release();
-        let receipt = fixture.repo.receipt_path("0.13.0", false).unwrap();
+        let receipt = fixture.repo.receipt_path("0.13.0", Final).unwrap();
         let before = fs::read(&receipt).unwrap();
-        fixture.fail(change);
-        assert!(fixture.repo.publish(true).is_err(), "accepted {change}");
+        fixture.fail(change.clone());
+        assert!(fixture.repo.publish(true).is_err(), "accepted {change:?}");
         assert_eq!(fs::read(&receipt).unwrap(), before);
         assert_eq!(
             fixture
@@ -2925,7 +3056,7 @@ fn publication_rechecks_tag_identity_without_replaying_effects_or_replacing_evid
                 .iter()
                 .filter(|call| { call.get(2).is_some_and(|arg| arg == "publish") })
                 .count(),
-            usize::from(change != "publish-before-tag")
+            usize::from(change != Fault::PublishBeforeTag)
         );
     }
 }
@@ -2935,7 +3066,7 @@ fn invalid_prepared_artifacts_stop_final_qualification_without_replacing_evidenc
     for changed in ["head", "missing", "corrupted"] {
         let fixture = Fixture::new();
         fixture.release();
-        let prepared_path = fixture.repo.receipt_path("0.13.0", true).unwrap();
+        let prepared_path = fixture.repo.receipt_path("0.13.0", Prepared).unwrap();
         let mut prepared: PackageEvidence =
             serde_json::from_slice(&fs::read(&prepared_path).unwrap()).unwrap();
         let retained = fixture
@@ -2951,7 +3082,7 @@ fn invalid_prepared_artifacts_stop_final_qualification_without_replacing_evidenc
             "corrupted" => fs::write(&retained, "corrupted prepared archive").unwrap(),
             _ => unreachable!(),
         }
-        let final_path = fixture.repo.receipt_path("0.13.0", false).unwrap();
+        let final_path = fixture.repo.receipt_path("0.13.0", Final).unwrap();
         let final_bytes = fs::read(&final_path).unwrap();
         let final_evidence: PackageEvidence = serde_json::from_slice(&final_bytes).unwrap();
         let final_archive = fixture
@@ -2982,11 +3113,11 @@ fn final_package_failure_is_retryable_without_a_second_commit() {
     let fixture = Fixture::new();
     fixture.prepare().unwrap();
     fixture.stage().unwrap();
-    fixture.fail("package");
+    fixture.fail(Fault::Package);
     assert!(fixture.commit().is_err());
     assert!(fixture.repo.exec.state.borrow().release.is_some());
     assert!(!fixture.repo.exec.state.borrow().tag);
-    assert!(!fixture.repo.receipt_path("0.13.0", false).unwrap().exists());
+    assert!(!fixture.repo.receipt_path("0.13.0", Final).unwrap().exists());
     fixture.repo.exec.state.borrow_mut().fail = None;
     fixture.commit().unwrap();
     assert_eq!(
@@ -3008,7 +3139,7 @@ fn head_change_during_final_packaging_preserves_prepared_evidence() {
     let fixture = Fixture::new();
     fixture.prepare().unwrap();
     fixture.stage().unwrap();
-    let path = fixture.repo.receipt_path("0.13.0", true).unwrap();
+    let path = fixture.repo.receipt_path("0.13.0", Prepared).unwrap();
     let prepared_bytes = fs::read(&path).unwrap();
     let prepared: PackageEvidence = serde_json::from_slice(&prepared_bytes).unwrap();
     let archive = fixture
@@ -3016,11 +3147,11 @@ fn head_change_during_final_packaging_preserves_prepared_evidence() {
         .retained_package(&prepared.package_sha256)
         .unwrap();
     let archive_bytes = fs::read(&archive).unwrap();
-    fixture.fail("package-head");
+    fixture.fail(Fault::PackageHead);
     assert!(fixture.commit().is_err());
     assert!(fixture.repo.exec.state.borrow().descendant.is_some());
     assert!(!fixture.repo.exec.state.borrow().tag);
-    assert!(!fixture.repo.receipt_path("0.13.0", false).unwrap().exists());
+    assert!(!fixture.repo.receipt_path("0.13.0", Final).unwrap().exists());
     assert_eq!(fs::read(&path).unwrap(), prepared_bytes);
     assert_eq!(fs::read(&archive).unwrap(), archive_bytes);
 }
@@ -3029,8 +3160,8 @@ fn head_change_during_final_packaging_preserves_prepared_evidence() {
 fn selected_older_release_reuses_exact_receipts_and_archives_after_a_fix() {
     let fixture = Fixture::new();
     fixture.release();
-    let prepared_path = fixture.repo.receipt_path("0.13.0", true).unwrap();
-    let final_path = fixture.repo.receipt_path("0.13.0", false).unwrap();
+    let prepared_path = fixture.repo.receipt_path("0.13.0", Prepared).unwrap();
+    let final_path = fixture.repo.receipt_path("0.13.0", Final).unwrap();
     let prepared_bytes = fs::read(&prepared_path).unwrap();
     let final_bytes = fs::read(&final_path).unwrap();
     let evidence: PackageEvidence = serde_json::from_slice(&final_bytes).unwrap();
@@ -3088,14 +3219,14 @@ fn selected_older_release_reuses_exact_receipts_and_archives_after_a_fix() {
             })
     );
 
-    for conflict in ["history", "parent", "tag-commit"] {
-        fixture.fail(conflict);
+    for conflict in [Fault::History, Fault::Parent, Fault::TagCommit] {
+        fixture.fail(conflict.clone());
         assert!(
             fixture
                 .repo
                 .push_check(&fixture.selection, "release")
                 .is_err(),
-            "{conflict}"
+            "{conflict:?}"
         );
         assert_eq!(fs::read(&final_path).unwrap(), final_bytes);
     }
@@ -3129,7 +3260,7 @@ fn real_index_rejects_hidden_staging_and_checks_exact_prepared_bytes() {
     let fixture = Fixture::new();
     let checkout = fixture.repo.root.join("index-checkout");
     Processes
-        .run(
+        .capture(
             &fixture.repo.root,
             "git",
             &[
@@ -3143,7 +3274,6 @@ fn real_index_rejects_hidden_staging_and_checks_exact_prepared_bytes() {
                     .unwrap(),
                 checkout.to_str().unwrap(),
             ],
-            true,
         )
         .unwrap();
     let repo = Repository {
@@ -3163,8 +3293,20 @@ fn real_index_rejects_hidden_staging_and_checks_exact_prepared_bytes() {
     let expected = format!("{original}\nPrepared release fixture.\n");
     let locked = Repository::<Processes>::replace_lock_version(LOCK, "0.12.3", "0.13.0").unwrap();
     let surfaces = BTreeMap::from([
-        ("README.md".to_owned(), expected.clone()),
-        ("Cargo.lock".to_owned(), locked.clone()),
+        (
+            "README.md".to_owned(),
+            ReleaseSurface {
+                original: original.clone(),
+                expected: expected.clone(),
+            },
+        ),
+        (
+            "Cargo.lock".to_owned(),
+            ReleaseSurface {
+                original: LOCK.to_owned(),
+                expected: locked.clone(),
+            },
+        ),
     ]);
     repo.check_index(&selection, &surfaces).unwrap();
 
@@ -3221,15 +3363,27 @@ fn wasm_metadata_and_budgets_use_only_the_selected_artifact_directory() {
         let file = fs::File::create(path).unwrap();
         file.set_len(budget).unwrap();
     }
-    check_wasm_artifacts(&target).unwrap();
+    fixture.repo.wasm_size().unwrap();
+    let calls = fixture.repo.exec.state.borrow().calls.clone();
+    let build = calls
+        .iter()
+        .find(|call| call.get(2).is_some_and(|arg| arg == "build"))
+        .unwrap();
+    assert_eq!(
+        build
+            .iter()
+            .filter(|arg| arg.as_str() == "--example")
+            .count(),
+        4
+    );
     let path = artifacts.join("wasm_core_size_probe.wasm");
     fs::File::create(&path).unwrap().set_len(260_001).unwrap();
     assert!(check_wasm_artifacts(&target).is_err());
     fs::remove_file(path).unwrap();
     assert!(check_wasm_artifacts(&target).is_err());
-    fixture.fail("relative-metadata");
+    fixture.fail(Fault::RelativeMetadata);
     assert!(fixture.repo.target().is_err());
-    fixture.fail("metadata");
+    fixture.fail(Fault::Metadata);
     assert!(fixture.repo.target().is_err());
 }
 
@@ -3277,7 +3431,7 @@ fn patch_preparation_keeps_head_and_rejects_unvalidated_source_or_staging() {
     assert!(fixture.commit().is_err());
     assert!(fixture.repo.exec.state.borrow().release.is_none());
     let fixture = Fixture::new();
-    fixture.fail("remote-ahead");
+    fixture.fail(Fault::RemoteAhead);
     assert!(fixture.prepare().is_err());
     fixture.assert_original();
 }
@@ -3286,7 +3440,7 @@ fn patch_preparation_keeps_head_and_rejects_unvalidated_source_or_staging() {
 fn coordinated_publication_resumes_only_matching_packages_in_dependency_order() {
     let fixture = Fixture::new();
     fixture.release();
-    fixture.fail("storage-upload");
+    fixture.fail(Fault::StorageUpload);
     assert!(fixture.repo.publish(false).is_err());
     assert_eq!(fixture.repo.exec.state.borrow().published.len(), 1);
     assert!(
@@ -3331,8 +3485,8 @@ fn coordinated_publication_resumes_only_matching_packages_in_dependency_order() 
 #[test]
 fn storage_archive_and_manifest_are_bound_to_the_coordinated_release() {
     for (package, path) in [
-        ("ic-storage", STORAGE_MANIFEST),
-        ("ic-metrics-stable", METRICS_MANIFEST),
+        ("ic-storage", package_manifest("ic-storage")),
+        ("ic-metrics-stable", package_manifest("ic-metrics-stable")),
     ] {
         let fixture = Fixture::new();
         fixture.release();
@@ -3370,19 +3524,13 @@ mod publication;
 fn process_capture_rejects_oversized_output_instead_of_returning_truncation() {
     let root = std::env::current_dir().unwrap();
     assert_eq!(
-        Processes
-            .run(&root, "sh", &["-c", "exit 0"], false)
-            .unwrap(),
-        ""
+        Processes.execute(&root, "sh", &["-c", "exit 0"]).unwrap(),
+        ()
     );
-    assert!(
-        Processes
-            .run(&root, "sh", &["-c", "exit 23"], false)
-            .is_err()
-    );
+    assert!(Processes.execute(&root, "sh", &["-c", "exit 23"]).is_err());
     assert_eq!(
         Processes
-            .run(&root, "sh", &["-c", "printf complete"], true)
+            .capture(&root, "sh", &["-c", "printf complete"])
             .unwrap(),
         "complete"
     );
@@ -3391,7 +3539,7 @@ fn process_capture_rejects_oversized_output_instead_of_returning_truncation() {
         "dd if=/dev/zero bs=1048576 count=1 1>&2 2>/dev/null",
     ] {
         let error = Processes
-            .run(&root, "sh", &["-c", command], true)
+            .capture(&root, "sh", &["-c", command])
             .unwrap_err();
         assert!(matches!(
             error.downcast_ref::<ToolError>(),

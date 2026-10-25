@@ -37,8 +37,9 @@ impl<E: Execute> Repository<E> {
             self.version(None)? == selection.previous,
             "preflight requires the saved base version",
         )?;
-        self.check_surfaces(selection, None, true)?;
-        self.check_index(selection, &self.surfaces(selection)?)?;
+        let surfaces = self.surfaces(selection)?;
+        self.check_surfaces(selection, &surfaces, None, true)?;
+        self.check_index(selection, &surfaces)?;
         let lock = fs::read(self.root.join("Cargo.lock"))?;
         let interrupted = lock != self.text("Cargo.lock", Some(&selection.source))?.as_bytes();
         if interrupted {
@@ -83,8 +84,8 @@ impl<E: Execute> Repository<E> {
             self.git(&["rev-parse", "HEAD"])? == selection.source,
             "source changed during preflight",
         )?;
-        self.check_surfaces(selection, None, true)?;
-        self.check_index(selection, &self.surfaces(selection)?)
+        self.check_surfaces(selection, &surfaces, None, true)?;
+        self.check_index(selection, &surfaces)
     }
 
     pub(super) fn verify(&self, selection: &ReleaseSelection) -> Result<()> {
@@ -119,7 +120,7 @@ impl<E: Execute> Repository<E> {
         )?;
         self.verify_inputs(&evidence, false)?;
         let path = self.validation_path(&selection.version)?;
-        let prepared_path = self.receipt_path(&selection.version, true)?;
+        let prepared_path = self.receipt_path(&selection.version, Prepared)?;
         let stale_prepared = if prepared_path.exists() {
             let prepared: PackageEvidence = serde_json::from_slice(&fs::read(&prepared_path)?)?;
             let previous = &prepared.validation.selection;
@@ -219,9 +220,9 @@ impl<E: Execute> Repository<E> {
         Ok(evidence)
     }
 
-    pub(super) fn preparation_commands(&self) -> Result<Vec<Vec<String>>> {
+    pub(super) fn preparation_commands(&self) -> Result<[Vec<String>; 3]> {
         let pin = format!("+{}", self.toolchain()?);
-        Ok(vec![
+        Ok([
             vec![
                 "cargo".to_owned(),
                 pin.clone(),
@@ -252,9 +253,13 @@ impl<E: Execute> Repository<E> {
         ])
     }
 
-    pub(super) fn write_evidence(&self, evidence: &PackageEvidence, prepared: bool) -> Result<()> {
+    pub(super) fn write_evidence(
+        &self,
+        evidence: &PackageEvidence,
+        stage: ReceiptStage,
+    ) -> Result<()> {
         self.exec.write_json(
-            &self.receipt_path(&evidence.validation.selection.version, prepared)?,
+            &self.receipt_path(&evidence.validation.selection.version, stage)?,
             evidence,
         )
     }
@@ -265,8 +270,8 @@ impl<E: Execute> Repository<E> {
             self.git(&["rev-parse", "HEAD"])? == selection.source,
             "source changed before preparation",
         )?;
-        self.check_surfaces(selection, None, true)?;
         let expected = self.surfaces(selection)?;
+        self.check_surfaces(selection, &expected, None, true)?;
         let mut backups = BTreeMap::new();
         for path in expected.keys() {
             backups.insert(path.clone(), fs::read(self.root.join(path))?);
@@ -276,19 +281,19 @@ impl<E: Execute> Repository<E> {
             // metadata, including the selected root lock, is complete. The
             // prepared check can then finish offline workspace verification and
             // package qualification after an interrupted operation.
-            for (path, text) in expected
+            for (path, surface) in expected
                 .iter()
                 .filter(|(path, _)| path.as_str() != "Cargo.toml")
             {
-                if backups[path].as_slice() != text.as_bytes() {
+                if backups[path].as_slice() != surface.expected.as_bytes() {
                     self.exec
-                        .write_bytes(&self.root.join(path), text.as_bytes())?;
+                        .write_bytes(&self.root.join(path), surface.expected.as_bytes())?;
                 }
             }
-            if backups["Cargo.toml"].as_slice() != expected["Cargo.toml"].as_bytes() {
+            if backups["Cargo.toml"].as_slice() != expected["Cargo.toml"].expected.as_bytes() {
                 self.exec.write_bytes(
                     &self.root.join("Cargo.toml"),
-                    expected["Cargo.toml"].as_bytes(),
+                    expected["Cargo.toml"].expected.as_bytes(),
                 )?;
             }
             self.prepared(selection)?;
@@ -314,7 +319,7 @@ impl<E: Execute> Repository<E> {
                                 .is_ok()
                         })
                     } else {
-                        current == expected[&path].as_bytes()
+                        current == expected[&path].expected.as_bytes()
                     };
                     if owned {
                         self.exec.write_bytes(&self.root.join(&path), &bytes)?;
@@ -343,11 +348,11 @@ impl<E: Execute> Repository<E> {
         &self,
         selection: &ReleaseSelection,
         head: &str,
-        prepared: bool,
-        working: bool,
+        stage: ReceiptStage,
+        location: ArchiveLocation,
     ) -> Result<PackageEvidence> {
         let evidence: PackageEvidence =
-            serde_json::from_slice(&fs::read(self.receipt_path(&selection.version, prepared)?)?)?;
+            serde_json::from_slice(&fs::read(self.receipt_path(&selection.version, stage)?)?)?;
         require(
             evidence.validation.selection == *selection,
             "package evidence identifies another release intent",
@@ -361,24 +366,20 @@ impl<E: Execute> Repository<E> {
             evidence.package_head == head,
             "package evidence identifies another Git HEAD",
         )?;
-        for (package, digest) in [
-            ("ic-memory", &evidence.package_sha256),
-            ("ic-storage", &evidence.storage_sha256),
-            ("ic-metrics-stable", &evidence.metrics_sha256),
-        ] {
+        for (package, digest) in evidence.archives() {
             require(
-                Self::sha256(&self.retained_package(digest)?)? == *digest,
+                Self::sha256(&self.retained_package(digest)?)? == digest,
                 "retained archive differs from release validation",
             )?;
-            if working {
+            if location == Working {
                 require(
-                    Self::sha256(&self.package_path(package, &selection.version)?)? == *digest,
+                    Self::sha256(&self.package_path(package, &selection.version)?)? == digest,
                     "working package differs from release validation",
                 )?;
             }
         }
-        let mut commands = self.preparation_commands()?;
-        if !prepared {
+        let mut commands = self.preparation_commands()?.to_vec();
+        if stage == Final {
             commands.push(self.final_package_command()?);
         }
         require(
@@ -394,23 +395,25 @@ impl<E: Execute> Repository<E> {
             "prepared source changed",
         )?;
         let validation = self.validated(selection)?;
-        self.check_surfaces(selection, None, false)?;
-        if self.receipt_path(&selection.version, true)?.exists() {
+        let surfaces = self.surfaces(selection)?;
+        self.check_surfaces(selection, &surfaces, None, false)?;
+        if self.receipt_path(&selection.version, Prepared)?.exists() {
             // Existing evidence is checked, never silently repaired or replaced.
-            return self.verify_evidence(selection, &selection.source, true, true);
+            return self.verify_evidence(selection, &selection.source, Prepared, Working);
         }
         let commands = self.preparation_commands()?;
-        self.run_command(&commands[0])?;
+        let [refresh, formatting, packaging] = &commands;
+        self.run_command(refresh)?;
         check_lock_update(
             &validation.lock,
             &fs::read_to_string(self.root.join("Cargo.lock"))?,
             &selection.previous,
             &selection.version,
         )?;
-        self.run_command(&commands[1])?;
+        self.run_command(formatting)?;
         let lock_sha256 = Self::sha256(&self.root.join("Cargo.lock"))?;
-        self.run_command(&commands[2])?;
-        self.check_surfaces(selection, None, false)?;
+        self.run_command(packaging)?;
+        self.check_surfaces(selection, &surfaces, None, false)?;
         require(
             self.git(&["rev-parse", "HEAD"])? == selection.source,
             "source changed during preparation",
@@ -420,16 +423,18 @@ impl<E: Execute> Repository<E> {
             Self::sha256(&self.root.join("Cargo.lock"))? == lock_sha256,
             "packaging changed selected dependencies",
         )?;
+        let [package_sha256, storage_sha256, metrics_sha256] =
+            self.record_packages(&selection.version)?;
         let evidence = PackageEvidence {
             validation,
             package_head: selection.source.clone(),
             lock_sha256,
-            package_sha256: self.record_package("ic-memory", &selection.version)?,
-            storage_sha256: self.record_package("ic-storage", &selection.version)?,
-            metrics_sha256: self.record_package("ic-metrics-stable", &selection.version)?,
-            commands,
+            package_sha256,
+            storage_sha256,
+            metrics_sha256,
+            commands: commands.to_vec(),
         };
-        self.write_evidence(&evidence, true)?;
+        self.write_evidence(&evidence, Prepared)?;
         Ok(evidence)
     }
 }

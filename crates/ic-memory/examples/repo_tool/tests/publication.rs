@@ -4,7 +4,7 @@ use super::*;
 fn publication_reconciles_a_lost_upload_response_without_reuploading_memory() {
     let fixture = Fixture::new();
     fixture.release();
-    fixture.fail("upload-response-lost");
+    fixture.fail(Fault::UploadResponseLost);
     assert!(fixture.repo.publish(false).is_err());
     fixture.repo.exec.state.borrow_mut().fail = None;
     fixture.repo.publish(false).unwrap();
@@ -27,20 +27,20 @@ fn publication_reconciles_a_lost_upload_response_without_reuploading_memory() {
 fn registry_conflicts_or_unknown_status_refuse_before_any_upload() {
     for package in ["ic-storage", "ic-metrics-stable"] {
         for failure in [
-            "registry-forbidden",
-            "registry-error",
-            "registry-yanked",
-            "checksum",
+            Fault::RegistryForbidden,
+            Fault::RegistryError,
+            Fault::RegistryYanked,
+            Fault::Checksum,
         ] {
             let fixture = Fixture::new();
             fixture.release();
             let evidence = fixture
                 .repo
-                .verify_evidence(&fixture.selection, "release", false, true)
+                .verify_evidence(&fixture.selection, "release", Final, Working)
                 .unwrap();
             fixture.repo.exec.state.borrow_mut().published.insert(
                 package.to_owned(),
-                if failure == "checksum" {
+                if failure == Fault::Checksum {
                     "wrong".to_owned()
                 } else if package == "ic-storage" {
                     evidence.storage_sha256
@@ -48,11 +48,11 @@ fn registry_conflicts_or_unknown_status_refuse_before_any_upload() {
                     evidence.metrics_sha256
                 },
             );
-            fixture.fail(failure);
+            fixture.fail(failure.clone());
             let error = fixture.repo.publish(false).unwrap_err().to_string();
             if let Some(status) = match failure {
-                "registry-forbidden" => Some("403"),
-                "registry-error" => Some("503"),
+                Fault::RegistryForbidden => Some("403"),
+                Fault::RegistryError => Some("503"),
                 _ => None,
             } {
                 assert!(error.contains(&format!("HTTP {status}")));

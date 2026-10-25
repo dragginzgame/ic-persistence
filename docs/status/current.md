@@ -1,54 +1,127 @@
 # Current handoff
 
-The released baseline is 0.51.0 at
-`e3939cd`, with Memory, Storage and Metrics Stable sharing the release identity.
-All ten [release CI jobs](https://github.com/dragginzgame/ic-persistence/actions/runs/40106916102)
-pass, including native/MSRV and installed runtime checks on Linux and both macOS
-architectures. Metrics uses the independent 0.16 arithmetic line; consumers must
-match that public type identity. Earlier source/import/recovery evidence remains
-in [the release-time handoff](https://github.com/dragginzgame/ic-persistence/blob/e3939cd/docs/status/current.md)
-and the published changelogs.
+The released source baseline is 0.51.1 at `fa5cfd7`. The pending compatible
+0.51.2 batch implements the reviewed complexity reductions. Public APIs,
+receipt JSON fields, stored formats, package versions, Rust compiler selections
+and the real Git index are preserved. The same batch adopts the dependencies
+described below, retaining the separate workspace boundaries.
 
-## Pending 0.51.1 review
+## Complexity reductions
 
-The incoming root lock selects registry IC Metrics 0.16.1 at
-`b6193cb18b137f1764e9bcf5dbbb5c6f2329cd81`. Its 15 published Rust files match
-0.16.0 and it retains no production dependencies. The root requirement remains
-compatible `0.16`; its incoming lockfile bytes and the independent runtime lock
-are preserved. Public APIs, V1 metrics records, allocation custody, collection
-formats, Platform 0.6.15, Tooling 0.68.1, PocketIC client/server 16.1.0 and compiler
-pins remain selected. No runtime code change was warranted by the paths reviewed.
+The Rust release adapter and shell bootstrap/archive callers consume the same
+ordered package roster. Expected source projections are reused within admission
+phases while current files and identities remain reobserved around effects.
+Receipt stage/archive location and fixed preparation steps are explicit. Native
+status-only execution and bounded output capture have distinct results. Release
+fixtures admit typed faults and separate process families without introducing
+another runner or changing the retained receipt schema.
 
-Reviewed Shared Tooling 0.26.16 at
-`2077c934efb82b181bea58fe50078dbad289c1aa` replaces the earlier snapshot through
-the canonical clean-source exporter after impact review. The 77 roots now select
-119 payloads. Actual tool and server checks reuse admitted installations.
-Shared's [portable CI](https://github.com/dragginzgame/shared-tooling/actions/runs/40171556775)
-passes on all three hosts; this consumer's new working files have local focused
-qualification, separately from that supplier evidence.
+Local formatter modes share one operation list across both workspaces and the
+standalone package consumer. The installed qualification script iterates Memory
+and Storage artifacts through original/O3/Os/Oz, preserving selected catalog
+inputs, optimizer flags, hashes/logs, Testkit lifecycle and Make build admission.
+The external-declaration ceiling has one private owner. Fixture doctor status is
+projected from the same cell read used for recovery; public DTOs and observations
+before policy callbacks retain their existing contracts.
 
-Runtime-server admission preserves busy status 75 without recommending setup;
-ready, busy and missing CLI/server selections are exercised through the actual
-Make target with substituted tool effects. Exact-archive consumer qualification
-also passes at `target/package-qualification/attempt.ozDTjn/`: all three archives
-compile, the consumer runs on Rust 1.99.1 and 1.91.0 and checks for Wasm, and final
-archive/unpacked/source hashes match. Archive-admission fixture failures
-replay retained diagnostics and preserve the original status. The explicit
-failure probe retains status 29 and the original packaging diagnostic.
+## Follow-up cleanup qualification
 
-Full locked metadata for both workspaces, pin/graph/declaration policies, actual
-offline tool/server admission, native and Wasm adapter Clippy, all 27 adapter
-regression tests, three development and three MSRV doctests, package-admission
-and release/bootstrap fixtures, Git hook behavior, formatting and tooling lint
-pass. Evidence remains at `/tmp/ic-persistence-review-20261025/`. The complete
-release suite and installed IO/upgrade qualification are separate; no release,
-package version change, staging, commit or push is part of this review.
+The subsequent pass implements nine further reductions: archive-map projections,
+fully typed fault callers, named release inspections, fixture revision projection,
+carried source/candidate bytes, one Wasm probe build/budget roster, locally callable
+CI tool reuse, private historical-key lookup and named installed snapshots.
+Histogram continuity keeps its bounded loop; a replacement would add projection
+machinery without matched Wasm-cost evidence. No product state or stored format
+is added.
 
-GitHub inspection found no open Persistence issues or pull requests. Stable-map
-and metric codec/continuity paths were inspected without a demonstrated runtime
-defect; this bounded maintenance review is not a complete storage/security audit.
-The independent PocketIC workspace and product-owned governance boundaries remain
-intentional; no workspace split or new abstraction is introduced.
+This pass preserves the incoming root lock, which now selects Tooling 0.68.4;
+the earlier 0.68.3 adoption evidence below retains its original selection scope.
+CLI pins, both catalogs/lockfiles, compiler pins, the shared snapshot and the real
+index are unchanged by this pass. Missing locked sources were fetched separately;
+all compilation/qualification then ran offline.
+
+Strict Memory all-target/test-support and independent-runner Clippy pass, as do
+62 release-helper, 62 runtime, 47 ledger, seven request and two runner tests.
+Both affected compiler-floor checks, archive provenance/refusal fixtures,
+release/parallel-Make/bootstrap fixtures, offline tool reuse, formatting, tooling
+lint and dependency/snapshot boundaries pass. All four Wasm probes remain within
+their budgets. Actual archive/native/MSRV/Wasm consumption and integrity pass at
+`target/package-qualification/attempt.peGojm/`; installed Memory/Storage IO,
+upgrade and rollback pass original/O3/Os/Oz at
+`target/qualification/runtime/attempt.iYaO7a/`. Logs and the incoming preimage are
+retained at `/tmp/ic-persistence-complexity-next/`. Full release and hosted
+qualification remain separate; no release or Git delivery is performed.
+
+## Dependency adoption
+
+The incoming root lock selects published IC Tooling 0.68.3, Platform 0.6.16 and
+Metrics 0.16.2. Root requirements and both helper CLI selections are aligned;
+the root lock bytes are preserved. The independent runtime lock changes only
+Platform 0.6.15 to 0.6.16 and its checksum. PocketIC client/server 16.1.0,
+stable-structures 0.7.2, Tokio 1.53.3 and all other selected packages/edges are
+unchanged. Optional Wire support remains off in the consumed Tooling libraries.
+
+Published sources are Tooling `600fbd0db3ad761a92cf8418daac3517539b1da2`,
+Platform `0b84c2eb68239aaee4a95de35f82e702e138dcf0` and Metrics
+`0d60020987fe706e8182b6d4ab9c87a406876f16`. Metrics' Rust sources match 0.16.1;
+Platform's stable-memory and PocketIC facades are unchanged. Build metadata and
+release rendering, metered memory ownership and Testkit startup refactors are
+qualified through this consumer's actual selections. Both new CLIs reuse
+admitted installations without compilation; existing server bytes are retained.
+
+Full locked metadata and policy checks cover both graphs. Native, Wasm and
+independent-runtime Clippy and actual Rust 1.91 all-target compilation pass.
+Installed Memory/Storage IO, upgrades and rollback pass original/O3/Os/Oz at
+`target/qualification/runtime/attempt.vC8c3b/`. All 62 release-helper, 62 Memory runtime, 12 Storage and 27 Metrics Stable
+tests pass, along with their selected doctests and release/archive-admission
+fixtures. Actual three-archive qualification passes at
+`target/package-qualification/attempt.yaM5oc/`, including native/MSRV execution,
+Wasm compilation and final integrity checks. Source comparisons and logs remain
+at `/tmp/ic-persistence-deps0683/`.
+No product Rust code or prior cleanup implementation is changed by this adoption.
+
+Metrics' supplier native/MSRV matrix passes. Platform's native matrix and runtime
+job pass; its advisory job retains the crypto-bigint finding tracked by
+[Platform #50 — Qualify the crypto-bigint advisory](https://github.com/dragginzgame/ic-platform/issues/50)
+and the missing index coverage tracked by
+[Platform #56 — Prepare registry index coverage before yanked-package audit checks](https://github.com/dragginzgame/ic-platform/issues/56).
+Crypto-bigint is absent from both selected Persistence graphs. This is graph
+reachability evidence, not a fresh advisory audit or yanked-package qualification.
+
+Tooling's Linux/macOS ARM native, MSRV, optimizer, session and PocketIC jobs pass.
+Its macOS Intel native job fails on cancellation-fixture readiness (empty marker
+bytes versus `armed`), tracked by
+[Tooling #251 — Qualify native cancellation readiness on macOS Intel](https://github.com/dragginzgame/ic-tooling/issues/251).
+That source failure is not reported as a passing native matrix. The affected
+Build native wrapper is not called by this consumer; own hosted macOS and full
+release qualification remain separate. Unpublished Tooling 0.68.4 work is excluded.
+
+## Earlier complexity qualification
+
+The following evidence predates the dependency adoption and retains its original
+selection scope.
+
+
+Strict Memory all-target Clippy with test support, all 62 release-helper tests,
+62 focused runtime tests, seven declaration tests and the actual Rust 1.91
+all-target check pass. Compiler/archive admission, malformed/duplicate/escaping
+roster refusal, release/parallel-Make/bootstrap fixtures, actual Git hooks,
+formatting, tooling lint and dependency/snapshot boundaries pass.
+Actual three-archive qualification passes at
+`target/package-qualification/attempt.2F9RbZ/`, including native/MSRV consumer
+execution, Wasm compilation and final archive/unpacked/source integrity checks.
+Installed IO, upgrades, rollback and Storage collection checks pass all four
+variants at `target/qualification/runtime/attempt.OaFKDJ/`. The sandboxed attempt
+`attempt.vGXwqF` remains retained: its server could not bind loopback before any
+qualification; native execution used the same prepared server/tool selections.
+Logs and task preimages remain at `/tmp/ic-persistence-complexity/`.
+
+[Shared Tooling #308 — Diagnose unsupported EXIT-trap shapes in fixture_probe_prefix](https://github.com/dragginzgame/shared-tooling/issues/308)
+tracks the reproduced silent refusal of a multiline trap by the generic retention
+probe. No shared payload or sibling checkout is patched. The shared snapshot
+remains 0.26.16 at `2077c934efb82b181bea58fe50078dbad289c1aa`.
+The complete release gate, hosted macOS qualification and release/publication
+remain separate. This work stages, commits, pushes and releases nothing.
 
 ## Repository retirement
 

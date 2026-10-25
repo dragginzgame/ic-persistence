@@ -19,6 +19,27 @@ struct Arguments {
     measure_valid_io: bool,
 }
 
+/// Decoded fields of the supplied Memory fixture's exact 26-byte snapshot.
+#[derive(Debug, Eq, PartialEq)]
+struct Snapshot {
+    generation: u64,
+    markers: [u8; 2],
+    physical_pages: u64,
+    rows_pages: u64,
+}
+
+impl Snapshot {
+    fn decode(bytes: &[u8]) -> Self {
+        assert_eq!(bytes.len(), 26, "unexpected Memory snapshot shape");
+        Self {
+            generation: u64::from_le_bytes(bytes[..8].try_into().unwrap()),
+            markers: bytes[8..10].try_into().unwrap(),
+            physical_pages: u64::from_le_bytes(bytes[10..18].try_into().unwrap()),
+            rows_pages: u64::from_le_bytes(bytes[18..].try_into().unwrap()),
+        }
+    }
+}
+
 fn assert_trap(error: RejectResponse) {
     assert!(
         matches!(
@@ -43,14 +64,15 @@ fn main() {
     pic.add_cycles(canister, 100_000_000_000_000);
     pic.install_canister(canister, wasm.clone(), Vec::new(), None);
     let snapshot = || {
-        pic.query_call(canister, canister, "snapshot", Vec::new())
-            .unwrap()
+        Snapshot::decode(
+            &pic.query_call(canister, canister, "snapshot", Vec::new())
+                .unwrap(),
+        )
     };
     let initial = snapshot();
-    assert_eq!(initial.len(), 26);
-    assert_eq!(&initial[..8], &1_u64.to_le_bytes());
-    assert_eq!(&initial[8..10], &[0x42, 0x6D]);
-    assert_eq!(&initial[18..], &1_u64.to_le_bytes());
+    assert_eq!(initial.generation, 1);
+    assert_eq!(initial.markers, [0x42, 0x6D]);
+    assert_eq!(initial.rows_pages, 1);
 
     if !arguments.measure_valid_io {
         // Check all three delegates, including empty spans beyond the extent.
@@ -84,8 +106,13 @@ fn main() {
         pic.upgrade_canister(canister, wasm.clone(), vec![0], None)
             .unwrap();
         let upgraded = snapshot();
-        assert_eq!(&upgraded[..8], &2_u64.to_le_bytes());
-        assert_eq!(&upgraded[8..], &initial[8..]);
+        assert_eq!(
+            upgraded,
+            Snapshot {
+                generation: 2,
+                ..initial
+            }
+        );
         println!(
             "installed upgrade: post-persistence trap and geometry conflict roll back; clean retry advances exactly one generation"
         );
@@ -102,8 +129,9 @@ fn main() {
         }
     }
     let final_snapshot = snapshot();
-    assert_eq!(&final_snapshot[8..10], &[0x99, 0x6D]);
-    assert_eq!(&final_snapshot[10..], &initial[10..]);
+    assert_eq!(final_snapshot.markers, [0x99, 0x6D]);
+    assert_eq!(final_snapshot.physical_pages, initial.physical_pages);
+    assert_eq!(final_snapshot.rows_pages, initial.rows_pages);
     println!("fixture_wasm_bytes,{}", wasm.len());
     if !arguments.measure_valid_io {
         storage::qualify(&pic);
@@ -113,6 +141,25 @@ fn main() {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn snapshot_decode_preserves_fields_and_refuses_truncated_or_trailing_bytes() {
+        let bytes = [
+            1, 0, 0, 0, 0, 0, 0, 0, 0x42, 0x6D, 9, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0,
+        ];
+        assert_eq!(
+            Snapshot::decode(&bytes),
+            Snapshot {
+                generation: 1,
+                markers: [0x42, 0x6D],
+                physical_pages: 9,
+                rows_pages: 1,
+            }
+        );
+        for length in [0, 8, 25, 27] {
+            assert!(std::panic::catch_unwind(|| Snapshot::decode(&vec![0; length])).is_err());
+        }
+    }
 
     #[test]
     fn measurement_arguments_reject_extra_tokens() {

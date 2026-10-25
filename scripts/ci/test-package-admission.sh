@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # Exercise the real archive admission before any compilation, with bad observations.
 set -euo pipefail
+package_names="$(bash scripts/ci/read-persistence-packages.sh)"
+IFS=$'\t' read -r -a packages <<< "$package_names"
 source scripts/ci/fixture-lifecycle.sh
 fixture="$(fixture_create "${TMPDIR:-/tmp}/ic-persistence-package-admission.XXXXXX")"
 trap 'status=$?; if [[ "$status" != 0 ]]; then
@@ -21,7 +23,7 @@ target="$(printf '%s' "$metadata" | jq -er '.target_directory')"
 PREPARED_ARCHIVES="$fixture/archives.sha256"
 PACKAGE_TOOLCHAIN="$pin"
 export PREPARED_ARCHIVES PACKAGE_TOOLCHAIN
-for package in ic-memory ic-storage ic-metrics-stable; do
+for package in "${packages[@]}"; do
     version="$(printf '%s' "$metadata" | jq -er --arg name "$package" '.packages[] | select(.name == $name) | .version')"
     shasum -a 256 "$target/package/$package-$version.crate" >> "$PREPARED_ARCHIVES"
 done
@@ -61,8 +63,13 @@ if [[ "$*" == *' check '* || "$*" == *' run '* ]]; then
     echo 'unexpected compilation after invalid admission' >&2
     exit 99
 fi
-if [[ "$REJECT_MODE" == duplicate && "$*" == *' metadata '* && "$*" == *'/package-qualification/attempt.'* ]]; then
-    "$REAL_CARGO" "$@" | jq '.packages += [.packages[] | select(.name == "ic-memory")]'
+if [[ "$*" == *' metadata '* && "$*" == *'/package-qualification/attempt.'* ]]; then
+    case "$REJECT_MODE" in
+        duplicate) "$REAL_CARGO" "$@" | jq '.packages += [.packages[] | select(.name == "ic-memory")]' ;;
+        substituted) "$REAL_CARGO" "$@" | jq '(.packages[] | select(.name == "ic-memory") | .manifest_path) = "/substituted/Cargo.toml"' ;;
+        local-extra) "$REAL_CARGO" "$@" | jq '.packages += [{name: "foreign-local", source: null, manifest_path: "/foreign/Cargo.toml"}]' ;;
+        *) exec "$REAL_CARGO" "$@" ;;
+    esac
 else
     exec "$REAL_CARGO" "$@"
 fi
@@ -79,7 +86,7 @@ else
 fi
 STUB
 chmod +x "$fixture/bin/cargo" "$fixture/bin/yq" "$fixture/bin/rustup"
-for mode in drift duplicate; do
+for mode in drift duplicate substituted local-extra; do
     if REJECT_MODE="$mode" PATH="$fixture/bin:$PATH" bash scripts/ci/package-workspace.sh "$pin" --allow-dirty > "$fixture/$mode.log" 2>&1; then
         echo "Incorrectly admitted $mode; see $fixture/$mode.log" >&2
         exit 1
@@ -90,7 +97,7 @@ for mode in drift duplicate; do
     fi
     case "$mode" in
         drift) expected='archive dependency selection drift' ;;
-        duplicate) expected='archive graph must use exactly the extracted Persistence packages' ;;
+        duplicate|substituted|local-extra) expected='archive graph must use exactly the extracted Persistence packages' ;;
     esac
     rg -q "$expected" "$fixture/$mode.log" || { cat "$fixture/$mode.log" >&2; exit 1; }
     echo "Rejected $mode before compilation"

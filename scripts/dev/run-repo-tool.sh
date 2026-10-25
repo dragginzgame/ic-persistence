@@ -30,18 +30,20 @@ check_dependency_cache() {
 }
 manifest_version="$(RUSTUP_TOOLCHAIN="$toolchain" \
     bash scripts/ci/read-cargo-workspace-version.sh --stable Cargo.toml)"
+package_names="$(bash scripts/ci/read-persistence-packages.sh)"
+IFS=$'\t' read -r -a packages <<< "$package_names"
 # All published packages inherit the one workspace release identity.
-for package in ic-memory ic-storage ic-metrics-stable; do
+for package in "${packages[@]}"; do
     "${YQ:-yq}" -p toml -o json '.' "crates/$package/Cargo.toml" | jq -e --arg name "$package" '
         .package | if .name == $name and .version == {workspace: true}
         then true else error("expected inherited version for " + $name) end
     ' > /dev/null
 done
 # Admit all local lock identities in one observation before shell capture.
-lock_versions="$("${YQ:-yq}" -p toml -o json -I 0 '.' Cargo.lock | jq -ers '
+lock_versions="$("${YQ:-yq}" -p toml -o json -I 0 '.' Cargo.lock | jq -ers --arg roster "$package_names" '
     if length != 1 then error("expected one lock document") else .[0] end
     | .package as $packages
-    | ["ic-memory", "ic-storage", "ic-metrics-stable"] | map(. as $name |
+    | ($roster | split("\t")) | map(. as $name |
         [$packages[] | select(.name == $name and .source == null)]
         | if length != 1 then error("expected one local " + $name + " package") else .[0].version end
         | if type != "string" then error("locked version must be a string")
@@ -50,10 +52,13 @@ lock_versions="$("${YQ:-yq}" -p toml -o json -I 0 '.' Cargo.lock | jq -ers '
           else . end)
     | @tsv
 ')"
-IFS=$'\t' read -r lock_version storage_lock metrics_lock <<< "$lock_versions"
+IFS=$'\t' read -r -a locked_versions <<< "$lock_versions"
+lock_version="${locked_versions[0]}"
 perl scripts/ci/validate-release-inputs.pl version "$lock_version" > /dev/null
 # The release adapter atomically publishes one lock containing all versions.
-[[ "$lock_version" == "$storage_lock" && "$lock_version" == "$metrics_lock" ]] || { echo 'Persistence lock versions differ' >&2; exit 1; }
+for version in "${locked_versions[@]}"; do
+    [[ "$version" == "$lock_version" ]] || { echo 'Persistence lock versions differ' >&2; exit 1; }
+done
 if [[ "$manifest_version" == "$lock_version" ]]; then
     check_dependency_cache
     exec cargo "+$toolchain" run --locked --offline --quiet --example repo-tool -- "$@"
@@ -81,15 +86,11 @@ if [[ "${RELEASE_CACHE_PREPARE:-0}" == 1 ]]; then editor_admission=(); fi
 editor="$(RUSTUP_TOOLCHAIN="$toolchain" bash scripts/dev/install-rust-tools.sh \
     --consumer "$PWD" --package ic-build --version "$IC_BUILD_RELEASE_METADATA_VERSION" \
     --bin ic-build-release-metadata --profile debug --features cli ${editor_admission[@]+"${editor_admission[@]}"})"
-mkdir -p "$scratch/crates/ic-storage"
-cp -R crates/ic-storage/src crates/ic-storage/README.md crates/ic-storage/Cargo.toml "$scratch/crates/ic-storage/"
-mkdir -p "$scratch/crates/ic-metrics-stable"
-cp -R crates/ic-metrics-stable/src crates/ic-metrics-stable/README.md crates/ic-metrics-stable/Cargo.toml "$scratch/crates/ic-metrics-stable/"
-"${YQ:-yq}" -p toml -o json '.' Cargo.toml | jq --arg root "$PWD" '{manifest: ., members: [
-    {name: "ic-memory", manifest_path: ($root + "/crates/ic-memory/Cargo.toml")},
-    {name: "ic-storage", manifest_path: ($root + "/crates/ic-storage/Cargo.toml")},
-    {name: "ic-metrics-stable", manifest_path: ($root + "/crates/ic-metrics-stable/Cargo.toml")}
-]}' > "$scratch/workspace-input.json"
+for package in "${packages[@]:1}"; do
+    mkdir -p "$scratch/crates/$package"
+    cp -R "crates/$package/src" "crates/$package/README.md" "crates/$package/Cargo.toml" "$scratch/crates/$package/"
+done
+"${YQ:-yq}" -p toml -o json '.' Cargo.toml | jq --arg root "$PWD" --arg roster "$package_names" '{manifest: ., members: ($roster | split("\t") | map({name: ., manifest_path: ($root + "/crates/" + . + "/Cargo.toml")}))}' > "$scratch/workspace-input.json"
 "$editor" --max-input-bytes "$CARGO_RELEASE_METADATA_MAX_BYTES" manifest Cargo.toml \
     "$manifest_version" "$lock_version" "$scratch/workspace-input.json" > "$scratch/Cargo.toml"
 cp -R crates/ic-memory/src crates/ic-memory/examples "$scratch/crates/ic-memory/"

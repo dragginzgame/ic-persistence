@@ -96,7 +96,7 @@ also remains in its focused target. Release notes may use a numbered
 ` - Unreleased` heading, which the shared finalizer dates during preparation.
 
 Shared 0.25.3 binds explicit Cargo feature sets to selected tool installations
-and admission receipts. Build and Testkit 0.68.1 binaries select `--features cli`
+and admission receipts. Build and Testkit 0.68.3 binaries select `--features cli`
 in setup, offline admission and bootstrap calls. Library dependencies retain
 disabled defaults. Prepare the selections with `make install-tools` and
 `make install-runtime-server`; previous installations and failed attempts remain
@@ -173,7 +173,8 @@ or deletes tools. Fleet reports run in Shared Tooling; local `make cloc` selects
 the root workspace, or an explicit `CLOC_MANIFEST` for the independent graph.
 
 Formatting covers the root workspace and `testing/runtime-qualification` through
-one paired `FORMAT_WRITE_COMMAND` / `FORMAT_CHECK_COMMAND`. Shared admission
+one paired `FORMAT_WRITE_COMMAND` / `FORMAT_CHECK_COMMAND`, both dispatching
+the consumer-owned `scripts/ci/format-workspaces.sh` operation list. Shared admission
 checks the selected cargo-sort and rustfmt before dispatch. Neither formatting
 command builds, fetches, installs tools or changes selected lockfiles. Hook setup
 is explicit and exercises real index effects only in allowed disposable fixtures
