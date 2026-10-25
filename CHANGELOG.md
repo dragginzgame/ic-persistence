@@ -1,6 +1,6 @@
 # Changelog
 
-## [0.51.1] - Unreleased
+## [0.51.1] - 2026-10-25
 
 - Adopt Shared Tooling 0.26.16 recovery and tool-admission fixes, and qualify
   IC Metrics 0.16.1 without changing stored formats or public type identities.
