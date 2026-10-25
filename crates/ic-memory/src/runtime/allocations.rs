@@ -234,7 +234,9 @@ impl<M: Memory> MemoryRuntime<M> {
                 current[usize::from(id)] = true;
             }
         }
-        let mut groups = [MemoryBindingSummary::default(); 3];
+        let mut current_binding = MemoryBindingSummary::default();
+        let mut ledger_binding = MemoryBindingSummary::default();
+        let mut unknown_binding = MemoryBindingSummary::default();
         let mut total_pages = 0;
         for id in 0..255_u8 {
             let index = usize::from(id);
@@ -245,14 +247,14 @@ impl<M: Memory> MemoryRuntime<M> {
                 .into());
             }
             let group = if id == MEMORY_MANAGER_LEDGER_ID {
-                1
+                &mut ledger_binding
             } else if current[index] {
-                0
+                &mut current_binding
             } else {
-                2
+                &mut unknown_binding
             };
-            groups[group].allocated_buckets += measured.buckets[index];
-            groups[group].virtual_extent.wasm_pages += measured.pages[index];
+            group.allocated_buckets += measured.buckets[index];
+            group.virtual_extent.wasm_pages += measured.pages[index];
             total_pages += measured.pages[index];
         }
         let physical_extent = DiagnosticMemorySize::from_wasm_pages(measured.physical_pages);
@@ -263,9 +265,9 @@ impl<M: Memory> MemoryRuntime<M> {
             allocated_buckets: measured.allocated_buckets,
             physical_extent,
             virtual_extent,
-            current_binding: groups[0],
-            ledger_binding: groups[1],
-            unknown_binding: groups[2],
+            current_binding,
+            ledger_binding,
+            unknown_binding,
         };
         Ok((measured, summary))
     }

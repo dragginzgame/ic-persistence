@@ -7,6 +7,16 @@ use std::{cell::Cell, rc::Rc};
 
 mod regions;
 
+const KEYS: [&str; 7] = [
+    "test.map.v1",
+    "test.set.v1",
+    "test.cell.v1",
+    "test.vec.v1",
+    "test.heap.v1",
+    "test.log.index.v1",
+    "test.log.data.v1",
+];
+
 #[derive(Clone)]
 struct ControlledMemory {
     backing: VectorMemory,
@@ -42,15 +52,7 @@ fn runtime<M: Memory>(backing: M) -> MemoryRuntime<M> {
         backing,
         "test",
         "test.",
-        &[
-            "test.map.v1",
-            "test.set.v1",
-            "test.cell.v1",
-            "test.vec.v1",
-            "test.heap.v1",
-            "test.log.index.v1",
-            "test.log.data.v1",
-        ],
+        &KEYS,
         MemoryManagerConfig::default(),
     )
     .unwrap()
@@ -76,15 +78,7 @@ fn collections_reopen_through_committed_runtime_allocations() {
         runtime.open_memory("test.log.data.v1").unwrap(),
     );
     log.append(&13u64).unwrap();
-    for key in [
-        "test.map.v1",
-        "test.set.v1",
-        "test.cell.v1",
-        "test.vec.v1",
-        "test.heap.v1",
-        "test.log.index.v1",
-        "test.log.data.v1",
-    ] {
+    for key in KEYS {
         assert!(
             matches!(
                 runtime.open_memory(key),
@@ -94,15 +88,7 @@ fn collections_reopen_through_committed_runtime_allocations() {
         );
     }
     drop((map, set, cell, vector, heap, log));
-    for key in [
-        "test.map.v1",
-        "test.set.v1",
-        "test.cell.v1",
-        "test.vec.v1",
-        "test.heap.v1",
-        "test.log.index.v1",
-        "test.log.data.v1",
-    ] {
+    for key in KEYS {
         drop(runtime.open_memory(key).unwrap());
     }
     drop(runtime);

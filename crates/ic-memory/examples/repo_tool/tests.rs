@@ -90,6 +90,31 @@ fn package_retention_refuses_a_replaced_fifo_without_a_writer() {
     assert_eq!(fs::read(result).unwrap(), b"refused");
 }
 
+const PACKAGE_MANIFEST: &str = "crates/ic-memory/Cargo.toml";
+
+// Only these narrow command shapes are semantic effects in this fixture.
+// Keep raw argv logs and exact-dispatch assertions independent of these predicates.
+fn is_cargo_call(call: &[String], command: &str) -> bool {
+    call.first().is_some_and(|program| program == "cargo")
+        && call.get(2).is_some_and(|argument| argument == command)
+}
+
+fn is_make_call(call: &[String], target: &str) -> bool {
+    call.first().is_some_and(|program| program == "make")
+        && call
+            .get(1)
+            .is_some_and(|argument| argument == "--no-print-directory")
+        && call.get(2).is_some_and(|argument| argument == target)
+}
+
+fn is_package_call(call: &[String]) -> bool {
+    is_cargo_call(call, "package")
+        || call.first().is_some_and(|program| program == "bash")
+            && call
+                .get(1)
+                .is_some_and(|script| script == "scripts/ci/package-workspace.sh")
+}
+
 const MANIFEST: &str = "[workspace]\nmembers = [\"crates/ic-memory\", \"crates/ic-storage\", \"crates/ic-metrics-stable\"]\n[workspace.package]\nversion = \"0.12.3\"\nrust-version = \"1.88.0\"\n[workspace.dependencies]\nic-memory = { path = \"crates/ic-memory\", version = \"0.12.3\" }\nic-storage = { path = \"crates/ic-storage\", version = \"0.12.3\" }\nother = \"0.12.3\"\n";
 const PACKAGE: &str = "[package]\nname = \"ic-memory\"\nversion.workspace = true\n";
 const LOCK: &str = "version = 4\n[[package]]\nname = \"ic-metrics-stable\"\nversion = \"0.12.3\"\ndependencies = [\"ic-memory\", \"ic-storage\"]\n[[package]]\nname = \"ic-storage\"\nversion = \"0.12.3\"\ndependencies = [\"ic-memory\"]\n[[package]]\nname = \"ic-memory\"\nversion = \"0.12.3\"\n[[package]]\nname = \"other\"\nversion = \"0.12.3\"\n";
@@ -141,8 +166,7 @@ fn tag_changes_during_shared_admission_stop_publication() {
         fixture.fail(failure.clone());
         assert!(fixture.repo.publish(true).is_err(), "{failure:?}");
         assert!(!fixture.repo.exec.state.borrow().calls.iter().any(|call| {
-            call.first().is_some_and(|arg| arg == "cargo")
-                && call.get(2).is_some_and(|arg| arg == "publish")
+            call.first().is_some_and(|arg| arg == "cargo") && is_cargo_call(call, "publish")
         }));
     }
 }
@@ -224,13 +248,27 @@ fn large_changelog_finalization_preserves_complete_history() {
 fn release_version_requires_the_named_package_to_inherit_the_workspace_identity() {
     let fixture = Fixture::new();
     assert_eq!(fixture.repo.version(None).unwrap(), "0.12.3");
-    for package in [
-        "[package]\nname = \"another-package\"\nversion.workspace = true\n",
-        "[package]\nname = \"ic-memory\"\nversion = \"0.12.3\"\n",
-    ] {
-        fs::write(fixture.repo.root.join(PACKAGE_MANIFEST), package).unwrap();
-        assert!(fixture.repo.version(None).is_err());
-        assert_eq!(fixture.repo.version(Some("source")).unwrap(), "0.12.3");
+    for name in packages() {
+        for manifest in [
+            String::new(),
+            "[workspace]\n".to_owned(),
+            format!("[package]\nname = {name:?}\n"),
+            "[package]\nname = \"another-package\"\nversion.workspace = true\n".to_owned(),
+            format!("[package]\nname = {name:?}\nversion = \"0.12.3\"\n"),
+        ] {
+            fs::write(fixture.repo.root.join(package_manifest(name)), manifest).unwrap();
+            assert!(fixture.repo.member_release_manifest(None, name).is_err());
+            assert!(
+                fixture
+                    .repo
+                    .member_release_manifest(Some("source"), name)
+                    .is_ok()
+            );
+            if name == "ic-memory" {
+                assert!(fixture.repo.version(None).is_err());
+                assert_eq!(fixture.repo.version(Some("source")).unwrap(), "0.12.3");
+            }
+        }
     }
 }
 
@@ -448,7 +486,7 @@ fn failed_release_fixture_retains_receipts_and_command_state() {
         state
             .calls
             .iter()
-            .any(|call| call.get(2).is_some_and(|arg| arg == "validate"))
+            .any(|call| is_make_call(call, "validate"))
     );
     assert_eq!(
         fs::read_to_string(retained.join("Cargo.lock")).unwrap(),
@@ -1242,10 +1280,7 @@ fn compiler_environment_overrides_refuse_preparation_and_release_effects() {
         fixture.assert_original();
         assert_eq!(fs::read(receipt).unwrap(), b"previous evidence");
         assert!(!fixture.repo.exec.state.borrow().calls.iter().any(|call| {
-            call[0] == "make"
-                || call
-                    .get(2)
-                    .is_some_and(|arg| matches!(arg.as_str(), "update" | "package"))
+            call[0] == "make" || is_cargo_call(call, "update") || is_package_call(call)
         }));
 
         let repo = Repository {
@@ -1265,9 +1300,7 @@ fn compiler_environment_overrides_refuse_preparation_and_release_effects() {
                 .iter()
                 .any(|call| {
                     call.get(1).is_some_and(|arg| arg == "push")
-                        || call
-                            .get(2)
-                            .is_some_and(|arg| matches!(arg.as_str(), "package" | "publish"))
+                        || (is_package_call(call) || is_cargo_call(call, "publish"))
                 })
         );
         return;
@@ -1466,7 +1499,7 @@ fn included_compiler_configuration_refuses_preparation() {
             .borrow()
             .calls
             .iter()
-            .any(|call| { call[0] == "make" || call.get(2).is_some_and(|arg| arg == "update") })
+            .any(|call| { call[0] == "make" || is_cargo_call(call, "update") })
     );
 }
 
@@ -1504,8 +1537,7 @@ fn included_and_shadowed_configuration_changes_invalidate_release_evidence() {
             !fixture.repo.exec.state.borrow().calls[calls..]
                 .iter()
                 .any(|call| {
-                    call.get(1).is_some_and(|arg| arg == "push")
-                        || call.get(2).is_some_and(|arg| arg == "publish")
+                    call.get(1).is_some_and(|arg| arg == "push") || is_cargo_call(call, "publish")
                 })
         );
         fs::write(path, bytes).unwrap();
@@ -1975,7 +2007,7 @@ fn version_preparation_failures_restore_files_and_preserve_evidence_and_artifact
                     .borrow()
                     .calls
                     .iter()
-                    .any(|call| { call.get(2).is_some_and(|arg| arg == "package") })
+                    .any(|call| { is_package_call(call) })
             );
         }
     }
@@ -2161,7 +2193,7 @@ fn metadata_publication_failures_reconcile_visible_bytes_and_retry_saved_intent(
                     .borrow()
                     .calls
                     .iter()
-                    .filter(|call| { call.get(2).is_some_and(|argument| argument == "validate") })
+                    .filter(|call| { is_make_call(call, "validate") })
                     .count(),
                 1
             );
@@ -2243,10 +2275,16 @@ fn validation_lock_cannot_be_rebound_to_an_uncommitted_graph() {
         fs::read_to_string(fixture.repo.root.join("Cargo.lock")).unwrap(),
         changed
     );
-    assert!(!fixture.repo.exec.state.borrow().calls.iter().any(|call| {
-        call.get(2)
-            .is_some_and(|arg| matches!(arg.as_str(), "update" | "package"))
-    }));
+    assert!(
+        !fixture
+            .repo
+            .exec
+            .state
+            .borrow()
+            .calls
+            .iter()
+            .any(|call| { is_cargo_call(call, "update") || is_package_call(call) })
+    );
 }
 
 #[test]
@@ -2357,10 +2395,16 @@ fn preparation_restart_recovers_from_validation_receipt_publication_errors() {
             visible.selection.source,
             if after_publication { "fix" } else { "source" }
         );
-        assert!(!fixture.repo.exec.state.borrow().calls.iter().any(|call| {
-            call.get(2)
-                .is_some_and(|arg| matches!(arg.as_str(), "update" | "package"))
-        }));
+        assert!(
+            !fixture
+                .repo
+                .exec
+                .state
+                .borrow()
+                .calls
+                .iter()
+                .any(|call| { is_cargo_call(call, "update") || is_package_call(call) })
+        );
 
         // Retry through fresh validation, regardless of whether publication
         // left the previous or replacement receipt visible.
@@ -2416,9 +2460,16 @@ fn interrupted_preparation_finishes_saved_candidate_without_revalidating() {
         if matches!(interruption, "partial" | "partial-lock") {
             fixture.repo.preflight(&fixture.selection).unwrap();
             if interruption == "partial-lock" {
-                assert!(!fixture.repo.exec.state.borrow().calls.iter().any(|call| {
-                    call[0] == "cargo" && call.get(2).is_some_and(|arg| arg == "fetch")
-                }));
+                assert!(
+                    !fixture
+                        .repo
+                        .exec
+                        .state
+                        .borrow()
+                        .calls
+                        .iter()
+                        .any(|call| { is_cargo_call(call, "fetch") })
+                );
             }
             // Already installed candidate bytes must survive a write refusal.
             let unchanged = if interruption == "partial" {
@@ -2445,7 +2496,7 @@ fn interrupted_preparation_finishes_saved_candidate_without_revalidating() {
         assert_eq!(
             calls
                 .iter()
-                .filter(|call| call.get(2).is_some_and(|arg| arg == "validate"))
+                .filter(|call| is_make_call(call, "validate"))
                 .count(),
             1
         );
@@ -2454,10 +2505,10 @@ fn interrupted_preparation_finishes_saved_candidate_without_revalidating() {
         assert!(
             !fixture.repo.exec.state.borrow().calls[start..]
                 .iter()
-                .any(|call| call.get(2).is_some_and(|arg| matches!(
-                    arg.as_str(),
-                    "update" | "package" | "fmt-check" | "validate"
-                )))
+                .any(|call| is_cargo_call(call, "update")
+                    || is_package_call(call)
+                    || is_make_call(call, "fmt-check")
+                    || is_make_call(call, "validate"))
         );
         assert!(fixture.repo.exec.state.borrow().release.is_none());
     }
@@ -2496,9 +2547,14 @@ fn partial_lock_preflight_requires_saved_validation() {
             expected["Cargo.lock"].expected
         );
         assert!(
-            !fixture.repo.exec.state.borrow().calls.iter().any(|call| {
-                call[0] == "cargo" && call.get(2).is_some_and(|arg| arg == "fetch")
-            })
+            !fixture
+                .repo
+                .exec
+                .state
+                .borrow()
+                .calls
+                .iter()
+                .any(|call| { is_cargo_call(call, "fetch") })
         );
     }
 }
@@ -2531,9 +2587,7 @@ fn preparation_recovery_preserves_conflicting_inputs_and_corrupted_evidence() {
         assert!(
             !fixture.repo.exec.state.borrow().calls[start..]
                 .iter()
-                .any(|call| call
-                    .get(2)
-                    .is_some_and(|arg| matches!(arg.as_str(), "update" | "package")))
+                .any(|call| is_cargo_call(call, "update") || is_package_call(call))
         );
     }
 }
@@ -2943,10 +2997,16 @@ fn lockfile_changes_during_post_validation_remote_inspection_stop_before_mutatio
             .unwrap()
             .exists()
     );
-    assert!(!fixture.repo.exec.state.borrow().calls.iter().any(|call| {
-        call.get(2)
-            .is_some_and(|arg| matches!(arg.as_str(), "update" | "package"))
-    }));
+    assert!(
+        !fixture
+            .repo
+            .exec
+            .state
+            .borrow()
+            .calls
+            .iter()
+            .any(|call| { is_cargo_call(call, "update") || is_package_call(call) })
+    );
 }
 
 #[test]
@@ -3026,7 +3086,7 @@ fn changed_missing_and_wrong_source_receipts_never_dispatch_publication() {
                 .borrow()
                 .calls
                 .iter()
-                .any(|call| call.get(2).is_some_and(|arg| arg == "publish"))
+                .any(|call| is_cargo_call(call, "publish"))
         );
     }
 }
@@ -3054,7 +3114,7 @@ fn publication_rechecks_tag_identity_without_replaying_effects_or_replacing_evid
                 .borrow()
                 .calls
                 .iter()
-                .filter(|call| { call.get(2).is_some_and(|arg| arg == "publish") })
+                .filter(|call| { is_cargo_call(call, "publish") })
                 .count(),
             usize::from(change != Fault::PublishBeforeTag)
         );
@@ -3103,7 +3163,7 @@ fn invalid_prepared_artifacts_stop_final_qualification_without_replacing_evidenc
         assert!(
             !fixture.repo.exec.state.borrow().calls[call_start..]
                 .iter()
-                .any(|call| call.get(2).is_some_and(|arg| arg == "package"))
+                .any(|call| is_package_call(call))
         );
     }
 }
@@ -3212,10 +3272,9 @@ fn selected_older_release_reuses_exact_receipts_and_archives_after_a_fix() {
             .iter()
             .any(|call| {
                 call[0] == "make"
-                    || call[0] == "cargo"
-                        && call.get(2).is_some_and(|arg| {
-                            matches!(arg.as_str(), "package" | "publish" | "update")
-                        })
+                    || is_package_call(call)
+                    || is_cargo_call(call, "publish")
+                    || is_cargo_call(call, "update")
             })
     );
 
@@ -3251,7 +3310,7 @@ fn selected_older_release_reuses_exact_receipts_and_archives_after_a_fix() {
     assert!(
         !fixture.repo.exec.state.borrow().calls[calls..]
             .iter()
-            .any(|call| call.get(2).is_some_and(|arg| arg == "package"))
+            .any(|call| is_package_call(call))
     );
 }
 
@@ -3367,7 +3426,7 @@ fn wasm_metadata_and_budgets_use_only_the_selected_artifact_directory() {
     let calls = fixture.repo.exec.state.borrow().calls.clone();
     let build = calls
         .iter()
-        .find(|call| call.get(2).is_some_and(|arg| arg == "build"))
+        .find(|call| is_cargo_call(call, "build"))
         .unwrap();
     assert_eq!(
         build
@@ -3459,7 +3518,7 @@ fn coordinated_publication_resumes_only_matching_packages_in_dependency_order() 
     let uploads: Vec<_> = state
         .calls
         .iter()
-        .filter(|call| call.get(2).is_some_and(|arg| arg == "publish"))
+        .filter(|call| is_cargo_call(call, "publish"))
         .map(|call| call[call.iter().position(|arg| arg == "--package").unwrap() + 1].as_str())
         .collect();
     assert_eq!(

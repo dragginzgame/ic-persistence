@@ -40,6 +40,17 @@ impl Snapshot {
     }
 }
 
+fn io_request(operation: u8, offset: u64, count: u8) -> Vec<u8> {
+    let mut bytes = vec![operation, count];
+    bytes.extend_from_slice(&offset.to_le_bytes());
+    bytes
+}
+
+fn io_instructions(reply: &[u8]) -> u64 {
+    assert_eq!(reply.len(), 10, "unexpected IO reply shape");
+    u64::from_le_bytes(reply[2..].try_into().unwrap())
+}
+
 fn assert_trap(error: RejectResponse) {
     assert!(
         matches!(
@@ -78,8 +89,7 @@ fn main() {
         // Check all three delegates, including empty spans beyond the extent.
         for operation in 0..3 {
             for (offset, count) in [(65_536, 1), (65_537, 0), (u64::MAX, 1), (u64::MAX - 1, 2)] {
-                let mut args = vec![operation, count];
-                args.extend_from_slice(&offset.to_le_bytes());
+                let args = io_request(operation, offset, count);
                 assert_trap(pic.update_call(canister, canister, "io", args).unwrap_err());
                 assert_eq!(
                     snapshot(),
@@ -120,11 +130,9 @@ fn main() {
 
     for operation in 0..3 {
         for (offset, count) in [(7_u64, 1), (65_536, 0), (65_535, 1)] {
-            let mut args = vec![operation, count];
-            args.extend_from_slice(&offset.to_le_bytes());
+            let args = io_request(operation, offset, count);
             let reply = pic.update_call(canister, canister, "io", args).unwrap();
-            assert_eq!(reply.len(), 10);
-            let instructions = u64::from_le_bytes(reply[2..].try_into().unwrap());
+            let instructions = io_instructions(&reply);
             println!("valid_io,{operation},{offset},{count},1000,{instructions}");
         }
     }
@@ -141,6 +149,21 @@ fn main() {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn io_framing_preserves_bytes_and_refuses_short_or_trailing_replies() {
+        assert_eq!(
+            io_request(2, 0x0102_0304_0506_0708, 1),
+            [2, 1, 8, 7, 6, 5, 4, 3, 2, 1]
+        );
+        assert_eq!(
+            io_instructions(&[0x42, 0x6D, 8, 7, 6, 5, 4, 3, 2, 1]),
+            0x0102_0304_0506_0708
+        );
+        for length in [0, 2, 9, 11] {
+            assert!(std::panic::catch_unwind(|| io_instructions(&vec![0; length])).is_err());
+        }
+    }
 
     #[test]
     fn snapshot_decode_preserves_fields_and_refuses_truncated_or_trailing_bytes() {

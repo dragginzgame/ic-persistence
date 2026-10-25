@@ -50,18 +50,16 @@ impl<E: Execute> Repository<E> {
         let head = &release.commit;
         let tag = self.check_tag(version, head)?;
         let evidence = self.verify_evidence(&release.selection, head, Final, Working)?;
-        let packages: Vec<_> = evidence.archives().collect();
         // Observe every package before any effect. A conflict in a later package
         // must not permit an earlier upload; dependencies publish first.
-        let published = if dry_run {
-            vec![false; packages.len()]
-        } else {
-            packages
-                .iter()
-                .map(|(name, digest)| self.registry_contains(name, version, digest))
-                .collect::<Result<Vec<_>>>()?
-        };
-        for ((name, digest), exists) in packages.into_iter().zip(published) {
+        let packages = evidence
+            .archives()
+            .map(|(name, digest)| {
+                let published = !dry_run && self.registry_contains(name, version, digest)?;
+                Ok((name, digest, published))
+            })
+            .collect::<Result<Vec<_>>>()?;
+        for (name, digest, exists) in packages {
             require(
                 self.release_commit()? == release,
                 "release changed before publication",

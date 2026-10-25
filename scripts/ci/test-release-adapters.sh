@@ -56,26 +56,23 @@ set -euo pipefail
 printf '%s\n' "$*" >> runner-events
 exit "${RELEASE_TEST_STATUS:-0}"
 STUB
-# Actual Make admission must stop before even a failing substitute runner.
+# Shared's selected test-release-commands.sh owns exhaustive flag spellings,
+# combinations and replacement permutations. Here qualify the real consumer
+# Makefile: all aliases refuse -i, and patch represents every forbidden family.
 for target in release-patch release-minor release-major release-resume; do
-    for mode in -i -n -t -q --ignore-errors --dry-run --touch --question -kin; do
+    modes=(-i)
+    if [[ "$target" == release-patch ]]; then modes=(-i -n -t -q); fi
+    for mode in "${modes[@]}"; do
         for source in direct inherited; do
-            for replacement in original empty harmless; do
-                flags=(--no-print-directory)
-                case "$replacement" in
-                    empty) flags+=(MAKEFLAGS=) ;;
-                    harmless) flags+=(MAKEFLAGS=-j2) ;;
-                esac
-                status=0
-                if [[ "$source" == direct ]]; then
-                    (cd "$FIXTURE"; RELEASE_TEST_STATUS=23 make "$mode" "$target" "${flags[@]}") \
-                        > "$FIXTURE/mode-$target-$mode-$source-$replacement.log" 2>&1 || status=$?
-                else
-                    (cd "$FIXTURE"; MAKEFLAGS="$mode" RELEASE_TEST_STATUS=23 make "$target" "${flags[@]}") \
-                        > "$FIXTURE/mode-$target-$mode-$source-$replacement.log" 2>&1 || status=$?
-                fi
-                [[ "$status" == 2 && ! -e "$FIXTURE/runner-events" ]] || exit 1
-            done
+            status=0
+            if [[ "$source" == direct ]]; then
+                (cd "$FIXTURE"; RELEASE_TEST_STATUS=23 make "$mode" "$target" --no-print-directory) \
+                    > "$FIXTURE/mode-$target-$mode-$source.log" 2>&1 || status=$?
+            else
+                (cd "$FIXTURE"; MAKEFLAGS="$mode" RELEASE_TEST_STATUS=23 make "$target" --no-print-directory) \
+                    > "$FIXTURE/mode-$target-$mode-$source.log" 2>&1 || status=$?
+            fi
+            [[ "$status" == 2 && ! -e "$FIXTURE/runner-events" ]] || exit 1
         done
     done
 done

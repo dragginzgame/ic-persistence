@@ -17,7 +17,7 @@ fn publication_reconciles_a_lost_upload_response_without_reuploading_memory() {
             .borrow()
             .calls
             .iter()
-            .filter(|call| call.get(2).is_some_and(|arg| arg == "publish"))
+            .filter(|call| is_cargo_call(call, "publish"))
             .count(),
         3
     );
@@ -66,7 +66,7 @@ fn registry_conflicts_or_unknown_status_refuse_before_any_upload() {
                     .borrow()
                     .calls
                     .iter()
-                    .any(|call| call.get(2).is_some_and(|arg| arg == "publish"))
+                    .any(|call| is_cargo_call(call, "publish"))
             );
         }
     }

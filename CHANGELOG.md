@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.51.3] - Unreleased
+
+- Simplify bootstrap return flow, allocation reporting and release observations
+  without changing APIs, stored formats or qualification boundaries.
+- Reduce duplicate Make tests and fixture bookkeeping; refresh the current
+  handoff. [Details](docs/changelog/0.51.md#0513).
+
 ## [0.51.2] - 2026-10-25
 
 - Adopt IC Tooling 0.68.3, Platform 0.6.16 and Metrics 0.16.2, preserving

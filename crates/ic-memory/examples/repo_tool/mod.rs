@@ -150,7 +150,6 @@ impl Error for PreparationError {
     }
 }
 
-const PACKAGE_MANIFEST: &str = "crates/ic-memory/Cargo.toml";
 const PACKAGE_README: &str = "crates/ic-memory/README.md";
 const CHANGELOG_FINALIZER: &str = "scripts/ci/finalize-release-changelog.awk";
 const RELEASE_INPUT_ADMISSION: &str = "scripts/ci/validate-release-inputs.pl";
@@ -559,18 +558,7 @@ impl<E: Execute> Repository<E> {
 
     fn version(&self, revision: Option<&str>) -> Result<String> {
         let text = self.text("Cargo.toml", revision)?;
-        let package_text = self.text(PACKAGE_MANIFEST, revision)?;
-        let package: toml::Value = toml::from_str(&package_text)?;
-        require(
-            toml_string(&package_text, "package", "name")? == "ic-memory"
-                && package
-                    .get("package")
-                    .and_then(|value| value.get("version"))
-                    .and_then(|value| value.get("workspace"))
-                    .and_then(toml::Value::as_bool)
-                    == Some(true),
-            "expected the ic-memory package with an inherited workspace version",
-        )?;
+        self.member_release_manifest(revision, "ic-memory")?;
         let version = toml_string(&text, "workspace.package", "version")?;
         self.version_parts(&version)?;
         Ok(version)
@@ -755,16 +743,20 @@ impl<E: Execute> Repository<E> {
         )
     }
 
-    fn member_release_manifest(&self, source: &str, name: &str) -> Result<String> {
-        let text = self.text(&package_manifest(name), Some(source))?;
+    fn member_release_manifest(&self, revision: Option<&str>, name: &str) -> Result<String> {
+        let text = self.text(&package_manifest(name), revision)?;
         let manifest: toml::Value = toml::from_str(&text)?;
+        let package = manifest
+            .get("package")
+            .ok_or("missing Persistence package")?;
         require(
-            manifest["package"]["name"].as_str() == Some(name),
+            package.get("name").and_then(toml::Value::as_str) == Some(name),
             "unexpected Persistence package",
         )?;
         require(
-            manifest["package"]["version"]
-                .get("workspace")
+            package
+                .get("version")
+                .and_then(|version| version.get("workspace"))
                 .and_then(toml::Value::as_bool)
                 == Some(true),
             "expected inherited Persistence version",
@@ -804,7 +796,7 @@ impl<E: Execute> Repository<E> {
             surfaces.insert(path.to_owned(), ReleaseSurface { original, expected });
         }
         for name in packages().into_iter().skip(1) {
-            let original = self.member_release_manifest(source, name)?;
+            let original = self.member_release_manifest(Some(source), name)?;
             surfaces.insert(
                 package_manifest(name),
                 ReleaseSurface {

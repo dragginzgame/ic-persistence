@@ -223,22 +223,14 @@ impl<M: Memory> MemoryRuntime<M> {
         policy: &P,
     ) -> Result<u64, RuntimeBootstrapError<P::Error>> {
         match &self.lifecycle {
-            RuntimeLifecycle::Unbootstrapped => {
-                self.bootstrap_unbootstrapped(
-                    declarations,
-                    pool,
-                    policy,
-                    policy.runtime_bootstrap_identity(),
-                )?;
-            }
+            RuntimeLifecycle::Unbootstrapped => self.bootstrap_unbootstrapped(
+                declarations,
+                pool,
+                policy,
+                policy.runtime_bootstrap_identity(),
+            ),
             RuntimeLifecycle::Bootstrapped { .. } => {
-                return self.verify_bootstrap(declarations, pool, policy);
-            }
-        }
-        match &self.lifecycle {
-            RuntimeLifecycle::Bootstrapped { generation, .. } => Ok(*generation),
-            RuntimeLifecycle::Unbootstrapped => {
-                unreachable!("successful bootstrap publishes committed allocations")
+                self.verify_bootstrap(declarations, pool, policy)
             }
         }
     }
@@ -288,7 +280,7 @@ impl<M: Memory> MemoryRuntime<M> {
         pool: &crate::MemoryAllocationPool,
         policy: &P,
         policy_identity: PolicyIdentity,
-    ) -> Result<(), RuntimeBootstrapError<P::Error>> {
+    ) -> Result<u64, RuntimeBootstrapError<P::Error>> {
         let mut memory = self
             .memory(MEMORY_MANAGER_LEDGER_ID)
             .expect("governance memory is not publicly leasable");
@@ -326,7 +318,7 @@ impl<M: Memory> MemoryRuntime<M> {
                 pool: pool.clone(),
             },
         };
-        Ok(())
+        Ok(generation)
     }
 
     /// Borrow this runtime's persisted application bindings without IO.
