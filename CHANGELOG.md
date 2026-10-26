@@ -1,6 +1,6 @@
 # Changelog
 
-## [0.51.4] - Unreleased
+## [0.51.4] - 2026-10-26
 
 - Adopt IC Tooling 0.68.7 in native dependencies and both helper CLIs,
   preserving library APIs, stable formats and the PocketIC pairing.
