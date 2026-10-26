@@ -1,91 +1,66 @@
 # Current handoff
 
-The released baseline is 0.51.3 at `6cb8082`. The pending compatible 0.51.4 batch
-selects IC Tooling 0.68.7, Platform 0.6.18 and Shared Tooling 0.26.20. Package
-versions, public library APIs, stable formats and release receipt JSON remain
-unchanged. Existing staging remains user-owned and untouched.
+The released baseline is 0.51.4 at `cf2daeb`. PR
+[#134 — Use IcyDB-style sections in the latest root changelog](https://github.com/dragginzgame/ic-persistence/pull/134)
+was squash-merged as `cb610c5b75861b76408cda4cf1cefb2e68bd8484`; this checkout
+is fast-forwarded to it. The pending compatible 0.51.5 batch adopts the latest
+published upstream dependencies. Package release versions, public library APIs,
+stable formats and release receipt JSON remain unchanged. Adoption edits remain
+uncommitted; staging remains user-owned.
 
 ## Current selection
 
-Both catalogs select Platform 0.6.18 at
-`98a2a8aa9b015c730ef222941b387674a729b0ab`. Its Rust changes add optional BLAKE3;
-neither graph enables it. Consumed stable-memory/PocketIC source and the qualified
-registry stable-structures 0.7.2 substrate remain unchanged. Root feature selection
-is `stable-structures`; the independent runner uses `pocket-ic`/`principal`.
+Both catalogs select Platform 0.6.19 at
+`0502bce432c2478cf86215435864223a22a14a38`. The five native Tooling libraries
+and release-editor/server CLI selections use 0.68.8 at
+`7c3b715d07bbeca38b4ba89a60d3bec309de7417`. Metrics is 0.16.3 at
+`27a46f1076ee757680b6e6b1974947e482f3158d`, within the existing 0.16 requirement.
+The incoming root lock already selected all of these and is preserved exactly.
+The independent lock changes only Platform's version/checksum.
 
-The incoming root lock already selects Platform 0.6.18, the five native Tooling
-libraries 0.68.7 and Metrics 0.16.2; its bytes remain exact. Compatible minimums
-and both release-editor/server CLI pins now select 0.68.7 at
-`7ae301d00353e1e27e94300d492e47f9736941c3`. Tooling shares Cargo completion
-tracking and preserves typed native error sources. Testkit shares final startup
-deadline/server admission across synchronous and async construction. Consumed
-metadata/release APIs, CLI arguments and receipt formats remain unchanged.
+Supplier comparisons show no Rust package-source changes from Tooling 0.68.7,
+Platform 0.6.18 or Metrics 0.16.2. Platform's increased optional Wire metadata
+minimum is not enabled by either consumer graph. Root Platform features remain
+`stable-structures`; the independent runner uses `pocket-ic`/`principal`.
+The substrate remains registry stable-structures 0.7.2 and PocketIC client/server
+remain 16.1.0. Compiler and default-feature selections are unchanged.
 
-The earlier independent lock refresh selected 38 compatible versions, including Tokio 1.54.1,
-Candid 0.10.39, ICU 2.4 and HTTP/TLS dependencies. PocketIC client/server remain
-16.1.0. Both exact CLI generations were already complete in the shared store;
-explicit setup reused them and the retained server without tool compilation or
-foreign-lock removal. Common tool pins, compiler selections, default features
-and shared installer policy identities remain unchanged.
-
-Shared advances to `a7f85d45d4212d4c39225f58597580560a333550`: 77 roots, 120 payloads.
-Its compact core derives the specialist engineering contracts, reporting metrics
-are opt-in, and focused checks follow coherent edits. Selected executable scripts,
-catalog pins and installer policy identities are unchanged. Its npm Platform
-boundary adds no dependency to this Rust-only consumer. Platform 0.6.18 remains
-the latest tagged release; sibling drafts are excluded.
+Shared Tooling is already at the latest committed 0.26.20 revision,
+`a7f85d45d4212d4c39225f58597580560a333550`: 77 roots and 120 payloads.
+Uncommitted sibling governance edits are excluded. Root notes retain PR #134's
+emoji Summary layout. See [pending notes](../changelog/0.51.md#0515---unreleased).
 Normal releases start fresh; recovery uses `release-resume VERSION=X.Y.Z`.
-Consumer receipts, archives and failed logs retain their source custody; candidate
-runner journals are not historical archives. See [pending notes](../changelog/0.51.md#0514).
+Consumer receipts, archives and failed logs retain their original custody.
 
 ## Qualification and limits
 
-Current snapshot/pin, production graph, external dependency boundary, formatting
-and documentation-link checks pass. All 62 release-helper tests pass against
-the selected 0.68.7 native libraries. Both CLI installations reused verified
-shared-store generations; offline release-editor and runtime-server admission pass.
-The actual selected editor admits both interrupted metadata states in
-`/tmp/ic-persistence-bootstrap.IsmwgF/`. Installed Memory/Storage IO, upgrade and
-rollback pass original/O3/Os/Oz at `target/qualification/runtime/attempt.mleLw4/`.
-Current preview, setup and focused qualification logs are retained at
-`/tmp/ic-persistence-adopt-20261026/`. Initial sandbox failures (read-only tool
-store and refused loopback bind) remain separately from successful retries.
-No lock selection changed in this task.
+Snapshot/pin, production graph, external dependency boundary and formatting
+checks pass. The focused release-helper version/note preservation test passes
+against the new native libraries. Both 0.68.8 CLI installations reused verified
+shared-store generations and the retained PocketIC server.
+Metrics Stable's unit tests and doctests pass with Metrics 0.16.3. The selected
+release editor admits both interrupted metadata states in
+`/tmp/ic-persistence-bootstrap.kevBmR/`. Installed Memory/Storage IO, upgrade and
+rollback pass original/O3/Os/Oz at `target/qualification/runtime/attempt.rL4O4P/`.
+Current setup and qualification logs are at `/tmp/ic-persistence-adopt-0515/`.
 
-Earlier 0.68.6 qualification covered both locked metadata graphs, strict
-native/test-support and Wasm library/example Clippy, independent-runner Clippy,
-Rust 1.91, product/runner tests, consumer release/bootstrap and archive admission.
-Those results retain their original inputs and do not qualify the new Tooling
-selection by themselves.
-
-Earlier three-archive native/MSRV/Wasm consumption and integrity passed at
-`target/package-qualification/attempt.wDxp9p/`. Installed Memory/Storage IO,
-upgrade and rollback passed original/O3/Os/Oz at
-`target/qualification/runtime/attempt.Oyk5BC/`. Earlier source comparisons,
-registry observations, index/source preimage and focused qualification logs are at
-`/tmp/ic-persistence-upstream-next/`. Full consumer release and hosted macOS
-qualification remain separate; no commit, release or publication is performed.
-
-Earlier [Tooling supplier CI](https://github.com/dragginzgame/ic-tooling/actions/runs/40295204797)
-and its PocketIC/optimizer/session workflows pass all 14 checks on the three
-supported hosts. [Platform supplier CI](https://github.com/dragginzgame/ic-platform/actions/runs/40308135437)
-passes native, browser and installed runtime checks. Its advisory job still fails
-on incomplete index coverage ([#56](https://github.com/dragginzgame/ic-platform/issues/56))
-and the Agent graph's crypto-bigint finding ([#50](https://github.com/dragginzgame/ic-platform/issues/50)).
-Neither consumer metadata graph selects crypto-bigint; this is not a fresh audit
-of both consumer graphs or proof of general vulnerability absence.
-
-Earlier adoption evidence remains at `/tmp/ic-persistence-deps0685/` and
-`/tmp/ic-persistence-platform-shared/`, including archives `attempt.YMjCCf` and
-`attempt.DG6fHT`, and installed `attempt.EhPPSl` and `attempt.KSDCQT`. Those
-results retain their older Tooling/Platform selections and runtime lock scope.
+PR #134's documentation diff and author access were reviewed before merge.
+No branch protections or rules required the remaining hosted jobs to complete.
+Its [CI run](https://github.com/dragginzgame/ic-persistence/actions/runs/40361811321)
+still had pending native/runtime jobs at merge; those are not passing evidence.
+Full release validation and current macOS qualification remain separate.
+No release, publication or dependency-adoption commit is performed.
 
 ## Retained evidence and recovery
 
-The [committed 0.51.3 handoff](https://github.com/dragginzgame/ic-persistence/blob/6cb80827170277acc67bff847b9170a208a8e8e5/docs/status/current.md)
-preserves earlier cleanup/dependency identities, qualification paths and supplier
-uncertainties. Its pending-work descriptions are historical. Prior archives,
-receipts and failed attempts remain retained with their original source scope.
+The [0.51.4 handoff](https://github.com/dragginzgame/ic-persistence/blob/cf2daeb/docs/status/current.md)
+preserves prior 62-test helper, installed IO/upgrade/rollback, native/MSRV/Wasm
+archive qualification and supplier advisory observations with their exact inputs.
+Logs remain at `/tmp/ic-persistence-adopt-20261026/`,
+`/tmp/ic-persistence-upstream-next/`, `/tmp/ic-persistence-deps0685/` and
+`/tmp/ic-persistence-platform-shared/`. Earlier package/runtime attempts remain
+retained; they do not independently qualify the new dependency identities.
+This task does not perform a fresh dependency-security audit.
 The [ownership guide](../ownership.md), [host support](../host-support.md) and
 [adoption boundaries](../shared-tooling-adoption.md) remain the active contracts.
 

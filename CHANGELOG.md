@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.51.5] - Unreleased
+
+### 📝 Summary
+
+- Adopt IC Tooling 0.68.8, Platform 0.6.19 and Metrics 0.16.3, preserving
+  library APIs, stable formats and the PocketIC client/server pairing.
+  [Details](docs/changelog/0.51.md#0515---unreleased).
+
 ## [0.51.4] - 2026-10-26
 
 ### 📝 Summary
