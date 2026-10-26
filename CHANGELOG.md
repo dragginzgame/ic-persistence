@@ -2,6 +2,8 @@
 
 ## [0.51.4] - 2026-10-26
 
+### 📝 Summary
+
 - Adopt IC Tooling 0.68.7 in native dependencies and both helper CLIs,
   preserving library APIs, stable formats and the PocketIC pairing.
 - Adopt Platform 0.6.18 and Shared Tooling 0.26.20. Normal releases start
