@@ -45,7 +45,7 @@ help:
 	@echo 'Formatting: fmt. Full release checks: validate, validate-toolchain.'
 	@echo 'Installed runtime: install-runtime-server (explicit Testkit setup), runtime-server-check (offline), test-runtime (prepared server and locked caches).'
 	@echo 'Report: cloc (root workspace; CLOC_MANIFEST selects an independent Cargo manifest). Fleet reports run in Shared Tooling.'
-	@echo 'Maintainer releases: release-patch, release-minor, release-major; normal targets recover unfinished releases.'
+	@echo 'Maintainer releases: release-patch, release-minor, release-major; normal targets start fresh; release-resume VERSION=X.Y.Z recovers a saved attempt.'
 
 # Explicit preparation; normal checks only admit the selected published editor.
 install-release-tools:

@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.51.4] - Unreleased
+
+- Adopt IC Tooling 0.68.6 in native dependencies and both helper CLIs,
+  preserving library APIs, stable formats and the PocketIC pairing.
+- Adopt Platform 0.6.18 and Shared Tooling 0.26.19. Normal releases start
+  fresh; recover an interrupted attempt with `release-resume VERSION=X.Y.Z`.
+- Refresh compatible dependencies in the independent runtime qualification graph.
+  [Details](docs/changelog/0.51.md#0514).
+
 ## [0.51.3] - 2026-10-25
 
 - Simplify bootstrap return flow, allocation reporting and release observations

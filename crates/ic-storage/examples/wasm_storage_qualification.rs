@@ -77,7 +77,7 @@ mod canister {
                 map.insert(key, key + 10);
                 view.insert(key, key + 20);
             }
-            BoundedCell::init(runtime.open_memory("storage.cell.v1").unwrap(), 30_u64);
+            let _ = BoundedCell::init(runtime.open_memory("storage.cell.v1").unwrap(), 30_u64);
         });
     }
 

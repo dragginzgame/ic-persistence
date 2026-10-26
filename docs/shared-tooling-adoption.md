@@ -9,8 +9,8 @@ local baseline. Future policy changes require reviewed snapshot adoption.
 
 ## Current source selection
 
-IC Persistence selects committed Shared Tooling 0.26.16 at
-`2077c934efb82b181bea58fe50078dbad289c1aa`, with 77 explicit roots and 119 payloads.
+IC Persistence selects committed Shared Tooling 0.26.19 at
+`c830c33447f0a84e015bda7fa14b6c096a58368e`, with 77 explicit roots and 119 payloads.
 Release 0.50.7 passed the complete native, MSRV and installed-runtime matrix
 on Linux and both macOS architectures; snapshot integrity alone is not acceptance.
 See [the adoption issue](https://github.com/dragginzgame/ic-persistence/issues/127).
@@ -39,7 +39,7 @@ tool slots still serialize builds. Old source-preparation slots and generations
 remain retained.
 
 The earlier snapshot selected 0.26.11 timing work while its committed `VERSION`
-still declared 0.26.10. This refresh records the producer's committed 0.26.16
+still declared 0.26.10. This refresh records the producer's committed 0.26.19
 identity; sibling working-tree edits remain excluded.
 The refresh retains common tool pins, compiler selections and the tool-store
 build-policy identity. Existing prepared tools can be admitted without rebuilding.
@@ -53,12 +53,22 @@ adapter preserves the busy diagnostic without recommending installation. Missing
 or invalid preparation retains its setup advice. No automatic wait or installer
 retry is added to normal checks or helper recovery.
 
-The common runner can advance from clean manually committed candidate metadata
-without claiming that an earlier missing tag or Git delivery completed. It
-retains the old plan and uncertainty, checks actual source/ref conflicts and
-requires fresh admission and validation. This adoption executes no release.
-The coordinated-workspace and dependency-identity guidance preserves this
-consumer's established three-package release and independent runtime graph.
+Normal release commands now start fresh from current clean committed metadata,
+without scanning old journals or replaying their effects. Recovery requires
+`release-resume VERSION=X.Y.Z`; the selected source, payload, refs, locks and
+destination remain admitted. This replaces the earlier automatic recovery rule.
+The runner may discard only its new candidate's stale plan/staging/PR metadata;
+consumer validation receipts, failed gate logs and retained archives preserve
+their existing custody. No release is executed during adoption.
+
+Shared 0.26.17 diagnoses unsupported retention-probe prefixes/selections and
+avoids partial generated probes. The canonical helper supports column-one,
+single-line EXIT traps; multiline consumer actions are not silently reinterpreted.
+Shared 0.26.19 allows archived Draft labels beneath known historical release
+sections while refusing active drafts and conflicting current candidates.
+The source commit message says 0.27.19, but its committed VERSION and exported
+snapshot declare 0.26.19; adoption records the committed declaration.
+
 The RPC-budget rule is adopted as governance; Persistence owns no generated
 cross-runtime application RPC client, so no product budget or codec is added.
 
@@ -96,7 +106,7 @@ also remains in its focused target. Release notes may use a numbered
 ` - Unreleased` heading, which the shared finalizer dates during preparation.
 
 Shared 0.25.3 binds explicit Cargo feature sets to selected tool installations
-and admission receipts. Build and Testkit 0.68.3 binaries select `--features cli`
+and admission receipts. Build and Testkit 0.68.6 binaries select `--features cli`
 in setup, offline admission and bootstrap calls. Library dependencies retain
 disabled defaults. Prepare the selections with `make install-tools` and
 `make install-runtime-server`; previous installations and failed attempts remain

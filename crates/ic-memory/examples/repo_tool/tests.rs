@@ -224,7 +224,7 @@ fn changed_transform_input_is_retained_and_refused_on_retry() {
 fn large_changelog_finalization_preserves_complete_history() {
     let fixture = Fixture::new();
     let text = format!(
-        "## [0.13.0]\n\n{}\n## [0.12.3] - 2026-10-04\n\nHistory.\n",
+        "## [0.13.0]\n\n{}\n## [0.12.3] - 2026-10-04\n\n## [Draft]\n\nArchived wording.\n",
         "A detailed note.\n".repeat(8192)
     );
     let updated = fixture

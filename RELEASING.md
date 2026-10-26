@@ -81,7 +81,7 @@ formatter prerequisites before builds, including under parallel Make.
 
 Release preflight checks the selected cache with `cargo fetch --locked --offline`; it never retries
 online or regenerates the lockfile. Validation, version refresh and packaging
-remain offline. Version preparation changes only the two local package versions
+remain offline. Version preparation changes only the coordinated package versions
 and their local dependency references, never external dependency selection. Cache preparation remains a distinct step: the
 documented release command authorizes `cargo fetch --locked` before helper
 compilation, including during resume. Cargo's explicit offline environment and
@@ -96,10 +96,11 @@ Prepare the complete checksum-pinned jq/yq/ripgrep/cloc host set with
 `make install-host-tools`, as described in [host support](docs/host-support.md).
 `make check-pins` checks declarations and
 tracked locks; `make validate` includes it and the canonical pinning fixtures.
-Commit the initial tracked-lock adoption before running those gates. Complete
-any earlier unfinished release using its qualified source/tooling first: old
+Release admission requires the selected tracked locks and committed source.
+Recovery of an older attempt uses its original qualified source/tooling: old
 source commits without the root lock cannot satisfy the new source binding.
-Retain their plans, receipts and archives; do not reinterpret or discard them.
+Retain consumer receipts and archives with their original scope. A fresh normal
+release does not require completing historical delivery first.
 
 ## Maintainer commands and recovery
 
@@ -117,45 +118,35 @@ pinned `make validate` gate. The branch must already exist remotely, with its
 refreshed remote head an ancestor of local HEAD. Overrides select a remote name
 and branch explicitly; the saved push URL identity must remain unchanged.
 
-Rerun a **normal target** after interruption. Once preparation may start,
-the runner selects unfinished intent before computing any new increment. Its
-plan and directory lock live in Git's `release-state` directory; the plan fixes
-kind, previous/candidate versions, source commit, UTC date, branch and destination.
-Matching effects are reconciled without a second bump or commit. Before the
-release is committed, preparation remains bound to its saved source and kind.
-After commit, newer descendant fixes can remain at HEAD: late adapters verify
-the exact older `RELEASE_COMMIT`, its saved source and annotated tag. An unchanged
-same-kind retry finishes only that release. A newer descendant or a different
-requested increment first completes it, then runs fresh preflight/full validation
-for the next candidate from the actual local version. Explicit resume completes
-only its selected release. Conflicting payload, history, index, destination, tag
-or unfinished intent stops recovery.
-Inspect a stale lock's recorded owner before manual removal; do not steal it.
+Normal release targets always start fresh from current clean, committed source
+and the canonical version, with new preflight and full validation. They do not
+scan historical plans, reuse their validation or replay their commit/tag/push
+effects. A missing older tag or registry/Git delivery disagreement does not
+select recovery. The newly computed candidate's stale local runner plan, staging
+file list and PR receipt may be discarded; build logs, qualification receipts and
+retained package archives remain evidence with their original source scope.
 
-If HEAD becomes a clean descendant commit after a `prepare` plan was saved,
-the normal direct target can supersede that local preparation before staging.
-The commit records the metadata disposition; it does not prove preparation never
-ran. The runner requires no staging evidence, unchanged destination and current
-metadata at the saved base or candidate. It archives the original intent, selects
-the requested increment from current metadata, then repeats preflight and the
-full gate. A committed candidate therefore becomes the base for the next increment.
-See the [restart contract](docs/releases.md#source-changes-after-saved-preparation-intent).
-Memory's preparation adapter changes local metadata and evidence only; existing
-validation receipts are retained before replacement. Dirty or divergent source
-still refuses restart. Unchanged HEAD and explicit resume retain exact recovery;
-staging and later phases reconcile their exact effects. Adoption and ordinary
-repair do not authorize a real release or recovery.
-After fresh successful validation, Memory also retains an older prepared receipt
-for the same release/destination and ancestor source before replacing it during
-new preparation. Retention failure preserves active evidence; unrelated or corrupt
-receipts refuse. Immutable package archives are kept.
-
-Preflight and validation failures restart fresh gates through the normal target,
-preserving prior attempts. Optional explicit selection uses the same checks:
+Recover a specific interrupted attempt explicitly:
 
 ```sh
 make release-resume VERSION=X.Y.Z
 ```
+
+Resume admits that version's saved source, kind, date, payload and destination.
+After commit, newer descendant fixes can remain at HEAD: late adapters verify
+the exact older `RELEASE_COMMIT` and annotated tag without another bump or commit.
+Conflicting source/index, occupied locks, candidate refs/payloads or destinations
+still stop execution. Inspect a stale lock's recorded owner before manual removal;
+do not steal it. Recovery of an older release requires its original qualified
+source/tooling and intact consumer evidence.
+
+The Rust adapters retain their independent source-bound receipt admission.
+Fresh validation preserves an admitted older prepared receipt for the same
+release/destination and ancestor source before replacing it. Corrupt or unrelated
+consumer qualification receipts remain conflicts; normal runner freshness does
+not silently repair them. Retention failure preserves active evidence, and
+immutable archives remain retained. Adoption and ordinary repairs do not
+execute a release or recovery.
 
 The recorded `make/consumer.mk` includes `make/release.mk` for standard entrypoint
 routing and conflicting-goal admission. Memory's Makefile retains direct-only
@@ -163,6 +154,7 @@ delivery, binds the shared tooling root to this checkout even with conflicting
 caller settings, and forces release-only cache preparation on the four standard
 release targets. The Rust adapters continue to own metadata, qualification and
 publication.
+
 The adjacent `make/execution.mk` admits Make before recipes and resolves its
 probe from the reviewed include rather than an ambient tooling root. Memory's
 exported target policies also support GNU Make 3.81.
@@ -170,8 +162,9 @@ exported target policies also support GNU Make 3.81.
 Push uses `--no-follow-tags --atomic` and exactly the selected branch and candidate
 tag refspecs. There is no force push or non-atomic fallback. A lost push reply is
 reconciled with exact remote identities; a failed remote query stops recovery.
-Success retains plans, logs, receipts and archives. Cleanup and package
-publication are separate operations.
+Success retains logs, receipts and archives. Runner plans remain available for
+explicit resume but are not historical archives. Cleanup and package publication
+are separate operations.
 
 The runner rechecks the committed payload, index, working files and exact
 annotated tag object after the final push hook. Explicit resume of a completed
@@ -179,8 +172,8 @@ direct release verifies that local and remote tag objects agree and that the
 observed remote branch contains the release commit. A known descendant tip is
 valid. Missing or replaced tags, missing or diverged branches and failed remote
 queries stop completion without recreating or pushing refs. Fetch unknown branch
-history and reconcile conflicts before retrying; retain the completed plan and
-its evidence.
+history and reconcile conflicts before resuming; retain the selected recovery
+plan while needed and preserve its consumer evidence.
 
 The Rust consumer adapters consume the runner's eight `RELEASE_*` selections.
 They validate source/input identities, finalize the root and detail notes with
@@ -368,7 +361,7 @@ Cargo output and separate Cargo/logger statuses under
 `target/release-validation/publication/`. Interrupted locks are retained for
 inspection rather than automatically broken.
 
-After a partial upload or lost response, retain the release checkout, plans and
+After a partial upload or lost response, retain the release checkout, receipts and
 archives and rerun `make publish`. Matching registry checksums are skipped; no
 automatic overwrite, version selection or retry occurs. If visibility is delayed,
 the command stops and can be rerun later. `publish-dry-run` never supplies evidence
