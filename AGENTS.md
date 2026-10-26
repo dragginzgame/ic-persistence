@@ -43,11 +43,16 @@ for the upstream contribution and the `ic-storage` package integration boundary.
 ## Development and qualification commands
 
 - Before editing or compiling, check for active Cargo, rustc and rustdoc builds.
-- Focused checks: `make shared-tooling-check`, `make check-pins`, `make check-production-graph`, `make test-tools`, `make test-tooling`,
-  `make test-release-adapters`, `make test-hooks`, `make test-fixture-cell`,
-  `make test-failure-evidence`, `make fmt-check`, `make lint-tooling`, or an appropriately
-  selected Rust test. `make runtime-server-check` and `make test-runtime` are
-  focused installed qualification with explicitly prepared tools and both caches.
+- Select checks for the affected contract: `make shared-tooling-check`,
+  `make check-pins`, `make check-production-graph`,
+  `make fmt-check`, or an appropriately selected Rust test such as
+  `cargo test -p ic-memory --locked --offline --example repo-tool` for the native
+  release helper. `make lint-tooling`, `make test-tools`, `make test-tooling`,
+  `make test-release-adapters`, `make test-hooks`, `make test-fixture-cell` and
+  `make test-failure-evidence` are aggregates; select their relevant scripts or
+  tests when a narrower proof suffices. `make runtime-server-check` admits the
+  installed server; `make test-runtime` qualifies installed IO, upgrade and
+  rollback with explicitly prepared tools and both caches.
 - Full release suite: `make validate`, under the shared
   [validation cadence](DRAGGINZGAME.md#validation-and-evidence).
   Development packaging qualifies working-tree edits; release
@@ -102,11 +107,8 @@ to prove adoption.
 
 Follow the reviewed shared [contribution rules](rules/contributions.md),
 [hard-cut baseline](DRAGGINZGAME.md#pre-10-contracts) and
-[changelog rules](rules/changelogs.md). Ordinary work leaves
-staging, commits, package versions and release effects to the user. An explicit
-PR request includes its scoped contribution workflow; it does not select PR
-release delivery. Memory uses direct release delivery. Never commit merely to
-satisfy a validation prerequisite.
+[changelog rules](rules/changelogs.md). Memory uses direct release delivery;
+an ordinary PR does not select PR release delivery.
 
 Keep root notes concise, with extended notes in `docs/changelog/<major>.<minor>.md`.
 Historical documents may describe retired formats; maintained code and fixtures
@@ -149,7 +151,7 @@ growth and installed IO/upgrade checks. Memory keeps its local layout/growth
 safeguards. Changes stop at the owned IC Platform boundary.
 
 The independent qualification workspace consumes PocketIC through IC Platform's
-optional native client boundary; its lockfile selects client 16.1.0. Testkit 0.68.6 owns the reviewed
+optional native client boundary; its lockfile selects client 16.1.0. Testkit 0.68.7 owns the reviewed
 16.1.0 server selection. Changing that pair requires repeating installed
 qualification; historical 16.0.0 client/server evidence cannot qualify the new
 pairing. Keep both lockfiles, sources, features and toolchains unchanged during

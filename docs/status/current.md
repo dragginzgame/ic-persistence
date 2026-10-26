@@ -1,7 +1,7 @@
 # Current handoff
 
 The released baseline is 0.51.3 at `6cb8082`. The pending compatible 0.51.4 batch
-selects IC Tooling 0.68.6, Platform 0.6.18 and Shared Tooling 0.26.19. Package
+selects IC Tooling 0.68.7, Platform 0.6.18 and Shared Tooling 0.26.20. Package
 versions, public library APIs, stable formats and release receipt JSON remain
 unchanged. Existing staging remains user-owned and untouched.
 
@@ -14,41 +14,59 @@ registry stable-structures 0.7.2 substrate remain unchanged. Root feature select
 is `stable-structures`; the independent runner uses `pocket-ic`/`principal`.
 
 The incoming root lock already selects Platform 0.6.18, the five native Tooling
-libraries 0.68.6 and Metrics 0.16.2; its bytes remain exact. Compatible minimums
-and both release-editor/server CLI pins now select 0.68.6 at
-`dede95dd1d6ea1cb79367ecd3957233fcf3a2c81`. Build strengthens Cargo completion and
-diagnostic-read admission. Its consumed metadata/release APIs remain unchanged;
-new Testkit benchmark helpers require no Persistence source migration.
+libraries 0.68.7 and Metrics 0.16.2; its bytes remain exact. Compatible minimums
+and both release-editor/server CLI pins now select 0.68.7 at
+`7ae301d00353e1e27e94300d492e47f9736941c3`. Tooling shares Cargo completion
+tracking and preserves typed native error sources. Testkit shares final startup
+deadline/server admission across synchronous and async construction. Consumed
+metadata/release APIs, CLI arguments and receipt formats remain unchanged.
 
-The independent lock refreshes 38 compatible versions, including Tokio 1.54.1,
+The earlier independent lock refresh selected 38 compatible versions, including Tokio 1.54.1,
 Candid 0.10.39, ICU 2.4 and HTTP/TLS dependencies. PocketIC client/server remain
 16.1.0. Both exact CLI generations were already complete in the shared store;
 explicit setup reused them and the retained server without tool compilation or
 foreign-lock removal. Common tool pins, compiler selections, default features
 and shared installer policy identities remain unchanged.
 
-Shared stays at `c830c33447f0a84e015bda7fa14b6c096a58368e`: 77 roots, 119 payloads.
+Shared advances to `a7f85d45d4212d4c39225f58597580560a333550`: 77 roots, 120 payloads.
+Its compact core derives the specialist engineering contracts, reporting metrics
+are opt-in, and focused checks follow coherent edits. Selected executable scripts,
+catalog pins and installer policy identities are unchanged. Its npm Platform
+boundary adds no dependency to this Rust-only consumer. Platform 0.6.18 remains
+the latest tagged release; sibling drafts are excluded.
 Normal releases start fresh; recovery uses `release-resume VERSION=X.Y.Z`.
 Consumer receipts, archives and failed logs retain their source custody; candidate
 runner journals are not historical archives. See [pending notes](../changelog/0.51.md#0514).
 
 ## Qualification and limits
 
-Both locked metadata graphs, strict native/test-support and Wasm library/example
-Clippy, independent-runner Clippy and actual Rust 1.91 checks pass. All 62 release-
-helper, 183 Memory, 12 Storage, 27 Metrics Stable and three runner tests pass; seven
-opt-in measurements remain ignored. Consumer release/bootstrap and compiler/archive
-admission fixtures pass, as do formatting, lint and graph/snapshot boundaries.
+Current snapshot/pin, production graph, external dependency boundary, formatting
+and documentation-link checks pass. All 62 release-helper tests pass against
+the selected 0.68.7 native libraries. Both CLI installations reused verified
+shared-store generations; offline release-editor and runtime-server admission pass.
+The actual selected editor admits both interrupted metadata states in
+`/tmp/ic-persistence-bootstrap.IsmwgF/`. Installed Memory/Storage IO, upgrade and
+rollback pass original/O3/Os/Oz at `target/qualification/runtime/attempt.mleLw4/`.
+Current preview, setup and focused qualification logs are retained at
+`/tmp/ic-persistence-adopt-20261026/`. Initial sandbox failures (read-only tool
+store and refused loopback bind) remain separately from successful retries.
+No lock selection changed in this task.
 
-Actual three-archive native/MSRV/Wasm consumption and integrity pass at
+Earlier 0.68.6 qualification covered both locked metadata graphs, strict
+native/test-support and Wasm library/example Clippy, independent-runner Clippy,
+Rust 1.91, product/runner tests, consumer release/bootstrap and archive admission.
+Those results retain their original inputs and do not qualify the new Tooling
+selection by themselves.
+
+Earlier three-archive native/MSRV/Wasm consumption and integrity passed at
 `target/package-qualification/attempt.wDxp9p/`. Installed Memory/Storage IO,
-upgrade and rollback pass original/O3/Os/Oz at
-`target/qualification/runtime/attempt.Oyk5BC/`. Current source comparisons,
+upgrade and rollback passed original/O3/Os/Oz at
+`target/qualification/runtime/attempt.Oyk5BC/`. Earlier source comparisons,
 registry observations, index/source preimage and focused qualification logs are at
 `/tmp/ic-persistence-upstream-next/`. Full consumer release and hosted macOS
 qualification remain separate; no commit, release or publication is performed.
 
-[Tooling supplier CI](https://github.com/dragginzgame/ic-tooling/actions/runs/40295204797)
+Earlier [Tooling supplier CI](https://github.com/dragginzgame/ic-tooling/actions/runs/40295204797)
 and its PocketIC/optimizer/session workflows pass all 14 checks on the three
 supported hosts. [Platform supplier CI](https://github.com/dragginzgame/ic-platform/actions/runs/40308135437)
 passes native, browser and installed runtime checks. Its advisory job still fails

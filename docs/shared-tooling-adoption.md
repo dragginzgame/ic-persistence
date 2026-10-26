@@ -9,8 +9,13 @@ local baseline. Future policy changes require reviewed snapshot adoption.
 
 ## Current source selection
 
-IC Persistence selects committed Shared Tooling 0.26.19 at
-`c830c33447f0a84e015bda7fa14b6c096a58368e`, with 77 explicit roots and 119 payloads.
+IC Persistence selects committed Shared Tooling 0.26.20 at
+`a7f85d45d4212d4c39225f58597580560a333550`, with 77 explicit roots and 120 payloads.
+The compact baseline derives `rules/engineering-details.md` as a companion;
+specialist contracts remain binding when the task touches them. Reporting metrics
+are opt-in, and focused checks follow the completed coherent edit batch. The
+adopted npm Platform boundary adds no dependency to this Rust-only consumer.
+No selected executable, common tool pin or installer build identity changes.
 Release 0.50.7 passed the complete native, MSRV and installed-runtime matrix
 on Linux and both macOS architectures; snapshot integrity alone is not acceptance.
 See [the adoption issue](https://github.com/dragginzgame/ic-persistence/issues/127).
@@ -39,8 +44,8 @@ tool slots still serialize builds. Old source-preparation slots and generations
 remain retained.
 
 The earlier snapshot selected 0.26.11 timing work while its committed `VERSION`
-still declared 0.26.10. This refresh records the producer's committed 0.26.19
-identity; sibling working-tree edits remain excluded.
+still declared 0.26.10. The previous refresh recorded the producer's committed
+0.26.19 identity; sibling working-tree edits remain excluded.
 The refresh retains common tool pins, compiler selections and the tool-store
 build-policy identity. Existing prepared tools can be admitted without rebuilding.
 The retired checkout-local Rust build directory no longer affects admission;
@@ -106,7 +111,7 @@ also remains in its focused target. Release notes may use a numbered
 ` - Unreleased` heading, which the shared finalizer dates during preparation.
 
 Shared 0.25.3 binds explicit Cargo feature sets to selected tool installations
-and admission receipts. Build and Testkit 0.68.6 binaries select `--features cli`
+and admission receipts. Build and Testkit 0.68.7 binaries select `--features cli`
 in setup, offline admission and bootstrap calls. Library dependencies retain
 disabled defaults. Prepare the selections with `make install-tools` and
 `make install-runtime-server`; previous installations and failed attempts remain

@@ -2,9 +2,9 @@
 
 ## [0.51.4] - Unreleased
 
-- Adopt IC Tooling 0.68.6 in native dependencies and both helper CLIs,
+- Adopt IC Tooling 0.68.7 in native dependencies and both helper CLIs,
   preserving library APIs, stable formats and the PocketIC pairing.
-- Adopt Platform 0.6.18 and Shared Tooling 0.26.19. Normal releases start
+- Adopt Platform 0.6.18 and Shared Tooling 0.26.20. Normal releases start
   fresh; recover an interrupted attempt with `release-resume VERSION=X.Y.Z`.
 - Refresh compatible dependencies in the independent runtime qualification graph.
   [Details](docs/changelog/0.51.md#0514).
