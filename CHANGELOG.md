@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.51.13] - Unreleased
+
+### 🩹 Fixed
+
+- Keep the formatter compiler-selection fixture compatible with macOS Bash 3.2,
+  and include its case logs in failure diagnostics.
+  [#135 — Adopt shared formatter orchestration without dropping package-consumer formatting](https://github.com/dragginzgame/ic-persistence/issues/135).
+  [Details](docs/changelog/0.51.md#05113---unreleased).
+
 ## [0.51.12] - 2026-10-27
 
 ### ➕ Added

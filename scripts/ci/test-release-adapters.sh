@@ -31,7 +31,7 @@ finish_fixture() {
     local status="$1" command="$2" path
     if [[ "$status" != 0 || "$fixture_complete" != true ]]; then
         printf 'Release-adapter fixture failed in %s: %s\n' "$PWD" "$command" >&2
-        for path in "$FIXTURE/bootstrap/bootstrap.log" \
+        for path in "$FIXTURE/jobserver"/compiler-*.log "$FIXTURE/bootstrap/bootstrap.log" \
             "$FIXTURE/bootstrap"/release-cache-*.log; do
             if [[ -f "$path" ]]; then
                 printf 'Retained diagnostic: %s\n' "$path" >&2
@@ -521,8 +521,10 @@ for compiler_origin in environment command; do
     : > "$JOBSERVER_EVENTS"
     compiler_arguments=()
     if [[ "$compiler_origin" == command ]]; then compiler_arguments+=(RUSTUP_TOOLCHAIN=other-compiler); fi
+    # Bash 3.2 treats an empty array as unset under nounset.
     (cd "$jobserver"; PATH="$jobserver/bin:$PATH" RUSTUP_TOOLCHAIN=other-compiler \
-        make --no-print-directory "${parallel[@]}" fmt-check "${compiler_arguments[@]}") \
+        make --no-print-directory "${parallel[@]}" fmt-check \
+            ${compiler_arguments[@]+"${compiler_arguments[@]}"}) \
         > "$jobserver/compiler-$compiler_origin.log" 2>&1
     sed -e 's/--edition 2024 /--edition 2024 --check /' \
         -e 's/sort --workspace --grouped$/sort --workspace --grouped --check/' \
