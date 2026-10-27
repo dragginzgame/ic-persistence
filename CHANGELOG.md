@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.51.8] - Unreleased
+
+### 📝 Summary
+
+- Adopt IC Tooling 0.68.11 in native dependencies and both helper CLIs, and
+  Platform 0.6.20 across both workspaces. Library APIs, stable formats and the
+  PocketIC client/server pairing remain unchanged.
+
+### 🧹 Cleanup
+
+- Simplify release rollback, receipt retention and test effects, and make archive
+  graph admission independently testable.
+- Share diagnostic export assembly and validated metric changes while preserving
+  report fields, checkpoint semantics and stored formats.
+  [Details](docs/changelog/0.51.md#0518---unreleased).
+
 ## [0.51.7] - 2026-10-27
 
 ### 🧹 Cleanup

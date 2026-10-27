@@ -6,7 +6,7 @@ IFS=$'\t' read -r -a packages <<< "$package_names"
 source scripts/ci/fixture-lifecycle.sh
 fixture="$(fixture_create "${TMPDIR:-/tmp}/ic-persistence-package-admission.XXXXXX")"
 trap 'status=$?; if [[ "$status" != 0 ]]; then
-    fixture_replay_logs "$fixture/package.log" "$fixture/drift.log" "$fixture/duplicate.log" "$fixture/msrv.log"
+    fixture_replay_logs "$fixture/package.log" "$fixture/drift.log" "$fixture/msrv.log"
 fi; exit "$status"' EXIT
 echo "Retained archive-admission fixture: $fixture"
 mkdir -p "$fixture/bin"
@@ -15,8 +15,9 @@ REAL_YQ="$(command -v yq)"
 REAL_RUSTUP="$(command -v rustup)"
 export REAL_CARGO REAL_YQ REAL_RUSTUP
 pin="$(sed -n 's/^channel = "\([^"]*\)"$/\1/p' rust-toolchain.toml)"
+bash scripts/ci/test-package-graph.sh
 # Packaging is setup, not the behavior under fault injection. Prepare it once;
-# both rejection cases still run the real extraction and graph admission path.
+# One rejection still runs the real extraction and pre-compilation admission path.
 "$REAL_CARGO" "+$pin" package --workspace --registry crates-io --locked --offline --no-verify --allow-dirty > "$fixture/package.log" 2>&1
 metadata="$("$REAL_CARGO" "+$pin" metadata --no-deps --locked --offline --format-version 1)"
 target="$(printf '%s' "$metadata" | jq -er '.target_directory')"
@@ -63,16 +64,7 @@ if [[ "$*" == *' check '* || "$*" == *' run '* ]]; then
     echo 'unexpected compilation after invalid admission' >&2
     exit 99
 fi
-if [[ "$*" == *' metadata '* && "$*" == *'/package-qualification/attempt.'* ]]; then
-    case "$REJECT_MODE" in
-        duplicate) "$REAL_CARGO" "$@" | jq '.packages += [.packages[] | select(.name == "ic-memory")]' ;;
-        substituted) "$REAL_CARGO" "$@" | jq '(.packages[] | select(.name == "ic-memory") | .manifest_path) = "/substituted/Cargo.toml"' ;;
-        local-extra) "$REAL_CARGO" "$@" | jq '.packages += [{name: "foreign-local", source: null, manifest_path: "/foreign/Cargo.toml"}]' ;;
-        *) exec "$REAL_CARGO" "$@" ;;
-    esac
-else
-    exec "$REAL_CARGO" "$@"
-fi
+exec "$REAL_CARGO" "$@"
 STUB
 cat > "$fixture/bin/rustup" <<'STUB'
 #!/usr/bin/env bash
@@ -86,22 +78,15 @@ else
 fi
 STUB
 chmod +x "$fixture/bin/cargo" "$fixture/bin/yq" "$fixture/bin/rustup"
-for mode in drift duplicate substituted local-extra; do
-    if REJECT_MODE="$mode" PATH="$fixture/bin:$PATH" bash scripts/ci/package-workspace.sh "$pin" --allow-dirty > "$fixture/$mode.log" 2>&1; then
-        echo "Incorrectly admitted $mode; see $fixture/$mode.log" >&2
-        exit 1
-    fi
-    if rg -q 'unexpected compilation' "$fixture/$mode.log"; then
-        cat "$fixture/$mode.log" >&2
-        exit 1
-    fi
-    case "$mode" in
-        drift) expected='archive dependency selection drift' ;;
-        duplicate|substituted|local-extra) expected='archive graph must use exactly the extracted Persistence packages' ;;
-    esac
-    rg -q "$expected" "$fixture/$mode.log" || { cat "$fixture/$mode.log" >&2; exit 1; }
-    echo "Rejected $mode before compilation"
-done
+# One real orchestration probe proves rejection occurs before compilation.
+if REJECT_MODE=drift PATH="$fixture/bin:$PATH" bash scripts/ci/package-workspace.sh "$pin" --allow-dirty > "$fixture/drift.log" 2>&1; then
+    echo "Incorrectly admitted drift; see $fixture/drift.log" >&2; exit 1
+fi
+if rg -q 'unexpected compilation' "$fixture/drift.log"; then
+    cat "$fixture/drift.log" >&2; exit 1
+fi
+rg -q 'archive dependency selection drift' "$fixture/drift.log"
+echo 'Pure graph refusals and real admission-before-compilation passed'
 # Alter only the fixture's catalog observation. Real archive extraction and
 # graph admission run; compiler checks/build/run effects are substitutes.
 export FIXTURE_MSRV=1.90.0 MSRV_EVENTS="$fixture/msrv-events" MSRV_ADMISSION_EVENTS="$fixture/msrv-admission"

@@ -1,7 +1,5 @@
 use super::{MemoryRuntime, RuntimeDiagnosticError};
-use crate::{
-    DiagnosticExport, DiagnosticMemorySize, RecoveredLedger, physical::CommitSnapshotDiagnostic,
-};
+use crate::{DiagnosticExport, RecoveredLedger, physical::CommitSnapshotDiagnostic};
 use ic_platform::stable_structures::Memory;
 
 impl<M: Memory> MemoryRuntime<M> {
@@ -26,12 +24,7 @@ impl<M: Memory> MemoryRuntime<M> {
     }
 
     fn recovered_diagnostic_export(&self, recovered: RecoveredLedger) -> DiagnosticExport {
-        let mut export = DiagnosticExport::from_owned_ledger(recovered.into_ledger());
-        for record in &mut export.records {
-            record.memory_size = Some(DiagnosticMemorySize::from_wasm_pages(
-                self.memory_size_pages(record.allocation.slot().id()),
-            ));
-        }
-        export
+        DiagnosticExport::from_owned_ledger(recovered.into_ledger())
+            .with_memory_sizes(|record| self.memory_size_pages(record.slot().id()))
     }
 }

@@ -40,6 +40,20 @@ impl DiagnosticExport {
         Self::from_records(ledger.current_generation, ledger.records.into_iter())
     }
 
+    // Callers own when sizes are observed: live exports measure here, while
+    // fixture reports supply readings captured before policy callbacks.
+    pub(crate) fn with_memory_sizes(
+        mut self,
+        mut pages: impl FnMut(&AllocationRecord) -> u64,
+    ) -> Self {
+        for record in &mut self.records {
+            record.memory_size = Some(DiagnosticMemorySize::from_wasm_pages(pages(
+                &record.allocation,
+            )));
+        }
+        self
+    }
+
     fn from_records(
         current_generation: u64,
         records: impl Iterator<Item = AllocationRecord>,

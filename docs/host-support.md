@@ -132,7 +132,7 @@ already tracked by Git. Adopt new locks through an explicitly authorized commit
 or PR before the real-checkout declaration/release gate can pass; qualification
 alone does not authorize staging them.
 
-Installed runtime qualification uses the published `ic-testkit` 0.68.8 server CLI
+Installed runtime qualification uses the published `ic-testkit` 0.68.11 server CLI
 selected in the root Makefile, installed through Shared Tooling's exact Cargo
 binary installer. It has a separate locked registry tool graph, outside both
 Memory lockfiles. Prepare it and Testkit's authenticated server selection explicitly:

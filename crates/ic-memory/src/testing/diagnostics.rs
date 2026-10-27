@@ -299,11 +299,9 @@ impl LedgerObservation {
         let commit_recovery = self.recovery.as_ref().map(|(_, diagnostic)| *diagnostic);
         let ledger = self.recovery.and_then(|(recovered, _)| {
             recovered.ok().map(|recovered| {
-                let mut export = DiagnosticExport::from_owned_ledger(recovered.into_ledger());
-                for (record, pages) in export.records.iter_mut().zip(&self.observed_pages) {
-                    record.memory_size = Some(DiagnosticMemorySize::from_wasm_pages(*pages));
-                }
-                export
+                DiagnosticExport::from_owned_ledger(recovered.into_ledger()).with_memory_sizes(
+                    |record| self.observed_pages[usize::from(record.slot().id())],
+                )
             })
         });
         (self.stable_cell, commit_recovery, ledger)
@@ -339,8 +337,9 @@ impl<M: Memory> MemoryRuntime<M> {
         let recovery = record.ok().map(|record| record.recover_with_diagnostic());
         let mut observed_pages = [0; crate::constants::MAX_ALLOCATIONS];
         if let Some((Ok(recovered), _)) = &recovery {
-            for (record, pages) in recovered.ledger().records().iter().zip(&mut observed_pages) {
-                *pages = self.memory_size_pages(record.slot().id());
+            for record in recovered.ledger().records() {
+                let id = record.slot().id();
+                observed_pages[usize::from(id)] = self.memory_size_pages(id);
             }
         }
         LedgerObservation {

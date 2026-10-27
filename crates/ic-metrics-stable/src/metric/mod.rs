@@ -26,7 +26,21 @@ pub trait StoredMetric: Sized + Eq {
     fn continues(&self, previous: &Self) -> bool;
 }
 
-fn continues(current: MeasurementAggregate, previous: MeasurementAggregate) -> bool {
+// Monotonic differences are admitted once. Counts describe exact additions
+// only while the aggregate sample count has not saturated.
+struct AggregateChange {
+    exact: bool,
+    samples: u64,
+    total: u128,
+    maximum: u64,
+    maximum_changed: bool,
+}
+
+#[inline]
+fn aggregate_change(
+    current: MeasurementAggregate,
+    previous: MeasurementAggregate,
+) -> Option<AggregateChange> {
     if !(current.samples() >= previous.samples()
         && current.total() >= previous.total()
         && current.maximum() >= previous.maximum()
@@ -36,18 +50,21 @@ fn continues(current: MeasurementAggregate, previous: MeasurementAggregate) -> b
             || current.samples() != previous.samples()
             || current == previous))
     {
-        return false;
+        return None;
     }
-    if current.samples_overflowed() {
-        return true;
-    }
-    // Monotonic, exact counts admit these differences. Added observations are
-    // bounded by the current maximum and must attain it if that maximum grew.
-    let samples = current.samples() - previous.samples();
-    let total = current.total() - previous.total();
-    let maximum = u128::from(current.maximum().unwrap_or(0));
-    total <= u128::from(samples) * maximum
-        && (current.maximum() == previous.maximum() || total >= maximum)
+    let change = AggregateChange {
+        exact: !current.samples_overflowed(),
+        samples: current.samples() - previous.samples(),
+        total: current.total() - previous.total(),
+        maximum: current.maximum().unwrap_or(0),
+        maximum_changed: current.maximum() != previous.maximum(),
+    };
+    // Exact additions are bounded by the current maximum and must attain it
+    // if that maximum grew. Saturated sample counts retain monotonic checks.
+    (!change.exact
+        || (change.total <= u128::from(change.samples) * u128::from(change.maximum)
+            && (!change.maximum_changed || change.total >= u128::from(change.maximum))))
+    .then_some(change)
 }
 
 impl StoredMetric for MeasurementCounter {
@@ -94,7 +111,7 @@ impl StoredMetric for MeasurementAggregate {
     }
 
     fn continues(&self, previous: &Self) -> bool {
-        continues(*self, *previous)
+        aggregate_change(*self, *previous).is_some()
     }
 }
 
@@ -126,29 +143,26 @@ impl StoredMetric for MeasurementSummary {
     }
 
     fn continues(&self, previous: &Self) -> bool {
-        let current = self.aggregate();
-        let before = previous.aggregate();
-        if !continues(current, before) {
+        let Some(change) = aggregate_change(self.aggregate(), previous.aggregate()) else {
             return false;
-        }
-        if current.samples_overflowed() {
+        };
+        if !change.exact {
             return true;
         }
-        let samples = current.samples() - before.samples();
-        if samples == 0 {
+        if change.samples == 0 {
             return self.latest() == previous.latest();
         }
-        let total = current.total() - before.total();
         let latest = u128::from(self.latest().unwrap_or(0));
-        let maximum = u128::from(current.maximum().unwrap_or(0));
-        let other_maximum = if current.maximum() != before.maximum() && latest < maximum {
+        let maximum = u128::from(change.maximum);
+        let other_maximum = if change.maximum_changed && latest < maximum {
             maximum
         } else {
             0
         };
         // The last added observation is fixed. A distinct new maximum must
         // occur among the other additions; every other value is at most it.
-        total >= latest + other_maximum && total <= u128::from(samples - 1) * maximum + latest
+        change.total >= latest + other_maximum
+            && change.total <= u128::from(change.samples - 1) * maximum + latest
     }
 }
 
@@ -237,15 +251,10 @@ impl<const N: usize> StoredMetric for MeasurementHistogram<N> {
     }
 
     fn continues(&self, previous: &Self) -> bool {
-        let current = self.aggregate();
-        let before = previous.aggregate();
-        if !continues(current, before) {
+        let Some(change) = aggregate_change(self.aggregate(), previous.aggregate()) else {
             return false;
-        }
-        let exact = !current.samples_overflowed();
-        let maximum = current.maximum().unwrap_or(0);
-        let maximum_changed = current.maximum() != before.maximum();
-        let mut maximum_added = !maximum_changed;
+        };
+        let mut maximum_added = !change.maximum_changed;
         let mut minimum_total = 0_u128;
         let mut maximum_total = 0_u128;
         // Project finite/overflow bucket metadata separately from admission.
@@ -274,9 +283,9 @@ impl<const N: usize> StoredMetric for MeasurementHistogram<N> {
                 self.upper_bounds()[index - 1].saturating_add(1)
             };
             let upper = if index < N {
-                self.upper_bounds()[index].min(maximum)
+                self.upper_bounds()[index].min(change.maximum)
             } else {
-                maximum
+                change.maximum
             };
             (lower, upper)
         };
@@ -285,7 +294,7 @@ impl<const N: usize> StoredMetric for MeasurementHistogram<N> {
             if now < prior || (prior_overflowed && !overflowed) {
                 return false;
             }
-            if !exact || now == prior {
+            if !change.exact || now == prior {
                 continue;
             }
             let (lower, upper) = interval(index);
@@ -294,13 +303,11 @@ impl<const N: usize> StoredMetric for MeasurementHistogram<N> {
             // so both range totals, including attainment, fit in u128.
             minimum_total += added * u128::from(lower);
             maximum_total += added * u128::from(upper);
-            if maximum_changed && upper == maximum {
-                minimum_total += u128::from(maximum - lower);
+            if change.maximum_changed && upper == change.maximum {
+                minimum_total += u128::from(change.maximum - lower);
                 maximum_added = true;
             }
         }
-        !exact
-            || (maximum_added
-                && (minimum_total..=maximum_total).contains(&(current.total() - before.total())))
+        !change.exact || (maximum_added && (minimum_total..=maximum_total).contains(&change.total))
     }
 }

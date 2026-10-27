@@ -98,9 +98,17 @@ and Testkit keeps server selection/lifecycle.
 
 Fixture diagnostics own a read-only observation of stable-cell status, protected
 recovery and allocation sizes before caller policy runs. Public report assembly
-uses those captured facts. Release tests keep file-publication faults at their
-filesystem boundary and scope Make admission, jobserver, receipt and bootstrap
-scenarios independently; the outer suite retains failed evidence.
+shares page-size projection with live exports while retaining each caller's
+measurement boundary. Release preparation carries backups beside admitted file
+replacements; receipt supersession owns ancestry admission and retention before
+active evidence is replaced.
+
+Release tests give Git, build, registry and file effects their own state and
+faults, sharing one ordered command log. Make admission, jobserver, receipt and
+bootstrap scenarios remain scoped independently; the outer suite retains failed
+evidence. Archive graph predicates live in `scripts/ci/package-graph.jq`, used by
+both real admission and pure fixtures. Cargo observation and compiler dispatch
+remain in the archive qualification script.
 
 ## Release tooling review — 0.62.1
 

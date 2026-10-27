@@ -1,6 +1,48 @@
 //! Validation and package receipts bound to selected source.
 use super::*;
 
+// Each edit keeps rollback bytes beside the exact source-derived replacement.
+struct MetadataEdit<'a> {
+    path: &'a str,
+    expected: &'a str,
+    before: Vec<u8>,
+}
+
+impl MetadataEdit<'_> {
+    fn publish<E: Execute>(&self, repo: &Repository<E>) -> Result<()> {
+        if self.before != self.expected.as_bytes() {
+            repo.exec
+                .write_bytes(&repo.root.join(self.path), self.expected.as_bytes())?;
+        }
+        Ok(())
+    }
+
+    fn restore<E: Execute>(
+        &self,
+        repo: &Repository<E>,
+        selection: &ReleaseSelection,
+    ) -> Result<()> {
+        let current = fs::read(repo.root.join(self.path))?;
+        if current == self.before {
+            // Preserve file identity and permissions when no replacement needs undoing.
+            return Ok(());
+        }
+        let owned = if self.path == "Cargo.lock" {
+            std::str::from_utf8(&current).is_ok_and(|text| {
+                check_lock_update(&self.before, text, &selection.previous, &selection.version)
+                    .is_ok()
+            })
+        } else {
+            current == self.expected.as_bytes()
+        };
+        if owned {
+            repo.exec
+                .write_bytes(&repo.root.join(self.path), &self.before)?;
+        }
+        Ok(())
+    }
+}
+
 impl<E: Execute> Repository<E> {
     pub(super) fn validation_path(&self, version: &str) -> Result<PathBuf> {
         self.version_parts(version)?;
@@ -120,51 +162,10 @@ impl<E: Execute> Repository<E> {
         )?;
         self.verify_inputs(&evidence, false)?;
         let path = self.validation_path(&selection.version)?;
-        let prepared_path = self.receipt_path(&selection.version, Prepared)?;
-        let stale_prepared = if prepared_path.exists() {
-            let prepared: PackageEvidence = serde_json::from_slice(&fs::read(&prepared_path)?)?;
-            let previous = &prepared.validation.selection;
-            if previous.source == selection.source {
-                None
-            } else {
-                require(
-                    previous.kind == selection.kind
-                        && previous.previous == selection.previous
-                        && previous.version == selection.version
-                        && previous.remote == selection.remote
-                        && previous.branch == selection.branch,
-                    "superseded preparation identifies another release or destination",
-                )?;
-                require(
-                    prepared.package_head == previous.source,
-                    "superseded package evidence differs from its preparation source",
-                )?;
-                self.git(&[
-                    "merge-base",
-                    "--is-ancestor",
-                    &previous.source,
-                    &selection.source,
-                ])?;
-                Some(prepared_path)
-            }
-        } else {
-            None
-        };
-        for (receipt, kind) in std::iter::once((&path, "validated"))
-            .chain(stale_prepared.as_ref().map(|receipt| (receipt, "prepared")))
-            .filter(|(receipt, _)| receipt.exists())
-        {
-            let retained = receipt
-                .parent()
-                .ok_or("validation path has no parent")?
-                .join("attempts")
-                .join(format!(
-                    "{}-{kind}.{}.{}.json",
-                    selection.version,
-                    std::process::id(),
-                    SystemTime::now().duration_since(UNIX_EPOCH)?.as_nanos()
-                ));
-            self.exec.write_bytes(&retained, &fs::read(receipt)?)?;
+        let stale_prepared = self.superseded_preparation(selection)?;
+        self.retain_receipt(&path, "validated", &selection.version)?;
+        if let Some(receipt) = &stale_prepared {
+            self.retain_receipt(receipt, "prepared", &selection.version)?;
         }
         // Fresh successful validation supersedes only an admitted older source.
         // Preserve both receipts first; unchanged-source recovery keeps its active
@@ -173,6 +174,53 @@ impl<E: Execute> Repository<E> {
             fs::remove_file(receipt)?;
         }
         self.exec.write_json(&path, &evidence)
+    }
+
+    fn superseded_preparation(&self, selection: &ReleaseSelection) -> Result<Option<PathBuf>> {
+        let path = self.receipt_path(&selection.version, Prepared)?;
+        if !path.exists() {
+            return Ok(None);
+        }
+        let prepared: PackageEvidence = serde_json::from_slice(&fs::read(&path)?)?;
+        let previous = &prepared.validation.selection;
+        if previous.source == selection.source {
+            return Ok(None);
+        }
+        require(
+            previous.kind == selection.kind
+                && previous.previous == selection.previous
+                && previous.version == selection.version
+                && previous.remote == selection.remote
+                && previous.branch == selection.branch,
+            "superseded preparation identifies another release or destination",
+        )?;
+        require(
+            prepared.package_head == previous.source,
+            "superseded package evidence differs from its preparation source",
+        )?;
+        self.git(&[
+            "merge-base",
+            "--is-ancestor",
+            &previous.source,
+            &selection.source,
+        ])?;
+        Ok(Some(path))
+    }
+
+    fn retain_receipt(&self, receipt: &Path, kind: &str, version: &str) -> Result<()> {
+        if receipt.exists() {
+            let retained = receipt
+                .parent()
+                .ok_or("validation path has no parent")?
+                .join("attempts")
+                .join(format!(
+                    "{version}-{kind}.{}.{}.json",
+                    std::process::id(),
+                    SystemTime::now().duration_since(UNIX_EPOCH)?.as_nanos()
+                ));
+            self.exec.write_bytes(&retained, &fs::read(receipt)?)?;
+        }
+        Ok(())
     }
 
     pub(super) fn verify_inputs(&self, evidence: &ValidationEvidence, updated: bool) -> Result<()> {
@@ -272,29 +320,25 @@ impl<E: Execute> Repository<E> {
         )?;
         let expected = self.surfaces(selection)?;
         self.check_surfaces(selection, &expected, None, true)?;
-        let mut backups = BTreeMap::new();
-        for path in expected.keys() {
-            backups.insert(path.clone(), fs::read(self.root.join(path))?);
-        }
+        let edits = expected
+            .iter()
+            .map(|(path, surface)| {
+                Ok(MetadataEdit {
+                    path,
+                    expected: &surface.expected,
+                    before: fs::read(self.root.join(path))?,
+                })
+            })
+            .collect::<Result<Vec<_>>>()?;
         let result = (|| -> Result<()> {
-            // Cargo.toml is last: observing the candidate means all other source
-            // metadata, including the selected root lock, is complete. The
-            // prepared check can then finish offline workspace verification and
-            // package qualification after an interrupted operation.
-            for (path, surface) in expected
+            // Publish the root manifest last: the candidate version must imply
+            // that all other metadata, including its selected lock, is complete.
+            for edit in edits
                 .iter()
-                .filter(|(path, _)| path.as_str() != "Cargo.toml")
+                .filter(|edit| edit.path != "Cargo.toml")
+                .chain(edits.iter().filter(|edit| edit.path == "Cargo.toml"))
             {
-                if backups[path].as_slice() != surface.expected.as_bytes() {
-                    self.exec
-                        .write_bytes(&self.root.join(path), surface.expected.as_bytes())?;
-                }
-            }
-            if backups["Cargo.toml"].as_slice() != expected["Cargo.toml"].expected.as_bytes() {
-                self.exec.write_bytes(
-                    &self.root.join("Cargo.toml"),
-                    expected["Cargo.toml"].expected.as_bytes(),
-                )?;
+                edit.publish(self)?;
             }
             // Source-derived candidate bytes remain the same throughout this
             // transaction. Re-admit the live HEAD, receipt and validation inputs
@@ -308,29 +352,9 @@ impl<E: Execute> Repository<E> {
             // A failed restoration must not hide the preparation error or stop
             // restoration of other independent, owned metadata files.
             let mut rollback_errors = Vec::new();
-            for (path, bytes) in backups {
-                let restored = (|| -> Result<()> {
-                    let current = fs::read(self.root.join(&path))?;
-                    if current == bytes {
-                        // No replacement needs undoing. Preserve the existing
-                        // file identity and permissions without another write.
-                        return Ok(());
-                    }
-                    let owned = if path == "Cargo.lock" {
-                        std::str::from_utf8(&current).is_ok_and(|text| {
-                            check_lock_update(&bytes, text, &selection.previous, &selection.version)
-                                .is_ok()
-                        })
-                    } else {
-                        current == expected[&path].expected.as_bytes()
-                    };
-                    if owned {
-                        self.exec.write_bytes(&self.root.join(&path), &bytes)?;
-                    }
-                    Ok(())
-                })();
-                if let Err(error) = restored {
-                    rollback_errors.push((path, error));
+            for edit in &edits {
+                if let Err(error) = edit.restore(self, selection) {
+                    rollback_errors.push((edit.path.to_owned(), error));
                 }
             }
             if rollback_errors.is_empty() {
