@@ -109,11 +109,11 @@ fn numeric_summary_matches_detailed_accounting_before_and_after_bootstrap_and_re
         RuntimeOpenError::NotBootstrapped
     );
     summary_matches_report(&runtime, &memory);
-    let declarations = super::request_tests::snapshot(&["app.rows.v1"], "app");
+    let declarations = super::fixtures::snapshot(&["app.rows.v1"], "app");
     runtime
         .bootstrap(
             &declarations,
-            &super::request_tests::pool(),
+            &super::fixtures::app_pool(),
             &GenericAllocationPolicy,
         )
         .unwrap();
@@ -122,7 +122,7 @@ fn numeric_summary_matches_detailed_accounting_before_and_after_bootstrap_and_re
     assert_eq!(runtime.committed_generation(), Ok(1));
     assert_eq!(
         runtime.allocation_pool().unwrap(),
-        &super::request_tests::pool()
+        &super::fixtures::app_pool()
     );
     assert_eq!(runtime.committed_allocations().unwrap().len(), 1);
     assert_eq!(runtime.memory_id("app.rows.v1"), Ok(10));
@@ -133,7 +133,7 @@ fn numeric_summary_matches_detailed_accounting_before_and_after_bootstrap_and_re
         runtime
             .bootstrap(
                 &declarations,
-                &super::request_tests::pool(),
+                &super::fixtures::app_pool(),
                 &GenericAllocationPolicy
             )
             .unwrap(),
@@ -190,7 +190,7 @@ fn full_external_id_domain_preserves_bounded_read_only_attribution() {
     runtime
         .bootstrap(
             &snapshot,
-            &super::request_tests::pool(),
+            &super::fixtures::app_pool(),
             &GenericAllocationPolicy,
         )
         .unwrap();
@@ -230,13 +230,13 @@ fn full_external_id_domain_preserves_bounded_read_only_attribution() {
 
 #[test]
 fn bounded_conservation_bindings_and_no_effects() {
-    let declarations = super::tests::declarations();
+    let declarations = super::fixtures::declarations();
     let memory: MeteredMemory = MeteredMemory::default();
     let mut runtime = MemoryRuntime::new(memory.clone()).unwrap();
     runtime
         .bootstrap(
             &declarations,
-            &super::tests::pool(),
+            &super::fixtures::pool(),
             &GenericAllocationPolicy,
         )
         .unwrap();
@@ -288,13 +288,13 @@ fn bounded_conservation_bindings_and_no_effects() {
 
 #[test]
 fn diagnostics_never_read_even_a_corrupt_unbounded_ledger() {
-    let declarations = super::tests::declarations();
+    let declarations = super::fixtures::declarations();
     let memory: MeteredMemory = MeteredMemory::default();
     let mut runtime = MemoryRuntime::new(memory.clone()).unwrap();
     runtime
         .bootstrap(
             &declarations,
-            &super::tests::pool(),
+            &super::fixtures::pool(),
             &GenericAllocationPolicy,
         )
         .unwrap();
@@ -405,7 +405,7 @@ fn diagnostic_revalidates_foreign_unsupported_and_stale_metadata() {
 
 #[test]
 fn explicit_configuration_validates_before_effects_and_replays() {
-    let declarations = super::tests::declarations();
+    let declarations = super::fixtures::declarations();
     let memory: MeteredMemory = MeteredMemory::default();
     assert_eq!(
         super::MemoryManagerConfig::new(0),
@@ -418,7 +418,7 @@ fn explicit_configuration_validates_before_effects_and_replays() {
     runtime
         .bootstrap(
             &declarations,
-            &super::tests::pool(),
+            &super::fixtures::pool(),
             &GenericAllocationPolicy,
         )
         .unwrap();
@@ -431,7 +431,7 @@ fn explicit_configuration_validates_before_effects_and_replays() {
     runtime
         .bootstrap(
             &declarations,
-            &super::tests::pool(),
+            &super::fixtures::pool(),
             &GenericAllocationPolicy,
         )
         .unwrap();
@@ -459,7 +459,7 @@ fn explicit_configuration_validates_before_effects_and_replays() {
     runtime
         .bootstrap(
             &declarations,
-            &super::tests::pool(),
+            &super::fixtures::pool(),
             &GenericAllocationPolicy,
         )
         .unwrap();

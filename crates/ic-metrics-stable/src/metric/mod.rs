@@ -248,8 +248,10 @@ impl<const N: usize> StoredMetric for MeasurementHistogram<N> {
         let mut maximum_added = !maximum_changed;
         let mut minimum_total = 0_u128;
         let mut maximum_total = 0_u128;
-        for index in 0..=N {
-            let (now, prior, overflowed, prior_overflowed) = if index < N {
+        // Project finite/overflow bucket metadata separately from admission.
+        // Intervals stay lazy: saturated or unchanged counts need no range math.
+        let bucket = |index: usize| {
+            if index < N {
                 (
                     self.bucket_counts()[index],
                     previous.bucket_counts()[index],
@@ -263,13 +265,9 @@ impl<const N: usize> StoredMetric for MeasurementHistogram<N> {
                     self.overflow_count_overflowed(),
                     previous.overflow_count_overflowed(),
                 )
-            };
-            if now < prior || (prior_overflowed && !overflowed) {
-                return false;
             }
-            if !exact || now == prior {
-                continue;
-            }
+        };
+        let interval = |index: usize| {
             let lower = if index == 0 {
                 0
             } else {
@@ -280,6 +278,17 @@ impl<const N: usize> StoredMetric for MeasurementHistogram<N> {
             } else {
                 maximum
             };
+            (lower, upper)
+        };
+        for index in 0..=N {
+            let (now, prior, overflowed, prior_overflowed) = bucket(index);
+            if now < prior || (prior_overflowed && !overflowed) {
+                return false;
+            }
+            if !exact || now == prior {
+                continue;
+            }
+            let (lower, upper) = interval(index);
             let added = u128::from(now - prior);
             // Exact aggregate counts bound the sum of additions by u64::MAX,
             // so both range totals, including attainment, fit in u128.

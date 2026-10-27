@@ -2,15 +2,21 @@
 use super::{Memory, Storable};
 use crate::substrate::{self, DefaultMemoryImpl};
 use ic_memory::{RuntimeGrowError, RuntimeMemory};
-use std::{fmt, marker::PhantomData, ops::Range, ops::RangeBounds, rc::Rc};
+use std::{marker::PhantomData, ops::Range, ops::RangeBounds, rc::Rc};
 
 const PAGE_BYTES: u64 = 65_536;
 const MAX_PAGES: u64 = 4_194_304;
 
+///
+/// `RegionGrowError`
+///
 /// Failure to reserve a governed region's virtual extent, before any writes.
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+///
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq, thiserror::Error)]
 pub enum RegionGrowError {
     /// The requested relative extent exceeds the selected region.
+    #[error("requested region extent {minimum} exceeds {maximum} pages")]
     LimitExceeded {
         /// Requested relative page count.
         minimum: u64,
@@ -18,30 +24,8 @@ pub enum RegionGrowError {
         maximum: u64,
     },
     /// IC Memory refused to grow the containing allocation.
-    Runtime(RuntimeGrowError),
-}
-
-impl fmt::Display for RegionGrowError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::LimitExceeded { minimum, maximum } => {
-                write!(
-                    f,
-                    "requested region extent {minimum} exceeds {maximum} pages"
-                )
-            }
-            Self::Runtime(error) => error.fmt(f),
-        }
-    }
-}
-
-impl std::error::Error for RegionGrowError {
-    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
-        match self {
-            Self::Runtime(error) => Some(error),
-            Self::LimitExceeded { .. } => None,
-        }
-    }
+    #[error("{0}")]
+    Runtime(#[source] RuntimeGrowError),
 }
 
 /// A B-tree view inside one existing, governed allocation lease.

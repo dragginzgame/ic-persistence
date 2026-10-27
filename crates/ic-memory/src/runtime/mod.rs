@@ -12,6 +12,8 @@ mod error;
 #[cfg(any(test, feature = "test-support"))]
 #[path = "../testing/diagnostics.rs"]
 pub mod fixture_diagnostics;
+#[cfg(test)]
+mod fixtures;
 mod layout;
 mod policy;
 

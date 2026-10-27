@@ -16,7 +16,7 @@ fn shared_bootstrap_verification_never_touches_backing_or_releases_leases() {
     use std::rc::Rc;
 
     let mut runtime = runtime(1);
-    let declarations = super::tests::declarations();
+    let declarations = super::fixtures::declarations();
     let pool = MemoryAllocationPool::new(
         vec![MemoryAuthority::new("runtime_tests", "runtime_tests.").unwrap()],
         vec![],

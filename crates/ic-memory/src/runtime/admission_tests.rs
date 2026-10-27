@@ -1,4 +1,4 @@
-use super::request_tests::{pool, snapshot};
+use super::fixtures::{app_pool as pool, snapshot};
 use super::*;
 use crate::{
     BootstrapAdmissionError as AdmissionError, MemoryDeclarationError as DeclarationError,

@@ -296,7 +296,10 @@ impl<E: Execute> Repository<E> {
                     expected["Cargo.toml"].expected.as_bytes(),
                 )?;
             }
-            self.prepared(selection)?;
+            // Source-derived candidate bytes remain the same throughout this
+            // transaction. Re-admit the live HEAD, receipt and validation inputs
+            // after publication, then qualify against this exact projection.
+            self.qualify_prepared(self.preparation_validation(selection)?, &expected)?;
             Ok(())
         })();
         if let Err(source) = result {
@@ -390,13 +393,29 @@ impl<E: Execute> Repository<E> {
     }
 
     pub(super) fn prepared(&self, selection: &ReleaseSelection) -> Result<PackageEvidence> {
+        let validation = self.preparation_validation(selection)?;
+        let surfaces = self.surfaces(selection)?;
+        self.qualify_prepared(validation, &surfaces)
+    }
+
+    pub(super) fn preparation_validation(
+        &self,
+        selection: &ReleaseSelection,
+    ) -> Result<ValidationEvidence> {
         require(
             self.git(&["rev-parse", "HEAD"])? == selection.source,
             "prepared source changed",
         )?;
-        let validation = self.validated(selection)?;
-        let surfaces = self.surfaces(selection)?;
-        self.check_surfaces(selection, &surfaces, None, false)?;
+        self.validated(selection)
+    }
+
+    pub(super) fn qualify_prepared(
+        &self,
+        validation: ValidationEvidence,
+        surfaces: &BTreeMap<String, ReleaseSurface>,
+    ) -> Result<PackageEvidence> {
+        let selection = &validation.selection;
+        self.check_surfaces(selection, surfaces, None, false)?;
         if self.receipt_path(&selection.version, Prepared)?.exists() {
             // Existing evidence is checked, never silently repaired or replaced.
             return self.verify_evidence(selection, &selection.source, Prepared, Working);
@@ -413,7 +432,7 @@ impl<E: Execute> Repository<E> {
         self.run_command(formatting)?;
         let lock_sha256 = Self::sha256(&self.root.join("Cargo.lock"))?;
         self.run_command(packaging)?;
-        self.check_surfaces(selection, &surfaces, None, false)?;
+        self.check_surfaces(selection, surfaces, None, false)?;
         require(
             self.git(&["rev-parse", "HEAD"])? == selection.source,
             "source changed during preparation",
@@ -423,17 +442,9 @@ impl<E: Execute> Repository<E> {
             Self::sha256(&self.root.join("Cargo.lock"))? == lock_sha256,
             "packaging changed selected dependencies",
         )?;
-        let [package_sha256, storage_sha256, metrics_sha256] =
-            self.record_packages(&selection.version)?;
-        let evidence = PackageEvidence {
-            validation,
-            package_head: selection.source.clone(),
-            lock_sha256,
-            package_sha256,
-            storage_sha256,
-            metrics_sha256,
-            commands: commands.to_vec(),
-        };
+        let head = selection.source.clone();
+        let evidence =
+            PackageEvidence::record(self, validation, head, lock_sha256, commands.to_vec())?;
         self.write_evidence(&evidence, Prepared)?;
         Ok(evidence)
     }

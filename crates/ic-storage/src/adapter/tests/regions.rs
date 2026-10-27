@@ -10,6 +10,30 @@ const START: u64 = 257;
 const END: u64 = 4_194_304;
 const PAGE: u64 = 65_536;
 
+#[test]
+fn region_growth_error_retains_the_runtime_source() {
+    use std::error::Error as _;
+    let growth = ic_memory::RuntimeGrowError::BackingRefused {
+        additional_pages: 1,
+    };
+    let error = RegionGrowError::Runtime(growth);
+    assert_eq!(
+        error
+            .source()
+            .unwrap()
+            .downcast_ref::<ic_memory::RuntimeGrowError>(),
+        Some(&growth)
+    );
+    assert!(
+        RegionGrowError::LimitExceeded {
+            minimum: 2,
+            maximum: 1
+        }
+        .source()
+        .is_none()
+    );
+}
+
 fn namespace(family: u8) -> std::ops::RangeInclusive<[u8; 33]> {
     let mut start = [0; 33];
     start[0] = family;

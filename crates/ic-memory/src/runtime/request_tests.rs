@@ -1,3 +1,4 @@
+use super::fixtures::{app_pool as pool, snapshot};
 use super::*;
 use crate::{
     AllocationDeclaration, AllocationLedger, GenericAllocationPolicy, LedgerCommitStore,
@@ -7,19 +8,6 @@ use ic_platform::stable_structures::{
     Cell, Memory, VectorMemory,
     memory_manager::{MemoryId, MemoryManager},
 };
-
-pub(super) fn snapshot(keys: &[&str], owner: &str) -> SealedDeclarationSnapshot {
-    SealedDeclarationSnapshot::new(
-        keys.iter()
-            .map(|key| MemoryRequest::new(owner, key).unwrap())
-            .collect::<Vec<_>>(),
-    )
-    .unwrap()
-}
-
-pub(super) fn pool() -> MemoryAllocationPool {
-    MemoryAllocationPool::new(vec![MemoryAuthority::new("app", "app.").unwrap()], vec![]).unwrap()
-}
 
 fn composed_pool(exclusions: Vec<u8>) -> MemoryAllocationPool {
     MemoryAllocationPool::new(

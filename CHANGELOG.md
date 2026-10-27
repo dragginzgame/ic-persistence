@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.51.6] - Unreleased
+
+### 🧹 Cleanup
+
+- Simplify release preparation, archive receipt assembly and test fixtures while
+  preserving recovery, publication checks and receipt JSON.
+- Consolidate runtime test helpers and error plumbing, and clarify histogram
+  checkpoint validation without changing public APIs or stored formats.
+  [Details](docs/changelog/0.51.md#0516---unreleased).
+
 ## [0.51.5] - 2026-10-26
 
 ### 📝 Summary

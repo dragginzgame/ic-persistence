@@ -82,9 +82,11 @@ current API and safety contract for present integration.
 The consumer release package roster lives in
 `crates/ic-memory/examples/repo_tool/packages.json`, embedded by the Rust adapter
 and admitted by `scripts/ci/read-persistence-packages.sh` for shell callers.
-The three receipt digest fields retain their existing coordinated-order mapping;
-changing package membership or order requires explicit receipt compatibility
-review. This is release policy, not another dependency or version catalog.
+The receipt owner collects and projects the three named digest fields through
+the existing coordinated-order mapping. Workflow callers carry complete receipts
+rather than parallel digest arrays. Changing package membership or order requires
+explicit receipt compatibility review. This is release policy, not another
+dependency or version catalog.
 `format-workspaces.sh` owns the consumer formatter roster; `qualify-runtime.sh`
 owns the installed artifact/optimization loop. Archive qualification derives its
 workspace, patches and package provenance from one extracted-package map. The

@@ -13,6 +13,22 @@ use ic_storage::adapter::StableBTreeMap;
 
 use crate::{MetricIdentity, MetricKey, MetricsStore, StoreError, codec};
 
+#[test]
+fn store_error_retains_the_arithmetic_source() {
+    use std::error::Error as _;
+    let state = ic_metrics::MeasurementStateError::InvalidBounds;
+    let error = StoreError::from(state);
+    assert_eq!(error, StoreError::InvalidState(state));
+    assert_eq!(
+        error
+            .source()
+            .unwrap()
+            .downcast_ref::<ic_metrics::MeasurementStateError>(),
+        Some(&state)
+    );
+    assert!(StoreError::StateRegression.source().is_none());
+}
+
 // Isolated native host: declare a permanent key and commit allocation before opening.
 fn admitted_memory<M: Memory>(backing: M) -> RuntimeMemory<M> {
     let runtime = fixture_runtime(

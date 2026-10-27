@@ -37,7 +37,7 @@ fn requirements(authority: &str, key: &str) -> SealedDeclarationSnapshot {
     SealedDeclarationSnapshot::new(vec![MemoryRequest::new(authority, key).unwrap()]).unwrap()
 }
 fn source() -> SealedDeclarationSnapshot {
-    super::request_tests::snapshot(&[KEY, CONTROL], "db")
+    super::fixtures::snapshot(&[KEY, CONTROL], "db")
 }
 
 #[test]

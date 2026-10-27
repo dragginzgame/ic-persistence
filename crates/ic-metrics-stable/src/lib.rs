@@ -12,8 +12,6 @@
 
 #![doc = include_str!("../README.md")]
 
-use std::{error::Error, fmt};
-
 use ic_memory::Memory;
 use ic_metrics::{
     MeasurementAggregate, MeasurementCounter, MeasurementHistogram, MeasurementStateError,
@@ -32,62 +30,45 @@ mod tests;
 /// Maximum finite bounds per stored histogram, bounding codec work and records.
 pub const MAX_HISTOGRAM_BOUNDS: usize = 256;
 
+///
+/// `StoreError`
+///
 /// Typed failures at key, identity, stored-value and snapshot admission boundaries.
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+///
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq, thiserror::Error)]
 pub enum StoreError {
     /// Namespace, name or unit is empty, too long or contains unsupported bytes.
+    #[error("invalid bounded metric identifier")]
     InvalidIdentifier,
     /// The stored record exceeds the admitted byte budget.
+    #[error("metric record exceeds byte budget")]
     RecordTooLarge,
     /// Missing bytes, invalid flags or trailing data in a V1 record.
+    #[error("malformed metric record")]
     MalformedRecord,
     /// The record has an unknown format discriminator; it is never reinterpreted.
+    #[error("unsupported metric record format")]
     UnsupportedFormat,
     /// The stored metric uses a different arithmetic kind.
+    #[error("metric kind differs")]
     KindMismatch,
     /// Unit or reset epoch differs from the caller's expected identity.
+    #[error("metric unit or reset epoch differs")]
     IdentityMismatch,
     /// Histogram finite bounds differ from the caller's expected configuration.
+    #[error("histogram bounds differ")]
     BoundsMismatch,
     /// The histogram exceeds the adapter's bound-count limit.
+    #[error("histogram has too many finite bounds")]
     TooManyBounds,
     /// Expected bounds or restored fields violate arithmetic invariants.
-    InvalidState(MeasurementStateError),
+    #[error("invalid metric state: {0}")]
+    InvalidState(#[from] MeasurementStateError),
     /// A checkpoint decreases counts/totals/maxima, clears sticky overflow, or its
     /// exact-count changes cannot be explained by appended observations.
+    #[error("metric checkpoint regresses")]
     StateRegression,
-}
-
-impl fmt::Display for StoreError {
-    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::InvalidState(error) => write!(formatter, "invalid metric state: {error}"),
-            Self::InvalidIdentifier => formatter.write_str("invalid bounded metric identifier"),
-            Self::RecordTooLarge => formatter.write_str("metric record exceeds byte budget"),
-            Self::MalformedRecord => formatter.write_str("malformed metric record"),
-            Self::UnsupportedFormat => formatter.write_str("unsupported metric record format"),
-            Self::KindMismatch => formatter.write_str("metric kind differs"),
-            Self::IdentityMismatch => formatter.write_str("metric unit or reset epoch differs"),
-            Self::BoundsMismatch => formatter.write_str("histogram bounds differ"),
-            Self::TooManyBounds => formatter.write_str("histogram has too many finite bounds"),
-            Self::StateRegression => formatter.write_str("metric checkpoint regresses"),
-        }
-    }
-}
-
-impl Error for StoreError {
-    fn source(&self) -> Option<&(dyn Error + 'static)> {
-        match self {
-            Self::InvalidState(error) => Some(error),
-            _ => None,
-        }
-    }
-}
-
-impl From<MeasurementStateError> for StoreError {
-    fn from(error: MeasurementStateError) -> Self {
-        Self::InvalidState(error)
-    }
 }
 
 const MAX_UNIT_BYTES: usize = 64;

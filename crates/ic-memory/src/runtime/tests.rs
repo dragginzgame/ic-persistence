@@ -1,6 +1,8 @@
 use super::{
     MemoryRuntime, RuntimeConstructionError, RuntimeDiagnosticError, RuntimeOpenError,
-    fixture_diagnostics::diagnostic_validation_ledger, policy::GenericAllocationPolicy,
+    fixture_diagnostics::diagnostic_validation_ledger,
+    fixtures::{declarations, pool},
+    policy::GenericAllocationPolicy,
 };
 use crate::{
     DiagnosticMemorySize, LedgerCommitError, MemoryManagerSlot, PolicyIdentity,
@@ -9,13 +11,6 @@ use crate::{
 };
 use ic_platform::stable_structures::{Cell, Memory, VectorMemory};
 use std::convert::Infallible;
-
-pub(super) fn declarations() -> SealedDeclarationSnapshot {
-    SealedDeclarationSnapshot::new(vec![
-        crate::MemoryRequest::new("runtime_tests", "runtime_tests.rows.v1").unwrap(),
-    ])
-    .expect("checked declarations")
-}
 
 fn empty_runtime() -> MemoryRuntime<VectorMemory> {
     MemoryRuntime::new(VectorMemory::default()).expect("empty backing memory")
@@ -802,14 +797,6 @@ fn validation_diagnostic_preserves_unsupported_format_code() {
         .expect_err("unsupported format must block validation");
 
     assert_eq!(failure.code, DiagnosticCode::UnsupportedFormat);
-}
-
-pub(super) fn pool() -> crate::MemoryAllocationPool {
-    crate::MemoryAllocationPool::new(
-        vec![crate::MemoryAuthority::new("runtime_tests", "runtime_tests.").unwrap()],
-        (10..=119).chain(121..=254).collect(),
-    )
-    .unwrap()
 }
 
 #[test]

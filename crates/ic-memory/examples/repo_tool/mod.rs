@@ -249,6 +249,31 @@ enum ArchiveLocation {
 }
 
 impl PackageEvidence {
+    // Keep the fixed receipt-field mapping beside its read projection. Callers
+    // carry complete evidence rather than positional arrays of package digests.
+    fn record<E: Execute>(
+        repo: &Repository<E>,
+        validation: ValidationEvidence,
+        package_head: String,
+        lock_sha256: String,
+        commands: Vec<Vec<String>>,
+    ) -> Result<Self> {
+        let [memory, storage, metrics] = packages();
+        let version = &validation.selection.version;
+        let package_sha256 = repo.record_package(memory, version)?;
+        let storage_sha256 = repo.record_package(storage, version)?;
+        let metrics_sha256 = repo.record_package(metrics, version)?;
+        Ok(Self {
+            validation,
+            package_head,
+            lock_sha256,
+            package_sha256,
+            storage_sha256,
+            metrics_sha256,
+            commands,
+        })
+    }
+
     fn archives(&self) -> impl Iterator<Item = (&'static str, &str)> {
         packages().into_iter().zip([
             self.package_sha256.as_str(),
@@ -661,15 +686,6 @@ impl<E: Execute> Repository<E> {
         Ok(digest)
     }
 
-    fn record_packages(&self, version: &str) -> Result<[String; 3]> {
-        let [memory, storage, metrics] = packages();
-        Ok([
-            self.record_package(memory, version)?,
-            self.record_package(storage, version)?,
-            self.record_package(metrics, version)?,
-        ])
-    }
-
     fn configuration(&self) -> Result<BTreeMap<String, String>> {
         let mut configuration = BTreeMap::new();
         for (name, value) in env::vars_os() {
@@ -915,8 +931,10 @@ impl<E: Execute> Repository<E> {
         Ok(())
     }
     fn commit_check(&self, selection: &ReleaseSelection) -> Result<()> {
-        self.prepared(selection)?;
-        self.check_index(selection, &self.surfaces(selection)?)?;
+        let validation = self.preparation_validation(selection)?;
+        let surfaces = self.surfaces(selection)?;
+        self.qualify_prepared(validation, &surfaces)?;
+        self.check_index(selection, &surfaces)?;
         require(
             self.git(&["diff", "--name-only"])?.is_empty(),
             "release metadata has unstaged changes",
@@ -999,13 +1017,14 @@ impl<E: Execute> Repository<E> {
             Self::sha256(&self.root.join("Cargo.lock"))? == evidence.lock_sha256,
             "final packaging changed selected dependencies",
         )?;
-        evidence.package_head.clone_from(head);
-        [
-            evidence.package_sha256,
-            evidence.storage_sha256,
-            evidence.metrics_sha256,
-        ] = self.record_packages(version)?;
         evidence.commands.push(command);
+        let evidence = PackageEvidence::record(
+            self,
+            evidence.validation,
+            head.clone(),
+            evidence.lock_sha256,
+            evidence.commands,
+        )?;
         self.write_evidence(&evidence, Final)
     }
 

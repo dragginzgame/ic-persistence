@@ -606,14 +606,55 @@ fn streamed_receipts_preserve_json_and_reject_partial_serialization() {
     }
 
     let fixture = Fixture::new();
-    fixture.release();
-    let path = fixture.repo.validation_path("0.13.0").unwrap();
+    let path = fixture.repo.root.join("receipts/validated.json");
+    // Encoding passive receipts needs no simulated validation, package, commit
+    // or tag. Lifecycle admission is exercised by the release/recovery tests.
+    let validation = ValidationEvidence {
+        selection: fixture.selection.clone(),
+        lock: LOCK.as_bytes().to_vec(),
+        identities: ["cargo", "rustc", "msrv"].map(str::to_owned),
+        configuration: BTreeMap::new(),
+        command: vec!["validate".to_owned()],
+    };
+    Processes.write_json(&path, &validation).unwrap();
     let original = fs::read(&path).unwrap();
-    let validation: ValidationEvidence = serde_json::from_slice(&original).unwrap();
     Processes.write_json(&path, &validation).unwrap();
     assert_eq!(fs::read(&path).unwrap(), original);
-    for stage in [Prepared, Final] {
-        let path = fixture.repo.receipt_path("0.13.0", stage).unwrap();
+    for head in ["source", "release"] {
+        let path = fixture.repo.root.join(format!("receipts/{head}.json"));
+        let evidence = PackageEvidence {
+            validation: serde_json::from_slice(&original).unwrap(),
+            package_head: head.to_owned(),
+            lock_sha256: "lock".to_owned(),
+            package_sha256: "memory".to_owned(),
+            storage_sha256: "storage".to_owned(),
+            metrics_sha256: "metrics".to_owned(),
+            commands: vec![vec!["package".to_owned()]],
+        };
+        assert_eq!(
+            serde_json::to_value(&evidence).unwrap(),
+            serde_json::json!({
+                "validation": serde_json::to_value(&validation).unwrap(),
+                "package_head": head,
+                "lock_sha256": "lock",
+                "package_sha256": "memory",
+                "storage_sha256": "storage",
+                "metrics_sha256": "metrics",
+                "commands": [["package"]],
+            })
+        );
+        assert_eq!(
+            evidence.archives().collect::<Vec<_>>(),
+            [
+                ("ic-memory", "memory"),
+                ("ic-storage", "storage"),
+                ("ic-metrics-stable", "metrics")
+            ]
+        );
+        let mut unknown = serde_json::to_value(&evidence).unwrap();
+        unknown["unknown"] = serde_json::json!(true);
+        assert!(serde_json::from_value::<PackageEvidence>(unknown).is_err());
+        Processes.write_json(&path, &evidence).unwrap();
         let original = fs::read(&path).unwrap();
         let evidence: PackageEvidence = serde_json::from_slice(&original).unwrap();
         Processes.write_json(&path, &evidence).unwrap();
@@ -636,6 +677,10 @@ fn streamed_receipts_preserve_json_and_reject_partial_serialization() {
     ));
     assert_eq!(fs::read(&path).unwrap(), original);
     assert_eq!(entries(), before);
+    assert_eq!(
+        fixture.repo.exec.state.borrow().calls,
+        Vec::<Vec<String>>::new()
+    );
 }
 
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
