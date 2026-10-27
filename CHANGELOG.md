@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.51.9] - Unreleased
+
+### 📝 Summary
+
+- Adopt IC Platform 0.7.0, IC Tooling 0.68.12 and Shared Tooling 0.26.22 while
+  preserving library APIs, stored formats and the PocketIC client/server pair.
+  [Details](docs/changelog/0.51.md#0519---unreleased).
+
 ## [0.51.8] - 2026-10-27
 
 ### 📝 Summary

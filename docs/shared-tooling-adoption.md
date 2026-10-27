@@ -9,13 +9,14 @@ local baseline. Future policy changes require reviewed snapshot adoption.
 
 ## Current source selection
 
-IC Persistence selects committed Shared Tooling 0.26.20 at
-`a7f85d45d4212d4c39225f58597580560a333550`, with 77 explicit roots and 120 payloads.
+IC Persistence selects committed Shared Tooling 0.26.22 at
+`5fc904a935d82ad31f0fba14434b71ccb8c10345`, with 77 explicit roots and 120 payloads.
 The compact baseline derives `rules/engineering-details.md` as a companion;
 specialist contracts remain binding when the task touches them. Reporting metrics
 are opt-in, and focused checks follow the completed coherent edit batch. The
 adopted npm Platform boundary adds no dependency to this Rust-only consumer.
-No selected executable, common tool pin or installer build identity changes.
+This Shared refresh changes no executable payload, common tool pin or installer
+build-policy identity. Consumer-owned Build/Testkit selections are 0.68.12.
 Release 0.50.7 passed the complete native, MSRV and installed-runtime matrix
 on Linux and both macOS architectures; snapshot integrity alone is not acceptance.
 See [the adoption issue](https://github.com/dragginzgame/ic-persistence/issues/127).
@@ -25,6 +26,17 @@ therefore included; uncommitted Shared sibling changes are excluded.
 The canonical [preview and refresh procedure](consuming-snapshots.md#preview-before-refreshing)
 exports committed bytes from a clean source checkout. Direct callers remain
 explicit roots and required companions are derived by the exporter.
+
+The 0.26.22 refresh uses a clean detached copy of the committed source and the
+canonical impact preview, preserving the existing roots and payload closure.
+Shared 0.26.21 makes emoji categories the current/future root changelog format;
+Persistence already uses it, and older release entries are preserved. Shared
+0.26.22 explicitly prohibits owned `CandidType` models and strengthens existing
+native error, machine-output, bounded-process, terminal-rendering and source-scan
+review rules. Persistence's maintained Rust sources contain no `CandidType`
+derives or implementations. These are reviewed governance changes, not new
+executable scanners or a completed repository-wide hygiene audit. Existing
+caller qualification and negative tests retain their owning gates.
 
 The refresh uses the canonical exporter from a clean detached copy of that
 commit and retains the existing capabilities. The companion-copy and Make-adapter helpers become explicit roots because the
@@ -111,7 +123,7 @@ also remains in its focused target. Release notes may use a numbered
 ` - Unreleased` heading, which the shared finalizer dates during preparation.
 
 Shared 0.25.3 binds explicit Cargo feature sets to selected tool installations
-and admission receipts. Build and Testkit 0.68.11 binaries select `--features cli`
+and admission receipts. Build and Testkit 0.68.12 binaries select `--features cli`
 in setup, offline admission and bootstrap calls. Library dependencies retain
 disabled defaults. Prepare the selections with `make install-tools` and
 `make install-runtime-server`; previous installations and failed attempts remain

@@ -1,95 +1,81 @@
 # Current handoff
 
-The released baseline is 0.51.7 at `1fd41a43bb661d007ab45c02b871963b89085f7f`.
-The pending compatible 0.51.8 batch adopts published Tooling 0.68.11 and Platform
-0.6.20 and completes the next six reviewed complexity reductions. Public APIs, stored formats, allocation custody and release receipt JSON
-remain unchanged. Package versions remain 0.51.7; work is uncommitted and the
-index remains user-owned. See [pending notes](../changelog/0.51.md#0518---unreleased).
+The released baseline is 0.51.8 at `5bce9fa85577aa5041c79b601fe1642f936992ea`.
+The pending compatible 0.51.9 batch adopts Platform 0.7.0, Tooling 0.68.12 and
+Shared Tooling 0.26.22. Public APIs, stored formats, allocation custody and release
+receipt JSON remain unchanged. Package versions remain 0.51.8; work is
+uncommitted and the index remains user-owned. See
+[pending notes](../changelog/0.51.md#0519---unreleased).
 
 ## Current changes
 
-Both workspace catalogs select Platform 0.6.20. The five native Tooling
-requirements and release-editor/Testkit CLI pins select 0.68.11. Metrics remains
-the latest published 0.16.3. Registry observations confirm these releases are not
-yanked and declare Rust 1.91. Published source identities are recorded in the
-pending notes; unpublished Platform 0.6.21 and dirty supplier source are excluded.
-Shared Tooling remains the reviewed 0.26.20 snapshot at
-`a7f85d45d4212d4c39225f58597580560a333550`; vendored source is untouched.
+Both workspace catalogs select published Platform 0.7.0 at
+`60c43108ca7f2a99bfac62ec21075afff5ed7a7e`. Its removed Candid compiler exports
+are unused here. The selected stable-structures and PocketIC facades are unchanged
+from the previous release. Underlying public type identities remain registry
+stable-structures 0.7.2 and PocketIC 16.1.0, so no Persistence consumer migration,
+client regeneration or retained-data conversion is required.
 
-The incoming root lock already selected the new releases and is preserved byte
-for byte. The independent runtime lock changes only Platform from 0.6.19 to
-0.6.20. Feature/default selections, compiler pins and the Rust floor are unchanged.
-The substrate remains registry stable-structures 0.7.2 and PocketIC client/server
-remain 16.1.0. No consumer migration, client regeneration or retained-data
-conversion is required.
+The five native Tooling requirements and release-editor/Testkit CLI pins select
+published 0.68.12 at `42a9ec79b10f7bf9e3a5658980ca73817c2a771d`. The incoming root
+lock already selected Platform 0.6.21 and part of Tooling 0.68.12. Those identities
+are preserved; Build and Host Process complete the 0.68.12 selection, and direct
+library dependencies add Platform 0.7.0. Native Testkit still requires Platform
+0.6.21 transitively. Both facades share one exact stable-structures identity;
+the default production graph contains one Platform identity, at 0.7.0. The
+independent lock changes only Platform from 0.6.20 to 0.7.0. Other dependency
+selections, compiler pins, features/defaults and Rust 1.91 remain unchanged.
+Metrics remains the latest published 0.16.3. Registry observations confirm the
+selected releases are not yanked, and packaged VCS records match the commits above.
 
-Explicit locked fetches prepare the two caches separately from offline checks.
-Explicit tool setup prepares the selected CLI generations; older generations,
-servers and failed attempts retain their existing custody. Ordinary admission
-and validation do not install tools or fetch dependencies.
-
-Release edits keep backups beside expected file bytes and retain manifest-last
-publication and owned-byte rollback. Receipt supersession separately admits old
-intent/ancestry and preserves earlier receipts before replacing active evidence.
-Test effects give Git, build and registry their own state and faults, retaining
-one ordered command log and file-fault evidence. Archive admission shares pure
-graph predicates with standalone fixtures; the real script still checks graphs
-before compiler dispatch. Diagnostic exports share page-size projection while
-fixture observations remain before policy callbacks. Metric continuation carries
-admitted differences once across aggregate, summary and histogram checks, keeping
-its allocation-free loop, exact-count and sticky-overflow rules.
+Shared Tooling 0.26.22 at `5fc904a935d82ad31f0fba14434b71ccb8c10345` is exported
+from a clean detached copy through the canonical impact preview and refresh.
+All 77 roots and 120 payloads remain selected. Six governance payloads change;
+no shared executable, common tool pin or installer build-policy identity changes.
+The adopted rules make owned CandidType restrictions explicit and strengthen
+native error, strict machine-output, bounded-process, safe terminal and required
+source-inspection review. Current root notes already use the required emoji
+categories. A strict-read scan of both maintained Rust crate trees finds no
+CandidType tokens. This is source/policy adoption, not new automated enforcement
+or a repository-wide code-hygiene audit.
 
 ## Qualification and limits
 
-Dependency pin/inheritance, default production Wasm graph, external IC dependency
-boundary, release adapter dispatch and offline tool/server admission passed for
-the preceding dependency adoption. Their selected inputs are unchanged by the
-cleanup. Both lockfiles remain byte-for-byte identical to this cleanup's incoming
-state, including the earlier Platform-only independent lock update.
+Snapshot integrity, dependency pin/inheritance, default production Wasm graph,
+external IC dependency boundaries and formatting pass. Strict Clippy passes for
+all three libraries, their tests and the release helper with test support.
+All 65 release-helper, 62 selected runtime and 13 Storage unit tests pass, as do
+Storage doctests. This includes native Testkit memory wrappers used with the
+new library facade, retained-region behavior, rollback, uncertain publication
+and receipt recovery. The independent runtime host package checks offline with
+Platform 0.7.0 and PocketIC 16.1.0.
 
-All 65 release-helper, 62 selected runtime and 28 Metrics tests pass after the
-cleanup, along with focused diagnostic export/serialization checks. Strict Clippy
-passes for affected libraries, tests and the release helper with test support;
-the final metric helper also passes its package's strict gate. Coverage retains
-partial writes, rollback, receipt recovery, tag/publication ordering, callback
-observation timing, V1 byte mutations and exact/saturated checkpoint boundaries.
-ShellCheck, Bash syntax and pure archive graph tests pass. The archive integration
-probe rejects before compilation and retains selected-MSRV dispatch coverage.
+Consumer release-adapter scenarios pass with substituted Git/build effects and
+the newly selected real release editor. Explicit tool setup prepares/adopts both
+0.68.12 CLIs, retaining prior generations. One Testkit setup wait timed out while
+another repository held the selected store slot; the retained retry reuses the
+completed generation. No foreign owner or lock was changed. Subsequent offline
+release-editor and Testkit/server admission pass. The server remains 16.1.0.
 
 Actual extracted-package checks, consumer execution on Rust 1.99.1 and the
 selected 1.91 MSRV, and Wasm consumer compilation pass. Source, archive and
-extracted-file hashes pass. The retained attempt is
-`target/package-qualification/attempt.SBXTcO/`. This qualifies working-tree
-archives with `--allow-dirty`; later changelog/handoff and pure-fixture edits
-follow that packaging run. Local documentation references, formatting and diff
-checks pass. No release, publication, commit, tag or push ran.
+extracted-file hashes pass. Its retained attempt is
+`target/package-qualification/attempt.HkQAiQ/`. This qualifies working-tree
+archives with `--allow-dirty`; final documentation edits follow that packaging
+run. Local documentation references and diff checks pass.
 
-Cleanup logs, incoming lock preimages and isolated measurement sources are at
-`/tmp/ic-persistence-six-0518/`. Both measurement workspaces use the current
-selected catalog/lock, identical probe instrumentation and copied package source;
-the baseline metric implementation is the incoming 0.51.7 source. Native
-interleaved comparisons cover 0, 1, 4, 64 and 256 histogram bounds with unchanged,
-appended and new-maximum states. An initial candidate slowed small histograms;
-the retained helper's inline hint removes that cost in the measured cases. Final
-median ratios range from 0.80 to 1.02, with no material measured slowdown. The
-isolated pairwise comparison agrees on 14 aggregate, 23 summary and 10 histogram
-states, complementing maintained boundary and byte-mutation tests.
-
-Identical Wasm probes exercise aggregate, summary and 256-bound histogram
-continuation in Node/V8. Final median ratios are about 1.02, 0.88 and 0.99
-respectively; the combined probe decreases from 22,226 to 21,778 bytes. These
-are engine timings and isolated probe sizes, not IC instruction measurements or
-whole-application guarantees. Initial candidates, harness/lint failures and
-successful retries remain retained. No production benchmark mode is added.
-
-Earlier dependency observations, setup and qualification logs remain at
-`/tmp/ic-persistence-deps-0518/`. Full release validation, installed IO/upgrade
-qualification and current macOS execution were not rerun. The unchanged
-PocketIC 16.1.0 server's admission is not an IO/upgrade run. The
-[released handoff](https://github.com/dragginzgame/ic-persistence/blob/1fd41a43bb661d007ab45c02b871963b89085f7f/docs/status/current.md)
-retains earlier cleanup measurements, installed-runtime and supplier evidence
-with their original scope. This task performs no fresh dependency-security audit.
-The [ownership guide](../ownership.md), [host support](../host-support.md) and
+Registry observations, incoming locks/snapshot, clean Shared source, impact and
+refresh output, the initial busy-tool failure and successful retries, and focused
+qualification logs are retained at `/tmp/ic-persistence-adopt-0519/`.
+Full release validation, installed IO/upgrade qualification, fresh performance
+measurement and current macOS execution were not rerun. The unchanged client/
+server pair does not require a new pairing qualification; server admission is
+not an installed IO/upgrade run. No release, publication, commit, tag or push ran.
+The
+[released handoff](https://github.com/dragginzgame/ic-persistence/blob/5bce9fa85577aa5041c79b601fe1642f936992ea/docs/status/current.md)
+retains previous cleanup, dependency and installed-runtime evidence with its
+original scope. This task performs no fresh dependency-security audit. The
+[ownership guide](../ownership.md), [host support](../host-support.md) and
 [adoption boundaries](../shared-tooling-adoption.md) remain the active contracts.
 
 ## Retained evidence and recovery

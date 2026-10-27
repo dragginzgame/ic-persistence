@@ -1,8 +1,8 @@
 # Shared Tooling snapshot v1
-# version	0.26.20
+# version	0.26.22
 format	1
 source	https://github.com/dragginzgame/shared-tooling
-revision	a7f85d45d4212d4c39225f58597580560a333550
+revision	5fc904a935d82ad31f0fba14434b71ccb8c10345
 # entrypoint	DRAGGINZGAME.md
 # entrypoint	rules/contributions.md
 # entrypoint	rules/changelogs.md
@@ -80,10 +80,10 @@ revision	a7f85d45d4212d4c39225f58597580560a333550
 # entrypoint	audits/ci-release-integrity.md
 # entrypoint	scripts/ci/prepare-script-fixture.sh
 # entrypoint	scripts/ci/make-adapter-probes.sh
-file	6cfb92f17d07c051fbd2f2f000176b7eede69f412596943fd3616285f724bb09	-	DRAGGINZGAME.md
+file	c0f3fe326ed6a96c1e8548526972fa12c78051c0aab4b5dc407bb20111aa5562	-	DRAGGINZGAME.md
 file	a662981d8f9e6da91314d06ba6ae6272f1cd48f7e98b0bbd258abf614367a118	-	rules/contributions.md
-file	3c88853136d4ad9962b8c01caacd9607192164c2d4aeb901e36b4e3da81fdf99	-	rules/changelogs.md
-file	2f30364bf420a76ba27579b3942cb6657fc456695ccd5d0fb47c97600963c07b	-	rules/cargo-dependencies.md
+file	f5b493200ef3aaa2f08b27b4a644345005d5e86431dc4cb33fd27844056f5ff0	-	rules/changelogs.md
+file	661dc6af2c80754005b6bbfbd463d408af2ea33c02ffa2710d6bc6a125f535df	-	rules/cargo-dependencies.md
 file	3208b97cc151df9e098abfbf6b1f8d4cf63b51ee5dfa4d940377ccf2b7170498	-	rules/rust-workspaces.md
 file	74fe8a45d5235ca4126b2ba9f7db1082d4f3414d0294ad8d5f3ddaf279d2f9c0	-	rules/dependency-pinning.md
 file	ea61b8d4e501011f73729ed56613c365b14a947c8ca18d66dced4990cbdb40ea	-	rules/git-hooks.md
@@ -105,7 +105,7 @@ file	f7b95816164980993403d2d6eae13336db1c476c58217c8e8d356e6d01fe9b27	-	tasks/sy
 file	dc85d07f05772807e5a91806c8756d020167fedec76323a87eb8fb7c64b7e31a	-	scripts/dev/run-maintenance.sh
 file	d5933681ed28d3a4cc34c1d5a6cc5701261f5f947f167863e76178b474861f6e	-	audits/README.md
 file	fd07cef3f8203d8a1e3fe0667fcb91e00a485b5c123940a649c979a2f5c2fe1d	-	audits/ic-canister-applications.md
-file	bf4d6e18b578aa84b9f96a7c6c0794852636bce48b28bff4664e531dd79eaf21	-	audits/code-hygiene.md
+file	cbe34699ea2073f108b310c5a703f09786e75151bb28ebb8fc64f486223eaed6	-	audits/code-hygiene.md
 file	52628e3c08d8c1ac8e258d34ea102daa81253fe78448d5afe406b52e247610d3	-	audits/flow-convergence-and-duplication.md
 file	ffdca09602c44c8aff8fc2a17588b20eb6a56e2e71fb6d42ad75087fdd65819b	-	audits/complexity-and-technical-debt.md
 file	1b64cf2ba0393ab329ec29eb05a696d47ef5933f5ab9bff6e1fe4a7e7b294075	-	audits/module-surface-hardening.md
@@ -121,7 +121,7 @@ file	a008802ec5ba5950b658b7e0fe6e0a24164cd0f5f0cd946e01bf2f0784047775	x	scripts/
 file	59f6cb0b47fcfa698396776bbb391737292ebf34457ad7c65803fe7b36961499	-	docs/principles/README.md
 file	9315c9faffa4f36cfab496342535bf49d728ddd2111e8e127cbc44b3fac89ce7	-	docs/principles/decision-artifact-discipline.md
 file	0e95bbdb5bdaabf587297b20324b034979a7e0ff81be5cee9ac440f6fdcdb0d3	-	docs/principles/reviewable-changes.md
-file	b7486cbe9bb822d6a73d1a3a9da9f3ab8ad3268fe9cddd5a9c7c71e167cf6c82	-	docs/principles/rust-code-hygiene.md
+file	fe4aae95898f3dae972faa75ef15e26930644db321141ee95c9ac41c5bf98c3f	-	docs/principles/rust-code-hygiene.md
 file	457fd38e0073c91ba470b918d4facd9faac3c5200ebd38c97e9d6b76acdaea55	-	docs/principles/simplicity-and-maintainability.md
 file	b4f6c957e5dac9caa8222140a928f47eccb66ac09273d797426c521fa3d8101b	-	docs/consuming-snapshots.md
 file	68f257ad3efd1081d46d3ba9bbf633869fa8ce08116b2b8108261baf3c16dddd	-	docs/provenance.md
@@ -159,7 +159,7 @@ file	92d926a0195db35172ffea5bfd0553e407d2d377114962fe71789aa1f33d9f8c	x	scripts/
 file	f3ccdd33f1322c6069daedf66669b3d4bac267476f80725d7031c741f20cb278	-	scripts/ci/make-adapter-probes.sh
 file	36f36552df36ea6e082f1fd1f14661d40b281ea01294ffda2eb6c6ec91bc6907	x	scripts/ci/verify-file-checksum.sh
 file	a4682503812f210b951aede536cdd65642bfe266b02ab532853a1aeff64f9742	x	scripts/ci/verify-shared-tooling-snapshot.sh
-file	32c612512bbb0b189f9eb9bb1bd0a0b47a02190fdbde2f7081b30ca315e4390a	-	rules/engineering-details.md
+file	acf90dc66f0d883eb3097878ea8b64fc9bf85807b68754268a1ec61cf246bb2a	-	rules/engineering-details.md
 file	e3aed908dd9b08bf93255328bb056bed57298dab39944e3726aad2726548e653	-	rules/rpc-budgets.md
 file	b19096b9a5cbf7b27df3438bfde431c5053e9e6c64dda7dd35e9d24083349c16	-	docs/tool-catalog-bindings.md
 file	4cb513119ba707355d99b5fb6c72d1b6d7641a48fa70434c4272e0ccfe072dab	-	docs/cargo-publication.md
