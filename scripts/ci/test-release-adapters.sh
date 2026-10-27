@@ -424,9 +424,10 @@ mkdir -p "$jobserver/bin"
 # Follow the formatter's declared closure, including catalog admission helpers.
 bash "$ROOT/scripts/ci/prepare-script-fixture.sh" "$ROOT" "$jobserver" \
     make/rust-format.mk scripts/ci/check-release-delivery.sh
-mkdir -p "$jobserver/testing"
+cmp "$ROOT/scripts/ci/run-rust-formatting.pl" "$jobserver/scripts/ci/run-rust-formatting.pl"
+cmp "$ROOT/scripts/ci/RustSource.pm" "$jobserver/scripts/ci/RustSource.pm"
+mkdir -p "$jobserver/testing/runtime-qualification"
 cp "$ROOT/testing/package-consumer.rs" "$jobserver/testing/"
-cp "$ROOT/scripts/ci/format-workspaces.sh" "$jobserver/scripts/ci/"
 cat > "$jobserver/scripts/ci/package-workspace.sh" <<'STUB'
 #!/usr/bin/env bash
 exec cargo package "$@"
@@ -439,17 +440,26 @@ set -euo pipefail
 reader="${BASH_REMATCH[2]}"; writer="${BASH_REMATCH[3]}"
 : <&"$reader"
 : >&"$writer"
-printf '%s\n' "$*" >> "$JOBSERVER_EVENTS"
+printf '%s [%s] (%s) %s\n' "${0##*/}" "$PWD" "${RUSTUP_TOOLCHAIN:-}" "$*" >> "$JOBSERVER_EVENTS"
+if [[ "${0##*/}" == rustfmt ]]; then
+    if [[ "$*" == --version && "${RUSTFMT_TEST_FAIL_VERSION:-0}" == 1 ]]; then
+        echo 'fixture standalone formatter admission failure' >&2; exit 37
+    fi
+    if [[ "$*" == '--edition '* && "${RUSTFMT_TEST_FAIL_PASS:-0}" == 1 ]]; then
+        echo 'fixture standalone formatting failure' >&2; exit 39
+    fi
+fi
 [[ "$*" != 'sort --version' ]] || echo 'cargo-sort 2.1.4'
 exit 0
 STUB
+cp "$jobserver/bin/cargo" "$jobserver/bin/rustfmt"
 cat > "$jobserver/helper" <<'STUB'
 #!/usr/bin/env bash
 set -euo pipefail
 cargo helper "$@"
 case "$1" in target) echo "$PWD/target" ;; version) echo 0.35.1 ;; esac
 STUB
-chmod +x "$jobserver/bin/cargo" "$jobserver/helper"
+chmod +x "$jobserver/bin/cargo" "$jobserver/bin/rustfmt" "$jobserver/helper"
 parallel=(-j4)
 if make --help | grep -q -- --jobserver-style; then parallel+=(--jobserver-style=pipe); fi
 for target in fmt fmt-check test-tooling test fetch-dependencies wasm-size version \
@@ -457,10 +467,59 @@ for target in fmt fmt-check test-tooling test fetch-dependencies wasm-size versi
     (cd "$jobserver"; PATH="$jobserver/bin:$PATH" make --no-print-directory "${parallel[@]}" \
         "$target" TOOL=./helper) > "$jobserver/$target.log" 2>&1
 done
-grep -F 'sort --workspace --grouped testing/runtime-qualification' "$JOBSERVER_EVENTS"
-grep -F 'fmt --manifest-path testing/runtime-qualification/Cargo.toml --all' "$JOBSERVER_EVENTS"
+grep -Fx "cargo [$jobserver] ($FIXTURE_TOOLCHAIN) sort --workspace --grouped" "$JOBSERVER_EVENTS"
+grep -Fx "cargo [$jobserver] ($FIXTURE_TOOLCHAIN) fmt --all" "$JOBSERVER_EVENTS"
+grep -Fx "cargo [$jobserver/testing/runtime-qualification] ($FIXTURE_TOOLCHAIN) sort --workspace --grouped" "$JOBSERVER_EVENTS"
+grep -Fx "cargo [$jobserver/testing/runtime-qualification] ($FIXTURE_TOOLCHAIN) fmt --all" "$JOBSERVER_EVENTS"
+grep -Fx "rustfmt [$jobserver] ($FIXTURE_TOOLCHAIN) --edition 2024 $jobserver/testing/package-consumer.rs" "$JOBSERVER_EVENTS"
+grep -Fx "rustfmt [$jobserver] ($FIXTURE_TOOLCHAIN) --edition 2024 --check $jobserver/testing/package-consumer.rs" "$JOBSERVER_EVENTS"
+awk '/ (sort --workspace --grouped|fmt --all|--edition 2024)( |$)/ { print; if (++passes == 5) exit }' \
+    "$JOBSERVER_EVENTS" > "$jobserver/observed-order"
+printf '%s\n' \
+    "cargo [$jobserver] ($FIXTURE_TOOLCHAIN) sort --workspace --grouped" \
+    "cargo [$jobserver] ($FIXTURE_TOOLCHAIN) fmt --all" \
+    "cargo [$jobserver/testing/runtime-qualification] ($FIXTURE_TOOLCHAIN) sort --workspace --grouped" \
+    "cargo [$jobserver/testing/runtime-qualification] ($FIXTURE_TOOLCHAIN) fmt --all" \
+    "rustfmt [$jobserver] ($FIXTURE_TOOLCHAIN) --edition 2024 $jobserver/testing/package-consumer.rs" \
+    > "$jobserver/expected-order"
+cmp "$jobserver/expected-order" "$jobserver/observed-order"
 grep -F 'helper release-verify' "$JOBSERVER_EVENTS"
 grep -F 'helper publish --dry-run' "$JOBSERVER_EVENTS"
+
+# Admission fails before workspace mutation; a later standalone failure retains
+# its exact child status/log after workspace passes. Both use the actual driver.
+for phase in admission pass; do
+    : > "$JOBSERVER_EVENTS"
+    status=0
+    if [[ "$phase" == admission ]]; then
+        (cd "$jobserver"; PATH="$jobserver/bin:$PATH" RUSTFMT_TEST_FAIL_VERSION=1 \
+            make --no-print-directory "${parallel[@]}" fmt) > "$jobserver/$phase.log" 2>&1 || status=$?
+        expected=37
+        if grep -qF 'sort --workspace' "$JOBSERVER_EVENTS"; then exit 1; fi
+    else
+        (cd "$jobserver"; PATH="$jobserver/bin:$PATH" RUSTFMT_TEST_FAIL_PASS=1 \
+            make --no-print-directory "${parallel[@]}" fmt-check) > "$jobserver/$phase.log" 2>&1 || status=$?
+        expected=39
+        grep -qF 'fmt --all -- --check' "$JOBSERVER_EVENTS"
+    fi
+    [[ "$status" == 2 ]] || exit 1
+    grep -qF "FAILED (exit $expected," "$jobserver/$phase.log"
+    retained="$(sed -n 's/^Details: //p' "$jobserver/$phase.log")"
+    [[ -f "$retained" ]] || exit 1
+    grep -qF 'fixture standalone' "$retained"
+    printf 'Standalone %s failure retained with exit %s: %s\n' "$phase" "$expected" "$retained"
+done
+# Force-run retains the same consumer roster; standalone selections run uncached.
+printf '\n.PHONY: fixture-force\nfixture-force: FORMAT_RUST_ARGS += --no-cache\nfixture-force: fmt-check\n' >> "$jobserver/Makefile"
+(cd "$jobserver"; PATH="$jobserver/bin:$PATH" make --no-print-directory "${parallel[@]}" fixture-force) > "$jobserver/force.log" 2>&1
+grep -qF 'Standalone Rust sources selected; running without shortcut' "$jobserver/force.log"
+grep -qF 'Standalone Rust formatting... ok (' "$jobserver/force.log"
+# The consumer's validation compiler owns every formatter pass, including a
+# caller that supplies a different Cargo/rustup compiler on Make's command line.
+: > "$JOBSERVER_EVENTS"
+(cd "$jobserver"; PATH="$jobserver/bin:$PATH" make --no-print-directory "${parallel[@]}" \
+    fmt-check RUSTUP_TOOLCHAIN=other-compiler) > "$jobserver/compiler.log" 2>&1
+grep -Fx "rustfmt [$jobserver] ($FIXTURE_TOOLCHAIN) --edition 2024 --check $jobserver/testing/package-consumer.rs" "$JOBSERVER_EVENTS"
 )
 
 test_release_receipts() (

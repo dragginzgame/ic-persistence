@@ -46,9 +46,9 @@ new_fixture() {
     git checkout-index --all
     # Synthetic manifests have their own dependency graph. Remove inherited
     # consumer locks so the formatter check still detects accidental creation.
-    git rm --quiet --ignore-unmatch -- Cargo.lock testing/runtime-qualification/Cargo.lock
+    git rm --quiet --ignore-unmatch -- Cargo.lock testing/runtime-qualification/Cargo.lock scripts/ci/format-workspaces.sh
     mkdir -p ci make .githooks scripts/ci scripts/dev
-    for path in Makefile make/consumer.mk make/tools.mk make/release.mk make/rust-format.mk make/execution.mk ci/release-tools.env ci/runtime-tools.env ci/tool-versions.env rust-toolchain.toml testing/package-consumer.rs .githooks/pre-commit scripts/dev/install-git-hooks.sh scripts/ci/check-format-tools.sh scripts/ci/run-formatting.sh scripts/ci/format-workspaces.sh scripts/ci/check-make-execution.sh scripts/ci/check-release-delivery.sh; do
+    for path in Makefile make/consumer.mk make/tools.mk make/release.mk make/rust-format.mk make/execution.mk ci/release-tools.env ci/runtime-tools.env ci/tool-versions.env rust-toolchain.toml testing/package-consumer.rs .githooks/pre-commit scripts/dev/install-git-hooks.sh scripts/ci/check-format-tools.sh scripts/ci/run-formatting.sh scripts/ci/run-rust-formatting.pl scripts/ci/RustSource.pm scripts/ci/check-make-execution.sh scripts/ci/check-release-delivery.sh; do
         cp -p "$root/$path" "$path"
     done
     for workspace in . testing/runtime-qualification; do
@@ -85,7 +85,7 @@ CARGO
             printf 'pub fn fixture() {}\n' > "$workspace/crates/$member/src/lib.rs"
         done
     done
-    git add -- Makefile make/consumer.mk make/tools.mk make/release.mk make/rust-format.mk make/execution.mk ci/release-tools.env ci/runtime-tools.env ci/tool-versions.env rust-toolchain.toml testing/package-consumer.rs .githooks/pre-commit scripts/dev/install-git-hooks.sh scripts/ci/check-format-tools.sh scripts/ci/run-formatting.sh scripts/ci/format-workspaces.sh scripts/ci/check-make-execution.sh scripts/ci/check-release-delivery.sh Cargo.toml crates/hook-fixture crates/alpha crates/zeta testing/runtime-qualification/Cargo.toml testing/runtime-qualification/crates/hook-fixture testing/runtime-qualification/crates/alpha testing/runtime-qualification/crates/zeta
+    git add -- Makefile make/consumer.mk make/tools.mk make/release.mk make/rust-format.mk make/execution.mk ci/release-tools.env ci/runtime-tools.env ci/tool-versions.env rust-toolchain.toml testing/package-consumer.rs .githooks/pre-commit scripts/dev/install-git-hooks.sh scripts/ci/check-format-tools.sh scripts/ci/run-formatting.sh scripts/ci/run-rust-formatting.pl scripts/ci/RustSource.pm scripts/ci/check-make-execution.sh scripts/ci/check-release-delivery.sh Cargo.toml crates/hook-fixture crates/alpha crates/zeta testing/runtime-qualification/Cargo.toml testing/runtime-qualification/crates/hook-fixture testing/runtime-qualification/crates/alpha testing/runtime-qualification/crates/zeta
 }
 
 expect_failure() {
@@ -93,6 +93,15 @@ expect_failure() {
         echo "hook fixture unexpectedly accepted a failing operation in $PWD: $*" >&2
         exit 1
     fi
+}
+
+expect_formatter_passes() {
+    for label in 'Checking standalone Rustfmt' 'Manifest sorting [.]' 'Rust formatting [.]' \
+        'Manifest sorting [testing/runtime-qualification]' \
+        'Rust formatting [testing/runtime-qualification]' 'Standalone Rust formatting'; do
+        grep -qF "$label... ok (" output
+    done
+    grep -qF 'Standalone Rust sources selected; running without shortcut' output
 }
 
 new_fixture selected
@@ -103,12 +112,14 @@ tree="$(git write-tree)"
 expect_failure make --no-print-directory fmt-check
 [[ "$(git write-tree)" == "$tree" && "$(cat crates/hook-fixture/src/lib.rs)" == 'pub fn fixture( ){}' ]] || exit 1
 CARGO_NET_OFFLINE=true RUSTUP_AUTO_INSTALL=0 bash .githooks/pre-commit > output
+expect_formatter_passes
 [[ "$(git show :crates/hook-fixture/src/lib.rs)" == 'pub fn fixture() {}' ]] || exit 1
 [[ "$(git show :testing/runtime-qualification/crates/hook-fixture/src/lib.rs)" == 'pub fn fixture() {}' ]] || exit 1
 cmp unrelated-before README.md
 [[ "$(git show :README.md)" == "$(git show HEAD:README.md)" ]] || exit 1
 [[ "$(cat unrelated.rs)" == 'untracked edit' && -z "$(git ls-files -- unrelated.rs)" ]] || exit 1
 make --no-print-directory fmt-check > output
+expect_formatter_passes
 for workspace in . testing/runtime-qualification; do
     grep -qF '# Keep this comment and the selected path/feature policy.' "$workspace/Cargo.toml"
 done
@@ -117,7 +128,50 @@ tree="$(git write-tree)"
 bash .githooks/pre-commit > output
 [[ "$(git write-tree)" == "$tree" ]] || exit 1
 
-for path in crates/hook-fixture/src/lib.rs Cargo.toml crates/hook-fixture/Cargo.toml Makefile ci/tool-versions.env; do
+# Check mode must also inspect an extra workspace after an earlier success.
+printf 'pub fn fixture( ){}\n' > testing/runtime-qualification/crates/hook-fixture/src/lib.rs
+git add -- testing/runtime-qualification/crates/hook-fixture/src/lib.rs
+cp testing/runtime-qualification/crates/hook-fixture/src/lib.rs extra-before
+tree="$(git write-tree)"
+expect_failure make --no-print-directory fmt-check
+[[ "$(git write-tree)" == "$tree" ]] || exit 1
+cmp extra-before testing/runtime-qualification/crates/hook-fixture/src/lib.rs
+bash .githooks/pre-commit > output
+expect_formatter_passes
+[[ "$(git show :testing/runtime-qualification/crates/hook-fixture/src/lib.rs)" == 'pub fn fixture() {}' ]] || exit 1
+
+# This source is outside both Cargo workspaces. A workspace-only formatter would
+# silently omit it; async syntax also requires an explicit modern Rust edition.
+printf 'async fn standalone( ) { }\nfn main( ) { let answer=42; }\n' > testing/package-consumer.rs
+git add -- testing/package-consumer.rs
+tree="$(git write-tree)"
+cp testing/package-consumer.rs standalone-before
+expect_failure make --no-print-directory fmt-check
+[[ "$(git write-tree)" == "$tree" ]] || exit 1
+cmp standalone-before testing/package-consumer.rs
+bash .githooks/pre-commit > output
+[[ "$(git show :testing/package-consumer.rs)" == $'async fn standalone() {}\nfn main() {\n    let answer = 42;\n}' ]] || exit 1
+cmp unrelated-before README.md
+[[ "$(git show :README.md)" == "$(git show HEAD:README.md)" ]] || exit 1
+[[ "$(cat unrelated.rs)" == 'untracked edit' && -z "$(git ls-files -- unrelated.rs)" ]] || exit 1
+make --no-print-directory fmt-check > output
+[[ ! -e Cargo.lock && ! -e testing/runtime-qualification/Cargo.lock && ! -e target && ! -e testing/runtime-qualification/target ]] || exit 1
+
+# A successful prior run cannot hide changed standalone configuration.
+printf 'hard_tabs = true\n' > rustfmt.toml
+cp testing/package-consumer.rs before-config
+expect_failure make --no-print-directory fmt-check
+cmp before-config testing/package-consumer.rs
+git add -- rustfmt.toml
+bash .githooks/pre-commit > output
+expect_formatter_passes
+[[ "$(git show :testing/package-consumer.rs)" == $'async fn standalone() {}\nfn main() {\n\tlet answer = 42;\n}' ]] || exit 1
+make --no-print-directory fmt-check > output
+expect_formatter_passes
+cmp unrelated-before README.md
+[[ ! -e Cargo.lock && ! -e testing/runtime-qualification/Cargo.lock && ! -e target && ! -e testing/runtime-qualification/target ]] || exit 1
+
+for path in crates/hook-fixture/src/lib.rs testing/package-consumer.rs Cargo.toml crates/hook-fixture/Cargo.toml Makefile ci/tool-versions.env; do
     new_fixture "partial-${path//\//-}"
     case "$path" in *.rs) comment='//' ;; *) comment='#' ;; esac
     # Every case must select this file even when consumer tooling matches HEAD.

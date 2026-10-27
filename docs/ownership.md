@@ -87,7 +87,9 @@ the existing coordinated-order mapping. Workflow callers carry complete receipts
 rather than parallel digest arrays. Changing package membership or order requires
 explicit receipt compatibility review. This is release policy, not another
 dependency or version catalog.
-`format-workspaces.sh` owns the consumer formatter roster; `qualify-runtime.sh`
+The Makefile's `FORMAT_RUST_ARGS` owns the consumer formatter roster, including
+the independent workspace and edition-2024 package consumer; the shared driver
+owns ordering, visible passes and uncached standalone execution. `qualify-runtime.sh`
 owns the installed artifact/optimization loop. Archive qualification derives its
 workspace, patches and consumer manifest together from one extracted-package map;
 that map also owns package provenance. The

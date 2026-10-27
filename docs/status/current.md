@@ -1,65 +1,97 @@
 # Current handoff
 
-The released baseline is 0.51.9 at `1f7d96f60ac00f4b13a8e1de0496a71b16bbeafa`.
-The pending compatible 0.51.10 batch adopts published IC Tooling 0.69.0 in the
-five native development dependencies and both helper CLIs. Public library APIs,
-stored formats, allocation custody and release receipt JSON remain unchanged.
-Package versions remain 0.51.9; work is uncommitted and the index remains
-user-owned. See [pending notes](../changelog/0.51.md#05110---unreleased).
+The released baseline is 0.51.10 at `44736dccb2b9b0894df465bbba673c81da8007bb`.
+The pending compatible 0.51.11 batch adopts Shared Tooling 0.26.26 and implements
+[#135 — Adopt shared formatter orchestration without dropping package-consumer formatting](https://github.com/dragginzgame/ic-persistence/issues/135)
+in the working tree. The upstream standalone capability is now supplied by the
+selected committed source. Package versions remain 0.51.10; changes are
+uncommitted and the index remains user-owned. See
+[pending notes](../changelog/0.51.md#05111---unreleased).
 
 ## Current changes
 
-Tooling 0.69.0 is published from
-`f268aef5d205e51811e934648afcd13f026635f1`. Registry observations confirm the
-selected packages are not yanked and declare Rust 1.91; the packaged VCS record
-matches this commit. Tooling's breaking change concerns Platform-owned Principal
-values in Host Tools registry APIs, which Persistence does not consume. Our
-existing Platform 0.7 requirement already meets its migration requirement.
+Shared Tooling 0.26.26 at `5683060a5d8ce79af2fcfedb53b3eb24037fd064` is exported
+from a clean detached committed source using the canonical impact preview and
+refresh. The same 77 roots derive 123 payloads. The refreshed hook accepts opaque
+gitlinks without reading child contents or changing their staged identities;
+the required Node guide completes governance documentation without Node setup.
+The Clap-based runtime scanner is not selected, so no compiler-package adaptation
+or dependency change is needed. Gzip ownership guidance remains policy; Cargo/tar
+packaging and evidence retain their infrastructure boundary.
 
-The root lock updates only the five Tooling packages, removes the obsolete native
-Platform 0.6.21 facade and normalizes references to the remaining Platform 0.7.0
-identity. Other package selections and the independent runtime lock are unchanged.
-Feature/default selections, compiler pins and the Rust floor remain unchanged.
-The stable-memory substrate remains registry stable-structures 0.7.2, and PocketIC
-client/server remain 16.1.0. No consumer migration, client regeneration or
-retained-data conversion is required for Persistence.
+The formatter now imports its declared `RustSource.pm` companion for balanced
+attribute inspection in workspace-only cache admission. The hook fixture copies
+and stages that module, and the jobserver fixture compares its canonical copy.
+The cache fix avoids treating unrelated path text after conditional attributes as
+module overrides. Persistence's standalone selection remains fully uncached, so
+this does not enable result reuse. Generic lexer/cache fixtures remain owned by
+Shared; source adoption does not claim a fresh producer or macOS qualification.
 
-Shared Tooling remains the reviewed 0.26.22 snapshot at
-`5fc904a935d82ad31f0fba14434b71ccb8c10345`; vendored source and common tool pins
-are untouched. Explicit setup reuses prepared 0.69.0 release-editor and Testkit
-CLI generations and the existing 16.1.0 server, retaining older generations and
-failed attempts. Ordinary checks remain offline and do not install tools.
+The Makefile now declares the existing extra workspace and the edition-2024
+`testing/package-consumer.rs` source through `FORMAT_RUST_ARGS`. The paired
+command overrides and copied adapter are retired. Shared directly runs grouped
+manifest sorting and Rustfmt for the root, then for runtime qualification,
+followed by standalone Rustfmt. Every pass reports live progress and elapsed time.
+The validation compiler is exported for all formatter passes, including when a
+caller supplies another rustup compiler on Make's command line.
 
-## Qualification and limits
+Standalone selections run entirely uncached, preserving arbitrary module/config
+coverage. Repeated successful checks still run every pass; explicit `--no-cache`
+force-run routing remains supported. Write/check coverage, prepared-tool admission
+and offline behavior remain unchanged. Both selected lockfiles, all dependency
+catalogs, package versions, features, tool/compiler pins, public APIs and durable
+formats are preserved.
 
-Dependency pin/inheritance, default production Wasm graph, external IC dependency
-boundaries, formatting and strict Clippy for Memory's library, tests and release
-helper pass. All 65 release-helper and 62 selected runtime tests pass, covering
-release/recovery evidence and the newly unified native Testkit memory graph.
-Consumer release-adapter scenarios pass with substituted Git/build effects and
-the new real release editor. Offline release-editor and Testkit/server admission
-pass.
+The order change is intentional: working-tree `make fmt` was already
+nontransactional, since earlier manifest edits could precede a later failure.
+Check mode remains non-mutating. The hook formats an exported index and publishes
+selected bytes only after the complete formatter succeeds. No cross-workspace
+all-sorts-before-Rustfmt guarantee is required by these owned caller boundaries.
 
-Actual extracted-package checks, consumer execution on Rust 1.99.1 and the
-selected 1.91 MSRV, and Wasm consumer compilation pass. Source, archive and
-extracted-file hashes pass. The retained attempt is
-`target/package-qualification/attempt.yE3e9I/`. This qualifies working-tree
-archives with `--allow-dirty`; the final handoff edit follows that packaging run.
-Local documentation references and diff checks pass.
+## Consumer qualification
 
-Full release validation, installed IO/upgrade qualification, fresh performance
-measurement and current macOS execution were not rerun. The PocketIC pair is
-unchanged; server admission is not an installed IO/upgrade run. No release,
-publication, commit, tag or push ran.
+Snapshot integrity/mode checks, Perl syntax for the driver and lexer, Bash syntax and
+ShellCheck for the consumer fixtures pass. Root `make fmt-check` and real native
+hook write/check flows pass with visible workspace and standalone output after
+the lexer companion refresh. Both lockfiles
+remain byte-for-byte equal to their incoming selections.
 
-Registry observations, incoming locks, setup and qualification logs are retained
-at `/tmp/ic-persistence-tooling-next/`. The
-[released handoff](https://github.com/dragginzgame/ic-persistence/blob/1f7d96f60ac00f4b13a8e1de0496a71b16bbeafa/docs/status/current.md)
-retains earlier source adoption, cleanup measurements, dependency and installed
-runtime evidence with its original scope. This task performs no fresh dependency
-security or repository-wide hygiene audit. The [ownership guide](../ownership.md),
-[host support](../host-support.md) and
-[adoption boundaries](../shared-tooling-adoption.md) remain the active contracts.
+The complete consumer hook fixture passes with prepared native formatters on
+Linux. It covers both workspaces, unformatted extra-workspace/standalone sources,
+non-mutating rejection, standalone configuration changes after prior success,
+staged writeback, partial-staging refusal, unrelated source/index preservation,
+formatter failure isolation and setup. Fixture assertions retain the prohibition
+on builds, lock creation or target/cache creation. No fixture commits/tags are
+created; indexes reuse an existing commit read-only.
+
+Consumer release-adapter scenarios pass using the actual shared driver with
+substituted executable effects. They verify the selected compiler and exact new
+pass order, jobserver descriptors through Cargo and standalone Rustfmt in write
+and check modes, admission before workspace passes, late standalone failure,
+explicit force-run behavior and complete retained logs with exact child exits 37
+and 39 (Make reports its normal status 2). Hook/jobserver fixture copies include
+the canonical formatter closure. These are consumer checks, not a replay of the
+generic producer matrix.
+
+Adoption source, incoming changes/locks/snapshot, impact/refresh output and logs
+are retained at `/tmp/ic-persistence-shared-02626/`. Earlier full formatter
+migration evidence remains at `/tmp/ic-persistence-shared-02624/`. Final scenario output records
+the retained negative-case log paths. Earlier source-adoption and preparation logs
+remain at `/tmp/ic-persistence-shared-02623/` and
+`/tmp/ic-persistence-issue-135/`. Documentation links and diff checks pass.
+Library source and dependency selections are unchanged, so Rust suites, installed
+IO/upgrade, fresh performance measurement and the full release gate were not
+rerun. Current macOS qualification was not repeated; hosted/native acceptance
+retains its own scope.
+
+No remote issue closure/comment, commit, tag, push, release, publication or hook
+activation in the real checkout ran. #135's local implementation is ready for
+review and delivery. The
+[released handoff](https://github.com/dragginzgame/ic-persistence/blob/44736dccb2b9b0894df465bbba673c81da8007bb/docs/status/current.md)
+retains earlier dependency, cleanup and installed-runtime evidence with its
+original scope. The [adoption boundaries](../shared-tooling-adoption.md),
+[ownership guide](../ownership.md) and [host support](../host-support.md) remain
+active.
 
 ## Retained evidence and recovery
 

@@ -9,14 +9,15 @@ local baseline. Future policy changes require reviewed snapshot adoption.
 
 ## Current source selection
 
-IC Persistence selects committed Shared Tooling 0.26.22 at
-`5fc904a935d82ad31f0fba14434b71ccb8c10345`, with 77 explicit roots and 120 payloads.
+IC Persistence selects committed Shared Tooling 0.26.26 at
+`5683060a5d8ce79af2fcfedb53b3eb24037fd064`, with 77 explicit roots and 123 payloads.
 The compact baseline derives `rules/engineering-details.md` as a companion;
 specialist contracts remain binding when the task touches them. Reporting metrics
 are opt-in, and focused checks follow the completed coherent edit batch. The
 adopted npm Platform boundary adds no dependency to this Rust-only consumer.
-This Shared refresh changes no executable payload, common tool pin or installer
-build-policy identity. Consumer-owned Build/Testkit selections are 0.69.0.
+The refresh adds the canonical Rust formatting driver and updates Make dispatch,
+preserving common tool pins and the installer build-policy identity.
+Consumer-owned Build/Testkit selections are 0.69.0.
 Release 0.50.7 passed the complete native, MSRV and installed-runtime matrix
 on Linux and both macOS architectures; snapshot integrity alone is not acceptance.
 See [the adoption issue](https://github.com/dragginzgame/ic-persistence/issues/127).
@@ -26,6 +27,47 @@ therefore included; uncommitted Shared sibling changes are excluded.
 The canonical [preview and refresh procedure](consuming-snapshots.md#preview-before-refreshing)
 exports committed bytes from a clean source checkout. Direct callers remain
 explicit roots and required companions are derived by the exporter.
+
+The current refresh uses a clean detached committed source and canonical impact
+preview. The shared Rust driver now owns the complete formatting sequence. The
+Makefile's `FORMAT_RUST_ARGS` selects `testing/runtime-qualification` as the extra
+workspace and `testing/package-consumer.rs` as an edition-2024 standalone source.
+The paired overrides and copied adapter are retired. Root sorting/formatting runs
+before extra-workspace sorting/formatting, followed by standalone Rustfmt, with
+each pass visible and timed. Working-tree writes remain nontransactional; check
+mode is non-mutating and staged-hook publication waits for the complete formatter
+to succeed.
+
+Standalone selections always run uncached, including workspace passes, so source,
+module and configuration changes cannot be hidden by an incomplete result receipt.
+Prepared formatter admission still runs first. Consumer fixtures exercise the real
+new driver, source/config changes, exact ordering, jobserver descriptor forwarding,
+failed standalone admission before workspace passes and retained failure logs.
+The hook fixture's exported-index closure includes the driver and preserves
+partial staging and unrelated work. This implements the local migration for
+[#135 — Adopt shared formatter orchestration without dropping package-consumer formatting](https://github.com/dragginzgame/ic-persistence/issues/135),
+using the capability delivered for
+[Shared #314 — Support standalone Rust sources in shared formatting orchestration](https://github.com/dragginzgame/shared-tooling/issues/314).
+Remote issue closure and delivery remain separate from these working-tree changes.
+
+Shared 0.26.26 replaces broad module-path screening with the shared Rust lexer's
+balanced-attribute inspection for workspace-only cache admission. The driver and
+`RustSource.pm` are both source-bound; the hook fixture copies/stages the module,
+and the jobserver fixture follows and compares that companion closure. Standalone
+selection still disables all reuse, so Persistence's active formatting behavior
+stays uncached. Shared 0.26.25's scanner filename qualification changes are outside
+this consumer's selected executable closure. Tool pins and build identity remain
+unchanged.
+
+The refreshed hook accepts opaque tracked gitlinks, preserving their staged
+identities while formatting selected regular files. This repository has no
+production submodule integration to migrate. The Node guide is a required policy
+companion, not Node activation. The Clap-based runtime scanner is not selected by
+this snapshot and requires no consumer compiler package or dependency changes.
+
+The gzip policy names Tooling's opt-in encoder as the application/fixture owner;
+Cargo archives and system tar used for packaging/evidence retain their explicit
+infrastructure boundary. No gzip dependency/feature or product encoding changes.
 
 The 0.26.22 refresh uses a clean detached copy of the committed source and the
 canonical impact preview, preserving the existing roots and payload closure.
@@ -199,13 +241,13 @@ and old selections remain retained; refreshing source never silently installs
 or deletes tools. Fleet reports run in Shared Tooling; local `make cloc` selects
 the root workspace, or an explicit `CLOC_MANIFEST` for the independent graph.
 
-Formatting covers the root workspace and `testing/runtime-qualification` through
-one paired `FORMAT_WRITE_COMMAND` / `FORMAT_CHECK_COMMAND`, both dispatching
-the consumer-owned `scripts/ci/format-workspaces.sh` operation list. Shared admission
-checks the selected cargo-sort and rustfmt before dispatch. Neither formatting
-command builds, fetches, installs tools or changes selected lockfiles. Hook setup
-is explicit and exercises real index effects only in allowed disposable fixtures
-or an explicitly authorized commit.
+Formatting covers the root workspace, `testing/runtime-qualification` and the
+standalone edition-2024 package consumer through declarative `FORMAT_RUST_ARGS`.
+Shared owns each timed pass; the consumer owns the roster and selected compiler.
+Standalone selections deliberately run without result reuse. Formatting builds,
+fetches, installs and selected-lock changes remain prohibited. Hook setup is
+explicit and real index effects stay in disposable fixtures or explicitly
+authorized commits.
 
 Testkit owns PocketIC selection, provisioning, offline admission and managed
 lifecycle. The separately selected CLI is outside both maintained lockfiles;

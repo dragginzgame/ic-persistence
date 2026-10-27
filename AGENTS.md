@@ -77,12 +77,15 @@ for the upstream contribution and the `ic-storage` package integration boundary.
 
 Follow the reviewed [Git hook rules](rules/git-hooks.md).
 The reviewed hook and installer are vendored unchanged. `make fmt` and
-`make fmt-check` cover both the library and `testing/runtime-qualification`,
+`make fmt-check` cover the library, `testing/runtime-qualification` and the
+standalone `testing/package-consumer.rs` source,
 using the [selected catalog](ci/tool-versions.env) before the pinned Rust formatter.
 Setup is explicit in [docs/host-support.md](docs/host-support.md); formatting never installs tools,
 builds, fetches dependencies or changes selected lockfiles. The shared formatter
 prerequisite checker owns exact cargo-sort and rustfmt admission; this consumer
-owns the selected pin, toolchain and two-workspace roster.
+owns the selected pin and toolchain. The Makefile's declarative `FORMAT_RUST_ARGS`
+owns the two-workspace and standalone-source roster; Shared owns orchestration.
+Selections containing standalone sources always run uncached.
 
 `make install-hooks` changes only local `core.hooksPath`. The pre-commit hook
 refreshes selected index entries. Exercise it only in disposable fixtures during

@@ -23,16 +23,16 @@ include ci/release-tools.env
 include ci/runtime-tools.env
 TOOL := bash scripts/dev/run-repo-tool.sh $(VALIDATION_TOOLCHAIN)
 override SHARED_TOOLING_ROOT := $(CURDIR)
-# Both maintained workspaces retain the same complete formatter sequence.
-FORMAT_WRITE_COMMAND = bash scripts/ci/format-workspaces.sh "$(VALIDATION_TOOLCHAIN)" write
-FORMAT_CHECK_COMMAND = bash scripts/ci/format-workspaces.sh "$(VALIDATION_TOOLCHAIN)" check
+# Consumer roster; Shared owns each visible pass, including standalone Rustfmt.
+FORMAT_RUST_ARGS = --extra-workspace testing/runtime-qualification \
+    --rustfmt-source testing/package-consumer.rs --rustfmt-edition 2024
 # Memory uses IC executables for installed runtime qualification.
 IC_TOOLS := wasm-opt
 LOCAL_TOOL_INSTALL_TARGETS += install-ic-tools install-release-tools
 LOCAL_TOOL_CHECK_TARGETS += ic-tools-check release-tools-check
 include make/consumer.mk
 export PATH := $(CURDIR)/.tools/ic/bin:$(PATH)
-fmt fmt-check format-tools-check: export RUSTUP_TOOLCHAIN := $(VALIDATION_TOOLCHAIN)
+fmt fmt-check format-tools-check: override export RUSTUP_TOOLCHAIN := $(VALIDATION_TOOLCHAIN)
 
 # The published Testkit CLI owns PocketIC selection, admission and lifecycle.
 # Keep this tool graph outside both maintained workspace lockfiles.

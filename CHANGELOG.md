@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.51.11] - Unreleased
+
+### 📝 Summary
+
+- Adopt Shared Tooling 0.26.26 and replace the local formatter adapter with shared
+  orchestration for both workspaces and the standalone package consumer, with
+  visible pass timings and preserved coverage.
+  [#135 — Adopt shared formatter orchestration without dropping package-consumer formatting](https://github.com/dragginzgame/ic-persistence/issues/135).
+
+### 🧪 Testing
+
+- Cover source/config changes, standalone admission failures, retained logs,
+  staged-hook writeback and parallel Make descriptor forwarding.
+  [Details](docs/changelog/0.51.md#05111---unreleased).
+
 ## [0.51.10] - 2026-10-27
 
 ### 📝 Summary
