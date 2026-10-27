@@ -1,81 +1,64 @@
 # Current handoff
 
-The released baseline is 0.51.8 at `5bce9fa85577aa5041c79b601fe1642f936992ea`.
-The pending compatible 0.51.9 batch adopts Platform 0.7.0, Tooling 0.68.12 and
-Shared Tooling 0.26.22. Public APIs, stored formats, allocation custody and release
-receipt JSON remain unchanged. Package versions remain 0.51.8; work is
-uncommitted and the index remains user-owned. See
-[pending notes](../changelog/0.51.md#0519---unreleased).
+The released baseline is 0.51.9 at `1f7d96f60ac00f4b13a8e1de0496a71b16bbeafa`.
+The pending compatible 0.51.10 batch adopts published IC Tooling 0.69.0 in the
+five native development dependencies and both helper CLIs. Public library APIs,
+stored formats, allocation custody and release receipt JSON remain unchanged.
+Package versions remain 0.51.9; work is uncommitted and the index remains
+user-owned. See [pending notes](../changelog/0.51.md#05110---unreleased).
 
 ## Current changes
 
-Both workspace catalogs select published Platform 0.7.0 at
-`60c43108ca7f2a99bfac62ec21075afff5ed7a7e`. Its removed Candid compiler exports
-are unused here. The selected stable-structures and PocketIC facades are unchanged
-from the previous release. Underlying public type identities remain registry
-stable-structures 0.7.2 and PocketIC 16.1.0, so no Persistence consumer migration,
-client regeneration or retained-data conversion is required.
+Tooling 0.69.0 is published from
+`f268aef5d205e51811e934648afcd13f026635f1`. Registry observations confirm the
+selected packages are not yanked and declare Rust 1.91; the packaged VCS record
+matches this commit. Tooling's breaking change concerns Platform-owned Principal
+values in Host Tools registry APIs, which Persistence does not consume. Our
+existing Platform 0.7 requirement already meets its migration requirement.
 
-The five native Tooling requirements and release-editor/Testkit CLI pins select
-published 0.68.12 at `42a9ec79b10f7bf9e3a5658980ca73817c2a771d`. The incoming root
-lock already selected Platform 0.6.21 and part of Tooling 0.68.12. Those identities
-are preserved; Build and Host Process complete the 0.68.12 selection, and direct
-library dependencies add Platform 0.7.0. Native Testkit still requires Platform
-0.6.21 transitively. Both facades share one exact stable-structures identity;
-the default production graph contains one Platform identity, at 0.7.0. The
-independent lock changes only Platform from 0.6.20 to 0.7.0. Other dependency
-selections, compiler pins, features/defaults and Rust 1.91 remain unchanged.
-Metrics remains the latest published 0.16.3. Registry observations confirm the
-selected releases are not yanked, and packaged VCS records match the commits above.
+The root lock updates only the five Tooling packages, removes the obsolete native
+Platform 0.6.21 facade and normalizes references to the remaining Platform 0.7.0
+identity. Other package selections and the independent runtime lock are unchanged.
+Feature/default selections, compiler pins and the Rust floor remain unchanged.
+The stable-memory substrate remains registry stable-structures 0.7.2, and PocketIC
+client/server remain 16.1.0. No consumer migration, client regeneration or
+retained-data conversion is required for Persistence.
 
-Shared Tooling 0.26.22 at `5fc904a935d82ad31f0fba14434b71ccb8c10345` is exported
-from a clean detached copy through the canonical impact preview and refresh.
-All 77 roots and 120 payloads remain selected. Six governance payloads change;
-no shared executable, common tool pin or installer build-policy identity changes.
-The adopted rules make owned CandidType restrictions explicit and strengthen
-native error, strict machine-output, bounded-process, safe terminal and required
-source-inspection review. Current root notes already use the required emoji
-categories. A strict-read scan of both maintained Rust crate trees finds no
-CandidType tokens. This is source/policy adoption, not new automated enforcement
-or a repository-wide code-hygiene audit.
+Shared Tooling remains the reviewed 0.26.22 snapshot at
+`5fc904a935d82ad31f0fba14434b71ccb8c10345`; vendored source and common tool pins
+are untouched. Explicit setup reuses prepared 0.69.0 release-editor and Testkit
+CLI generations and the existing 16.1.0 server, retaining older generations and
+failed attempts. Ordinary checks remain offline and do not install tools.
 
 ## Qualification and limits
 
-Snapshot integrity, dependency pin/inheritance, default production Wasm graph,
-external IC dependency boundaries and formatting pass. Strict Clippy passes for
-all three libraries, their tests and the release helper with test support.
-All 65 release-helper, 62 selected runtime and 13 Storage unit tests pass, as do
-Storage doctests. This includes native Testkit memory wrappers used with the
-new library facade, retained-region behavior, rollback, uncertain publication
-and receipt recovery. The independent runtime host package checks offline with
-Platform 0.7.0 and PocketIC 16.1.0.
-
+Dependency pin/inheritance, default production Wasm graph, external IC dependency
+boundaries, formatting and strict Clippy for Memory's library, tests and release
+helper pass. All 65 release-helper and 62 selected runtime tests pass, covering
+release/recovery evidence and the newly unified native Testkit memory graph.
 Consumer release-adapter scenarios pass with substituted Git/build effects and
-the newly selected real release editor. Explicit tool setup prepares/adopts both
-0.68.12 CLIs, retaining prior generations. One Testkit setup wait timed out while
-another repository held the selected store slot; the retained retry reuses the
-completed generation. No foreign owner or lock was changed. Subsequent offline
-release-editor and Testkit/server admission pass. The server remains 16.1.0.
+the new real release editor. Offline release-editor and Testkit/server admission
+pass.
 
 Actual extracted-package checks, consumer execution on Rust 1.99.1 and the
 selected 1.91 MSRV, and Wasm consumer compilation pass. Source, archive and
-extracted-file hashes pass. Its retained attempt is
-`target/package-qualification/attempt.HkQAiQ/`. This qualifies working-tree
-archives with `--allow-dirty`; final documentation edits follow that packaging
-run. Local documentation references and diff checks pass.
+extracted-file hashes pass. The retained attempt is
+`target/package-qualification/attempt.yE3e9I/`. This qualifies working-tree
+archives with `--allow-dirty`; the final handoff edit follows that packaging run.
+Local documentation references and diff checks pass.
 
-Registry observations, incoming locks/snapshot, clean Shared source, impact and
-refresh output, the initial busy-tool failure and successful retries, and focused
-qualification logs are retained at `/tmp/ic-persistence-adopt-0519/`.
 Full release validation, installed IO/upgrade qualification, fresh performance
-measurement and current macOS execution were not rerun. The unchanged client/
-server pair does not require a new pairing qualification; server admission is
-not an installed IO/upgrade run. No release, publication, commit, tag or push ran.
-The
-[released handoff](https://github.com/dragginzgame/ic-persistence/blob/5bce9fa85577aa5041c79b601fe1642f936992ea/docs/status/current.md)
-retains previous cleanup, dependency and installed-runtime evidence with its
-original scope. This task performs no fresh dependency-security audit. The
-[ownership guide](../ownership.md), [host support](../host-support.md) and
+measurement and current macOS execution were not rerun. The PocketIC pair is
+unchanged; server admission is not an installed IO/upgrade run. No release,
+publication, commit, tag or push ran.
+
+Registry observations, incoming locks, setup and qualification logs are retained
+at `/tmp/ic-persistence-tooling-next/`. The
+[released handoff](https://github.com/dragginzgame/ic-persistence/blob/1f7d96f60ac00f4b13a8e1de0496a71b16bbeafa/docs/status/current.md)
+retains earlier source adoption, cleanup measurements, dependency and installed
+runtime evidence with its original scope. This task performs no fresh dependency
+security or repository-wide hygiene audit. The [ownership guide](../ownership.md),
+[host support](../host-support.md) and
 [adoption boundaries](../shared-tooling-adoption.md) remain the active contracts.
 
 ## Retained evidence and recovery

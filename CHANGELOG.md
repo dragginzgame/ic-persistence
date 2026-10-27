@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.51.10] - Unreleased
+
+### 📝 Summary
+
+- Adopt IC Tooling 0.69.0 in native dependencies and both helper CLIs, unifying
+  the library and native test graph on Platform 0.7.0. Public library APIs and
+  stored formats remain unchanged.
+  [Details](docs/changelog/0.51.md#05110---unreleased).
+
 ## [0.51.9] - 2026-10-27
 
 ### 📝 Summary
