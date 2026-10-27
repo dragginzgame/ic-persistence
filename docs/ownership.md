@@ -67,6 +67,9 @@ establish that every published consumer or deployed application has adopted them
   against the exact substrate pin. The upstream constructors do not supply the
   same bounded, read-only or fallible behavior. Storage wrappers consume leases
   and therefore cannot own Memory's own ledger bootstrap without a dependency cycle.
+  Memory's public `stable_cell_payload_length` admits only the envelope with a
+  caller-selected ceiling. Storage's `StableCell::load` reuses it, then delegates
+  value decoding to upstream without permitting an initialization fallback.
 - Fixture Cells exercise governed byte storage and caller-selected limits; they
   are not a general production collection API. Installed IO/upgrade tests qualify
   this crate's behavior rather than duplicating Testkit's server implementation.

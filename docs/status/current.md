@@ -1,97 +1,103 @@
 # Current handoff
 
-The released baseline is 0.51.10 at `44736dccb2b9b0894df465bbba673c81da8007bb`.
-The pending compatible 0.51.11 batch adopts Shared Tooling 0.26.26 and implements
-[#135 — Adopt shared formatter orchestration without dropping package-consumer formatting](https://github.com/dragginzgame/ic-persistence/issues/135)
-in the working tree. The upstream standalone capability is now supplied by the
-selected committed source. Package versions remain 0.51.10; changes are
-uncommitted and the index remains user-owned. See
-[pending notes](../changelog/0.51.md#05111---unreleased).
+The released baseline is 0.51.11 at `6aa75ac011f5131e19a03dfc704eb457e019b964`.
+The pending compatible 0.51.12 batch implements
+[#136 — Provide non-initializing StableCell loading for Blob singleton journals](https://github.com/dragginzgame/ic-persistence/issues/136)
+and repairs macOS formatter admission for
+[#135 — Adopt shared formatter orchestration without dropping package-consumer formatting](https://github.com/dragginzgame/ic-persistence/issues/135).
+It adds an API and fixes contributor tooling without changing stored formats.
+Package versions remain 0.51.11; all task changes are uncommitted. The incoming
+staged `Cargo.lock` update to IC Build 0.69.1 remains byte-for-byte preserved,
+including its staged state. See [pending notes](../changelog/0.51.md#05112---unreleased).
 
 ## Current changes
 
-Shared Tooling 0.26.26 at `5683060a5d8ce79af2fcfedb53b3eb24037fd064` is exported
-from a clean detached committed source using the canonical impact preview and
-refresh. The same 77 roots derive 123 payloads. The refreshed hook accepts opaque
-gitlinks without reading child contents or changing their staged identities;
-the required Node guide completes governance documentation without Node setup.
-The Clap-based runtime scanner is not selected, so no compiler-package adaptation
-or dependency change is needed. Gzip ownership guidance remains policy; Cargo/tar
-packaging and evidence retain their infrastructure boundary.
+`StableCell::<Record, _>::load(runtime_memory)` takes a governed lease without a
+caller default, sentinel record, `Default` or `Clone` bound. It reuses Memory's
+existing envelope validator, now publicly exported as `stable_cell_payload_length`,
+and the selected upstream Cell's canonical decoder. A private nonserializable
+loading marker prevents initialization fallback before upstream can grow/write.
+Successful cells cache the decoded value, retain the exclusive lease and support
+existing `get`/`set` and reopen behavior. No duplicate Cell writer or substrate
+fork is introduced.
 
-The formatter now imports its declared `RustSource.pm` companion for balanced
-attribute inspection in workspace-only cache admission. The hook fixture copies
-and stages that module, and the jobserver fixture compares its canonical copy.
-The cache fix avoids treating unrelated path text after conditional attributes as
-module overrides. Persistence's standalone selection remains fully uncached, so
-this does not enable result reuse. Generic lexer/cache fixtures remain owned by
-Shared; source adoption does not claim a fresh producer or macOS qualification.
+Empty/foreign memory, unsupported headers and lengths beyond the allocation
+return `StableCellPayloadError` without writes or growth. Codec/backing panics
+retain upstream semantics; errors and ordinary unwinding release the consumed
+lease. Installed Wasm traps follow host rollback semantics. Collection payloads
+retain their existing size behavior, separately from the ledger's recovery
+ceiling. Existing `new`, `init`, BoundedCell and V1 bytes are preserved.
 
-The Makefile now declares the existing extra workspace and the edition-2024
-`testing/package-consumer.rs` source through `FORMAT_RUST_ARGS`. The paired
-command overrides and copied adapter are retired. Shared directly runs grouped
-manifest sorting and Rustfmt for the root, then for runtime qualification,
-followed by standalone Rustfmt. Every pass reports live progress and elapsed time.
-The validation compiler is exported for all formatter passes, including when a
-caller supplies another rustup compiler on Make's command line.
+The owning native adapter tests cover complete backing-byte preservation,
+write/grow counters, malformed envelopes, decoder/backing panics, lease release,
+single decoding without encoding, non-Default/non-Clone records, empty and large
+payloads, canonical upstream interoperability, destructive creation and set/reopen.
+The installed fixture now exercises cell loading and rejection alongside existing
+collections. Its focused ignored test is documented in
+[host support](../host-support.md); the normal installed runner also calls the
+same qualification. No Blob application changes or resets are included.
 
-Standalone selections run entirely uncached, preserving arbitrary module/config
-coverage. Repeated successful checks still run every pass; explicit `--no-cache`
-force-run routing remains supported. Write/check coverage, prepared-tool admission
-and offline behavior remain unchanged. Both selected lockfiles, all dependency
-catalogs, package versions, features, tool/compiler pins, public APIs and durable
-formats are preserved.
+The released formatter migration used a target-specific `override export`
+assignment unsupported by macOS's GNU Make 3.81. Reclassifying caller compiler
+values before target-specific export fixes parsing and preserves the selected
+validation compiler. The consumer fixture checks every formatting pass with
+conflicting environment and command-line compiler selections. Shared vendored
+files remain unchanged.
 
-The order change is intentional: working-tree `make fmt` was already
-nontransactional, since earlier manifest edits could precede a later failure.
-Check mode remains non-mutating. The hook formats an exported index and publishes
-selected bytes only after the complete formatter succeeds. No cross-workspace
-all-sorts-before-Rustfmt guarantee is required by these owned caller boundaries.
+## Focused qualification
 
-## Consumer qualification
+Evidence is retained at `/tmp/ic-persistence-issue-136/`, with source/lock/Wasm
+hashes in `inputs.sha256` and the exact installed artifact `storage-rust-1.91.wasm`.
+All commands use the existing locked graphs and offline caches:
 
-Snapshot integrity/mode checks, Perl syntax for the driver and lexer, Bash syntax and
-ShellCheck for the consumer fixtures pass. Root `make fmt-check` and real native
-hook write/check flows pass with visible workspace and standalone output after
-the lexer companion refresh. Both lockfiles
-remain byte-for-byte equal to their incoming selections.
+- Rust 1.99.1 Storage library adapter tests: 17 passed (`storage-native.log`).
+- Rust 1.91.0 new cell adapter tests: 4 passed (`storage-msrv.log`).
+- Memory's header-only length/ceiling rejection test passed (`memory-envelope.log`).
+- Storage native/tests and actual Wasm example Clippy passed with warnings denied
+  (`storage-clippy.log`, `storage-wasm-clippy.log`). The independent installed
+  harness/test Clippy also passed (`runtime-clippy.log`).
+- Rust 1.91.0 built the Storage qualification Wasm (`storage-wasm-msrv.log`).
+  That exact artifact passed the focused installed adapter test against prepared
+  PocketIC client/server 16.1.0 (`storage-installed.log`, `server.stdout`,
+  `server.stderr`). It covers empty/foreign/unsupported/invalid envelopes,
+  unchanged bytes/pages, lease release, decoder traps, loaded-cell set/reopen,
+  update/upgrade rollback and successful upgrade restoration.
+- Storage's declaration boundary, shared formatting, documentation links and diff
+  checks pass. Both selected
+  lockfiles remain unchanged from the incoming selections; the index is preserved.
 
-The complete consumer hook fixture passes with prepared native formatters on
-Linux. It covers both workspaces, unformatted extra-workspace/standalone sources,
-non-mutating rejection, standalone configuration changes after prior success,
-staged writeback, partial-staging refusal, unrelated source/index preservation,
-formatter failure isolation and setup. Fixture assertions retain the prohibition
-on builds, lock creation or target/cache creation. No fixture commits/tags are
-created; indexes reuse an existing commit read-only.
+The selected Testkit 0.69.0 release CLI initially lacked a local activation.
+Explicit offline setup reused its existing admitted shared-store payload and
+prepared the existing server selection; failed admission/setup logs and the
+successful setup log remain retained. Compiler/tool/dependency selections were
+not changed. This is Linux qualification; macOS and the full optimizer/release
+matrix were not rerun for this focused fix.
 
-Consumer release-adapter scenarios pass using the actual shared driver with
-substituted executable effects. They verify the selected compiler and exact new
-pass order, jobserver descriptors through Cargo and standalone Rustfmt in write
-and check modes, admission before workspace passes, late standalone failure,
-explicit force-run behavior and complete retained logs with exact child exits 37
-and 39 (Make reports its normal status 2). Hook/jobserver fixture copies include
-the canonical formatter closure. These are consumer checks, not a replay of the
-generic producer matrix.
+Formatter portability evidence is retained at
+`/tmp/ic-persistence-issue-135-make381/`. GNU Make 3.81 built from GNU's source
+archive reproduces the released parse failure (`before.log`). The repaired source
+passes snapshot admission and real formatting under that parser
+(`native-make381.log`). Consumer release-adapter substitutes pass under GNU Make
+3.81 and 4.3 (`adapters-make381.log`, `adapters-make43.log`), including compiler
+selection, ordering, failure logs, jobserver handoff and substituted Git effects.
+Bash syntax and ShellCheck pass. This Linux parser proof does not replace macOS
+execution: the [released CI run](https://github.com/dragginzgame/ic-persistence/actions/runs/40538749483)
+failed both macOS native/runtime jobs at Makefile parsing, so #135 remains open
+pending delivery and hosted native acceptance. No rerun was dispatched.
 
-Adoption source, incoming changes/locks/snapshot, impact/refresh output and logs
-are retained at `/tmp/ic-persistence-shared-02626/`. Earlier full formatter
-migration evidence remains at `/tmp/ic-persistence-shared-02624/`. Final scenario output records
-the retained negative-case log paths. Earlier source-adoption and preparation logs
-remain at `/tmp/ic-persistence-shared-02623/` and
-`/tmp/ic-persistence-issue-135/`. Documentation links and diff checks pass.
-Library source and dependency selections are unchanged, so Rust suites, installed
-IO/upgrade, fresh performance measurement and the full release gate were not
-rerun. Current macOS qualification was not repeated; hosted/native acceptance
-retains its own scope.
+## Delivery boundary
 
-No remote issue closure/comment, commit, tag, push, release, publication or hook
-activation in the real checkout ran. #135's local implementation is ready for
-review and delivery. The
-[released handoff](https://github.com/dragginzgame/ic-persistence/blob/44736dccb2b9b0894df465bbba673c81da8007bb/docs/status/current.md)
-retains earlier dependency, cleanup and installed-runtime evidence with its
-original scope. The [adoption boundaries](../shared-tooling-adoption.md),
-[ownership guide](../ownership.md) and [host support](../host-support.md) remain
-active.
+The supplier implementation is ready for review. Publication remains a separate
+release step before Blob adopts the new API. Blob owns journal gateway, fence,
+sync and callback qualification. No commit, tag, push, release or publication ran.
+The public API and failure contract are documented in
+[Storage's README](../../crates/ic-storage/README.md) and the
+[ownership guide](../ownership.md).
+
+The [released handoff](https://github.com/dragginzgame/ic-persistence/blob/6aa75ac011f5131e19a03dfc704eb457e019b964/docs/status/current.md)
+retains prior formatter adoption and tooling evidence. Shared Tooling remains
+0.26.26 at `5683060a5d8ce79af2fcfedb53b3eb24037fd064`; the reviewed
+[adoption boundaries](../shared-tooling-adoption.md) remain active.
 
 ## Retained evidence and recovery
 

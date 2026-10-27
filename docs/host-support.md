@@ -162,6 +162,29 @@ original inputs. Failed CLI setup, server attempts and runtime logs remain
 available; no old bundle is converted or deleted. Library and release gates do
 not acquire this server dependency.
 
+For a focused Storage adapter change, build only its fixture and run the ignored
+installed adapter test through the same prepared Testkit server. This covers cell
+load rejection, byte/page preservation, leases and update/upgrade rollback without
+replaying Memory's IO suite or the release optimizer matrix:
+
+```sh
+cargo +1.91.0 build -p ic-storage --locked --offline --profile wasm-size \
+  --target wasm32-unknown-unknown --example wasm-storage-qualification
+testkit_cli="$(RUSTUP_TOOLCHAIN=1.99.1 bash scripts/dev/install-rust-tools.sh \
+  --consumer "$PWD" --package ic-testkit --version 0.69.0 \
+  --bin ic-testkit-server --profile release --features cli --check)"
+IC_STORAGE_QUALIFICATION_WASM="$PWD/target/wasm32-unknown-unknown/wasm-size/examples/wasm_storage_qualification.wasm" \
+  "$testkit_cli" run --directory "$PWD/.tools/ic-testkit-server" --ttl 900 -- \
+  cargo +1.99.1 test --locked --offline \
+    --manifest-path testing/runtime-qualification/Cargo.toml \
+    --target-dir target/runtime-qualification storage::tests::installed_storage_adapters \
+    -- --ignored --nocapture
+```
+
+Retain the supplied Wasm, source hashes and Testkit server/test output with the
+task's qualification evidence. The ignored test requires explicit server URL and
+fixture inputs; ordinary tests never prepare or start a server.
+
 `make cloc` reports the root library workspace by default using locked, offline
 Cargo metadata; it neither builds nor installs tools. Select the independent
 qualification graph explicitly with

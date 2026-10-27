@@ -5,7 +5,7 @@ public surface is `ic_storage::adapter`: `StableBTreeMap`, `StableBTreeSet`,
 `StableCell`, `BoundedCell`, `StableVec`, `StableMinHeap`, `StableLog`, their supported
 iterators, `BTreeMapRegion`, `RegionGrowError`, `LogWriteError`, `Memory`, `Storable`,
 `Bound` and `storable`. These wrappers preserve upstream
-`ic-stable-structures` formats, initialization behavior and failure contracts.
+`ic-stable-structures` formats and provide explicit initialization/loading contracts.
 Consumers use the adapter rather than depending directly on the substrate.
 
 The library requires Rust 1.91 or later.
@@ -62,6 +62,22 @@ Returning map insertion consumes its owned key and returns the previous value.
 Callers whose post-insert metadata needs both retain a caller-owned key copy
 before insertion. The caller owns that copy's bounds and metadata transaction
 policy. The collection's key/value encoding and insertion failure contracts apply.
+
+`StableCell::load(runtime.open_memory("app.journal.v1")?)?` opens an existing
+singleton without a default record, initialization, writes or growth. It returns
+`ic_memory::StableCellPayloadError` for empty/foreign memory, unsupported cell
+versions or lengths extending beyond the allocation. Successful loading decodes
+the retained value once and holds the exclusive lease through `get` and `set`.
+No `Default` or `Clone` bound is required. The existing V1 envelope and value
+codec are unchanged; arbitrary collection payloads do not acquire the ledger's
+recovery size ceiling.
+
+Cell codec and backing failures propagate as upstream panics. Failed loads
+preserve bytes and growth, releasing the consumed lease on errors or ordinary
+unwinding; installed Wasm traps follow the host's rollback semantics. Applications
+own schema validation and recovery. Choose `StableCell::new` to replace contents
+destructively, or `StableCell::init` to retain a recognized cell and initialize
+empty/foreign memory. Neither constructor is a read-only restoration operation.
 
 `BoundedCell` supports `init`, `get` and `set`, enforcing declared maximum or
 exact encoded sizes before writes and before decoding retained values. It rejects

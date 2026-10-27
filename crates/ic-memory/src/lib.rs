@@ -167,7 +167,7 @@ pub use slot::{
 pub use stable_cell::{
     STABLE_CELL_HEADER_SIZE, STABLE_CELL_LAYOUT_VERSION, STABLE_CELL_MAGIC,
     STABLE_CELL_VALUE_OFFSET, StableCellLedgerError, StableCellPayloadError,
-    decode_stable_cell_payload,
+    decode_stable_cell_payload, stable_cell_payload_length,
 };
 #[cfg(test)]
 use stable_cell::{decode_stable_cell_commit_store, decode_stable_cell_commit_store_from_memory};

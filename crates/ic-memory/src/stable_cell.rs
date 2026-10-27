@@ -77,8 +77,15 @@ pub fn decode_stable_cell_payload<M: Memory>(
     Ok(bytes)
 }
 
-// Admit only the header; caller-selected fixture ceilings do not change the
-// ledger reader's bound, and no payload is allocated or read here.
+/// Validate a stable-cell envelope and return its payload length.
+///
+/// Reject empty/foreign memory, unsupported layouts, lengths beyond the backing
+/// extent, and lengths above the caller's `maximum`. No payload is allocated or
+/// read, and memory is never written or grown. This does not validate the value's
+/// codec or schema. The ledger reader retains its separate recovery ceiling.
+///
+/// # Panics
+/// Propagates backing `size`/`read` failures.
 pub fn stable_cell_payload_length<M: Memory>(
     memory: &M,
     maximum: usize,

@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.51.12] - Unreleased
+
+### ➕ Added
+
+- Load governed singleton cells without a default record or initialization.
+  Invalid envelopes return errors; failed loads preserve bytes and release leases.
+  Existing cell formats and `new`/`init` behavior remain unchanged.
+  [#136 — Provide non-initializing StableCell loading for Blob singleton journals](https://github.com/dragginzgame/ic-persistence/issues/136).
+  [Details](docs/changelog/0.51.md#05112---unreleased).
+
+### 🩹 Fixed
+
+- Restore formatter and CI Makefile parsing on macOS's GNU Make 3.81 while
+  preserving the selected compiler for every formatting pass.
+  [#135 — Adopt shared formatter orchestration without dropping package-consumer formatting](https://github.com/dragginzgame/ic-persistence/issues/135).
+
 ## [0.51.11] - 2026-10-27
 
 ### 📝 Summary

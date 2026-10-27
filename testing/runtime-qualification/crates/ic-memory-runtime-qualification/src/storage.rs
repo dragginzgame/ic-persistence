@@ -20,6 +20,27 @@ pub(super) fn qualify(pic: &PocketIc) {
     };
     let initial = snapshot();
     assert_eq!(initial, expected(1, [10, 20, 30]));
+    for mode in 0..4 {
+        pic.update_call(canister, canister, "cell_load_failure", vec![mode])
+            .unwrap();
+        assert_eq!(
+            snapshot(),
+            initial,
+            "rejected cell load preserves live collections"
+        );
+    }
+    super::assert_trap(
+        pic.update_call(canister, canister, "cell_load_failure", vec![4])
+            .unwrap_err(),
+    );
+    assert_eq!(
+        snapshot(),
+        initial,
+        "cell decoder trap preserves live collections"
+    );
+    // The failed call's lease is rolled back with the Wasm heap and can reopen.
+    pic.update_call(canister, canister, "cell_load_failure", vec![3])
+        .unwrap();
     super::assert_trap(
         pic.update_call(canister, canister, "mutate", vec![1])
             .unwrap_err(),
@@ -47,6 +68,20 @@ pub(super) fn qualify(pic: &PocketIc) {
     pic.upgrade_canister(canister, wasm, vec![0], None).unwrap();
     assert_eq!(snapshot(), expected(2, [100, 101, 102]));
     println!(
-        "installed Storage: map, bounded cell and bounded region scan survive upgrade; update/upgrade traps roll back collection writes"
+        "installed Storage: non-initializing cell admission preserves bytes/pages and leases; cells, map and region survive upgrade; decoder/update/upgrade traps roll back"
     );
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    #[ignore = "requires an explicitly prepared server URL and Storage fixture Wasm"]
+    fn installed_storage_adapters() {
+        let url = std::env::var("IC_TESTKIT_POCKET_IC_URL").expect("caller-selected server URL");
+        let pic = ic_platform::pocket_ic::PocketIcBuilder::new()
+            .with_server_url(url.parse().unwrap())
+            .with_application_subnet()
+            .build();
+        super::qualify(&pic);
+    }
 }

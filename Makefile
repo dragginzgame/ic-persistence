@@ -32,7 +32,12 @@ LOCAL_TOOL_INSTALL_TARGETS += install-ic-tools install-release-tools
 LOCAL_TOOL_CHECK_TARGETS += ic-tools-check release-tools-check
 include make/consumer.mk
 export PATH := $(CURDIR)/.tools/ic/bin:$(PATH)
-fmt fmt-check format-tools-check: override export RUSTUP_TOOLCHAIN := $(VALIDATION_TOOLCHAIN)
+# GNU Make 3.81 cannot combine target-specific override and export. Reclassify
+# caller values before applying the formatter-only exported compiler policy.
+ifneq ($(origin RUSTUP_TOOLCHAIN),undefined)
+override RUSTUP_TOOLCHAIN := $(RUSTUP_TOOLCHAIN)
+endif
+fmt fmt-check format-tools-check: export RUSTUP_TOOLCHAIN := $(VALIDATION_TOOLCHAIN)
 
 # The published Testkit CLI owns PocketIC selection, admission and lifecycle.
 # Keep this tool graph outside both maintained workspace lockfiles.

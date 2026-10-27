@@ -515,11 +515,23 @@ printf '\n.PHONY: fixture-force\nfixture-force: FORMAT_RUST_ARGS += --no-cache\n
 grep -qF 'Standalone Rust sources selected; running without shortcut' "$jobserver/force.log"
 grep -qF 'Standalone Rust formatting... ok (' "$jobserver/force.log"
 # The consumer's validation compiler owns every formatter pass, including a
-# caller that supplies a different Cargo/rustup compiler on Make's command line.
-: > "$JOBSERVER_EVENTS"
-(cd "$jobserver"; PATH="$jobserver/bin:$PATH" make --no-print-directory "${parallel[@]}" \
-    fmt-check RUSTUP_TOOLCHAIN=other-compiler) > "$jobserver/compiler.log" 2>&1
-grep -Fx "rustfmt [$jobserver] ($FIXTURE_TOOLCHAIN) --edition 2024 --check $jobserver/testing/package-consumer.rs" "$JOBSERVER_EVENTS"
+# caller that supplies a different compiler through the environment or command
+# line. Keep all passes selected, including with the macOS GNU Make 3.81 parser.
+for compiler_origin in environment command; do
+    : > "$JOBSERVER_EVENTS"
+    compiler_arguments=()
+    if [[ "$compiler_origin" == command ]]; then compiler_arguments+=(RUSTUP_TOOLCHAIN=other-compiler); fi
+    (cd "$jobserver"; PATH="$jobserver/bin:$PATH" RUSTUP_TOOLCHAIN=other-compiler \
+        make --no-print-directory "${parallel[@]}" fmt-check "${compiler_arguments[@]}") \
+        > "$jobserver/compiler-$compiler_origin.log" 2>&1
+    sed -e 's/--edition 2024 /--edition 2024 --check /' \
+        -e 's/sort --workspace --grouped$/sort --workspace --grouped --check/' \
+        -e 's/fmt --all$/fmt --all -- --check/' \
+        "$jobserver/expected-order" > "$jobserver/expected-check-order"
+    awk '/ (sort --workspace --grouped|fmt --all|--edition 2024)( |$)/ { print }' \
+        "$JOBSERVER_EVENTS" > "$jobserver/compiler-order"
+    cmp "$jobserver/expected-check-order" "$jobserver/compiler-order"
+done
 )
 
 test_release_receipts() (

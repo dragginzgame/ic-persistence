@@ -7,9 +7,10 @@
 )]
 mod canister {
     use ic_memory::{
-        DefaultMemoryImpl, MemoryManagerConfig, MemoryRuntime, testing::fixture_runtime,
+        DefaultMemoryImpl, MemoryManagerConfig, MemoryRuntime, StableCellPayloadError,
+        testing::fixture_runtime,
     };
-    use ic_storage::adapter::{BTreeMapRegion, BoundedCell, StableBTreeMap};
+    use ic_storage::adapter::{BTreeMapRegion, BoundedCell, Memory, StableBTreeMap, StableCell};
     use std::{cell::RefCell, rc::Rc};
 
     thread_local! {
@@ -51,7 +52,13 @@ mod canister {
             DefaultMemoryImpl::default(),
             "storage",
             "storage.",
-            &["storage.map.v1", "storage.cell.v1", "storage.region.v1"],
+            &[
+                "storage.map.v1",
+                "storage.cell.v1",
+                "storage.region.v1",
+                "storage.journal.v1",
+                "storage.probe.v1",
+            ],
             MemoryManagerConfig::new(8).unwrap(),
         )
         .unwrap();
@@ -78,6 +85,7 @@ mod canister {
                 view.insert(key, key + 20);
             }
             let _ = BoundedCell::init(runtime.open_memory("storage.cell.v1").unwrap(), 30_u64);
+            let _ = StableCell::new(runtime.open_memory("storage.journal.v1").unwrap(), 30_u64);
         });
     }
 
@@ -89,6 +97,9 @@ mod canister {
             region(runtime).insert(0, value + 1);
             BoundedCell::init(runtime.open_memory("storage.cell.v1").unwrap(), 0_u64)
                 .set(value + 2);
+            StableCell::<u64>::load(runtime.open_memory("storage.journal.v1").unwrap())
+                .unwrap()
+                .set(value + 2);
             assert!(runtime.open_memory("storage.map.v1").is_err());
         });
     }
@@ -98,6 +109,49 @@ mod canister {
         let mode = argument();
         replace(100);
         assert_eq!(mode, 0, "injected trap after collection writes");
+        reply(&[]);
+    }
+
+    #[unsafe(export_name = "canister_update cell_load_failure")]
+    extern "C" fn cell_load_failure() {
+        let mode = argument();
+        with_runtime(|runtime| {
+            let memory = runtime.open_memory("storage.probe.v1").unwrap();
+            if mode != 0 {
+                if memory.size() == 0 {
+                    memory.grow(1).unwrap();
+                }
+                let header = match mode {
+                    1 => *b"BTR\x01\0\0\0\0",
+                    2 => *b"SCL\x02\0\0\0\0",
+                    3 => *b"SCL\x01\xff\xff\xff\xff",
+                    4 => *b"SCL\x01\x01\0\0\0", // u64 codec panic; host rolls back.
+                    _ => panic!("unknown probe mode"),
+                };
+                memory.write(0, &header);
+            }
+            let pages = memory.size();
+            let mut before = vec![0; usize::try_from(pages * 65_536).unwrap()];
+            memory.read(0, &mut before);
+            let error = StableCell::<u64>::load(memory).err().unwrap();
+            match mode {
+                0 | 1 => assert_eq!(error, StableCellPayloadError::NotStableCell),
+                2 => assert_eq!(
+                    error,
+                    StableCellPayloadError::UnexpectedLayoutVersion { version: 2 }
+                ),
+                3 => assert!(matches!(
+                    error,
+                    StableCellPayloadError::InvalidLength { .. }
+                )),
+                _ => unreachable!(),
+            }
+            let memory = runtime.open_memory("storage.probe.v1").unwrap();
+            assert_eq!(memory.size(), pages);
+            let mut after = vec![0; before.len()];
+            memory.read(0, &mut after);
+            assert!(before == after, "failed load changed backing bytes");
+        });
         reply(&[]);
     }
 
@@ -117,6 +171,11 @@ mod canister {
                 StableBTreeMap::<u64, u64>::load(runtime.open_memory("storage.map.v1").unwrap());
             let view = region(runtime);
             let cell = BoundedCell::init(runtime.open_memory("storage.cell.v1").unwrap(), 0_u64);
+            let journal =
+                StableCell::<u64>::load(runtime.open_memory("storage.journal.v1").unwrap())
+                    .unwrap();
+            assert_eq!(journal.get(), cell.get());
+            assert!(runtime.open_memory("storage.journal.v1").is_err());
             assert_eq!(
                 view.keys_range_limited(10.., 3).collect::<Vec<_>>(),
                 [10, 11, 12]

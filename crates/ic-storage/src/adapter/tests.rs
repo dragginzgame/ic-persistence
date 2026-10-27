@@ -5,6 +5,7 @@ use ic_memory::{
 };
 use std::{cell::Cell, rc::Rc};
 
+mod cells;
 mod regions;
 
 const KEYS: [&str; 7] = [
