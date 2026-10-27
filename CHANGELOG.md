@@ -1,6 +1,6 @@
 # Changelog
 
-## [0.51.10] - Unreleased
+## [0.51.10] - 2026-10-27
 
 ### 📝 Summary
 
