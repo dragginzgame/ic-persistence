@@ -4,6 +4,9 @@
 use super::*;
 use std::cell::RefCell;
 
+mod files;
+use files::{FileEffects, FileFault};
+
 #[test]
 fn command_arguments_scope_dry_run_to_publication() {
     for args in [
@@ -33,8 +36,8 @@ fn package_retention_refuses_a_replaced_fifo_without_a_writer() {
         let package = fixture.repo.package_path("ic-memory", "0.13.0").unwrap();
         fs::create_dir_all(package.parent().unwrap()).unwrap();
         fs::write(&package, b"package bytes").unwrap();
-        fixture.repo.exec.state.borrow_mut().archive_change = Some(package);
-        fixture.fail(Fault::ArchiveFifo);
+        fixture.repo.exec.files.borrow_mut().archive_change = Some(package);
+        fixture.fail_files(FileFault::ArchiveFifo);
         let error = fixture
             .repo
             .record_package("ic-memory", "0.13.0")
@@ -357,13 +360,13 @@ impl Fixture {
         )
         .unwrap();
         let exec = Substitute {
+            files: RefCell::new(FileEffects::default()),
             state: RefCell::new(State {
                 source,
                 release: None,
                 staged: false,
                 calls: Vec::new(),
                 fail: None,
-                archive_change: None,
                 tag: false,
                 descendant: None,
                 published: BTreeMap::new(),
@@ -431,6 +434,10 @@ impl Fixture {
         self.repo.exec.state.borrow_mut().fail = Some(fault);
     }
 
+    fn fail_files(&self, fault: FileFault) {
+        self.repo.exec.files.borrow_mut().fault = Some(fault);
+    }
+
     fn assert_original(&self) {
         assert_eq!(
             fs::read_to_string(self.repo.root.join("Cargo.toml")).unwrap(),
@@ -453,6 +460,10 @@ impl Drop for Fixture {
                     self.repo.root.join("fixture-state.json"),
                     serde_json::to_vec_pretty(&*state)?,
                 )?;
+                fs::write(
+                    self.repo.root.join("fixture-files.json"),
+                    serde_json::to_vec_pretty(&*self.repo.exec.files.try_borrow()?)?,
+                )?;
                 Ok(())
             })();
             if let Err(error) = saved {
@@ -469,6 +480,7 @@ impl Drop for Fixture {
 fn failed_release_fixture_retains_receipts_and_command_state() {
     let mut retained = PathBuf::new();
     let mut receipt = PathBuf::new();
+    let mut file_state = Vec::new();
     let failure = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
         let fixture = Fixture::new();
         retained.clone_from(&fixture.repo.root);
@@ -477,6 +489,8 @@ fn failed_release_fixture_retains_receipts_and_command_state() {
             .repo
             .validation_path(&fixture.selection.version)
             .unwrap();
+        fixture.fail_files(FileFault::WriteBefore("Cargo.lock".into()));
+        file_state = serde_json::to_vec_pretty(&*fixture.repo.exec.files.borrow()).unwrap();
         panic!("simulate a failed assertion after validation");
     }));
     assert!(failure.is_err());
@@ -494,6 +508,10 @@ fn failed_release_fixture_retains_receipts_and_command_state() {
     );
     let evidence: ValidationEvidence = serde_json::from_slice(&fs::read(receipt).unwrap()).unwrap();
     assert_eq!(evidence.selection.source, "source");
+    assert_eq!(
+        fs::read(retained.join("fixture-files.json")).unwrap(),
+        file_state
+    );
     fs::remove_dir_all(retained).unwrap();
 
     let successful = Fixture::new();
@@ -686,10 +704,6 @@ fn streamed_receipts_preserve_json_and_reject_partial_serialization() {
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(rename_all = "kebab-case")]
 enum Fault {
-    ArchiveAfter,
-    ArchiveBefore,
-    ArchiveFifo,
-    ArchiveRead,
     DependencyUpdate,
     Formatting,
     History,
@@ -721,8 +735,6 @@ enum Fault {
     Validate,
     ValidationLock,
     Checksum,
-    WriteBefore(PathBuf),
-    WriteAfter(PathBuf),
 }
 
 #[derive(Deserialize, Serialize)]
@@ -733,13 +745,13 @@ struct State {
     staged: bool,
     calls: Vec<Vec<String>>,
     fail: Option<Fault>,
-    archive_change: Option<PathBuf>,
     tag: bool,
     descendant: Option<BTreeMap<String, String>>,
 }
 
 struct Substitute {
     state: RefCell<State>,
+    files: RefCell<FileEffects>,
 }
 
 impl Execute for Substitute {
@@ -760,62 +772,18 @@ impl Execute for Substitute {
     }
 
     fn copy_verified(&self, source: &Path, path: &Path, expected: Sha256Digest) -> Result<()> {
-        let phase = {
-            let mut state = self.state.borrow_mut();
-            state
-                .calls
-                .push(vec!["stream-write".to_owned(), path.display().to_string()]);
-            let phase = state.fail.clone();
-            if let Some(source) = state.archive_change.take() {
-                if phase.as_ref() == Some(&Fault::ArchiveRead) {
-                    fs::remove_file(&source)?;
-                    fs::create_dir(source)?;
-                } else if phase.as_ref() == Some(&Fault::ArchiveFifo) {
-                    fs::remove_file(&source)?;
-                    require(
-                        Command::new("mkfifo").arg(source).status()?.success(),
-                        "FIFO fixture creation failed",
-                    )?;
-                } else {
-                    fs::write(source, b"changed after digest admission")?;
-                }
-            }
-            phase
-        };
-        if phase.as_ref() == Some(&Fault::ArchiveBefore) {
-            return Err("fixture failure before archive publication".into());
-        }
-        Processes.copy_verified(source, path, expected)?;
-        if phase.as_ref() == Some(&Fault::ArchiveAfter) {
-            return Err("fixture failure after archive publication".into());
-        }
-        Ok(())
+        self.files.borrow_mut().copy_verified(
+            source,
+            path,
+            expected,
+            &mut self.state.borrow_mut().calls,
+        )
     }
 
     fn write_bytes(&self, path: &Path, bytes: &[u8]) -> Result<()> {
-        let phase = match &self.state.borrow().fail {
-            Some(Fault::WriteBefore(target)) if path.ends_with(target) => Some(false),
-            Some(Fault::WriteAfter(target)) if path.ends_with(target) => Some(true),
-            _ => None,
-        };
-        if phase.is_some() {
-            self.state.borrow_mut().fail = None;
-        }
-        if phase == Some(false) {
-            return Err(std::io::Error::other("fixture failure before publication").into());
-        }
-        Processes.write_bytes(path, bytes)?;
-        if phase == Some(true) {
-            // Model the real writer's error-after-rename contract. The consumer
-            // must inspect the visible bytes before rollback or retry.
-            assert_eq!(fs::read(path)?, bytes);
-            self.state.borrow_mut().calls.push(vec![
-                "published-write-error".to_owned(),
-                path.display().to_string(),
-            ]);
-            return Err(std::io::Error::other("fixture failure after publication").into());
-        }
-        Ok(())
+        self.files
+            .borrow_mut()
+            .write_bytes(path, bytes, &mut self.state.borrow_mut().calls)
     }
 
     fn execute(&self, root: &Path, program: &str, args: &[&str]) -> Result<()> {
@@ -1331,6 +1299,7 @@ fn compiler_environment_overrides_refuse_preparation_and_release_effects() {
         let repo = Repository {
             root: PathBuf::from(env::var_os(ROOT).unwrap()),
             exec: Substitute {
+                files: RefCell::new(FileEffects::default()),
                 state: RefCell::new(
                     serde_json::from_str::<State>(state.to_str().unwrap()).unwrap(),
                 ),
@@ -1617,13 +1586,13 @@ fn inherited_compiler_configuration_refuses_preparation() {
     let repo = Repository {
         root,
         exec: Substitute {
+            files: RefCell::new(FileEffects::default()),
             state: RefCell::new(State {
                 source,
                 release: None,
                 staged: false,
                 calls: Vec::new(),
                 fail: None,
-                archive_change: None,
                 tag: false,
                 descendant: None,
                 published: BTreeMap::new(),
@@ -1693,7 +1662,7 @@ fn release_preserves_saved_readme_bytes_without_interpreting_examples() {
             .insert(PACKAGE_README.to_owned(), readme.to_owned());
         fs::write(fixture.repo.root.join(PACKAGE_README), readme).unwrap();
         // Preserving source bytes must not depend on replacing the same file.
-        fixture.fail(Fault::WriteBefore(PACKAGE_README.into()));
+        fixture.fail_files(FileFault::WriteBefore(PACKAGE_README.into()));
         fixture.release();
         fixture.repo.publish(true).unwrap();
         assert_eq!(
@@ -2165,7 +2134,7 @@ fn failed_first_publication_preserves_untouched_metadata_identity_and_permission
             (path, (metadata.ino(), metadata.mode()))
         })
         .collect();
-    fixture.fail(Fault::WriteBefore("CHANGELOG.md".into()));
+    fixture.fail_files(FileFault::WriteBefore("CHANGELOG.md".into()));
     let error = fixture
         .repo
         .prepare_selected(&fixture.selection)
@@ -2201,10 +2170,10 @@ fn metadata_publication_failures_reconcile_visible_bytes_and_retry_saved_intent(
             let saved = fs::read(&receipt).unwrap();
             let sentinel = fixture.repo.target().unwrap().join("consumer-evidence");
             fs::write(&sentinel, "keep").unwrap();
-            fixture.fail(if after_publication {
-                Fault::WriteAfter(path.into())
+            fixture.fail_files(if after_publication {
+                FileFault::WriteAfter(path.into())
             } else {
-                Fault::WriteBefore(path.into())
+                FileFault::WriteBefore(path.into())
             });
             assert!(fixture.repo.prepare_selected(&fixture.selection).is_err());
             for (path, text) in &fixture.repo.exec.state.borrow().source {
@@ -2425,10 +2394,10 @@ fn preparation_restart_recovers_from_validation_receipt_publication_errors() {
         fixture.repo.exec.state.borrow_mut().descendant = Some(descendant);
         fixture.selection.source = "fix".to_owned();
         fixture.repo.exec.state.borrow_mut().calls.clear();
-        fixture.fail(if after_publication {
-            Fault::WriteAfter("0.13.0-validated.json".into())
+        fixture.fail_files(if after_publication {
+            FileFault::WriteAfter("0.13.0-validated.json".into())
         } else {
-            Fault::WriteBefore("0.13.0-validated.json".into())
+            FileFault::WriteBefore("0.13.0-validated.json".into())
         });
         assert!(
             fixture.repo.verify(&fixture.selection).is_err(),
@@ -2522,7 +2491,7 @@ fn interrupted_preparation_finishes_saved_candidate_without_revalidating() {
             } else {
                 "Cargo.lock"
             };
-            fixture.fail(Fault::WriteBefore(unchanged.into()));
+            fixture.fail_files(FileFault::WriteBefore(unchanged.into()));
             fixture.repo.prepare_selected(&fixture.selection).unwrap();
         } else {
             fixture.repo.prepared(&fixture.selection).unwrap();
@@ -2688,7 +2657,7 @@ fn all_release_kinds_finalize_root_and_detail_notes_at_saved_date() {
 
 #[test]
 fn archive_publication_errors_preserve_validation_and_reconcile_visible_bytes() {
-    for phase in [Fault::ArchiveBefore, Fault::ArchiveAfter] {
+    for phase in [FileFault::ArchiveBefore, FileFault::ArchiveAfter] {
         let fixture = Fixture::new();
         fixture.repo.verify(&fixture.selection).unwrap();
         let validation = fixture.repo.validation_path("0.13.0").unwrap();
@@ -2698,7 +2667,7 @@ fn archive_publication_errors_preserve_validation_and_reconcile_visible_bytes() 
         fs::create_dir_all(retained.parent().unwrap()).unwrap();
         let foreign = retained.with_extension("crate.tmp");
         fs::write(&foreign, b"unrelated evidence").unwrap();
-        fixture.fail(phase.clone());
+        fixture.fail_files(phase.clone());
         assert!(fixture.repo.prepare_selected(&fixture.selection).is_err());
         fixture.assert_original();
         assert_eq!(fs::read(&validation).unwrap(), validation_bytes);
@@ -2710,7 +2679,7 @@ fn archive_publication_errors_preserve_validation_and_reconcile_visible_bytes() 
                 .exists()
         );
         assert_eq!(fs::read(&foreign).unwrap(), b"unrelated evidence");
-        if phase == Fault::ArchiveAfter {
+        if phase == FileFault::ArchiveAfter {
             assert_eq!(fs::read(&retained).unwrap(), b"prepared-archive");
         } else {
             assert!(!retained.exists());
@@ -2730,7 +2699,7 @@ fn archive_publication_errors_preserve_validation_and_reconcile_visible_bytes() 
                 .count()
         };
         let before_retry = transfers();
-        fixture.repo.exec.state.borrow_mut().fail = None;
+        fixture.repo.exec.files.borrow_mut().fault = None;
         fixture.repo.prepare_selected(&fixture.selection).unwrap();
         let evidence = fixture.repo.prepared(&fixture.selection).unwrap();
         assert_eq!(evidence.package_sha256, digest);
@@ -2739,7 +2708,7 @@ fn archive_publication_errors_preserve_validation_and_reconcile_visible_bytes() 
         assert_eq!(fs::read(&foreign).unwrap(), b"unrelated evidence");
         assert_eq!(
             transfers() - before_retry,
-            usize::from(phase == Fault::ArchiveBefore) + 2
+            usize::from(phase == FileFault::ArchiveBefore) + 2
         );
         fs::write(&retained, b"corrupted retained archive").unwrap();
         assert!(fixture.repo.record_package("ic-memory", "0.13.0").is_err());
@@ -2758,8 +2727,8 @@ fn archive_copy_refuses_a_directory_and_preserves_unpublished_state() {
     fs::create_dir_all(retained.parent().unwrap()).unwrap();
     let foreign = retained.with_extension("crate.tmp");
     fs::write(&foreign, b"unrelated evidence").unwrap();
-    fixture.repo.exec.state.borrow_mut().archive_change = Some(package);
-    fixture.fail(Fault::ArchiveRead);
+    fixture.repo.exec.files.borrow_mut().archive_change = Some(package);
+    fixture.fail_files(FileFault::ArchiveRead);
 
     let error = fixture
         .repo
@@ -2799,7 +2768,7 @@ fn changed_archive_source_stops_before_publication_or_receipt() {
     let validation = fixture.repo.validation_path("0.13.0").unwrap();
     let validation_bytes = fs::read(&validation).unwrap();
     let package = fixture.repo.package_path("ic-memory", "0.13.0").unwrap();
-    fixture.repo.exec.state.borrow_mut().archive_change = Some(package.clone());
+    fixture.repo.exec.files.borrow_mut().archive_change = Some(package.clone());
     assert!(fixture.repo.prepare_selected(&fixture.selection).is_err());
     fixture.assert_original();
     let digest = Sha256Digest::compute(b"prepared-archive").to_string();

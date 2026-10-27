@@ -32,7 +32,7 @@ finish_fixture() {
     if [[ "$status" != 0 || "$fixture_complete" != true ]]; then
         printf 'Release-adapter fixture failed in %s: %s\n' "$PWD" "$command" >&2
         for path in "$FIXTURE/bootstrap/bootstrap.log" \
-            "$FIXTURE/bootstrap/release-cache-${CALLER_OFFLINE:-unset}.log"; do
+            "$FIXTURE/bootstrap"/release-cache-*.log; do
             if [[ -f "$path" ]]; then
                 printf 'Retained diagnostic: %s\n' "$path" >&2
                 tail -n 40 "$path" >&2
@@ -42,12 +42,23 @@ finish_fixture() {
     fixture_finish "$status" "$FIXTURE" "Consumer release-adapter fixture retained"
 }
 trap 'finish_fixture "$?" "$BASH_COMMAND"' EXIT
-mkdir -p "$FIXTURE/ci" "$FIXTURE/make"
-cp "$ROOT/Makefile" "$ROOT/rust-toolchain.toml" "$FIXTURE/"
-cp "$ROOT/ci/release-tools.env" "$ROOT/ci/runtime-tools.env" "$ROOT/ci/tool-versions.env" "$FIXTURE/ci/"
-cp "$ROOT/make/consumer.mk" "$ROOT/make/tools.mk" "$ROOT/make/release.mk" "$ROOT/make/rust-format.mk" "$ROOT/make/execution.mk" "$FIXTURE/make/"
-mkdir -p "$FIXTURE/scripts/ci"
-cp "$ROOT/scripts/ci/check-make-execution.sh" "$ROOT/scripts/ci/check-release-delivery.sh" "$FIXTURE/scripts/ci/"
+readonly suite_root="$FIXTURE"
+
+prepare_make_fixture() {
+    local directory="$1"
+mkdir -p "$directory/ci" "$directory/make"
+cp "$ROOT/Makefile" "$ROOT/rust-toolchain.toml" "$directory/"
+cp "$ROOT/ci/release-tools.env" "$ROOT/ci/runtime-tools.env" "$ROOT/ci/tool-versions.env" "$directory/ci/"
+cp "$ROOT/make/consumer.mk" "$ROOT/make/tools.mk" "$ROOT/make/release.mk" "$ROOT/make/rust-format.mk" "$ROOT/make/execution.mk" "$directory/make/"
+mkdir -p "$directory/scripts/ci"
+cp "$ROOT/scripts/ci/check-make-execution.sh" "$ROOT/scripts/ci/check-release-delivery.sh" "$directory/scripts/ci/"
+}
+
+test_make_admission() (
+    # Keep child exit handling and environment local; the outer trap owns retention.
+    trap - EXIT
+    local FIXTURE="$suite_root/make"
+    prepare_make_fixture "$FIXTURE"
 cat > "$FIXTURE/scripts/ci/run-release.sh" <<'STUB'
 #!/usr/bin/env bash
 set -euo pipefail
@@ -399,13 +410,17 @@ rm "$FIXTURE/runner-events"
     "MAKE=$recursive_make" "SHARED_TOOLING_ROOT=$external_root" RELEASE_CACHE_PREPARE=0)
 [[ "$(cat "$FIXTURE/runner-events")" == 'patch recursive main' ]] || exit 1
 [[ ! -e "$FIXTURE/external-runner-events" && ! -e "$FIXTURE/external-probe-events" ]] || exit 1
+)
+
+test_jobserver_handoff() (
+    # Keep child exit handling and environment local; the outer trap owns retention.
+    trap - EXIT
+    local FIXTURE="$suite_root/jobserver"
+    prepare_make_fixture "$FIXTURE"
 # Qualify descriptor handoff through actual consumer Cargo, formatter and helper
 # recipes. All executable effects below are substitutes, including publication.
-jobserver="$FIXTURE/jobserver"
-mkdir -p "$jobserver/bin" "$jobserver/make" "$jobserver/ci" "$jobserver/scripts/ci"
-cp "$ROOT/Makefile" "$ROOT/rust-toolchain.toml" "$jobserver/"
-cp "$ROOT/make/consumer.mk" "$ROOT/make/tools.mk" "$ROOT/make/release.mk" "$ROOT/make/rust-format.mk" "$ROOT/make/execution.mk" "$jobserver/make/"
-cp "$ROOT/ci/release-tools.env" "$ROOT/ci/runtime-tools.env" "$ROOT/ci/tool-versions.env" "$jobserver/ci/"
+jobserver="$FIXTURE"
+mkdir -p "$jobserver/bin"
 # Follow the formatter's declared closure, including catalog admission helpers.
 bash "$ROOT/scripts/ci/prepare-script-fixture.sh" "$ROOT" "$jobserver" \
     make/rust-format.mk scripts/ci/check-release-delivery.sh
@@ -446,6 +461,13 @@ grep -F 'sort --workspace --grouped testing/runtime-qualification' "$JOBSERVER_E
 grep -F 'fmt --manifest-path testing/runtime-qualification/Cargo.toml --all' "$JOBSERVER_EVENTS"
 grep -F 'helper release-verify' "$JOBSERVER_EVENTS"
 grep -F 'helper publish --dry-run' "$JOBSERVER_EVENTS"
+)
+
+test_release_receipts() (
+    # Keep child exit handling and environment local; the outer trap owns retention.
+    trap - EXIT
+    local FIXTURE="$suite_root/receipts"
+    prepare_make_fixture "$FIXTURE"
 mkdir -p "$FIXTURE/custom target"
 cat > "$FIXTURE/helper" <<'STUB'
 #!/usr/bin/env bash
@@ -508,28 +530,29 @@ for log in "${logs[@]}"; do
     if [[ "$(cat "$log")" == $'gate stdout 0\ngate stderr 0' ]]; then passed=$((passed + 1)); fi
 done
 [[ "$failed" == 1 && "$passed" == 1 ]] || exit 1
+)
 
+test_bootstrap_recovery() (
+    # Keep child exit handling and environment local; the outer trap owns retention.
+    trap - EXIT
+    local FIXTURE="$suite_root/bootstrap"
+    prepare_make_fixture "$FIXTURE"
 # The actual Make launcher must reach the adapter while only the root lock is
 # prepared. Cargo/parser substitutes prove isolation and argument propagation.
-mkdir -p "$FIXTURE/bootstrap/scripts/dev" "$FIXTURE/bootstrap/bin" \
-    "$FIXTURE/bootstrap/crates/ic-memory/src" "$FIXTURE/bootstrap/crates/ic-memory/examples" "$FIXTURE/bootstrap/ci" "$FIXTURE/bootstrap/make"
-cp "$ROOT/Makefile" "$ROOT/rust-toolchain.toml" "$FIXTURE/bootstrap/"
-cp "$ROOT/ci/release-tools.env" "$ROOT/ci/runtime-tools.env" "$ROOT/ci/tool-versions.env" "$FIXTURE/bootstrap/ci/"
-cp "$ROOT/make/consumer.mk" "$ROOT/make/tools.mk" "$ROOT/make/release.mk" "$ROOT/make/rust-format.mk" "$ROOT/make/execution.mk" "$FIXTURE/bootstrap/make/"
-mkdir -p "$FIXTURE/bootstrap/scripts/ci"
-cp "$ROOT/scripts/ci/check-make-execution.sh" "$ROOT/scripts/ci/check-release-delivery.sh" "$FIXTURE/bootstrap/scripts/ci/"
+mkdir -p "$FIXTURE/scripts/dev" "$FIXTURE/bin" \
+    "$FIXTURE/crates/ic-memory/src" "$FIXTURE/crates/ic-memory/examples" "$FIXTURE/ci" "$FIXTURE/make"
 cp "$ROOT/scripts/ci/read-cargo-workspace-version.sh" \
-    "$ROOT/scripts/ci/validate-release-inputs.pl" "$ROOT/scripts/ci/StableVersion.pm" "$FIXTURE/bootstrap/scripts/ci/"
-cp "$ROOT/scripts/dev/run-repo-tool.sh" "$FIXTURE/bootstrap/scripts/dev/"
-cp "$ROOT/scripts/ci/read-persistence-packages.sh" "$FIXTURE/bootstrap/scripts/ci/"
-mkdir -p "$FIXTURE/bootstrap/crates/ic-memory/examples/repo_tool"
-cp "$ROOT/crates/ic-memory/examples/repo_tool/packages.json" "$FIXTURE/bootstrap/crates/ic-memory/examples/repo_tool/"
+    "$ROOT/scripts/ci/validate-release-inputs.pl" "$ROOT/scripts/ci/StableVersion.pm" "$FIXTURE/scripts/ci/"
+cp "$ROOT/scripts/dev/run-repo-tool.sh" "$FIXTURE/scripts/dev/"
+cp "$ROOT/scripts/ci/read-persistence-packages.sh" "$FIXTURE/scripts/ci/"
+mkdir -p "$FIXTURE/crates/ic-memory/examples/repo_tool"
+cp "$ROOT/crates/ic-memory/examples/repo_tool/packages.json" "$FIXTURE/crates/ic-memory/examples/repo_tool/"
 # Exercise the real published renderer; substitute only tool-store selection.
 fixture_editor="$(RUSTUP_TOOLCHAIN="$FIXTURE_TOOLCHAIN" bash "$ROOT/scripts/dev/install-rust-tools.sh" \
     --consumer "$ROOT" --package ic-build --version "$IC_BUILD_RELEASE_METADATA_VERSION" \
     --bin ic-build-release-metadata --profile debug --features cli --check)"
 export FIXTURE_RELEASE_EDITOR="$fixture_editor"
-cat > "$FIXTURE/bootstrap/scripts/dev/install-rust-tools.sh" <<'STUB'
+cat > "$FIXTURE/scripts/dev/install-rust-tools.sh" <<'STUB'
 #!/usr/bin/env bash
 set -euo pipefail
 [[ "$*" == "--consumer $PWD --package ic-build --version $IC_BUILD_RELEASE_METADATA_VERSION --bin ic-build-release-metadata --profile debug --features cli" ||
@@ -539,7 +562,7 @@ exit_status="${EDITOR_STATUS:-0}"
 [[ "$exit_status" == 0 ]] || exit "$exit_status"
 printf '%s\n' "$FIXTURE_RELEASE_EDITOR"
 STUB
-cd "$FIXTURE/bootstrap"
+cd "$FIXTURE"
 cat > Cargo.toml <<'MANIFEST'
 [workspace]
 members = ["crates/ic-memory", "crates/ic-storage", "crates/ic-metrics-stable"]
@@ -934,5 +957,11 @@ for package in ic-memory ic-storage ic-metrics-stable; do
         cp saved-member "$manifest"
     done
 done
+)
+
+test_make_admission
+test_jobserver_handoff
+test_release_receipts
+test_bootstrap_recovery
 echo 'Consumer selection forwarding, attempt retention and launcher checks passed (substitutes only).'
 fixture_complete=true

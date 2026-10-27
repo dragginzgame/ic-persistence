@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.51.7] - Unreleased
+
+### 🧹 Cleanup
+
+- Simplify registry reconciliation, process capture and diagnostic assembly while
+  preserving publication checks, report fields and callback ordering.
+- Isolate release test scenarios and filesystem faults, and generate archive
+  qualification manifests together from one package map.
+  [Details](docs/changelog/0.51.md#0517---unreleased).
+
 ## [0.51.6] - 2026-10-27
 
 ### 🧹 Cleanup

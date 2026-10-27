@@ -358,17 +358,15 @@ impl Execute for Processes {
             features: &CargoFeatureSelection::default(),
         }
         .command(Command::new("cargo"))?;
-        let output = capture_command(
+        let output = capture_complete(
+            "cargo",
             &mut command,
             OutputLimits {
                 stdout: OutputLimit::Terminate(4 * 1024 * 1024),
                 stderr: OutputLimit::Terminate(64 * 1024),
                 timeout: None,
             },
-        )
-        .and_then(CompletedExecution::require_success)
-        .and_then(CompletedExecution::require_complete)
-        .inspect_err(|error| report_tool_error("cargo", error))?;
+        )?;
         let metadata = decode_metadata(&output.stdout)?;
         Ok(metadata.target_directory.into_std_path_buf())
     }
@@ -378,17 +376,15 @@ impl Execute for Processes {
         command.current_dir(root).args(args);
         // Keep successful output complete, but reject oversized responses.
         // Host owns fair pipe draining, failure evidence and child cleanup.
-        let output = capture_command(
+        let output = capture_complete(
+            program,
             &mut command,
             OutputLimits {
                 stdout: OutputLimit::Terminate(8 * 1024 * 1024),
                 stderr: OutputLimit::Terminate(256 * 1024),
                 timeout: None,
             },
-        )
-        .and_then(CompletedExecution::require_success)
-        .and_then(CompletedExecution::require_complete)
-        .inspect_err(|error| report_tool_error(program, error))?;
+        )?;
         eprint!("{}", String::from_utf8_lossy(&output.stderr));
         Ok(String::from_utf8(output.stdout)?)
     }
@@ -423,6 +419,17 @@ impl Execute for Processes {
         )?;
         Ok(())
     }
+}
+
+fn capture_complete(
+    program: &str,
+    command: &mut Command,
+    limits: OutputLimits,
+) -> Result<CompletedExecution> {
+    Ok(capture_command(command, limits)
+        .and_then(CompletedExecution::require_success)
+        .and_then(CompletedExecution::require_complete)
+        .inspect_err(|error| report_tool_error(program, error))?)
 }
 
 fn report_tool_error(program: &str, error: &ToolError) {

@@ -89,11 +89,18 @@ explicit receipt compatibility review. This is release policy, not another
 dependency or version catalog.
 `format-workspaces.sh` owns the consumer formatter roster; `qualify-runtime.sh`
 owns the installed artifact/optimization loop. Archive qualification derives its
-workspace, patches and package provenance from one extracted-package map. The
+workspace, patches and consumer manifest together from one extracted-package map;
+that map also owns package provenance. The
 Wasm-size adapter owns both build selectors and budgets through its probe table.
 `test-offline-tool-reuse.sh` owns the consumer's locally callable CI reuse proof.
 Shared keeps formatter admission
 and Testkit keeps server selection/lifecycle.
+
+Fixture diagnostics own a read-only observation of stable-cell status, protected
+recovery and allocation sizes before caller policy runs. Public report assembly
+uses those captured facts. Release tests keep file-publication faults at their
+filesystem boundary and scope Make admission, jobserver, receipt and bootstrap
+scenarios independently; the outer suite retains failed evidence.
 
 ## Release tooling review — 0.62.1
 

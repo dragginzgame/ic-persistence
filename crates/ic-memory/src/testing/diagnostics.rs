@@ -2,10 +2,9 @@
 
 use super::{MemoryRuntime, RuntimeLifecycle};
 use crate::{
-    DiagnosticExport, DiagnosticMemorySize, LedgerCommitError, LedgerCommitStore, PolicyIdentity,
-    RecoveredLedger, RuntimeBootstrapPolicy, SealedDeclarationSnapshot,
-    physical::CommitSnapshotDiagnostic, slot::MEMORY_MANAGER_LEDGER_ID,
-    stable_cell::decode_stable_cell_commit_store_from_memory,
+    DiagnosticExport, DiagnosticMemorySize, LedgerCommitError, PolicyIdentity, RecoveredLedger,
+    RuntimeBootstrapPolicy, SealedDeclarationSnapshot, physical::CommitSnapshotDiagnostic,
+    slot::MEMORY_MANAGER_LEDGER_ID, stable_cell::decode_stable_cell_commit_store_from_memory,
 };
 use ic_platform::stable_structures::{Memory, memory_manager::MemoryId};
 use serde::Serialize;
@@ -243,27 +242,7 @@ where
     P: RuntimeBootstrapPolicy,
     P::Error: Display,
 {
-    let (memory_size, record) = runtime.stable_cell_diagnostic();
-    // Project the public status from the same read result used for recovery.
-    let status = match &record {
-        Ok(_) if memory_size.wasm_pages == 0 => DiagnosticStableCellStatus::Empty,
-        Ok(_) => DiagnosticStableCellStatus::Readable,
-        Err(error) => DiagnosticStableCellStatus::Corrupt {
-            failure: DiagnosticFailure::new(DiagnosticCode::StableCell, error.to_string()),
-        },
-    };
-    let stable_cell = DiagnosticStableCell::new(status, memory_size);
-    // Recovery owns its ledger and diagnostic evidence. Release the decoded
-    // physical snapshot before observing memory or invoking custom policy.
-    let recovery = record.ok().map(|record| record.recover_with_diagnostic());
-    // Keep the original observation boundary before policy callbacks, without
-    // copying the recovered keys/records merely to retain those observations.
-    let mut observed_pages = [0; crate::constants::MAX_ALLOCATIONS];
-    if let Some((Ok(recovered), _)) = &recovery {
-        for (record, pages) in recovered.ledger().records().iter().zip(&mut observed_pages) {
-            *pages = runtime.memory_size_pages(record.slot().id());
-        }
-    }
+    let observation = runtime.ledger_observation();
     let tested_policy_identity = policy.runtime_bootstrap_identity();
     let established_bootstrap_binding = runtime.established_bootstrap_binding();
     let bootstrap_binding = diagnostic_bootstrap_binding(
@@ -277,18 +256,12 @@ where
         declarations,
         pool,
         policy,
-        recovery.as_ref().map(|(recovered, _)| recovered),
+        observation
+            .recovery
+            .as_ref()
+            .map(|(recovered, _)| recovered),
     );
-    let commit_recovery = recovery.as_ref().map(|(_, diagnostic)| *diagnostic);
-    let ledger = recovery.and_then(|(recovered, _)| {
-        recovered.ok().map(|recovered| {
-            let mut export = DiagnosticExport::from_owned_ledger(recovered.into_ledger());
-            for (record, pages) in export.records.iter_mut().zip(&observed_pages) {
-                record.memory_size = Some(DiagnosticMemorySize::from_wasm_pages(*pages));
-            }
-            export
-        })
-    });
+    let (stable_cell, commit_recovery, ledger) = observation.into_parts();
 
     MemoryRuntimeDoctorReport {
         bootstrapped: runtime.is_bootstrapped(),
@@ -304,6 +277,39 @@ where
     }
 }
 
+// One read-only observation owns storage/recovery status and memory readings
+// taken before policy callbacks. It never carries open or allocation authority.
+struct LedgerObservation {
+    stable_cell: DiagnosticStableCell,
+    recovery: Option<(
+        Result<RecoveredLedger, LedgerCommitError>,
+        CommitSnapshotDiagnostic,
+    )>,
+    observed_pages: [u64; crate::constants::MAX_ALLOCATIONS],
+}
+
+impl LedgerObservation {
+    fn into_parts(
+        self,
+    ) -> (
+        DiagnosticStableCell,
+        Option<CommitSnapshotDiagnostic>,
+        Option<DiagnosticExport>,
+    ) {
+        let commit_recovery = self.recovery.as_ref().map(|(_, diagnostic)| *diagnostic);
+        let ledger = self.recovery.and_then(|(recovered, _)| {
+            recovered.ok().map(|recovered| {
+                let mut export = DiagnosticExport::from_owned_ledger(recovered.into_ledger());
+                for (record, pages) in export.records.iter_mut().zip(&self.observed_pages) {
+                    record.memory_size = Some(DiagnosticMemorySize::from_wasm_pages(*pages));
+                }
+                export
+            })
+        });
+        (self.stable_cell, commit_recovery, ledger)
+    }
+}
+
 impl<M: Memory> MemoryRuntime<M> {
     fn established_bootstrap_binding(&self) -> Option<DiagnosticRuntimeBinding> {
         match &self.lifecycle {
@@ -315,20 +321,33 @@ impl<M: Memory> MemoryRuntime<M> {
         }
     }
 
-    fn stable_cell_diagnostic(
-        &self,
-    ) -> (
-        DiagnosticMemorySize,
-        Result<LedgerCommitStore, crate::StableCellLedgerError>,
-    ) {
+    fn ledger_observation(&self) -> LedgerObservation {
         let memory = self
             .memory_manager
             .get(MemoryId::new(MEMORY_MANAGER_LEDGER_ID));
         let memory_size = DiagnosticMemorySize::from_wasm_pages(memory.size());
-        (
-            memory_size,
-            decode_stable_cell_commit_store_from_memory(&memory),
-        )
+        let record = decode_stable_cell_commit_store_from_memory(&memory);
+        drop(memory);
+        let status = match &record {
+            Ok(_) if memory_size.wasm_pages == 0 => DiagnosticStableCellStatus::Empty,
+            Ok(_) => DiagnosticStableCellStatus::Readable,
+            Err(error) => DiagnosticStableCellStatus::Corrupt {
+                failure: DiagnosticFailure::new(DiagnosticCode::StableCell, error.to_string()),
+            },
+        };
+        // Release decoded physical bytes before measuring slots or invoking policy.
+        let recovery = record.ok().map(|record| record.recover_with_diagnostic());
+        let mut observed_pages = [0; crate::constants::MAX_ALLOCATIONS];
+        if let Some((Ok(recovered), _)) = &recovery {
+            for (record, pages) in recovered.ledger().records().iter().zip(&mut observed_pages) {
+                *pages = self.memory_size_pages(record.slot().id());
+            }
+        }
+        LedgerObservation {
+            stable_cell: DiagnosticStableCell::new(status, memory_size),
+            recovery,
+            observed_pages,
+        }
     }
 }
 
