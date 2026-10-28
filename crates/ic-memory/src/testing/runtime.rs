@@ -1,7 +1,7 @@
 //! Fixture-only runtime bootstrap shared by cells and collection qualification.
 use crate::{
-    GenericAllocationPolicy, Memory, MemoryAllocationPool, MemoryAuthority, MemoryManagerConfig,
-    MemoryRequest, MemoryRuntime, SealedDeclarationSnapshot,
+    GenericAllocationPolicy, MemoryAllocationPool, MemoryAuthority, MemoryBacking,
+    MemoryManagerConfig, MemoryRequest, MemoryRuntime, SealedDeclarationSnapshot,
 };
 
 ///
@@ -44,7 +44,7 @@ pub enum FixtureRuntimeError {
 /// # Panics
 ///
 /// Backing memory IO retains its substrate panic behavior.
-pub fn fixture_runtime<M: Memory>(
+pub fn fixture_runtime<M: MemoryBacking>(
     backing: M,
     owner: &str,
     namespace: &str,

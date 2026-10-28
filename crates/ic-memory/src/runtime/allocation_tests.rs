@@ -489,7 +489,12 @@ fn finite_bucket_table_capacity_and_overflow_are_checked() {
     // access is performed in this metadata-only exhaustion fixture.
     struct Sparse {
         pages: std::cell::Cell<u64>,
-        header: std::cell::RefCell<Vec<u8>>,
+        header: VectorMemory,
+    }
+    impl crate::MemoryBacking for Sparse {
+        fn backing_identity(&self) -> crate::BackingIdentity {
+            self.header.backing_identity()
+        }
     }
     impl Memory for Sparse {
         fn size(&self) -> u64 {
@@ -509,7 +514,12 @@ fn finite_bucket_table_capacity_and_overflow_are_checked() {
             self.header.borrow_mut()[offset..offset + src.len()].copy_from_slice(src);
         }
     }
-    struct Overflow;
+    struct Overflow(std::rc::Rc<()>);
+    impl crate::MemoryBacking for Overflow {
+        fn backing_identity(&self) -> crate::BackingIdentity {
+            crate::BackingIdentity::of_rc(&self.0)
+        }
+    }
     impl Memory for Overflow {
         fn size(&self) -> u64 {
             u64::MAX
@@ -528,7 +538,7 @@ fn finite_bucket_table_capacity_and_overflow_are_checked() {
         let runtime = MemoryRuntime::new_with_config(
             Sparse {
                 pages: std::cell::Cell::new(0),
-                header: std::cell::RefCell::new(vec![0; 65_536]),
+                header: std::rc::Rc::new(std::cell::RefCell::new(vec![0; 65_536])),
             },
             super::MemoryManagerConfig::new(bucket).unwrap(),
         )
@@ -553,7 +563,7 @@ fn finite_bucket_table_capacity_and_overflow_are_checked() {
         assert_eq!(runtime.memory_allocations().unwrap(), full);
     }
     assert!(matches!(
-        MemoryRuntime::new(Overflow),
+        MemoryRuntime::new(Overflow(std::rc::Rc::new(()))),
         Err(RuntimeConstructionError::Layout(
             MemoryManagerLayoutError::ExtentOverflow
         ))

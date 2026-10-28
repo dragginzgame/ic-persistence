@@ -57,6 +57,11 @@ fn public_explicit_runtime_bootstraps_opens_and_diagnoses_its_memory() {
 #[test]
 fn owned_report_and_detached_lease_support_borrowed_nonclone_backing() {
     struct BorrowedMemory<'a>(&'a VectorMemory);
+    impl ic_memory::MemoryBacking for BorrowedMemory<'_> {
+        fn backing_identity(&self) -> ic_memory::BackingIdentity {
+            ic_memory::MemoryBacking::backing_identity(self.0)
+        }
+    }
     impl Memory for BorrowedMemory<'_> {
         fn size(&self) -> u64 {
             self.0.size()

@@ -15,6 +15,11 @@ struct RefusableMemory {
     grows: Rc<Cell<usize>>,
     writes: Rc<Cell<usize>>,
 }
+impl crate::MemoryBacking for RefusableMemory {
+    fn backing_identity(&self) -> crate::BackingIdentity {
+        self.bytes.backing_identity()
+    }
+}
 
 impl Memory for RefusableMemory {
     fn size(&self) -> u64 {
@@ -90,6 +95,11 @@ fn backing_reentry_cannot_assign_buckets_during_an_outer_reservation() {
         result: Cell<Option<Result<u64, RuntimeGrowError>>>,
         zero_result: Cell<Option<Result<u64, RuntimeGrowError>>>,
     }
+    impl crate::MemoryBacking for ReentrantMemory {
+        fn backing_identity(&self) -> crate::BackingIdentity {
+            self.bytes.backing_identity()
+        }
+    }
     impl Memory for ReentrantMemory {
         fn size(&self) -> u64 {
             self.bytes.size()
@@ -162,7 +172,7 @@ fn refused_application_growth_preserves_bytes_extents_and_retry() {
         ));
         assert_eq!(rows.grow(0), Ok(0));
         assert_eq!(Memory::grow(&rows, 0), 0);
-        assert_eq!(backing.reads.get(), reads_before);
+        assert_eq!(backing.reads.get(), reads_before + 2);
         assert_eq!(backing.writes.get(), writes);
         assert_eq!(backing.grows.get(), grows);
         assert_eq!(
@@ -183,7 +193,9 @@ fn refused_application_growth_preserves_bytes_extents_and_retry() {
                 .allocated_buckets,
             0
         );
-        assert_eq!(backing.reads.get() - reads_before, 2);
+        // Zero-grow twice, two refused grows and size verify once each;
+        // the allocation report keeps its two bounded metadata reads.
+        assert_eq!(backing.reads.get() - reads_before, 7);
         if bucket == u16::MAX {
             continue;
         }
@@ -235,8 +247,8 @@ fn interleaved_leases_reopen_and_detached_handles_share_growth_accounting() {
     drop(a);
     let reopened = runtime.memory(120).unwrap();
     assert_eq!(reopened.grow(8), Ok(9));
-    // Capacity admission reads no persisted metadata, even at bucket boundaries.
-    assert_eq!(backing.reads.get(), reads);
+    // Three successful grows verify before/after; reopening also verifies.
+    assert_eq!(backing.reads.get(), reads + 7);
     assert_eq!(
         runtime
             .memory_allocations()

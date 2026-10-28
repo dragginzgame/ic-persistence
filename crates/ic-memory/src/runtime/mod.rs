@@ -7,6 +7,7 @@ mod adoption_tests;
 mod allocations;
 mod backing;
 mod config;
+mod custody;
 mod diagnostics;
 mod error;
 #[cfg(any(test, feature = "test-support"))]
@@ -19,6 +20,8 @@ mod policy;
 
 #[cfg(all(test, not(target_arch = "wasm32")))]
 mod allocation_tests;
+#[cfg(test)]
+mod custody_tests;
 #[cfg(test)]
 mod growth_tests;
 #[cfg(test)]
@@ -40,6 +43,7 @@ pub use allocations::{
 };
 pub use backing::RuntimeMemory;
 pub use config::MemoryManagerConfig;
+pub use custody::{BackingIdentity, MemoryBacking};
 pub use error::{
     MemoryResolutionError, RuntimeBootstrapError, RuntimeConstructionError, RuntimeDiagnosticError,
     RuntimeGrowError, RuntimeOpenError,
@@ -90,15 +94,16 @@ struct RuntimeBootstrapBinding {
 /// memory. Capacity-checked writes use `Cell`; diagnostics also read persisted
 /// memory directly.
 ///
-/// `M` needs only [`Memory`]. The runtime does not require the backing memory
-/// to be `Send`, `Sync`, `Clone`, or `'static`.
+/// Construction requires [`MemoryBacking`], which identifies physical aliases.
+/// The backing need not be `Send`, `Sync`, `Clone`, or `'static`.
 ///
-/// The host must supply exclusive backing custody: no other runtime, manager or
-/// raw IO may access the same backing while this runtime or any of its leases
-/// lives. Aliases hidden behind a generic [`Memory`] cannot be detected here.
-/// Drop every lease and the runtime before constructing a replacement on retained
-/// backing. Opens are exclusive within this runtime, including across warm
-/// bootstrap and authority verification.
+/// A backing claim rejects another runtime before backing IO while this runtime
+/// or any detached lease lives. Drop them all before constructing a replacement.
+/// Standard VectorMemory/default canister backings identify aliases automatically;
+/// custom hosts must uphold [`MemoryBacking`]'s identity contract. A composition
+/// selects one IC Memory crate identity and shares one runtime. Raw aliased IO or
+/// unmanaged managers remain prohibited. Bounded metadata checks refuse stale
+/// manager state; they are not transactions against arbitrary concurrent raw IO.
 ///
 
 pub struct MemoryRuntime<M: Memory> {
@@ -121,6 +126,8 @@ impl<M: Memory> MemoryRuntime<M> {
     ///
     /// # Errors
     ///
+    /// Returns [`RuntimeConstructionError::BackingAlreadyClaimed`] before any
+    /// backing IO if another runtime or handle retains custody.
     /// Returns [`RuntimeConstructionError::ForeignMemory`] for nonempty memory
     /// without `MemoryManager` magic, or
     /// [`RuntimeConstructionError::UnsupportedMemoryManagerVersion`] when the
@@ -129,7 +136,10 @@ impl<M: Memory> MemoryRuntime<M> {
     /// metadata growth returns [`RuntimeConstructionError::Growth`] without
     /// writes, allowing the same backing memory to be retried. Reopening honors
     /// the actual persisted bucket size; only fresh memory uses 128 pages.
-    pub fn new(memory: M) -> Result<Self, RuntimeConstructionError> {
+    pub fn new(memory: M) -> Result<Self, RuntimeConstructionError>
+    where
+        M: MemoryBacking,
+    {
         Self::construct(memory, None)
     }
 
@@ -144,18 +154,25 @@ impl<M: Memory> MemoryRuntime<M> {
     pub fn new_with_config(
         memory: M,
         config: MemoryManagerConfig,
-    ) -> Result<Self, RuntimeConstructionError> {
+    ) -> Result<Self, RuntimeConstructionError>
+    where
+        M: MemoryBacking,
+    {
         Self::construct(memory, Some(config))
     }
 
     fn construct(
         memory: M,
         requested: Option<MemoryManagerConfig>,
-    ) -> Result<Self, RuntimeConstructionError> {
+    ) -> Result<Self, RuntimeConstructionError>
+    where
+        M: MemoryBacking,
+    {
+        let claim = custody::BackingClaim::acquire(&memory)?;
         if cfg!(target_endian = "big") {
             return Err(MemoryManagerLayoutError::UnsupportedByteOrder.into());
         }
-        let (bucket_size_pages, allocated_buckets) = if memory.size() == 0 {
+        let bucket_size_pages = if memory.size() == 0 {
             // Reserve the metadata page before the dependency writes its header.
             // This fresh allocation is owned here; caller-supplied nonempty
             // memory still passes the layout checks below before any writes.
@@ -165,27 +182,27 @@ impl<M: Memory> MemoryRuntime<M> {
                 }
                 .into());
             }
-            (requested.unwrap_or_default().bucket_size_pages(), 0)
+            requested.unwrap_or_default().bucket_size_pages()
         } else {
             let measured = layout::read(&memory)?;
             let actual = measured.bucket_pages;
             if let Some(config) = requested {
                 check_bucket_size(actual, config)?;
             }
-            (actual, measured.allocated_buckets)
+            actual
         };
         let backing = Rc::new(memory);
+        let memory_manager =
+            MemoryManager::init_with_bucket_size(Rc::clone(&backing), bucket_size_pages);
         let growth = Rc::new(backing::GrowthState {
             backing: Rc::clone(&backing),
             bucket_size_pages,
-            allocated_buckets: std::cell::RefCell::new(allocated_buckets),
+            authority: std::cell::RefCell::new(layout::ManagerAuthority::capture(backing.as_ref())),
+            _claim: claim,
             open_slots: [const { std::cell::Cell::new(0) }; 4],
         });
         Ok(Self {
-            memory_manager: MemoryManager::init_with_bucket_size(
-                Rc::clone(&backing),
-                bucket_size_pages,
-            ),
+            memory_manager,
             growth,
             lifecycle: RuntimeLifecycle::Unbootstrapped,
         })
@@ -283,6 +300,7 @@ impl<M: Memory> MemoryRuntime<M> {
         policy: &P,
         policy_identity: PolicyIdentity,
     ) -> Result<u64, RuntimeBootstrapError<P::Error>> {
+        self.growth.verify()?;
         let mut memory = self
             .memory(MEMORY_MANAGER_LEDGER_ID)
             .expect("governance memory is not publicly leasable");
@@ -380,6 +398,7 @@ impl<M: Memory> MemoryRuntime<M> {
         if word.get() & mask != 0 {
             return Err(RuntimeOpenError::AlreadyOpen { id });
         }
+        self.growth.verify()?;
         let memory = self.memory_manager.get(MemoryId::new(id));
         word.set(word.get() | mask);
         Ok(RuntimeMemory {

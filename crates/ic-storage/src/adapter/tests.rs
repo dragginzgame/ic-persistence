@@ -24,6 +24,11 @@ struct ControlledMemory {
     refuse_growth: Rc<Cell<bool>>,
     growth_calls: Rc<Cell<u64>>,
 }
+impl ic_memory::MemoryBacking for ControlledMemory {
+    fn backing_identity(&self) -> ic_memory::BackingIdentity {
+        self.backing.backing_identity()
+    }
+}
 
 impl Memory for ControlledMemory {
     fn size(&self) -> u64 {
@@ -48,7 +53,7 @@ impl Memory for ControlledMemory {
     }
 }
 
-fn runtime<M: Memory>(backing: M) -> MemoryRuntime<M> {
+fn runtime<M: ic_memory::MemoryBacking>(backing: M) -> MemoryRuntime<M> {
     fixture_runtime(
         backing,
         "test",

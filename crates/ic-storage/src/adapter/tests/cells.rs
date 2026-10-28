@@ -19,6 +19,11 @@ struct ObservedMemory {
     grows: Rc<Cell<u64>>,
     fail_read: Rc<Cell<bool>>,
 }
+impl ic_memory::MemoryBacking for ObservedMemory {
+    fn backing_identity(&self) -> ic_memory::BackingIdentity {
+        self.backing.backing_identity()
+    }
+}
 
 impl Memory for ObservedMemory {
     fn size(&self) -> u64 {

@@ -30,7 +30,7 @@ fn store_error_retains_the_arithmetic_source() {
 }
 
 // Isolated native host: declare a permanent key and commit allocation before opening.
-fn admitted_memory<M: Memory>(backing: M) -> RuntimeMemory<M> {
+fn admitted_memory<M: ic_memory::MemoryBacking>(backing: M) -> RuntimeMemory<M> {
     let runtime = fixture_runtime(
         backing,
         "metrics_test",
@@ -740,6 +740,11 @@ fn checkpoints_reject_same_count_rewrites_and_admit_order_after_overflow() {
 struct WriteCountingMemory {
     memory: VectorMemory,
     writes: Rc<Cell<usize>>,
+}
+impl ic_memory::MemoryBacking for WriteCountingMemory {
+    fn backing_identity(&self) -> ic_memory::BackingIdentity {
+        ic_memory::MemoryBacking::backing_identity(&self.memory)
+    }
 }
 
 impl Memory for WriteCountingMemory {

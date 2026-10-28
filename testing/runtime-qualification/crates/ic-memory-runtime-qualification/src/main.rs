@@ -1,4 +1,5 @@
 //! Explicit installed qualification of the supplied current-graph fixture.
+mod ownership;
 mod storage;
 
 use clap::Parser;
@@ -143,6 +144,7 @@ fn main() {
     println!("fixture_wasm_bytes,{}", wasm.len());
     if !arguments.measure_valid_io {
         storage::qualify(&pic);
+        ownership::qualify(&pic);
     }
 }
 

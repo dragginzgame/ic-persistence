@@ -13,6 +13,9 @@ use crate::{
 #[non_exhaustive]
 #[derive(Clone, Copy, Debug, Eq, thiserror::Error, PartialEq)]
 pub enum RuntimeGrowError {
+    /// Persisted manager metadata differs from this runtime's authority.
+    #[error(transparent)]
+    Layout(#[from] super::MemoryManagerLayoutError),
     /// The requested virtual extent overflows the page count.
     #[error("virtual memory page count overflows")]
     ArithmeticOverflow,
@@ -40,6 +43,9 @@ pub enum RuntimeGrowError {
 #[non_exhaustive]
 #[derive(Clone, Copy, Debug, Eq, thiserror::Error, PartialEq)]
 pub enum RuntimeConstructionError {
+    /// Another runtime or detached handle still owns this backing.
+    #[error("stable backing already has a live runtime or allocation handle")]
+    BackingAlreadyClaimed,
     /// Fresh manager metadata could not reserve physical capacity.
     #[error(transparent)]
     Growth(#[from] RuntimeGrowError),
@@ -83,6 +89,9 @@ pub enum RuntimeConstructionError {
 #[non_exhaustive]
 #[derive(Debug, thiserror::Error)]
 pub enum RuntimeBootstrapError<P> {
+    /// Manager metadata diverged from this runtime's authority.
+    #[error(transparent)]
+    ManagerLayout(#[from] super::MemoryManagerLayoutError),
     /// Read-only bootstrap verification requires a committed runtime.
     #[error("ic-memory runtime has not completed bootstrap validation")]
     NotBootstrapped,
@@ -140,6 +149,9 @@ pub enum RuntimeBootstrapError<P> {
 #[non_exhaustive]
 #[derive(Clone, Debug, Eq, thiserror::Error, PartialEq)]
 pub enum RuntimeOpenError {
+    /// Manager metadata diverged before a lease could be issued.
+    #[error(transparent)]
+    Layout(#[from] super::MemoryManagerLayoutError),
     /// This runtime already issued a live lease for the allocation.
     #[error("MemoryManager ID {id} already has a live allocation lease")]
     AlreadyOpen { id: u8 },

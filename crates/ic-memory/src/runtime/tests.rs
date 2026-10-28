@@ -656,6 +656,7 @@ fn diagnostics_reject_invalid_persisted_slots_before_measuring_sizes() {
         runtime.memory(crate::MEMORY_MANAGER_LEDGER_ID).unwrap(),
         crate::stable_cell::EncodedLedgerRecord::new(&store).unwrap(),
     );
+    drop(_cell);
     let before = backing.borrow().clone();
 
     assert!(matches!(
@@ -674,6 +675,7 @@ fn diagnostics_reject_invalid_persisted_slots_before_measuring_sizes() {
             ..
         }
     ));
+    drop(runtime);
     let mut reopened = MemoryRuntime::new(backing.clone()).unwrap();
     assert!(matches!(
         reopened.bootstrap(&declarations, &pool(), &GenericAllocationPolicy),

@@ -220,13 +220,37 @@ reopening. A collection's memory-transfer operation keeps the same lease alive;
 failed construction and ordinary unwinding release it when the handle is dropped.
 For a log, obtain two different allocations for index and data memory.
 
-The host must retain exclusive custody of the backing: do not create another
-runtime/manager or perform raw IO against aliases while the runtime or any of
-its handles lives. A handle can outlive its runtime, so dropping the runtime
-alone does not permit a replacement. Generic backing aliases cannot be detected
-by this crate. These are ownership rules for cooperating integrations, not an
-isolation boundary against arbitrary linked code. Never leak a handle to force
-reopening; a forgotten lease remains occupied.
+Runtime constructors require `MemoryBacking`: the host supplies one consistent
+physical backing identity across all aliases and wrappers. Standard VectorMemory
+and default canister stable-memory handles provide it automatically. A duplicate
+runtime returns `RuntimeConstructionError::BackingAlreadyClaimed` before any
+backing IO. The claim stays alive through detached handles and collections;
+dropping only the runtime does not permit replacement. Native claims also
+coordinate across threads. Forgotten handles retain their claims.
+
+Custom hosts implement `MemoryBacking::backing_identity` by delegating to their
+retained underlying backing. `BackingIdentity::of_rc` and `of_arc` support owned
+host backings; identify the underlying allocation, never a new wrapper or a
+growable byte buffer's data pointer. Keep that identity allocation alive for all
+runtime/handle lifetimes. The
+[instrumented example](examples/allocation_measurements.rs) shows a host newtype
+for a foreign memory wrapper. No Clone, Send, Sync or static bound is added.
+
+Each composition must select one IC Memory crate identity and share one runtime.
+Raw aliases, unmanaged managers and dishonest identity implementations remain
+outside the custody contract. Claims are in-process heap state, not durable
+locks or an isolation boundary against arbitrary linked code. Size, valid IO,
+opens and growth compare the bounded MGR V1 image before using cached state.
+Growth projects only its own expected metadata edits; foreign changes never
+refresh authority. Any detected divergence permanently refuses that owner's
+data access, including same-count extent or bucket-map changes. Drop all owners
+and explicitly reopen validated memory to recover; no bytes are repaired.
+Checks add bounded metadata reads. Invalid IO bounds still refuse before backing
+access, and diagnostic allocation reports reuse their two bounded metadata reads.
+Each valid size/IO check reads the full 34,848-byte manager image; successful
+growth checks before and after mutation. Word-wise comparison reduces CPU cost,
+but this integrity check remains additional stable IO, including for small data
+operations. Hosts should account for it in their instruction and IO budgets.
 
 Known keys retain their committed IDs. New requests are sorted by key and take
 the lowest unclaimed ID in the common pool. All retained records, including
@@ -240,9 +264,11 @@ See [`examples/key_only.rs`](examples/key_only.rs) and
 
 Each selected component supplies its complete request list. The host combines
 those lists into one `SealedDeclarationSnapshot`, admits disjoint namespaces
-for their named owners and supplies explicit physical
-exclusions for unmanaged `MemoryManager` clients. All components draw from the
-same remaining pool. The application bootstraps the combined layout once.
+for their named owners and supplies explicit physical exclusions for retained
+IDs outside the governed allocation pool. Exclusions are reservations, not
+permission for an independent manager over the same backing: bucket allocation
+is shared across every ID. All active components obtain checked handles from
+one runtime. The application bootstraps the combined layout once.
 
 Libraries adopting an already bootstrapped host can verify that all of their
 requirements were included without rerunning bootstrap or replacing the host's

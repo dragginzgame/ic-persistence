@@ -4,14 +4,20 @@ use std::{
     rc::Rc,
 };
 
-// Backing, immutable geometry and one live bucket count for the sole manager,
-// shared by the runtime and all handles, including the ledger. The count is
-// seeded from validated metadata on reopen and updated only after grow.
+// Physical custody, immutable geometry and exact manager metadata authority are
+// shared by the runtime and every handle, including detached ledger handles.
 pub(super) struct GrowthState<M: Memory> {
     pub backing: Rc<M>,
     pub bucket_size_pages: u16,
-    pub allocated_buckets: RefCell<u16>,
+    pub authority: RefCell<super::layout::ManagerAuthority>,
+    pub _claim: super::custody::BackingClaim,
     pub open_slots: [Cell<u64>; 4],
+}
+
+impl<M: Memory> GrowthState<M> {
+    pub fn verify(&self) -> Result<(), super::MemoryManagerLayoutError> {
+        self.authority.borrow().verify(self.backing.as_ref())
+    }
 }
 
 ///
@@ -22,8 +28,9 @@ pub(super) struct GrowthState<M: Memory> {
 /// memory or an alternate manager. The lease cannot be cloned; dropping it
 /// permits another open of the same allocation. Moving it into a collection
 /// transfers the lease until that collection releases the memory.
-/// The handle can outlive its runtime. Hosts must not construct another runtime
-/// or access aliased backing while any runtime or lease for that backing lives.
+/// The handle can outlive its runtime and retains the backing claim. A replacement
+/// runtime is refused until every handle releases it. Custom backing identities
+/// must follow [`super::MemoryBacking`]; raw aliased access remains prohibited.
 /// IO checks the virtual extent before upstream bucket translation. Empty IO
 /// is valid at the end of memory, but not beyond it. Reads preserve the upstream
 /// optimized support for uninitialized destinations through `Memory::read_unsafe`.
@@ -32,6 +39,10 @@ pub(super) struct GrowthState<M: Memory> {
 /// without changing virtual extents or manager metadata. Backing implementations
 /// must obey the `Memory` contract; traps and partial writes are not transactions
 /// on native memory. Typed collections retain their own failure behavior.
+/// Size, valid IO, and growth check the complete bounded manager metadata before
+/// using cached translations. Detected divergence permanently poisons this owner.
+/// Invalid IO bounds still refuse before backing access. These checks add bounded
+/// metadata reads, not ledger/payload decoding or synchronization with raw aliases.
 ///
 
 pub struct RuntimeMemory<M: Memory> {
@@ -63,6 +74,9 @@ impl<M: Memory> RuntimeMemory<M> {
             offset <= extent && count as u64 <= extent - offset,
             "virtual memory access out of bounds",
         );
+        self.growth
+            .verify()
+            .expect("persisted manager metadata differs from runtime authority");
     }
 
     /// Grow by the requested pages, returning the previous virtual page count.
@@ -71,8 +85,8 @@ impl<M: Memory> RuntimeMemory<M> {
     /// preserves virtual extents and manager metadata and permits retry. The
     /// upstream [`Memory::grow`] adapter translates errors into its required
     /// `-1` sentinel; direct runtime callers receive [`super::RuntimeGrowError`].
-    /// A zero-page request returns the current extent without backing IO or
-    /// manager mutation, after checking for reentrant growth.
+    /// A zero-page request verifies metadata and returns the current extent
+    /// without growth or writes, after checking for reentrant growth.
     ///
     /// # Panics
     ///
@@ -80,11 +94,12 @@ impl<M: Memory> RuntimeMemory<M> {
     /// memory panics.
     pub fn grow(&self, pages: u64) -> Result<u64, super::RuntimeGrowError> {
         use super::RuntimeGrowError;
-        let mut allocated = self
+        let mut authority = self
             .growth
-            .allocated_buckets
+            .authority
             .try_borrow_mut()
             .map_err(|_| RuntimeGrowError::ReentrantAccess)?;
+        authority.verify(self.growth.backing.as_ref())?;
         let old_pages = self.memory.size();
         if pages == 0 {
             return Ok(old_pages);
@@ -94,7 +109,7 @@ impl<M: Memory> RuntimeMemory<M> {
             .ok_or(RuntimeGrowError::ArithmeticOverflow)?;
         let bucket_pages = u64::from(self.growth.bucket_size_pages);
         let extra = new_pages.div_ceil(bucket_pages) - old_pages.div_ceil(bucket_pages);
-        let total = u64::from(*allocated)
+        let total = u64::from(authority.allocated_buckets())
             .checked_add(extra)
             .ok_or(RuntimeGrowError::ArithmeticOverflow)?;
         if total > u64::from(super::layout::BUCKET_CAPACITY) {
@@ -125,13 +140,17 @@ impl<M: Memory> RuntimeMemory<M> {
             old_pages.cast_signed(),
             "preflighted manager growth returns the previous virtual extent"
         );
-        *allocated = total_buckets;
+        authority.record_growth(self.id, new_pages, total_buckets);
+        authority.verify(self.growth.backing.as_ref())?;
         Ok(old_pages)
     }
 }
 
 impl<M: Memory> Memory for RuntimeMemory<M> {
     fn size(&self) -> u64 {
+        self.growth
+            .verify()
+            .expect("persisted manager metadata differs from runtime authority");
         self.memory.size()
     }
     fn grow(&self, pages: u64) -> i64 {

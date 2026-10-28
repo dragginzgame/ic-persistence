@@ -152,11 +152,11 @@ pub use physical::{CommitRecoveryError, CommitSnapshotDiagnostic};
 pub use policy::{PolicyIdentity, RuntimeBootstrapPolicy};
 pub use requests::{MemoryDeclarationError, MemoryRequest, SealedDeclarationSnapshot};
 pub use runtime::{
-    BootstrapAdmission, BootstrapAdmissionError, GenericAllocationPolicy, MemoryAllocation,
-    MemoryAllocationSummary, MemoryAllocations, MemoryBindingSummary, MemoryManagerConfig,
-    MemoryManagerLayoutError, MemoryResolutionError, MemoryRuntime, RuntimeAdoptionError,
-    RuntimeBootstrapError, RuntimeConstructionError, RuntimeDiagnosticError, RuntimeGrowError,
-    RuntimeMemory, RuntimeOpenError,
+    BackingIdentity, BootstrapAdmission, BootstrapAdmissionError, GenericAllocationPolicy,
+    MemoryAllocation, MemoryAllocationSummary, MemoryAllocations, MemoryBacking,
+    MemoryBindingSummary, MemoryManagerConfig, MemoryManagerLayoutError, MemoryResolutionError,
+    MemoryRuntime, RuntimeAdoptionError, RuntimeBootstrapError, RuntimeConstructionError,
+    RuntimeDiagnosticError, RuntimeGrowError, RuntimeMemory, RuntimeOpenError,
 };
 pub use slot::{
     IC_MEMORY_AUTHORITY_OWNER, IC_MEMORY_LEDGER_STABLE_KEY, IC_MEMORY_STABLE_KEY_PREFIX,

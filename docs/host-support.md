@@ -132,7 +132,7 @@ already tracked by Git. Adopt new locks through an explicitly authorized commit
 or PR before the real-checkout declaration/release gate can pass; qualification
 alone does not authorize staging them.
 
-Installed runtime qualification uses the published `ic-testkit` 0.69.0 server CLI
+Installed runtime qualification uses the published `ic-testkit` 0.69.3 server CLI
 selected in the root Makefile, installed through Shared Tooling's exact Cargo
 binary installer. It has a separate locked registry tool graph, outside both
 Memory lockfiles. Prepare it and Testkit's authenticated server selection explicitly:
@@ -154,7 +154,7 @@ Wasm, input hashes and all optimizer/server/runtime logs remain under
 `target/qualification/runtime/`, including failures. Normal library builds and
 their Wasm budgets remain unoptimized. The runner consumes
 `IC_TESTKIT_POCKET_IC_URL`; it never downloads or
-spawns a server. IC Platform 0.2's native PocketIC boundary supplies the locked
+spawns a server. IC Platform 0.7.1's native PocketIC boundary supplies the locked
 16.1.0 client; Testkit selects server 16.1.0. This pairing requires installed
 IO/upgrade qualification on Linux and both macOS hosts, supplied by the separate
 runtime CI jobs. Historical 16.0.0 client/server results remain scoped to their
@@ -171,7 +171,7 @@ replaying Memory's IO suite or the release optimizer matrix:
 cargo +1.91.0 build -p ic-storage --locked --offline --profile wasm-size \
   --target wasm32-unknown-unknown --example wasm-storage-qualification
 testkit_cli="$(RUSTUP_TOOLCHAIN=1.99.1 bash scripts/dev/install-rust-tools.sh \
-  --consumer "$PWD" --package ic-testkit --version 0.69.0 \
+  --consumer "$PWD" --package ic-testkit --version 0.69.3 \
   --bin ic-testkit-server --profile release --features cli --check)"
 IC_STORAGE_QUALIFICATION_WASM="$PWD/target/wasm32-unknown-unknown/wasm-size/examples/wasm_storage_qualification.wasm" \
   "$testkit_cli" run --directory "$PWD/.tools/ic-testkit-server" --ttl 900 -- \
@@ -184,6 +184,16 @@ IC_STORAGE_QUALIFICATION_WASM="$PWD/target/wasm32-unknown-unknown/wasm-size/exam
 Retain the supplied Wasm, source hashes and Testkit server/test output with the
 task's qualification evidence. The ignored test requires explicit server URL and
 fixture inputs; ordinary tests never prepare or start a server.
+
+For backing-custody changes, build the `ic-memory` example
+`wasm-io-qualification` for the same Wasm target/profile and pass its artifact as
+`IC_MEMORY_QUALIFICATION_WASM`. Through the same prepared Testkit `run` command,
+select `ownership::tests::installed_backing_custody -- --ignored --nocapture`.
+This qualifies two same-canister participants, duplicate default-backing refusal,
+handles retained after runtime drop, final-lease release and upgrade reopening.
+The normal installed runner includes this proof alongside its existing IO and
+Storage qualification. Custom host backings must implement `MemoryBacking` with
+one consistent physical identity; generic `Memory` alone is insufficient.
 
 `make cloc` reports the root library workspace by default using locked, offline
 Cargo metadata; it neither builds nor installs tools. Select the independent

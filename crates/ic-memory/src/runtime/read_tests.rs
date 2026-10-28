@@ -84,6 +84,11 @@ struct ObservedMemory {
     writes: Cell<usize>,
     grows: Cell<usize>,
 }
+impl crate::MemoryBacking for ObservedMemory {
+    fn backing_identity(&self) -> crate::BackingIdentity {
+        self.memory.backing_identity()
+    }
+}
 
 impl Memory for ObservedMemory {
     fn size(&self) -> u64 {
@@ -156,7 +161,7 @@ fn safe_and_uninitialized_reads_reach_specialized_backing_without_effects() {
     let mut initialized = [0xA5; 4];
     memory.read(7, &mut initialized);
     assert_eq!(initialized, [11, 22, 33, 44]);
-    assert_eq!(backing.safe_reads.get(), safe_reads_before);
+    assert_eq!(backing.safe_reads.get(), safe_reads_before + 2);
     assert_eq!(*backing.unsafe_reads.borrow(), [(PAGE + 7, 4); 2]);
     assert_eq!(
         (backing.writes.get(), backing.grows.get(), backing.size()),
@@ -223,6 +228,11 @@ fn uninitialized_reads_translate_discontiguous_buckets_and_partial_failures() {
 #[test]
 fn default_read_unsafe_and_lease_support_borrowed_nonclone_backing() {
     struct DefaultOnly<'a>(&'a VectorMemory);
+    impl crate::MemoryBacking for DefaultOnly<'_> {
+        fn backing_identity(&self) -> crate::BackingIdentity {
+            self.0.backing_identity()
+        }
+    }
     impl Memory for DefaultOnly<'_> {
         fn size(&self) -> u64 {
             self.0.size()
@@ -334,6 +344,11 @@ fn byte_io_crosses_four_gib_with_discontiguous_buckets() {
         pages: Cell<u64>,
         header: VectorMemory,
         bytes: RefCell<std::collections::BTreeMap<u64, u8>>,
+    }
+    impl crate::MemoryBacking for Sparse {
+        fn backing_identity(&self) -> crate::BackingIdentity {
+            self.header.backing_identity()
+        }
     }
     impl Memory for Sparse {
         fn size(&self) -> u64 {

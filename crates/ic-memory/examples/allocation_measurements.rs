@@ -3,8 +3,48 @@ use ic_memory::{
     GenericAllocationPolicy, MemoryAllocations, MemoryManagerConfig, MemoryRuntime, RuntimeMemory,
 };
 use ic_platform::stable_structures::{Cell, Memory, Vec as StableVec};
-use ic_testkit_native::memory::{MemoryIoCounts, MeteredMemory};
+use ic_testkit_native::memory::{MemoryIoCounts, MeteredMemory as IoMeter};
 use std::{hint::black_box, time::Instant};
+
+// Host-owned instrumentation adapter: identity follows the physical backing,
+// including across independent meter wrappers over the same VectorMemory.
+#[derive(Clone, Default)]
+struct MeteredMemory(IoMeter);
+impl std::ops::Deref for MeteredMemory {
+    type Target = IoMeter;
+    fn deref(&self) -> &IoMeter {
+        &self.0
+    }
+}
+impl ic_memory::MemoryBacking for MeteredMemory {
+    fn backing_identity(&self) -> ic_memory::BackingIdentity {
+        ic_memory::MemoryBacking::backing_identity(self.0.backing())
+    }
+}
+impl Memory for MeteredMemory {
+    fn size(&self) -> u64 {
+        self.0.size()
+    }
+    fn grow(&self, pages: u64) -> i64 {
+        self.0.grow(pages)
+    }
+    fn read(&self, offset: u64, dst: &mut [u8]) {
+        self.0.read(offset, dst);
+    }
+    fn write(&self, offset: u64, src: &[u8]) {
+        self.0.write(offset, src);
+    }
+    #[expect(
+        unsafe_code,
+        reason = "preserve the metered backing's raw-read contract"
+    )]
+    unsafe fn read_unsafe(&self, offset: u64, dst: *mut u8, count: usize) {
+        // SAFETY: The caller's separate valid destination is forwarded unchanged.
+        unsafe {
+            self.0.read_unsafe(offset, dst, count);
+        }
+    }
+}
 
 fn record(
     bucket: u16,

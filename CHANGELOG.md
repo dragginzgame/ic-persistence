@@ -1,5 +1,24 @@
 # Changelog
 
+## [0.52.0] - Unreleased
+
+### ⚠️ Breaking
+
+- Require backing identity at the Memory host boundary and reject duplicate
+  runtimes while any allocation handle remains live. Custom backings must
+  implement `MemoryBacking`; standard VectorMemory and canister backings are
+  supported directly. Stale manager metadata refuses access without repair.
+  Existing MGR/cell/ledger bytes remain unchanged.
+  [#137 — Fail closed when multiple memory runtimes alias one stable backing](https://github.com/dragginzgame/ic-persistence/issues/137).
+  [Details](docs/changelog/0.52.md#0520---unreleased).
+
+### 🔧 Changed
+
+- Adopt IC Platform 0.7.1 in both dependency graphs and IC Tooling 0.69.4 in
+  native dependencies, with separately selected Build/Testkit 0.69.3 CLIs. Stored formats,
+  PocketIC selection and Rust support remain unchanged.
+  [Details](docs/changelog/0.52.md#0520---unreleased).
+
 ## [0.51.13] - 2026-10-27
 
 ### 🩹 Fixed

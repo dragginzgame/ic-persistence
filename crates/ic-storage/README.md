@@ -34,7 +34,9 @@ arbitrary collection-memory implementation. Allocation authority, IDs and runtim
 bootstrap belong to IC Memory. A live lease prevents another open of the same
 allocation through its runtime until the collection is dropped. A log consumes
 two distinct leases. Hosts retain exclusive backing custody across runtimes;
-lease tracking does not coordinate independent runtimes over aliased backing.
+Memory's backing claim rejects independent runtimes over the same identified
+backing until all runtime/collection handles drop. Custom hosts must uphold
+`ic_memory::MemoryBacking`; raw aliased access remains prohibited.
 
 ```compile_fail
 use ic_memory::VectorMemory;

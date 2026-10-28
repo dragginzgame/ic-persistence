@@ -1,78 +1,85 @@
 # Current handoff
 
-The released baseline is 0.51.12 at `41a04886ec29546e04fcec759821d5f818fd64ab`.
-Memory and Storage 0.51.12 are published on crates.io, not yanked, and declare
-Rust 1.91.0. Storage selects Memory `^0.51.12`. The singleton loader requested by
-[#136 — Provide non-initializing StableCell loading for Blob singleton journals](https://github.com/dragginzgame/ic-persistence/issues/136)
-is available to downstream consumers. Blob retains its own gateway, fence, sync,
-callback and retained-state qualification; no Blob migration/reset ran here.
+The released baseline is 0.51.13 at `3acffe19c7d2dc1c2bf70dc03313df95accebd91`.
+[Its CI](https://github.com/dragginzgame/ic-persistence/actions/runs/40557536879)
+passed all 10 jobs. Formatter #135 and singleton-loader #136 are closed with that
+source/native/MSRV/installed evidence. Those runs do not qualify pending edits.
 
-The pending compatible 0.51.13 batch repairs the remaining native CI fixture for
-[#135 — Adopt shared formatter orchestration without dropping package-consumer formatting](https://github.com/dragginzgame/ic-persistence/issues/135).
-Only the consumer test script, notes and handoff are edited. Package versions
-remain 0.51.12; selected dependencies, both lockfiles, product APIs and stored
-bytes are unchanged. The changes are uncommitted and the index remains untouched.
-See [pending notes](../changelog/0.51.md#05113---unreleased).
+## Pending 0.52.0 backing-custody repair
 
-## Live acceptance
+[#137 — Fail closed when multiple memory runtimes alias one stable backing](https://github.com/dragginzgame/ic-persistence/issues/137)
+has a locally implemented and qualified supplier fix. It is uncommitted; package
+versions remain 0.51.13 and the index is untouched. The former unpublished
+0.51.14 dependency notes are consolidated into the breaking 0.52.0 candidate.
+See [current notes](../changelog/0.52.md#0520---unreleased).
 
-[CI for the delivered source](https://github.com/dragginzgame/ic-persistence/actions/runs/40552091313)
-passes the Linux native gate, tooling lint, all three MSRV jobs and installed
-runtime qualification on Linux, Apple Silicon and Intel macOS, including
-original and optimized Wasm.
-The Make 3.81 parsing failure from 0.51.11 is resolved.
+Runtime constructors require `MemoryBacking`. Standard VectorMemory and default
+canister backings identify aliases automatically; custom/foreign wrappers must
+provide a consistent underlying identity. Borrowed, non-Clone, non-Send/non-Sync
+hosts remain supported. Process-local claims refuse duplicate runtimes before
+backing IO and live through the final detached allocation/collection handle.
+Native claims coordinate across threads. Constructors release claims on errors
+and ordinary unwind; forgotten owners stay occupied.
 
-Both macOS native jobs now reach the formatter's compiler-selection fixture and
-fail in `test_jobserver_handoff`. The environment-only case expands an empty
-argument array under Bash 3.2 `set -u`, producing `compiler_arguments[@]: unbound
-variable` in its redirected case log. Linux's newer Bash does not reject that
-expansion. The native gate still needs to pass on the repaired delivered source
-before acceptance closes; the owning issues retain this qualification boundary.
+A single metadata authority owns the exact expected MGR V1 image and live growth
+count. Size, valid IO, opens and growth compare persisted metadata before cached
+translations are used. Only successful owned growth projects expected edits;
+foreign count, same-count extent, table or unused-entry changes poison the owner.
+No foreign image is silently adopted. Invalid IO still refuses before backing
+access; diagnostic reports retain their two bounded metadata reads. Existing
+MGR/cell/ledger bytes and numeric limits are unchanged; no reset/migration is added.
 
-## Current repair and focused evidence
+Raw aliases/unmanaged managers remain prohibited, including over excluded IDs.
+Claims require one Memory crate identity and truthful host backing identity;
+checks do not provide atomicity against arbitrary raw writes, cross-process
+custody or separately linked Memory copies. The linked Canic #527/PR #595,
+IcyDB PR #376 and IC Crates PR #7 were reviewed read-only. Their committed-runtime
+handoff work is complementary and was not duplicated or edited here.
 
-The fixture uses the repository's guarded empty-array expansion idiom, preserving
-the distinction between environment-only and command-line compiler callers. All
-five formatting passes still have to use the selected validation compiler.
-Failure diagnostics now print compiler case logs alongside retaining the complete
-fixture. The shared snapshot and formatter itself are untouched.
+## Qualification and cost
 
-Evidence is retained at `/tmp/ic-persistence-issue-135-bash32/`:
+Evidence is retained at `/tmp/ic-persistence-issue-137/`, with source/lock/Wasm
+hashes, initial propagation diagnostics, original/final installed logs and exact
+Rust 1.91 Memory/Storage artifacts. Final locked offline qualification passes:
 
-- GNU Bash 3.2 built from GNU's original source reproduces the exact empty-array
-  failure in the unmodified delivered harness (`before-harness.log` and retained
-  `before-harness-fixtures/*/jobserver/compiler-environment.log`).
-- The repaired consumer adapter fixture passes with that Bash 3.2 harness and
-  GNU Make 3.81 (`after-harness.log`), including compiler selection, pass order,
-  jobserver handoff, failure evidence and substituted release/Git effects.
-  Child scripts use the installed host Bash: this is a focused shell/parser
-  proof on Linux, not a fresh native macOS result.
-- The same fixture passes with the installed Bash 5 and GNU Make 4.3
-  (`after-bash5-make43.log`). Bash syntax, ShellCheck, documentation links and
-  diff checks pass. Source/archive hashes and publication observations are
-  retained with the logs. No broad Rust suite was rerun for this test-only fix.
+- 68 Memory runtime tests, 5 public runtime integration tests, 17 Storage adapter
+  tests and 28 Metrics Stable tests. Six custody cases also execute on Rust 1.91.
+- Native all-target Clippy for all affected packages, actual Wasm library/example
+  Clippy, and independent harness/test Clippy, with warnings denied; 3 doctests.
+- Rust 1.91 builds both installed Wasm fixtures. The original-Wasm runner passes
+  Memory IO bounds/traps and upgrade rollback, Storage restoration, and actual
+  same-canister custody/composition. Three manager corruption modes trap before
+  cached reads and roll back the preceding valid payload write. Runtime drop,
+  retained handles, final-lease release and upgrade reopen preserve markers/pages.
+- Raw Wasm budgets pass: core 248939/260000, diagnostics 259744/315000,
+  admission 252785/264000 and runtime integration 255990/270000 bytes.
+- Production singleton/declaration checks, formatting, doc links and diff checks.
 
-Temporary GNU shell/Make sources and build attempts remain retained. Bash 3.2.57
-source could not build without regenerating its stale distributed parser; the
-original Bash 3.2 source supplies the bounded harness proof. No system shell,
-selected tool pin or installed tool-store selection was changed.
+The integrity boundary adds one full 34,848-byte metadata read per valid size/IO
+check; successful growth verifies before/after. Word comparison reduces the
+initial hardened Wasm implementation's sampled 1000 single-byte IO cost from
+about 976M to 192M instructions (about 80%), without omitting bytes. This is not
+a speed-up over the released unchecked path: added stable IO remains a material
+cost. Native comparison uses the optimized host slice comparator, including in
+debug tests. Host/application budgets must account for the added checks.
 
-Earlier cell-loader native/MSRV/Wasm proof remains at
-`/tmp/ic-persistence-issue-136/`; earlier Make 3.81 proof remains at
-`/tmp/ic-persistence-issue-135-make381/`. The
-[released handoff](https://github.com/dragginzgame/ic-persistence/blob/41a04886ec29546e04fcec759821d5f818fd64ab/docs/status/current.md)
-retains their original commands, source identities and scope. The current hosted
-runtime results add all-host installed qualification without relabelling those
-older local runs.
+This is local Linux/native and installed PocketIC 16.1.0 qualification. No full
+release gate, Binaryen optimization matrix or fresh macOS CI was run. Delivery
+and final applicable native acceptance remain separate; no release/publication
+or deployment was invoked. The issue remains open for delivery and acceptance.
 
-## Delivery boundary
+## Preserved dependency work
 
-Deliver the fixture repair, then verify the applicable native CI matrix before
-closing acceptance. No CI rerun, commit, tag, push, release, publication or Blob
-change ran in this continuation. Issue descriptions record the delivered source,
-published API and remaining native gate. Shared Tooling remains 0.26.26 at
-`5683060a5d8ce79af2fcfedb53b3eb24037fd064`; the reviewed
-[adoption boundaries](../shared-tooling-adoption.md) remain active.
+The earlier adoption selects Platform 0.7.1 in both catalogs, Tooling 0.69.3
+compatible minimums, separately prepared Build/Testkit 0.69.3 CLIs and Metrics
+0.16.3. The library lock advanced externally from Tooling 0.69.3 to 0.69.4 during
+this task. Its bytes are preserved in `concurrent-Cargo.lock`; cache preparation
+and final native lint/tests/MSRV checks use that selection. Both original and
+concurrent lock observations remain retained. The independent lock is unchanged
+from task entry; source/features, stable-structures 0.7.2 and PocketIC pairing
+remain selected. Shared Tooling remains reviewed 0.26.26 at
+`5683060a5d8ce79af2fcfedb53b3eb24037fd064`. Earlier dependency proof remains at
+`/tmp/ic-persistence-deps-20261028/`; it is not relabelled as new-source evidence.
 
 ## Retained evidence and recovery
 

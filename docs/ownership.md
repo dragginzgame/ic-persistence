@@ -15,13 +15,18 @@ modules are private. There is no implicit library singleton or lifecycle hook.
 | Capability | Canonical Memory implementation / interface |
 | --- | --- |
 | Stable keys, requests and host namespace grants/exclusions | `StableKey`, `MemoryRequest`, `SealedDeclarationSnapshot`, `MemoryAllocationPool` |
-| Backing ownership and committed allocation leases | `MemoryRuntime`, `RuntimeMemory`, `MemoryManagerConfig` |
+| Backing identity/custody and committed allocation leases | `MemoryBacking`, `BackingIdentity`, `MemoryRuntime`, `RuntimeMemory`, `MemoryManagerConfig` |
 | Host application checks and recovered-store admission | `RuntimeBootstrapPolicy`, `PolicyIdentity`, `BootstrapAdmission` |
 | Read-only allocation and recovery facts | runtime diagnostics and allocation reports |
 | Passive DTOs, raw images, bounded fixture Cells and fixture bootstrap | feature-gated `ic_memory::testing` |
 
 The host composes declarations and one pool, chooses policy and backing geometry,
 bootstraps one runtime, then shares that runtime or transfers its opened handles.
+Memory owns ephemeral backing claims through the final detached handle. Custom
+backings identify their physical aliases at the host boundary; one Memory crate
+identity coordinates cooperating runtimes. The complete bounded MGR image is
+checked before cached data access, and only owned successful growth projects
+expected edits. Raw manager/IO aliases are prohibited even for excluded IDs.
 Component verification checks its requirements against committed host authority;
 it does not choose another pool, rerun host admission or construct another manager.
 Exact warm host verification is a separate check of the complete bootstrap binding.

@@ -8,6 +8,9 @@ impl<M: Memory> MemoryRuntime<M> {
         if !self.is_bootstrapped() {
             return Err(RuntimeDiagnosticError::NotBootstrapped);
         }
+        self.growth
+            .verify()
+            .map_err(super::RuntimeConstructionError::from)?;
         let recovered = self.ledger_record_from_memory()?.recover()?;
         Ok(self.recovered_diagnostic_export(recovered))
     }
@@ -19,6 +22,9 @@ impl<M: Memory> MemoryRuntime<M> {
     pub fn commit_recovery_diagnostic(
         &self,
     ) -> Result<CommitSnapshotDiagnostic, RuntimeDiagnosticError> {
+        self.growth
+            .verify()
+            .map_err(super::RuntimeConstructionError::from)?;
         let record = self.ledger_record_from_memory()?;
         Ok(record.diagnostic())
     }

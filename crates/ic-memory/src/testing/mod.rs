@@ -137,7 +137,10 @@ impl<M: Memory> FixtureCell<M> {
         stable_key: &str,
         config: MemoryManagerConfig,
         maximum: usize,
-    ) -> Result<Self, FixtureCellError> {
+    ) -> Result<Self, FixtureCellError>
+    where
+        M: crate::MemoryBacking,
+    {
         let memory = Self::open_memory(memory, owner, namespace, stable_key, config)?;
         if memory.size() > 0 {
             return Err(FixtureCellError::Occupied);
@@ -161,7 +164,10 @@ impl<M: Memory> FixtureCell<M> {
         stable_key: &str,
         config: MemoryManagerConfig,
         maximum: usize,
-    ) -> Result<Self, FixtureCellError> {
+    ) -> Result<Self, FixtureCellError>
+    where
+        M: crate::MemoryBacking,
+    {
         if memory.size() == 0 {
             return Err(crate::StableCellPayloadError::NotStableCell.into());
         }
@@ -176,7 +182,10 @@ impl<M: Memory> FixtureCell<M> {
         namespace: &str,
         stable_key: &str,
         config: MemoryManagerConfig,
-    ) -> Result<RuntimeMemory<M>, FixtureCellError> {
+    ) -> Result<RuntimeMemory<M>, FixtureCellError>
+    where
+        M: crate::MemoryBacking,
+    {
         let runtime = fixture_runtime(memory, owner, namespace, &[stable_key], config)?;
         Ok(runtime.open_memory(stable_key)?)
     }

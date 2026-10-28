@@ -17,7 +17,9 @@ are opt-in, and focused checks follow the completed coherent edit batch. The
 adopted npm Platform boundary adds no dependency to this Rust-only consumer.
 The refresh adds the canonical Rust formatting driver and updates Make dispatch,
 preserving common tool pins and the installer build-policy identity.
-Consumer-owned Build/Testkit selections are 0.69.0.
+Consumer-owned Build/Testkit selections are 0.69.3. Both dependency catalogs
+select Platform 0.7.1 without enabling its new optional provider/gzip features.
+The stable-structures 0.7.2 substrate and PocketIC 16.1.0 pair remain selected.
 Release 0.50.7 passed the complete native, MSRV and installed-runtime matrix
 on Linux and both macOS architectures; snapshot integrity alone is not acceptance.
 See [the adoption issue](https://github.com/dragginzgame/ic-persistence/issues/127).
@@ -165,7 +167,7 @@ also remains in its focused target. Release notes may use a numbered
 ` - Unreleased` heading, which the shared finalizer dates during preparation.
 
 Shared 0.25.3 binds explicit Cargo feature sets to selected tool installations
-and admission receipts. Build and Testkit 0.69.0 binaries select `--features cli`
+and admission receipts. Build and Testkit 0.69.3 binaries select `--features cli`
 in setup, offline admission and bootstrap calls. Library dependencies retain
 disabled defaults. Prepare the selections with `make install-tools` and
 `make install-runtime-server`; previous installations and failed attempts remain

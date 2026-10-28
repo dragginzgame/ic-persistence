@@ -377,6 +377,7 @@ fn corruption_precedes_admission_and_exhaustion_follows_it_without_commit() {
     let before = backing.borrow().clone();
     for reopen in [false, true] {
         if reopen {
+            drop(runtime);
             runtime = MemoryRuntime::new(backing.clone()).unwrap();
         }
         assert!(matches!(
@@ -395,6 +396,11 @@ fn failed_persistence_retries_admission_without_partial_publication() {
         backing: VectorMemory,
         calls: &'a Counter<usize>,
         refused: Counter<bool>,
+    }
+    impl crate::MemoryBacking for RefuseFirstWrite<'_> {
+        fn backing_identity(&self) -> crate::BackingIdentity {
+            self.backing.backing_identity()
+        }
     }
     impl Memory for RefuseFirstWrite<'_> {
         fn size(&self) -> u64 {
@@ -507,6 +513,7 @@ fn completion_bound_and_retained_selection_preserve_evidence() {
         runtime.memory(MEMORY_MANAGER_LEDGER_ID).unwrap(),
         EncodedLedgerRecord::new(&record).unwrap(),
     );
+    drop(_cell);
     drop(runtime);
     let mut runtime = MemoryRuntime::new(backing).unwrap();
     let policy = AdmissionPolicy {

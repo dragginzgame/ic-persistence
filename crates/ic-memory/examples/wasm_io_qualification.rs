@@ -100,6 +100,73 @@ mod canister {
         bootstrap(arguments::<1>()[0]);
     }
 
+    #[unsafe(export_name = "canister_update composition")]
+    extern "C" fn composition() {
+        // Two independent components use one host runtime. Reconstructing the
+        // default backing is refused even after that owner drops, until both
+        // retained component handles have released custody.
+        let runtime = RUNTIME.with(|slot| slot.borrow_mut().take().unwrap());
+        let generation = runtime.committed_generation().unwrap();
+        let rows = runtime.open_memory(ROWS).unwrap();
+        let neighbor = runtime.open_memory(NEIGHBOR).unwrap();
+        let physical = ic_memory::DefaultMemoryImpl::default().size();
+        let refused = || {
+            assert!(matches!(
+                super::host::Runtime::new(ic_memory::DefaultMemoryImpl::default()),
+                Err(ic_memory::RuntimeConstructionError::BackingAlreadyClaimed)
+            ));
+        };
+        refused();
+        rows.write(0, &[0x42]);
+        neighbor.write(8 * PAGE - 1, &[0x6D]);
+        drop(runtime);
+        refused();
+        let mut marker = [0];
+        rows.read(0, &mut marker);
+        assert_eq!(marker, [0x42]);
+        drop(rows);
+        refused();
+        neighbor.read(8 * PAGE - 1, &mut marker);
+        assert_eq!(marker, [0x6D]);
+        drop(neighbor);
+        bootstrap(0);
+        assert_eq!(
+            with_runtime(|runtime| runtime.committed_generation().unwrap()),
+            generation + 1
+        );
+        assert_eq!(ic_memory::DefaultMemoryImpl::default().size(), physical);
+        reply(&[]);
+    }
+
+    #[unsafe(export_name = "canister_update metadata_fault")]
+    extern "C" fn metadata_fault() {
+        let mode = arguments::<1>()[0];
+        let rows = open_memory(ROWS).unwrap();
+        rows.write(0, &[0xA5]);
+        // Infrastructure-only fault injection over the actual canister backing.
+        // A successful return would expose a missed cached-read refusal.
+        let backing = ic_memory::DefaultMemoryImpl::default();
+        match mode {
+            0 => backing.write(4, &[0, 0]),
+            1 => {
+                let header_prefix = ic_memory::MemoryAllocationSummary::MANAGER_HEADER_BYTES
+                    - u64::from(ic_memory::MemoryAllocationSummary::MEMORIES_MEASURED) * 8;
+                backing.write(
+                    header_prefix + u64::from(memory_id(ROWS).unwrap()) * 8,
+                    &2_u64.to_le_bytes(),
+                );
+            }
+            2 => backing.write(
+                ic_memory::MemoryAllocationSummary::METADATA_BYTES_READ - 1,
+                &[0],
+            ),
+            _ => panic!("unknown metadata fault"),
+        }
+        let mut byte = [0];
+        rows.read(0, &mut byte);
+        reply(&byte);
+    }
+
     #[unsafe(export_name = "canister_query snapshot")]
     extern "C" fn snapshot() {
         let mut bytes = with_runtime(|runtime| runtime.committed_generation().unwrap())

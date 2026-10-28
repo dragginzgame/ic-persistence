@@ -226,7 +226,7 @@ fn foreign_namespace_and_excluded_historical_claims_fail_before_commit() {
 }
 
 #[test]
-fn unmanaged_physical_custody_requires_explicit_host_exclusion() {
+fn retained_physical_slots_require_explicit_host_exclusion() {
     let backing = VectorMemory::default();
     let manager = MemoryManager::init(backing.clone());
     let raw = manager.get(MemoryId::new(30));
@@ -255,6 +255,7 @@ fn unmanaged_physical_custody_requires_explicit_host_exclusion() {
     host.bootstrap(&requests, &excluded, &GenericAllocationPolicy)
         .unwrap();
     assert_eq!(host.memory_id("app.rows.v1"), Ok(10));
+    drop(host);
     let raw = MemoryManager::init(backing).get(MemoryId::new(30));
     let mut bytes = [0; 9];
     raw.read(0, &mut bytes);

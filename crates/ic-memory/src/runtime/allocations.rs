@@ -213,14 +213,18 @@ impl<M: Memory> MemoryRuntime<M> {
         &self,
     ) -> Result<(layout::Layout, MemoryAllocationSummary), RuntimeDiagnosticError> {
         let declarations = self.committed_allocations().ok();
-        let measured = layout::read(self.growth.backing.as_ref())?;
-        let live_buckets = self
+        let authority = self
             .growth
-            .allocated_buckets
+            .authority
             .try_borrow()
             .map_err(|_| RuntimeDiagnosticError::ReentrantAccess)?;
+        let measured =
+            layout::read(self.growth.backing.as_ref()).inspect_err(|_| authority.poison())?;
+        authority
+            .verify_observed(&measured.metadata)
+            .map_err(super::RuntimeConstructionError::from)?;
         if measured.bucket_pages != self.growth.bucket_size_pages
-            || measured.allocated_buckets != *live_buckets
+            || measured.allocated_buckets != authority.allocated_buckets()
         {
             return Err(super::RuntimeConstructionError::Layout(
                 MemoryManagerLayoutError::RuntimeMismatch,

@@ -54,11 +54,96 @@ pub enum MemoryManagerLayoutError {
 }
 
 pub(super) struct Layout {
+    pub metadata: [u8; METADATA_BYTES],
     pub physical_pages: u64,
     pub bucket_pages: u16,
     pub allocated_buckets: u16,
     pub pages: [u64; IDS],
     pub buckets: [u16; IDS],
+}
+
+// Exact expected metadata, never refreshed from foreign mutations. The pinned
+// manager is still the only writer. Growth projects its known header/table
+// edits into this read-only authority before comparing the persisted result.
+pub(super) struct ManagerAuthority {
+    expected: Box<[u8]>,
+    poisoned: std::cell::Cell<bool>,
+}
+
+impl ManagerAuthority {
+    pub fn capture(memory: &impl Memory) -> Self {
+        let mut expected = vec![0; METADATA_BYTES].into_boxed_slice();
+        memory.read(0, &mut expected);
+        Self {
+            expected,
+            poisoned: std::cell::Cell::new(false),
+        }
+    }
+
+    pub fn allocated_buckets(&self) -> u16 {
+        u16::from_le_bytes([self.expected[4], self.expected[5]])
+    }
+
+    pub fn verify(&self, memory: &impl Memory) -> Result<(), MemoryManagerLayoutError> {
+        if self.poisoned.get() {
+            return Err(MemoryManagerLayoutError::RuntimeMismatch);
+        }
+        #[expect(
+            clippy::large_stack_arrays,
+            reason = "fixed manager metadata bound, no payload reads or heap allocation"
+        )]
+        let mut actual = [0; METADATA_BYTES];
+        let required_pages = 1 + u64::from(self.allocated_buckets())
+            * u64::from(u16::from_le_bytes([self.expected[6], self.expected[7]]));
+        if memory.size() < required_pages {
+            self.poisoned.set(true);
+            return Err(MemoryManagerLayoutError::RuntimeMismatch);
+        }
+        memory.read(0, &mut actual);
+        self.verify_observed(&actual)
+    }
+
+    pub fn poison(&self) {
+        self.poisoned.set(true);
+    }
+
+    pub fn verify_observed(&self, actual: &[u8]) -> Result<(), MemoryManagerLayoutError> {
+        // MGR V1's complete 34848-byte image is an exact number of words.
+        // Explicit word comparison avoids Wasm's byte-at-a-time memcmp while
+        // preserving every byte of the admission boundary, including unused IDs.
+        #[cfg(target_arch = "wasm32")]
+        let matches = {
+            let (actual_words, actual_tail) = actual.as_chunks::<8>();
+            let (expected_words, expected_tail) = self.expected.as_chunks::<8>();
+            actual.len() == METADATA_BYTES
+                && self.expected.len() == METADATA_BYTES
+                && actual_tail.is_empty()
+                && expected_tail.is_empty()
+                && actual_words
+                    .iter()
+                    .zip(expected_words)
+                    .all(|(actual, expected)| {
+                        u64::from_le_bytes(*actual) == u64::from_le_bytes(*expected)
+                    })
+        };
+        // Native slice equality uses the optimized host comparator, including
+        // in debug test builds. Both paths compare the complete exact image.
+        #[cfg(not(target_arch = "wasm32"))]
+        let matches = actual.len() == METADATA_BYTES && actual == self.expected.as_ref();
+        if self.poisoned.get() || !matches {
+            self.poisoned.set(true);
+            return Err(MemoryManagerLayoutError::RuntimeMismatch);
+        }
+        Ok(())
+    }
+
+    pub fn record_growth(&mut self, id: u8, pages: u64, allocated: u16) {
+        let old = usize::from(self.allocated_buckets());
+        self.expected[HEADER_BYTES + old..HEADER_BYTES + usize::from(allocated)].fill(id);
+        self.expected[4..6].copy_from_slice(&allocated.to_le_bytes());
+        let offset = 40 + usize::from(id) * 8;
+        self.expected[offset..offset + 8].copy_from_slice(&pages.to_le_bytes());
+    }
 }
 
 pub(super) fn read<M: Memory>(memory: &M) -> Result<Layout, RuntimeConstructionError> {
@@ -77,8 +162,13 @@ pub(super) fn read<M: Memory>(memory: &M) -> Result<Layout, RuntimeConstructionE
         }
         .into());
     }
-    let mut header = [0; HEADER_BYTES];
-    memory.read(0, &mut header);
+    #[expect(
+        clippy::large_stack_arrays,
+        reason = "bounded manager image is also the diagnostic authority observation"
+    )]
+    let mut metadata = [0; METADATA_BYTES];
+    let (header, table) = metadata.split_at_mut(HEADER_BYTES);
+    memory.read(0, header);
     let observed_magic = [header[0], header[1], header[2]];
     if observed_magic != *b"MGR" {
         return Err(RuntimeConstructionError::ForeignMemory { observed_magic });
@@ -112,12 +202,7 @@ pub(super) fn read<M: Memory>(memory: &M) -> Result<Layout, RuntimeConstructionE
         .into());
     }
     // Fixed local buffer and read bound, independent of physical size/history.
-    #[expect(
-        clippy::large_stack_arrays,
-        reason = "bounded 32 KiB table avoids heap work without extra stable reads"
-    )]
-    let mut table = [0; BUCKETS];
-    memory.read(HEADER_BYTES as u64, &mut table);
+    memory.read(HEADER_BYTES as u64, table);
     let mut buckets = [0_u16; IDS];
     for (index, id) in (0_u16..32_768).zip(table.iter().copied()) {
         if (index < allocated_buckets) != (id != 255) {
@@ -136,6 +221,7 @@ pub(super) fn read<M: Memory>(memory: &M) -> Result<Layout, RuntimeConstructionE
         }
     }
     Ok(Layout {
+        metadata,
         physical_pages,
         bucket_pages,
         allocated_buckets,
