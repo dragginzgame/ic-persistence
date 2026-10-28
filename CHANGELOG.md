@@ -19,6 +19,12 @@
   PocketIC selection and Rust support remain unchanged.
   [Details](docs/changelog/0.52.md#0520---unreleased).
 
+### 🧪 Testing
+
+- Reopen retained-cell fixtures only after releasing their old lease, and cover
+  duplicate setup refusal while either a cell or detached handle remains live.
+  [Details](docs/changelog/0.52.md#0520---unreleased).
+
 ## [0.51.13] - 2026-10-27
 
 ### 🩹 Fixed

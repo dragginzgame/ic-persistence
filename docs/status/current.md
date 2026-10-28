@@ -8,8 +8,8 @@ source/native/MSRV/installed evidence. Those runs do not qualify pending edits.
 ## Pending 0.52.0 backing-custody repair
 
 [#137 — Fail closed when multiple memory runtimes alias one stable backing](https://github.com/dragginzgame/ic-persistence/issues/137)
-has a locally implemented and qualified supplier fix. It is uncommitted; package
-versions remain 0.51.13 and the index is untouched. The former unpublished
+has a supplier fix committed at `01b3ebf15f10df0a0ab6c73fd3518c273f4d64b3`.
+Package versions remain 0.51.13; 0.52.0 is the pending release. The former unpublished
 0.51.14 dependency notes are consolidated into the breaking 0.52.0 candidate.
 See [current notes](../changelog/0.52.md#0520---unreleased).
 
@@ -63,10 +63,21 @@ a speed-up over the released unchecked path: added stable IO remains a material
 cost. Native comparison uses the optimized host slice comparator, including in
 debug tests. Host/application budgets must account for the added checks.
 
-This is local Linux/native and installed PocketIC 16.1.0 qualification. No full
-release gate, Binaryen optimization matrix or fresh macOS CI was run. Delivery
-and final applicable native acceptance remain separate; no release/publication
-or deployment was invoked. The issue remains open for delivery and acceptance.
+This is local Linux/native and installed PocketIC 16.1.0 qualification. No
+Binaryen optimization matrix or fresh macOS CI was run. Delivery and final
+applicable native acceptance remain separate.
+
+The maintainer's `release-minor` attempt failed at three retained-cell fixture
+tests: old handles still held backing custody, masking the intended payload
+errors. The local test repair releases each old lease before reopening, preserves
+the cell-byte assertions, and separately covers duplicate setup with live cells
+and detached handles. All 16 fixture tests, test-support Clippy with warnings
+denied and Wasm library checks pass on Rust 1.99.1, locked and offline. Production
+code and lockfiles are unchanged. These test/docs edits remain uncommitted and
+unstaged; the release was not resumed. The failed full-gate log remains at
+`target/release-validation/attempts/verify.qgsddi`; focused repair logs and a copy
+of that log are at `/tmp/ic-persistence-fixture-custody-fix/`. Preserve release
+recovery state for the maintainer's retry.
 
 ## Preserved dependency work
 

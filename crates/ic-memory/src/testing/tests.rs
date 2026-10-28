@@ -4,6 +4,19 @@ use crate::{
     SealedDeclarationSnapshot, VectorMemory,
 };
 
+// Inspect retained cell bytes through a fresh governed lease after the previous
+// fixture/handle has released its backing claim. No cell decoder or reset runs.
+fn reopened_memory(
+    backing: VectorMemory,
+    stable_key: &str,
+    config: MemoryManagerConfig,
+) -> RuntimeMemory<VectorMemory> {
+    fixture_runtime(backing, "fixture", "fixture.", &[stable_key], config)
+        .unwrap()
+        .open_memory(stable_key)
+        .unwrap()
+}
+
 #[test]
 fn cell_keeps_existing_runtime_bytes_and_bucket_configuration() {
     let backing = VectorMemory::default();
@@ -194,8 +207,9 @@ fn fallible_setup_refuses_non_cell_history_without_replacing_its_header() {
     memory.write(0, b"NOT\x01");
     let mut before = [0; crate::STABLE_CELL_HEADER_SIZE];
     memory.read(0, &mut before);
+    drop(memory);
     let refused = FixtureCell::open_bounded(
-        backing,
+        backing.clone(),
         "fixture",
         "fixture.",
         "fixture.jobs.v1",
@@ -208,6 +222,7 @@ fn fallible_setup_refuses_non_cell_history_without_replacing_its_header() {
             crate::StableCellPayloadError::NotStableCell
         ))
     ));
+    let memory = reopened_memory(backing, "fixture.jobs.v1", config);
     let mut after = [0; crate::STABLE_CELL_HEADER_SIZE];
     memory.read(0, &mut after);
     assert_eq!(after, before);
@@ -240,6 +255,7 @@ fn bounded_cell_preserves_history_and_refuses_overwrites_or_oversized_writes() {
     let memory = cell.into_memory();
     let mut payload_before = vec![0; 16_384 + crate::STABLE_CELL_HEADER_SIZE];
     memory.read(0, &mut payload_before);
+    drop(memory);
     assert!(matches!(
         FixtureCell::create_bounded(
             backing.clone(),
@@ -264,9 +280,11 @@ fn bounded_cell_preserves_history_and_refuses_overwrites_or_oversized_writes() {
             crate::StableCellPayloadError::TooLarge { value_len: 16_384 }
         ))
     ));
+    let memory = reopened_memory(backing.clone(), "fixture.consumer.v1", config);
     let mut payload_after = vec![0; payload_before.len()];
     memory.read(0, &mut payload_after);
     assert_eq!(payload_after, payload_before);
+    drop(memory);
     let mut reopened = FixtureCell::open_bounded(
         backing.clone(),
         "fixture",
@@ -319,7 +337,7 @@ fn bounded_open_refuses_missing_and_malformed_history_without_replacement() {
         16_384,
     )
     .unwrap();
-    let memory = cell.into_memory();
+    let mut memory = cell.into_memory();
     // Assert each malformed header survives exactly, including impossible lengths.
     for header in [
         *b"BAD\x01\x00\x00\x00\x00",
@@ -327,6 +345,7 @@ fn bounded_open_refuses_missing_and_malformed_history_without_replacement() {
         *b"SCL\x01\xff\xff\xff\xff",
     ] {
         memory.write(0, &header);
+        drop(memory);
         assert!(matches!(
             FixtureCell::open_bounded(
                 backing.clone(),
@@ -338,10 +357,73 @@ fn bounded_open_refuses_missing_and_malformed_history_without_replacement() {
             ),
             Err(FixtureCellError::Payload(_))
         ));
+        memory = reopened_memory(backing.clone(), "fixture.consumer.v1", config);
         let mut after = [0; crate::STABLE_CELL_HEADER_SIZE];
         memory.read(0, &mut after);
         assert_eq!(after, header);
     }
+}
+
+#[test]
+fn fixture_cells_and_detached_handles_refuse_duplicate_setup_without_writes() {
+    let backing = VectorMemory::default();
+    let config = MemoryManagerConfig::new(16).unwrap();
+    let mut cell = FixtureCell::create_bounded(
+        backing.clone(),
+        "fixture",
+        "fixture.",
+        "fixture.custody.v1",
+        config,
+        64,
+    )
+    .unwrap();
+    cell.try_set(vec![42]).unwrap();
+    let before = backing.borrow().clone();
+    let refuse_duplicate = || {
+        for result in [
+            FixtureCell::create_bounded(
+                backing.clone(),
+                "fixture",
+                "fixture.",
+                "fixture.custody.v1",
+                config,
+                64,
+            ),
+            FixtureCell::open_bounded(
+                backing.clone(),
+                "fixture",
+                "fixture.",
+                "fixture.custody.v1",
+                config,
+                64,
+            ),
+        ] {
+            assert!(matches!(
+                result,
+                Err(FixtureCellError::Setup(FixtureRuntimeError::Construction(
+                    crate::RuntimeConstructionError::BackingAlreadyClaimed
+                )))
+            ));
+        }
+        assert!(
+            *backing.borrow() == before,
+            "duplicate setup changed backing bytes"
+        );
+    };
+    refuse_duplicate();
+    let memory = cell.into_memory();
+    refuse_duplicate();
+    drop(memory);
+    let reopened = FixtureCell::open_bounded(
+        backing,
+        "fixture",
+        "fixture.",
+        "fixture.custody.v1",
+        config,
+        64,
+    )
+    .unwrap();
+    assert_eq!(reopened.bytes(), &[42]);
 }
 
 #[test]
