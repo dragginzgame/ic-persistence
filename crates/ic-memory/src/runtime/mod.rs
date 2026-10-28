@@ -373,6 +373,8 @@ impl<M: Memory> MemoryRuntime<M> {
     ///
     /// A second live open returns [`RuntimeOpenError::AlreadyOpen`] without IO.
     /// Dropping the handle, or a collection that owns it, permits reopening.
+    /// A successful new lease validates the complete persisted manager image;
+    /// detected divergence poisons all of this runtime's existing handles.
     pub fn open_memory(&self, stable_key: &str) -> Result<RuntimeMemory<M>, RuntimeOpenError> {
         self.memory(self.memory_id(stable_key)?)
     }

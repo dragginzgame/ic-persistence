@@ -193,9 +193,9 @@ fn refused_application_growth_preserves_bytes_extents_and_retry() {
                 .allocated_buckets,
             0
         );
-        // Zero-grow twice, two refused grows and size verify once each;
+        // Zero-grow twice and two refused grows verify once each;
         // the allocation report keeps its two bounded metadata reads.
-        assert_eq!(backing.reads.get() - reads_before, 7);
+        assert_eq!(backing.reads.get() - reads_before, 6);
         if bucket == u16::MAX {
             continue;
         }

@@ -85,9 +85,7 @@ impl ManagerAuthority {
     }
 
     pub fn verify(&self, memory: &impl Memory) -> Result<(), MemoryManagerLayoutError> {
-        if self.poisoned.get() {
-            return Err(MemoryManagerLayoutError::RuntimeMismatch);
-        }
+        self.check_healthy()?;
         #[expect(
             clippy::large_stack_arrays,
             reason = "fixed manager metadata bound, no payload reads or heap allocation"
@@ -101,6 +99,14 @@ impl ManagerAuthority {
         }
         memory.read(0, &mut actual);
         self.verify_observed(&actual)
+    }
+
+    pub const fn check_healthy(&self) -> Result<(), MemoryManagerLayoutError> {
+        if self.poisoned.get() {
+            Err(MemoryManagerLayoutError::RuntimeMismatch)
+        } else {
+            Ok(())
+        }
     }
 
     pub fn poison(&self) {

@@ -15,7 +15,7 @@ pub(super) fn qualify(pic: &PocketIc) {
         )
     };
     let initial = snapshot();
-    for mode in 0..3 {
+    for mode in 0..6 {
         super::assert_trap(
             pic.update_call(canister, canister, "metadata_fault", vec![mode])
                 .unwrap_err(),
@@ -26,6 +26,9 @@ pub(super) fn qualify(pic: &PocketIc) {
             "manager fault and preceding payload write must roll back"
         );
     }
+    println!(
+        "installed manager checkpoints: six open/growth faults trap, poison old handles and roll back metadata/payload writes"
+    );
     pic.update_call(canister, canister, "composition", Vec::new())
         .unwrap();
     assert_eq!(

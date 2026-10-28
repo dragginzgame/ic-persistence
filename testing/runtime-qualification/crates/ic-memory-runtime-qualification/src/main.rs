@@ -132,9 +132,14 @@ fn main() {
     for operation in 0..3 {
         for (offset, count) in [(7_u64, 1), (65_536, 0), (65_535, 1)] {
             let args = io_request(operation, offset, count);
+            let cycles_before = pic.cycle_balance(canister);
             let reply = pic.update_call(canister, canister, "io", args).unwrap();
+            let cycles = cycles_before
+                .checked_sub(pic.cycle_balance(canister))
+                .expect("measured update must not increase the cycle balance");
             let instructions = io_instructions(&reply);
             println!("valid_io,{operation},{offset},{count},1000,{instructions}");
+            println!("valid_io_cycles,{operation},{offset},{count},1000,{cycles}");
         }
     }
     let final_snapshot = snapshot();

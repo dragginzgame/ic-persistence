@@ -239,18 +239,19 @@ for a foreign memory wrapper. No Clone, Send, Sync or static bound is added.
 Each composition must select one IC Memory crate identity and share one runtime.
 Raw aliases, unmanaged managers and dishonest identity implementations remain
 outside the custody contract. Claims are in-process heap state, not durable
-locks or an isolation boundary against arbitrary linked code. Size, valid IO,
-opens and growth compare the bounded MGR V1 image before using cached state.
+locks or an isolation boundary against arbitrary linked code. Construction,
+initial bootstrap, lease opening and growth validate the bounded MGR V1 image.
 Growth projects only its own expected metadata edits; foreign changes never
 refresh authority. Any detected divergence permanently refuses that owner's
 data access, including same-count extent or bucket-map changes. Drop all owners
 and explicitly reopen validated memory to recover; no bytes are repaired.
-Checks add bounded metadata reads. Invalid IO bounds still refuse before backing
-access, and diagnostic allocation reports reuse their two bounded metadata reads.
-Each valid size/IO check reads the full 34,848-byte manager image; successful
-growth checks before and after mutation. Word-wise comparison reduces CPU cost,
-but this integrity check remains additional stable IO, including for small data
-operations. Hosts should account for it in their instruction and IO budgets.
+Between those boundaries, size and IO trust exclusive custody and use the
+validated cached manager state. They check poisoning and virtual bounds without
+scanning manager metadata. Raw manager changes during a live lease are prohibited
+and are detected at the next full validation boundary, not necessarily the next
+read or write. Each full check reads 34,848 bytes; successful growth checks before
+and after mutation. Diagnostic allocation reports retain their two bounded reads.
+Warm bootstrap-binding verification remains an IO-free check of host authority.
 
 Known keys retain their committed IDs. New requests are sorted by key and take
 the lowest unclaimed ID in the common pool. All retained records, including

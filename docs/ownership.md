@@ -24,9 +24,11 @@ The host composes declarations and one pool, chooses policy and backing geometry
 bootstraps one runtime, then shares that runtime or transfers its opened handles.
 Memory owns ephemeral backing claims through the final detached handle. Custom
 backings identify their physical aliases at the host boundary; one Memory crate
-identity coordinates cooperating runtimes. The complete bounded MGR image is
-checked before cached data access, and only owned successful growth projects
-expected edits. Raw manager/IO aliases are prohibited even for excluded IDs.
+identity coordinates cooperating runtimes. Construction, initial bootstrap,
+lease opening and growth validate the complete bounded MGR image; size and IO
+trust exclusive custody between these checks and still refuse poisoned owners.
+Only owned successful growth projects expected edits. Raw manager/IO aliases
+are prohibited even for excluded IDs; detection occurs at validation boundaries.
 Component verification checks its requirements against committed host authority;
 it does not choose another pool, rerun host admission or construct another manager.
 Exact warm host verification is a separate check of the complete bootstrap binding.

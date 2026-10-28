@@ -32,3 +32,8 @@ directly. `--measure-valid-io` skips the rejection
 and upgrade checks and does not require the Storage fixture; its output alone is not qualification evidence.
 `--help` lists the supported arguments without reading Wasm or contacting the
 server. Unknown and trailing arguments are rejected before runtime setup.
+Measurements retain the `valid_io` instruction rows and additionally report
+`valid_io_cycles` from the actual cycle-balance change around each 1,000-operation
+update. That cycle total includes update admission and lease opening outside
+the inner instruction counter. Corruption qualification exercises both lease
+opening and growth checkpoints and subsequent poisoned-handle refusal.

@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.53.0] - Unreleased
+
+### ⚠️ Breaking
+
+- Trust exclusive backing custody between full manager-validation boundaries.
+  Ordinary size and IO no longer scan metadata; prohibited raw changes are
+  detected at the next construction, initial bootstrap, lease-open or growth
+  check. Bounds, duplicate-owner refusal and sticky poisoning remain enforced.
+  [#137 — Fail closed when multiple memory runtimes alias one stable backing](https://github.com/dragginzgame/ic-persistence/issues/137).
+  [Details](docs/changelog/0.53.md#0530---unreleased).
+
+### 🔧 Changed
+
+- Adopt IC Platform 0.7.3 and IC Tooling 0.69.6, including both helper CLIs.
+  Preserve the selected stable-memory substrate, PocketIC pair and Rust support.
+  [Details](docs/changelog/0.53.md#0530---unreleased).
+
 ## [0.52.1] - 2026-10-28
 
 ### 🔧 Changed

@@ -34,7 +34,8 @@ authorization, or endpoint safety.
 
 - One host-owned runtime manages each backing memory. Hosts must exclude other
   runtimes, managers and raw access to aliased backing until that runtime and
-  all its handles have been dropped. Generic backing aliases are not detectable.
+  all its handles have been dropped. Backing identity detects cooperating runtime
+  aliases; hosts remain responsible for raw aliases and truthful identities.
 - A committed application allocation has at most one live `RuntimeMemory` lease
   within that runtime. Repeated opens refuse with a typed error before IO;
   authority checks and warm bootstrap do not clear outstanding leases.
@@ -42,6 +43,11 @@ authorization, or endpoint safety.
   its lease; dropping it releases the slot, including on construction failure
   or native unwinding. Forgetting a handle does not release it. A detached handle
   retains manager/backing custody after its runtime is dropped.
+- Construction, initial bootstrap, new leases and growth validate persisted
+  manager metadata. Size and IO trust exclusive custody between those boundaries,
+  check virtual bounds and refuse poisoned owners without scanning metadata.
+  Prohibited raw metadata changes need not be detected by the next read/write;
+  the next full validation detects divergence and permanently poisons the owner.
 - Production collection integrations use the governed IC Storage facade. The
   public backing interfaces do not grant permission to create competing managers
   or wrap a lease in an alternate shared mutable route. This is a cooperative

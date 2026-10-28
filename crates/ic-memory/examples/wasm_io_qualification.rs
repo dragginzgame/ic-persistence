@@ -141,12 +141,13 @@ mod canister {
     #[unsafe(export_name = "canister_update metadata_fault")]
     extern "C" fn metadata_fault() {
         let mode = arguments::<1>()[0];
+        assert!(mode < 6);
         let rows = open_memory(ROWS).unwrap();
         rows.write(0, &[0xA5]);
         // Infrastructure-only fault injection over the actual canister backing.
-        // A successful return would expose a missed cached-read refusal.
+        // A successful return would expose a missed checkpoint/poison refusal.
         let backing = ic_memory::DefaultMemoryImpl::default();
-        match mode {
+        match mode % 3 {
             0 => backing.write(4, &[0, 0]),
             1 => {
                 let header_prefix = ic_memory::MemoryAllocationSummary::MANAGER_HEADER_BYTES
@@ -162,6 +163,22 @@ mod canister {
             ),
             _ => panic!("unknown metadata fault"),
         }
+        if mode < 3 {
+            assert!(matches!(
+                open_memory(NEIGHBOR),
+                Err(ic_memory::RuntimeOpenError::Layout(
+                    ic_memory::MemoryManagerLayoutError::RuntimeMismatch
+                ))
+            ));
+        } else {
+            assert!(matches!(
+                rows.grow(0),
+                Err(ic_memory::RuntimeGrowError::Layout(
+                    ic_memory::MemoryManagerLayoutError::RuntimeMismatch
+                ))
+            ));
+        }
+        // The checkpoint has poisoned the owner; even an old handle refuses IO.
         let mut byte = [0];
         rows.read(0, &mut byte);
         reply(&byte);

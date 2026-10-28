@@ -172,88 +172,102 @@ fn failed_construction_and_unwinding_release_the_claim() {
     unsafe_code,
     reason = "exercise refusal with a valid separate raw destination"
 )]
-fn foreign_manager_changes_refuse_before_growth_reads_writes_or_new_leases() {
-    for mode in 0..4 {
-        let backing = VectorMemory::default();
-        let owner = runtime(backing.clone());
-        let a = owner.open_memory(A).unwrap();
-        let b = owner.open_memory(B).unwrap();
-        a.grow(1).unwrap();
-        b.grow(1).unwrap();
-        a.write(17, &[42]);
-        b.write(31, &[99]);
-        let id = owner.memory_id(A).unwrap();
-        let saved = backing.borrow().clone();
-        // Infrastructure fault injection: never a supported production manager.
-        let foreign = MemoryManager::init(backing.clone());
-        match mode {
-            0 => {
-                assert_eq!(foreign.get(MemoryId::new(240)).grow(1), 0);
-            }
-            1 => {
-                assert_eq!(foreign.get(MemoryId::new(id)).grow(1), 1);
-            }
-            2 => {
-                let other = owner.memory_id(B).unwrap();
-                let mut bytes = backing.borrow_mut();
-                let table = &mut bytes[layout::HEADER_BYTES..layout::METADATA_BYTES];
-                let ai = table.iter().position(|value| *value == id).unwrap();
-                let bi = table.iter().position(|value| *value == other).unwrap();
-                table.swap(ai, bi);
-            }
-            _ => {
-                backing.borrow_mut()[layout::METADATA_BYTES - 1] = 0;
-            }
-        }
-        let before = backing.borrow().clone();
-        if mode == 3 {
-            assert!(catch_unwind(AssertUnwindSafe(|| a.read(17, &mut [0]))).is_err());
-        }
-        assert_eq!(
-            a.grow(1),
-            Err(RuntimeGrowError::Layout(
-                MemoryManagerLayoutError::RuntimeMismatch
-            ))
-        );
-        assert!(matches!(
-            owner.open_memory(C),
-            Err(RuntimeOpenError::Layout(
-                MemoryManagerLayoutError::RuntimeMismatch
-            ))
-        ));
-        assert!(catch_unwind(AssertUnwindSafe(|| a.size())).is_err());
-        assert!(catch_unwind(AssertUnwindSafe(|| a.read(17, &mut [0]))).is_err());
-        assert!(catch_unwind(AssertUnwindSafe(|| a.write(17, &[0]))).is_err());
-        let mut destination = [0xA5];
-        assert!(
-            catch_unwind(AssertUnwindSafe(|| {
-                // SAFETY: The single-byte destination remains valid and disjoint.
-                unsafe {
-                    a.read_unsafe(17, destination.as_mut_ptr(), 1);
+fn foreign_manager_changes_poison_at_open_or_growth_before_mutation() {
+    for detect_at_open in [false, true] {
+        for mode in 0..4 {
+            let backing = VectorMemory::default();
+            let owner = runtime(backing.clone());
+            let a = owner.open_memory(A).unwrap();
+            let b = owner.open_memory(B).unwrap();
+            a.grow(1).unwrap();
+            b.grow(1).unwrap();
+            a.write(17, &[42]);
+            b.write(31, &[99]);
+            let id = owner.memory_id(A).unwrap();
+            let saved = backing.borrow().clone();
+            // Infrastructure fault injection: never a supported production manager.
+            let foreign = MemoryManager::init(backing.clone());
+            match mode {
+                0 => {
+                    assert_eq!(foreign.get(MemoryId::new(240)).grow(1), 0);
                 }
-            }))
-            .is_err()
-        );
-        assert_eq!(destination, [0xA5]);
-        assert!(*backing.borrow() == before, "refusal changed bytes");
-        // Restoring the header does not silently rehabilitate a poisoned owner.
-        *backing.borrow_mut() = saved;
-        assert_eq!(
-            a.grow(0),
-            Err(RuntimeGrowError::Layout(
-                MemoryManagerLayoutError::RuntimeMismatch
-            ))
-        );
-        drop(a);
-        drop(b);
-        drop(owner);
-        drop(foreign);
-        let reopened = runtime(backing);
-        let mut byte = [0];
-        reopened.open_memory(A).unwrap().read(17, &mut byte);
-        assert_eq!(byte, [42]);
-        reopened.open_memory(B).unwrap().read(31, &mut byte);
-        assert_eq!(byte, [99]);
+                1 => {
+                    assert_eq!(foreign.get(MemoryId::new(id)).grow(1), 1);
+                }
+                2 => {
+                    let other = owner.memory_id(B).unwrap();
+                    let mut bytes = backing.borrow_mut();
+                    let table = &mut bytes[layout::HEADER_BYTES..layout::METADATA_BYTES];
+                    let ai = table.iter().position(|value| *value == id).unwrap();
+                    let bi = table.iter().position(|value| *value == other).unwrap();
+                    table.swap(ai, bi);
+                }
+                _ => {
+                    backing.borrow_mut()[layout::METADATA_BYTES - 1] = 0;
+                }
+            }
+            let before = backing.borrow().clone();
+            if detect_at_open {
+                assert!(matches!(
+                    owner.open_memory(C),
+                    Err(RuntimeOpenError::Layout(
+                        MemoryManagerLayoutError::RuntimeMismatch
+                    ))
+                ));
+            } else {
+                assert_eq!(
+                    a.grow(0),
+                    Err(RuntimeGrowError::Layout(
+                        MemoryManagerLayoutError::RuntimeMismatch
+                    ))
+                );
+            }
+            assert_eq!(
+                a.grow(1),
+                Err(RuntimeGrowError::Layout(
+                    MemoryManagerLayoutError::RuntimeMismatch
+                ))
+            );
+            assert!(matches!(
+                owner.open_memory(C),
+                Err(RuntimeOpenError::Layout(
+                    MemoryManagerLayoutError::RuntimeMismatch
+                ))
+            ));
+            assert!(catch_unwind(AssertUnwindSafe(|| a.size())).is_err());
+            assert!(catch_unwind(AssertUnwindSafe(|| a.read(17, &mut [0]))).is_err());
+            assert!(catch_unwind(AssertUnwindSafe(|| a.write(17, &[0]))).is_err());
+            let mut destination = [0xA5];
+            assert!(
+                catch_unwind(AssertUnwindSafe(|| {
+                    // SAFETY: The single-byte destination remains valid and disjoint.
+                    unsafe {
+                        a.read_unsafe(17, destination.as_mut_ptr(), 1);
+                    }
+                }))
+                .is_err()
+            );
+            assert_eq!(destination, [0xA5]);
+            assert!(*backing.borrow() == before, "refusal changed bytes");
+            // Restoring the header does not silently rehabilitate a poisoned owner.
+            *backing.borrow_mut() = saved;
+            assert_eq!(
+                a.grow(0),
+                Err(RuntimeGrowError::Layout(
+                    MemoryManagerLayoutError::RuntimeMismatch
+                ))
+            );
+            drop(a);
+            drop(b);
+            drop(owner);
+            drop(foreign);
+            let reopened = runtime(backing);
+            let mut byte = [0];
+            reopened.open_memory(A).unwrap().read(17, &mut byte);
+            assert_eq!(byte, [42]);
+            reopened.open_memory(B).unwrap().read(31, &mut byte);
+            assert_eq!(byte, [99]);
+        }
     }
 }
 

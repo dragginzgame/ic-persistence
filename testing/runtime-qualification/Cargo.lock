@@ -759,9 +759,9 @@ dependencies = [
 
 [[package]]
 name = "ic-platform"
-version = "0.7.2"
+version = "0.7.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2aa4cb6697c533c82843600e1821d7d41a02fe9c48bdc2a23901b95dfdf931db"
+checksum = "8a72c0c94278d2324122a3f989147ef312bac7b487eb8c0a70ddb2bedf7495f0"
 dependencies = [
  "crc32fast",
  "data-encoding",

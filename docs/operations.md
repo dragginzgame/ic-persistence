@@ -197,6 +197,14 @@ before writing newly addressable bytes. Valid IO still delegates directly to
 the underlying memory implementation; raw reads retain its optimized support
 for uninitialized destinations.
 
+Size and IO trust exclusive backing custody between construction, initial
+bootstrap, lease opening and growth validation. They check poisoning without
+rereading manager metadata. Raw writes to manager metadata during a live lease
+are prohibited and need not be detected until the next validation boundary.
+Once divergence is detected, all existing handles refuse further access even
+if the raw bytes are restored. Growth validates before mutation and verifies
+its projected manager changes afterward.
+
 ## Growth failures
 
 `RuntimeMemory::grow` returns `Result<u64, RuntimeGrowError>` to direct callers.

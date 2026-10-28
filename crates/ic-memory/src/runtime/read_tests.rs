@@ -161,13 +161,31 @@ fn safe_and_uninitialized_reads_reach_specialized_backing_without_effects() {
     let mut initialized = [0xA5; 4];
     memory.read(7, &mut initialized);
     assert_eq!(initialized, [11, 22, 33, 44]);
-    assert_eq!(backing.safe_reads.get(), safe_reads_before + 2);
+    assert_eq!(backing.safe_reads.get(), safe_reads_before);
     assert_eq!(*backing.unsafe_reads.borrow(), [(PAGE + 7, 4); 2]);
     assert_eq!(
         (backing.writes.get(), backing.grows.get(), backing.size()),
         effects_before,
     );
     assert_eq!(*backing.memory.borrow(), bytes_before);
+}
+
+#[test]
+fn owned_size_and_io_use_no_manager_metadata_reads() {
+    let runtime = runtime(1);
+    let memory = handle(&runtime, 1);
+    memory.grow(1).unwrap();
+    let backing = &runtime.growth.backing;
+    backing.unsafe_reads.borrow_mut().clear();
+    let metadata_reads = backing.safe_reads.get();
+    assert_eq!(memory.size(), 1);
+    memory.write(7, &[42]);
+    assert_eq!(read_uninitialized::<1>(&memory, 7), [42]);
+    let mut byte = [0];
+    memory.read(7, &mut byte);
+    assert_eq!(byte, [42]);
+    assert_eq!(backing.safe_reads.get(), metadata_reads);
+    assert_eq!(*backing.unsafe_reads.borrow(), [(PAGE + 7, 1); 2]);
 }
 
 #[test]

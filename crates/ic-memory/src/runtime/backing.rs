@@ -39,10 +39,11 @@ impl<M: Memory> GrowthState<M> {
 /// without changing virtual extents or manager metadata. Backing implementations
 /// must obey the `Memory` contract; traps and partial writes are not transactions
 /// on native memory. Typed collections retain their own failure behavior.
-/// Size, valid IO, and growth check the complete bounded manager metadata before
-/// using cached translations. Detected divergence permanently poisons this owner.
-/// Invalid IO bounds still refuse before backing access. These checks add bounded
-/// metadata reads, not ledger/payload decoding or synchronization with raw aliases.
+/// Size and IO trust exclusive backing custody between full metadata checks at
+/// construction, initial bootstrap, lease opening and growth. Raw changes during
+/// a live lease are prohibited; ordinary IO does not scan for them. Detected
+/// divergence permanently poisons this owner, including its existing handles.
+/// Invalid IO bounds still refuse before backing access.
 ///
 
 pub struct RuntimeMemory<M: Memory> {
@@ -75,7 +76,9 @@ impl<M: Memory> RuntimeMemory<M> {
             "virtual memory access out of bounds",
         );
         self.growth
-            .verify()
+            .authority
+            .borrow()
+            .check_healthy()
             .expect("persisted manager metadata differs from runtime authority");
     }
 
@@ -149,7 +152,9 @@ impl<M: Memory> RuntimeMemory<M> {
 impl<M: Memory> Memory for RuntimeMemory<M> {
     fn size(&self) -> u64 {
         self.growth
-            .verify()
+            .authority
+            .borrow()
+            .check_healthy()
             .expect("persisted manager metadata differs from runtime authority");
         self.memory.size()
     }
