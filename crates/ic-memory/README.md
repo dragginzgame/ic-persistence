@@ -241,6 +241,8 @@ Raw aliases, unmanaged managers and dishonest identity implementations remain
 outside the custody contract. Claims are in-process heap state, not durable
 locks or an isolation boundary against arbitrary linked code. Construction,
 initial bootstrap, lease opening and growth validate the bounded MGR V1 image.
+Final teardown and failed construction retire the claim before destroying the
+backing identity allocation, so address reuse cannot inherit a dead owner's claim.
 Growth projects only its own expected metadata edits; foreign changes never
 refresh authority. Any detected divergence permanently refuses that owner's
 data access, including same-count extent or bucket-map changes. Drop all owners

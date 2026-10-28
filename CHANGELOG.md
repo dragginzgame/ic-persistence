@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.53.1] - Unreleased
+
+### 🩹 Fixed
+
+- Release backing claims before their identity allocations are destroyed,
+  including failed construction and unwinding. This prevents recycled native
+  addresses from inheriting stale claims while retaining detached-handle custody.
+  [#137 — Fail closed when multiple memory runtimes alias one stable backing](https://github.com/dragginzgame/ic-persistence/issues/137).
+  [Details](docs/changelog/0.53.md#0531---unreleased).
+
 ## [0.53.0] - 2026-10-28
 
 ### ⚠️ Breaking

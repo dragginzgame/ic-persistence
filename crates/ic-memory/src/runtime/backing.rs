@@ -7,10 +7,12 @@ use std::{
 // Physical custody, immutable geometry and exact manager metadata authority are
 // shared by the runtime and every handle, including detached ledger handles.
 pub(super) struct GrowthState<M: Memory> {
+    // Fields drop in declaration order: retire the claim while its backing's
+    // identity allocation is still alive, before another thread can reuse it.
+    pub _claim: super::custody::BackingClaim,
     pub backing: Rc<M>,
     pub bucket_size_pages: u16,
     pub authority: RefCell<super::layout::ManagerAuthority>,
-    pub _claim: super::custody::BackingClaim,
     pub open_slots: [Cell<u64>; 4],
 }
 

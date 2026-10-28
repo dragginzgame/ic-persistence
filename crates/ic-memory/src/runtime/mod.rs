@@ -168,15 +168,18 @@ impl<M: Memory> MemoryRuntime<M> {
     where
         M: MemoryBacking,
     {
-        let claim = custody::BackingClaim::acquire(&memory)?;
+        // Locals drop in reverse order. Establish backing ownership before its
+        // claim so refusal/unwind also retires the identity before freeing it.
+        let backing = Rc::new(memory);
+        let claim = custody::BackingClaim::acquire(backing.as_ref())?;
         if cfg!(target_endian = "big") {
             return Err(MemoryManagerLayoutError::UnsupportedByteOrder.into());
         }
-        let bucket_size_pages = if memory.size() == 0 {
+        let bucket_size_pages = if backing.size() == 0 {
             // Reserve the metadata page before the dependency writes its header.
             // This fresh allocation is owned here; caller-supplied nonempty
             // memory still passes the layout checks below before any writes.
-            if memory.grow(1) == -1 {
+            if backing.grow(1) == -1 {
                 return Err(RuntimeGrowError::BackingRefused {
                     additional_pages: 1,
                 }
@@ -184,21 +187,22 @@ impl<M: Memory> MemoryRuntime<M> {
             }
             requested.unwrap_or_default().bucket_size_pages()
         } else {
-            let measured = layout::read(&memory)?;
+            let measured = layout::read(backing.as_ref())?;
             let actual = measured.bucket_pages;
             if let Some(config) = requested {
                 check_bucket_size(actual, config)?;
             }
             actual
         };
-        let backing = Rc::new(memory);
         let memory_manager =
             MemoryManager::init_with_bucket_size(Rc::clone(&backing), bucket_size_pages);
+        let authority =
+            std::cell::RefCell::new(layout::ManagerAuthority::capture(backing.as_ref()));
         let growth = Rc::new(backing::GrowthState {
+            _claim: claim,
             backing: Rc::clone(&backing),
             bucket_size_pages,
-            authority: std::cell::RefCell::new(layout::ManagerAuthority::capture(backing.as_ref())),
-            _claim: claim,
+            authority,
             open_slots: [const { std::cell::Cell::new(0) }; 4],
         });
         Ok(Self {

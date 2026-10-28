@@ -116,3 +116,173 @@ impl<M: MemoryBacking> MemoryBacking for ic_testkit_native::memory::MeteredMemor
         self.backing().backing_identity()
     }
 }
+
+#[cfg(all(test, not(target_arch = "wasm32")))]
+mod tests {
+    use super::*;
+    use crate::{MemoryManagerConfig, MemoryRuntime, testing::fixture_runtime};
+    use std::{cell::Cell, panic::AssertUnwindSafe};
+
+    #[derive(Clone, Copy, Debug)]
+    enum Failure {
+        None,
+        Grow,
+        Initialize,
+        Capture,
+    }
+
+    #[derive(Clone, Copy, Debug, Eq, PartialEq)]
+    struct Destruction {
+        strong_refs: usize,
+        claimed_after_free: bool,
+    }
+
+    struct TrackedBacking {
+        memory: Option<VectorMemory>,
+        failure: Failure,
+        destruction: Rc<Cell<Option<Destruction>>>,
+    }
+
+    impl TrackedBacking {
+        fn new(failure: Failure) -> Self {
+            Self {
+                memory: Some(VectorMemory::default()),
+                failure,
+                destruction: Rc::default(),
+            }
+        }
+
+        const fn memory(&self) -> &VectorMemory {
+            self.memory.as_ref().unwrap()
+        }
+    }
+
+    impl MemoryBacking for TrackedBacking {
+        fn backing_identity(&self) -> BackingIdentity {
+            self.memory().backing_identity()
+        }
+    }
+
+    impl Memory for TrackedBacking {
+        fn size(&self) -> u64 {
+            self.memory().size()
+        }
+
+        fn grow(&self, pages: u64) -> i64 {
+            if matches!(self.failure, Failure::Grow) {
+                -1
+            } else {
+                self.memory().grow(pages)
+            }
+        }
+
+        fn read(&self, offset: u64, dst: &mut [u8]) {
+            assert!(
+                !matches!(self.failure, Failure::Capture)
+                    || dst.len() != super::super::layout::METADATA_BYTES,
+                "injected authority capture failure"
+            );
+            self.memory().read(offset, dst);
+        }
+
+        fn write(&self, offset: u64, src: &[u8]) {
+            assert!(
+                !matches!(self.failure, Failure::Initialize),
+                "injected manager initialization failure"
+            );
+            self.memory().write(offset, src);
+        }
+    }
+
+    impl Drop for TrackedBacking {
+        fn drop(&mut self) {
+            let memory = self.memory.take().unwrap();
+            let identity = memory.backing_identity();
+            let strong_refs = Rc::strong_count(&memory);
+            // Hold the registry lock across freeing the final allocation and
+            // observing its former identity. Other tests cannot reuse that
+            // address and install a legitimate new claim before this check.
+            let claimed_after_free = with_claims(|claims| {
+                drop(memory);
+                claims.contains(&identity)
+            });
+            // Record instead of asserting in Drop: construction cases unwind.
+            self.destruction.set(Some(Destruction {
+                strong_refs,
+                claimed_after_free,
+            }));
+        }
+    }
+
+    #[test]
+    fn final_runtime_or_detached_handle_releases_claim_before_identity_allocation() {
+        for detach_handle in [false, true] {
+            let backing = TrackedBacking::new(Failure::None);
+            let destruction = Rc::clone(&backing.destruction);
+            let identity = backing.backing_identity();
+            let runtime = fixture_runtime(
+                backing,
+                "drop",
+                "drop.",
+                &["drop.rows.v1"],
+                MemoryManagerConfig::new(8).unwrap(),
+            )
+            .unwrap();
+            let handle = detach_handle.then(|| runtime.open_memory("drop.rows.v1").unwrap());
+            drop(runtime);
+            if handle.is_some() {
+                assert_eq!(destruction.get(), None);
+                assert!(with_claims(|claims| claims.contains(&identity)));
+            }
+            drop(handle);
+            assert_eq!(
+                destruction.get(),
+                Some(Destruction {
+                    strong_refs: 1,
+                    claimed_after_free: false,
+                })
+            );
+        }
+    }
+
+    #[test]
+    fn construction_refusal_and_unwind_release_claim_before_identity_allocation() {
+        for failure in [Failure::Grow, Failure::Initialize, Failure::Capture] {
+            let backing = TrackedBacking::new(failure);
+            let destruction = Rc::clone(&backing.destruction);
+            let result = std::panic::catch_unwind(AssertUnwindSafe(|| MemoryRuntime::new(backing)));
+            if matches!(failure, Failure::Grow) {
+                assert!(matches!(
+                    result,
+                    Ok(Err(RuntimeConstructionError::Growth(_)))
+                ));
+            } else {
+                assert!(result.is_err(), "expected injected {failure:?} failure");
+            }
+            assert_eq!(
+                destruction.get(),
+                Some(Destruction {
+                    strong_refs: 1,
+                    claimed_after_free: false,
+                }),
+                "failure during {failure:?} retained a dead backing identity"
+            );
+        }
+    }
+
+    #[test]
+    fn independent_backings_construct_and_drop_concurrently() {
+        let start = std::sync::Barrier::new(4);
+        std::thread::scope(|scope| {
+            for _ in 0..4 {
+                let start = &start;
+                scope.spawn(move || {
+                    start.wait();
+                    for _ in 0..2000 {
+                        drop(MemoryRuntime::new(VectorMemory::default()).unwrap());
+                    }
+                });
+            }
+        });
+    }
+}
