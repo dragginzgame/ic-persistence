@@ -9,16 +9,16 @@ local baseline. Future policy changes require reviewed snapshot adoption.
 
 ## Current source selection
 
-IC Persistence selects committed Shared Tooling 0.26.26 at
-`5683060a5d8ce79af2fcfedb53b3eb24037fd064`, with 77 explicit roots and 123 payloads.
+IC Persistence selects committed Shared Tooling 0.27.3 at
+`7ee5c83744aa822ecd070703dbf0a7d95076d5f6`, with 77 explicit roots and 123 payloads.
 The compact baseline derives `rules/engineering-details.md` as a companion;
 specialist contracts remain binding when the task touches them. Reporting metrics
 are opt-in, and focused checks follow the completed coherent edit batch. The
 adopted npm Platform boundary adds no dependency to this Rust-only consumer.
 The refresh adds the canonical Rust formatting driver and updates Make dispatch,
 preserving common tool pins and the installer build-policy identity.
-Consumer-owned Build/Testkit selections are 0.69.3. Both dependency catalogs
-select Platform 0.7.1 without enabling its new optional provider/gzip features.
+Consumer-owned Build/Testkit selections are 0.69.5. Both dependency catalogs
+select Platform 0.7.2 without enabling optional provider/gzip features.
 The stable-structures 0.7.2 substrate and PocketIC 16.1.0 pair remain selected.
 Release 0.50.7 passed the complete native, MSRV and installed-runtime matrix
 on Linux and both macOS architectures; snapshot integrity alone is not acceptance.
@@ -29,6 +29,25 @@ therefore included; uncommitted Shared sibling changes are excluded.
 The canonical [preview and refresh procedure](consuming-snapshots.md#preview-before-refreshing)
 exports committed bytes from a clean source checkout. Direct callers remain
 explicit roots and required companions are derived by the exporter.
+
+The 0.27.3 refresh retains that closure and verifies every payload's bytes and
+executable mode against the independently selected source commit, using the
+trusted source verifier's paired `--source` and `--revision` options. Ordinary
+builds retain offline snapshot checks. Consumer hook fixtures now use the shared
+closure copier and stage all copied regular-file changes, including companions
+absent from HEAD, while leaving opaque gitlinks intact.
+
+The optional sccache pin does not change the common tool roster or enable a
+compiler cache. Scheduled maintenance remains inactive unless explicitly
+configured and qualified under the adopted report-only policy. The supplying
+owner tracks shared dependency defects; no waiting issue is created per consumer.
+
+The release prerequisite inventory remains consumer-owned: native system/compiler
+bootstrap precedes common Cargo tools and the selected Build editor; both Rust
+compilers and the Wasm target, host/IC tools and locked caches are admitted before
+validation. The separate installed-runtime path prepares Testkit and its selected
+server before qualification. Existing Make dispatch fixtures exercise ordering
+and failure stopping; they do not replace actual native or installed acceptance.
 
 The current refresh uses a clean detached committed source and canonical impact
 preview. The shared Rust driver now owns the complete formatting sequence. The
@@ -167,7 +186,7 @@ also remains in its focused target. Release notes may use a numbered
 ` - Unreleased` heading, which the shared finalizer dates during preparation.
 
 Shared 0.25.3 binds explicit Cargo feature sets to selected tool installations
-and admission receipts. Build and Testkit 0.69.3 binaries select `--features cli`
+and admission receipts. Build and Testkit 0.69.5 binaries select `--features cli`
 in setup, offline admission and bootstrap calls. Library dependencies retain
 disabled defaults. Prepare the selections with `make install-tools` and
 `make install-runtime-server`; previous installations and failed attempts remain

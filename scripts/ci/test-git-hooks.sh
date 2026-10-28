@@ -48,9 +48,10 @@ new_fixture() {
     # consumer locks so the formatter check still detects accidental creation.
     git rm --quiet --ignore-unmatch -- Cargo.lock testing/runtime-qualification/Cargo.lock scripts/ci/format-workspaces.sh
     mkdir -p ci make .githooks scripts/ci scripts/dev
-    for path in Makefile make/consumer.mk make/tools.mk make/release.mk make/rust-format.mk make/execution.mk ci/release-tools.env ci/runtime-tools.env ci/tool-versions.env rust-toolchain.toml testing/package-consumer.rs .githooks/pre-commit scripts/dev/install-git-hooks.sh scripts/ci/check-format-tools.sh scripts/ci/run-formatting.sh scripts/ci/run-rust-formatting.pl scripts/ci/RustSource.pm scripts/ci/check-make-execution.sh scripts/ci/check-release-delivery.sh; do
-        cp -p "$root/$path" "$path"
-    done
+    bash "$root/scripts/ci/prepare-script-fixture.sh" "$root" "$PWD" \
+        Makefile make/consumer.mk ci/release-tools.env ci/runtime-tools.env \
+        ci/tool-versions.env rust-toolchain.toml testing/package-consumer.rs \
+        .githooks/pre-commit
     for workspace in . testing/runtime-qualification; do
         mkdir -p "$workspace/crates/hook-fixture/src"
         cat > "$workspace/Cargo.toml" <<'CARGO'
@@ -85,7 +86,13 @@ CARGO
             printf 'pub fn fixture() {}\n' > "$workspace/crates/$member/src/lib.rs"
         done
     done
-    git add -- Makefile make/consumer.mk make/tools.mk make/release.mk make/rust-format.mk make/execution.mk ci/release-tools.env ci/runtime-tools.env ci/tool-versions.env rust-toolchain.toml testing/package-consumer.rs .githooks/pre-commit scripts/dev/install-git-hooks.sh scripts/ci/check-format-tools.sh scripts/ci/run-formatting.sh scripts/ci/run-rust-formatting.pl scripts/ci/RustSource.pm scripts/ci/check-make-execution.sh scripts/ci/check-release-delivery.sh Cargo.toml crates/hook-fixture crates/alpha crates/zeta testing/runtime-qualification/Cargo.toml testing/runtime-qualification/crates/hook-fixture testing/runtime-qualification/crates/alpha testing/runtime-qualification/crates/zeta
+    # Include the copied companion closure, including files absent from HEAD.
+    # Missing opaque gitlinks must keep their existing index identity.
+    git ls-files --modified --others --exclude-standard -z > "$fixture/stage-inputs"
+    while IFS= read -r -d '' path; do
+        [[ -f "$path" && ! -L "$path" ]] || continue
+        git --literal-pathspecs add -- "$path"
+    done < "$fixture/stage-inputs"
 }
 
 expect_failure() {

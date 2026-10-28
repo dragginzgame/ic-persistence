@@ -1,105 +1,77 @@
 # Current handoff
 
-The released baseline is 0.51.13 at `3acffe19c7d2dc1c2bf70dc03313df95accebd91`.
-[Its CI](https://github.com/dragginzgame/ic-persistence/actions/runs/40557536879)
-passed all 10 jobs. Formatter #135 and singleton-loader #136 are closed with that
-source/native/MSRV/installed evidence. Those runs do not qualify pending edits.
-
-## Pending 0.52.0 backing-custody repair
-
+Released source is 0.52.0 at `3acc1a76f7aa59309aff718f2b4f2efbec0d12dd`.
+[Its CI](https://github.com/dragginzgame/ic-persistence/actions/runs/40677730611)
+passed all 10 jobs: tooling, native validation, Rust 1.91 MSRV and installed
+original/optimized Wasm qualification across Ubuntu and both macOS architectures.
 [#137 — Fail closed when multiple memory runtimes alias one stable backing](https://github.com/dragginzgame/ic-persistence/issues/137)
-has a supplier fix committed at `01b3ebf15f10df0a0ab6c73fd3518c273f4d64b3`.
-Package versions remain 0.51.13; 0.52.0 is the pending release. The former unpublished
-0.51.14 dependency notes are consolidated into the breaking 0.52.0 candidate.
-See [current notes](../changelog/0.52.md#0520---unreleased).
+is closed with that delivered source and acceptance evidence. Earlier formatter
+and singleton-loader issues #135/#136 were already closed. These runs do not
+qualify the pending adoption below.
 
-Runtime constructors require `MemoryBacking`. Standard VectorMemory and default
-canister backings identify aliases automatically; custom/foreign wrappers must
-provide a consistent underlying identity. Borrowed, non-Clone, non-Send/non-Sync
-hosts remain supported. Process-local claims refuse duplicate runtimes before
-backing IO and live through the final detached allocation/collection handle.
-Native claims coordinate across threads. Constructors release claims on errors
-and ordinary unwind; forgotten owners stay occupied.
+## Pending compatible 0.52.1 adoption
 
-A single metadata authority owns the exact expected MGR V1 image and live growth
-count. Size, valid IO, opens and growth compare persisted metadata before cached
-translations are used. Only successful owned growth projects expected edits;
-foreign count, same-count extent, table or unused-entry changes poison the owner.
-No foreign image is silently adopted. Invalid IO still refuses before backing
-access; diagnostic reports retain their two bounded metadata reads. Existing
-MGR/cell/ledger bytes and numeric limits are unchanged; no reset/migration is added.
+The working tree adopts Platform 0.7.2 in both dependency catalogs and lockfiles,
+Tooling 0.69.5 in native dependencies, and separately selected Build/Testkit
+0.69.5 CLIs. The incoming library lock already selected Platform 0.7.2 and
+Tooling 0.69.5; its bytes are preserved. Only Platform changes in the independent
+lock. Optional features, stable-structures 0.7.2, PocketIC 16.1.0 and toolchains
+remain selected. Package versions stay 0.52.0; the index remains untouched.
+See [pending notes](../changelog/0.52.md#0521---unreleased).
 
-Raw aliases/unmanaged managers remain prohibited, including over excluded IDs.
-Claims require one Memory crate identity and truthful host backing identity;
-checks do not provide atomicity against arbitrary raw writes, cross-process
-custody or separately linked Memory copies. The linked Canic #527/PR #595,
-IcyDB PR #376 and IC Crates PR #7 were reviewed read-only. Their committed-runtime
-handoff work is complementary and was not duplicated or edited here.
+Shared Tooling 0.27.3 is exported from clean detached source at
+`7ee5c83744aa822ecd070703dbf0a7d95076d5f6`, retaining 77 roots and 123 payloads.
+The upstream commit was independently observed through GitHub. Adoption compares
+payload bytes/modes against that exact source as well as local snapshot hashes.
+Consumer hook fixtures use the canonical companion copier and stage its complete
+regular-file closure. Optional sccache stays inactive; no scheduled maintenance
+is activated or reconfigured. No dirty sibling source is adopted or modified.
 
-## Qualification and cost
+Evidence and incoming lock copies are retained at
+`/tmp/ic-persistence-adoption-20261028/`, including impact/refresh/source comparison,
+locked cache preparation, selected CLI setup/admission and focused qualification.
+Both 0.69.5 CLI selections reuse admitted builds, and server setup admits the
+existing Testkit-selected PocketIC 16.1.0 bundle without deleting old selections.
+The snapshot, pin/inheritance, production graph and declaration checks pass,
+as do the real hook fixture, substituted release-dispatch fixture, formatting,
+and 65 native repo-tool tests. Strict helper Clippy, all three Wasm libraries,
+Rust 1.91 helper/independent-workspace checks and the actual selected-editor
+interrupted-metadata bootstrap fixture also pass. ShellCheck and local links pass.
+No full local release gate, new-source hosted CI,
+release, publication or deployment ran for this adoption. Linux source/setup
+checks do not qualify fresh native macOS behavior.
 
-Evidence is retained at `/tmp/ic-persistence-issue-137/`, with source/lock/Wasm
-hashes, initial propagation diagnostics, original/final installed logs and exact
-Rust 1.91 Memory/Storage artifacts. Final locked offline qualification passes:
+## Released backing-custody contract and evidence
 
-- 68 Memory runtime tests, 5 public runtime integration tests, 17 Storage adapter
-  tests and 28 Metrics Stable tests. Six custody cases also execute on Rust 1.91.
-- Native all-target Clippy for all affected packages, actual Wasm library/example
-  Clippy, and independent harness/test Clippy, with warnings denied; 3 doctests.
-- Rust 1.91 builds both installed Wasm fixtures. The original-Wasm runner passes
-  Memory IO bounds/traps and upgrade rollback, Storage restoration, and actual
-  same-canister custody/composition. Three manager corruption modes trap before
-  cached reads and roll back the preceding valid payload write. Runtime drop,
-  retained handles, final-lease release and upgrade reopen preserve markers/pages.
-- Raw Wasm budgets pass: core 248939/260000, diagnostics 259744/315000,
-  admission 252785/264000 and runtime integration 255990/270000 bytes.
-- Production singleton/declaration checks, formatting, doc links and diff checks.
+Memory requires one truthful, IO-free physical backing identity across aliases
+and one Memory crate identity per composition. Standard VectorMemory and default
+canister backings identify aliases automatically. Claims reject duplicate owners
+before backing IO and survive runtime drop through the final handle/collection.
+Hosts share one admitted, committed runtime; raw managers, including over excluded
+IDs, remain prohibited. Metadata checks compare the exact expected MGR V1 image
+before cached translations, poison on divergence and never refresh/repair it.
 
-The integrity boundary adds one full 34,848-byte metadata read per valid size/IO
-check; successful growth verifies before/after. Word comparison reduces the
-initial hardened Wasm implementation's sampled 1000 single-byte IO cost from
-about 976M to 192M instructions (about 80%), without omitting bytes. This is not
-a speed-up over the released unchecked path: added stable IO remains a material
-cost. Native comparison uses the optimized host slice comparator, including in
-debug tests. Host/application budgets must account for the added checks.
+Each valid size/IO check reads 34,848 metadata bytes; successful growth checks
+before/after. This remains a material stable-IO cost, not a speed-up over the
+older unchecked path. Checks are point observations, not atomic isolation
+against raw writes, dishonest identity, other processes or separate crate copies.
+See [released notes](../changelog/0.52.md) and the committed supplier implementation.
 
-This is local Linux/native and installed PocketIC 16.1.0 qualification. No
-Binaryen optimization matrix or fresh macOS CI was run. Delivery and final
-applicable native acceptance remain separate.
+Earlier source/lock/Wasm hashes, focused native/MSRV/installed composition proof
+and original/final measurements remain at `/tmp/ic-persistence-issue-137/`.
+The retained-cell fixture repair is committed in `616f704`; all 16 fixture cases,
+strict test-support lint and Wasm checks passed. Its logs and a copy of the first
+failed release gate remain at `/tmp/ic-persistence-fixture-custody-fix/`.
+Earlier dependency evidence remains at `/tmp/ic-persistence-deps-20261028/`.
+Preserve those observations and all release recovery state with their identities.
 
-The maintainer's `release-minor` attempt failed at three retained-cell fixture
-tests: old handles still held backing custody, masking the intended payload
-errors. The local test repair releases each old lease before reopening, preserves
-the cell-byte assertions, and separately covers duplicate setup with live cells
-and detached handles. All 16 fixture tests, test-support Clippy with warnings
-denied and Wasm library checks pass on Rust 1.99.1, locked and offline. Production
-code and lockfiles are unchanged. These test/docs edits remain uncommitted and
-unstaged; the release was not resumed. The failed full-gate log remains at
-`target/release-validation/attempts/verify.qgsddi`; focused repair logs and a copy
-of that log are at `/tmp/ic-persistence-fixture-custody-fix/`. Preserve release
-recovery state for the maintainer's retry.
-
-## Preserved dependency work
-
-The earlier adoption selects Platform 0.7.1 in both catalogs, Tooling 0.69.3
-compatible minimums, separately prepared Build/Testkit 0.69.3 CLIs and Metrics
-0.16.3. The library lock advanced externally from Tooling 0.69.3 to 0.69.4 during
-this task. Its bytes are preserved in `concurrent-Cargo.lock`; cache preparation
-and final native lint/tests/MSRV checks use that selection. Both original and
-concurrent lock observations remain retained. The independent lock is unchanged
-from task entry; source/features, stable-structures 0.7.2 and PocketIC pairing
-remain selected. Shared Tooling remains reviewed 0.26.26 at
-`5683060a5d8ce79af2fcfedb53b3eb24037fd064`. Earlier dependency proof remains at
-`/tmp/ic-persistence-deps-20261028/`; it is not relabelled as new-source evidence.
-
-## Retained evidence and recovery
+## Retained history and recovery
 
 All original Memory/Storage issues, comments and PR histories remain preserved
 through the [migration maps](../migration/ic-persistence.md) and
-[historical exports](../history/pull-requests/README.md). Preserve the verified
-backups at `/home/adam/projects/ic-persistence-retirement-2026-10-20/` and all
-mirrors, exports and recovery plans. The original checkouts were retired with
-maintainer authorization. Last recorded GitHub deletions were refused because
-the CLI token lacked `delete_repo`; no deletion retry is part of this work.
-Earlier package/runtime archives, receipts, failed attempts and logs retain their
-original custody and source identities.
+[historical exports](../history/pull-requests/README.md). Preserve verified backups
+at `/home/adam/projects/ic-persistence-retirement-2026-10-20/` and all mirrors,
+exports and recovery plans. Original checkouts were retired with maintainer
+authorization. Last recorded GitHub deletions were refused because the CLI token
+lacked `delete_repo`; no retry is part of this work. Earlier package/runtime
+archives, receipts, failed attempts and logs retain their original custody.

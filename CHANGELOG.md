@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.52.1] - Unreleased
+
+### 🔧 Changed
+
+- Adopt IC Platform 0.7.2, IC Tooling 0.69.5 and Shared Tooling 0.27.3,
+  including source-commit verification for snapshots and automatic companion
+  copying in hook fixtures. Stable formats, PocketIC selection and Rust support
+  remain unchanged. [Details](docs/changelog/0.52.md#0521---unreleased).
+
 ## [0.52.0] - 2026-10-28
 
 ### ⚠️ Breaking
