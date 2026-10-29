@@ -12,7 +12,7 @@ canisters, maintained in one repository and published as three crates.
 Storage depends on Memory. There is no umbrella crate. Upstream
 `ic-stable-structures` retains collection algorithms and persisted formats;
 applications retain lifecycle and recovery policy. The stable metric adapter
-owns its V1 records here; dependency-free arithmetic remains in IC Metrics.
+owns its V1 records here; allocation-free arithmetic remains in IC Metrics.
 See [ownership](docs/ownership.md) and [safety](SAFETY.md).
 
 The root Cargo workspace owns all three packages, one dependency catalog and one

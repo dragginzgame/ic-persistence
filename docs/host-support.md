@@ -132,7 +132,7 @@ already tracked by Git. Adopt new locks through an explicitly authorized commit
 or PR before the real-checkout declaration/release gate can pass; qualification
 alone does not authorize staging them.
 
-Installed runtime qualification uses the published `ic-testkit` 0.69.6 server CLI
+Installed runtime qualification uses the published `ic-testkit` 0.69.9 server CLI
 selected in the root Makefile, installed through Shared Tooling's exact Cargo
 binary installer. It has a separate locked registry tool graph, outside both
 Memory lockfiles. Prepare it and Testkit's authenticated server selection explicitly:
@@ -171,7 +171,7 @@ replaying Memory's IO suite or the release optimizer matrix:
 cargo +1.91.0 build -p ic-storage --locked --offline --profile wasm-size \
   --target wasm32-unknown-unknown --example wasm-storage-qualification
 testkit_cli="$(RUSTUP_TOOLCHAIN=1.99.1 bash scripts/dev/install-rust-tools.sh \
-  --consumer "$PWD" --package ic-testkit --version 0.69.6 \
+  --consumer "$PWD" --package ic-testkit --version 0.69.9 \
   --bin ic-testkit-server --profile release --features cli --check)"
 IC_STORAGE_QUALIFICATION_WASM="$PWD/target/wasm32-unknown-unknown/wasm-size/examples/wasm_storage_qualification.wasm" \
   "$testkit_cli" run --directory "$PWD/.tools/ic-testkit-server" --ttl 900 -- \

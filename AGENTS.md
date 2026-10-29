@@ -18,7 +18,7 @@ dependency catalog. The library packages are `crates/ic-memory/`,
 `crates/ic-storage/` and `crates/ic-metrics-stable/`.
 Memory owns allocation governance, bootstrap and exclusive leases; Storage owns
 governed collections over those leases. Metrics Stable owns validated V1 metric
-snapshots over Storage maps and depends on the external, dependency-free
+snapshots over Storage maps and depends on the external
 `ic-metrics` arithmetic crate. Hosts own metric attribution, lifecycle and cadence.
 Storage depends on Memory, never the reverse. Package source, tests and canonical
 READMEs live under their packages.
@@ -154,7 +154,7 @@ growth and installed IO/upgrade checks. Memory keeps its local layout/growth
 safeguards. Changes stop at the owned IC Platform boundary.
 
 The independent qualification workspace consumes PocketIC through IC Platform's
-optional native client boundary; its lockfile selects client 16.1.0. Testkit 0.69.6 owns the reviewed
+optional native client boundary; its lockfile selects client 16.1.0. Testkit 0.69.9 owns the reviewed
 16.1.0 server selection. Changing that pair requires repeating installed
 qualification; historical 16.0.0 client/server evidence cannot qualify the new
 pairing. Keep both lockfiles, sources, features and toolchains unchanged during

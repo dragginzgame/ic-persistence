@@ -9,15 +9,33 @@ local baseline. Future policy changes require reviewed snapshot adoption.
 
 ## Current source selection
 
-IC Persistence selects committed Shared Tooling 0.27.3 at
-`7ee5c83744aa822ecd070703dbf0a7d95076d5f6`, with 77 explicit roots and 123 payloads.
+IC Persistence selects committed Shared Tooling 0.27.6 at
+`5a72359b5be19d5221334cf2c9b3204621d3f3f6`, with 77 explicit roots and 123 payloads.
+The canonical impact preview and refresh retain the existing selection. Changes
+cover maintenance permission preflight, single-tool freshness and retained
+validation excerpts; no scheduled maintenance is activated. Exported bytes and
+modes are compared against this independently selected source commit.
+
+The current dependency adoption selects IC Metrics 0.17.0 and host tooling 0.69.9,
+including the separate Build/Testkit CLI selections. Metrics' arithmetic types
+require caller alignment to 0.17 and now carry standard Serde/native Wire support.
+The pending consumer release is 0.54.0; V1 records, collection formats and custody
+remain unchanged. Both Platform declarations retain 0.7.3; the incoming library
+lock already selected 0.7.4 and the independent lock remains unchanged at 0.7.3.
+The stable-structures 0.7.2 substrate, PocketIC 16.1.0 pair and Rust selections are
+retained. This consumer has no cached baseline recipe to migrate for Tooling's
+timer-state fix. CLI source selection and actual installed admission remain
+separate from native/runtime qualification.
+
+### Earlier adoption and qualification records
+
 The compact baseline derives `rules/engineering-details.md` as a companion;
 specialist contracts remain binding when the task touches them. Reporting metrics
 are opt-in, and focused checks follow the completed coherent edit batch. The
 adopted npm Platform boundary adds no dependency to this Rust-only consumer.
 The refresh adds the canonical Rust formatting driver and updates Make dispatch,
 preserving common tool pins and the installer build-policy identity.
-Consumer-owned Build/Testkit selections are 0.69.6. Both dependency catalogs
+The preceding consumer-owned Build/Testkit selections were 0.69.6. Both dependency catalogs
 select Platform 0.7.3 without enabling optional provider/gzip features.
 The stable-structures 0.7.2 substrate and PocketIC 16.1.0 pair remain selected.
 Release 0.50.7 passed the complete native, MSRV and installed-runtime matrix

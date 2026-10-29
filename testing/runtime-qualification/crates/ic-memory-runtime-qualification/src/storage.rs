@@ -5,9 +5,7 @@ use std::{env, fs, time::Duration};
 pub(super) fn qualify(pic: &PocketIc) {
     let wasm =
         fs::read(env::var("IC_STORAGE_QUALIFICATION_WASM").expect("Storage fixture path")).unwrap();
-    let canister = pic.create_canister();
-    pic.add_cycles(canister, 100_000_000_000_000);
-    pic.install_canister(canister, wasm.clone(), Vec::new(), None);
+    let canister = super::install_fixture(pic, &wasm);
     let snapshot = || {
         pic.query_call(canister, canister, "snapshot", vec![])
             .unwrap()
@@ -77,11 +75,7 @@ mod tests {
     #[test]
     #[ignore = "requires an explicitly prepared server URL and Storage fixture Wasm"]
     fn installed_storage_adapters() {
-        let url = std::env::var("IC_TESTKIT_POCKET_IC_URL").expect("caller-selected server URL");
-        let pic = ic_platform::pocket_ic::PocketIcBuilder::new()
-            .with_server_url(url.parse().unwrap())
-            .with_application_subnet()
-            .build();
+        let pic = crate::connect_to_server();
         super::qualify(&pic);
     }
 }

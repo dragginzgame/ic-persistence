@@ -9,8 +9,9 @@ They are historical evidence, not qualification of the relocated graph.
 
 ## Ownership and compatibility
 
-- IC Metrics still owns dependency-free `no_std` arithmetic and releases
-  `ic-metrics` independently on its 0.16 line. It gains no persistence dependency.
+- IC Metrics owns allocation-free `no_std` arithmetic and releases
+  `ic-metrics` independently on its 0.17 line, with standard Serde and native Wire
+  support. It has no persistence dependency.
 - IC Persistence owns the adapter's V1 record codec, numeric/continuity admission,
   governed map integration, tests, packaging and publication. Memory owns allocation
   governance; Storage owns the public collection and its retained map format.
@@ -21,10 +22,11 @@ They are historical evidence, not qualification of the relocated graph.
 The crate name, Rust module paths, API, row keys, V1 bytes and B-tree format are
 unchanged. The package now inherits Persistence's 0.50 workspace version and uses
 its local Memory and Storage packages. The 0.50.17 import used published
-`ic-metrics = "0.15"`; Persistence 0.51 adopts `ic-metrics = "0.16"`.
+`ic-metrics = "0.15"`; Persistence 0.51 adopted `ic-metrics = "0.16"`, and the
+pending 0.54 release adopts `ic-metrics = "0.17"`.
 Select the adapter, Memory and Storage from the same Persistence release line.
 Hosts using the adapter's public arithmetic types must select the same Metrics
-minor line: 0.15 and 0.16 have different Rust type identities. Updating these
+minor line: each pre-1.0 Metrics minor has a different Rust type identity. Updating these
 requirements is a manifest migration, not a retained-data conversion or a reason
 to reset storage.
 No maintained sibling consumer was found in the reviewed workspace manifests.

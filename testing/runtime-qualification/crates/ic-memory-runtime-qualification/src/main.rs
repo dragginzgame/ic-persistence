@@ -3,7 +3,10 @@ mod ownership;
 mod storage;
 
 use clap::Parser;
-use ic_platform::pocket_ic::{ErrorCode, PocketIcBuilder, RejectResponse};
+use ic_platform::{
+    pocket_ic::{ErrorCode, PocketIc, PocketIcBuilder, RejectResponse},
+    principal::ExternalPrincipal,
+};
 use std::{env, fs, time::Duration};
 
 ///
@@ -62,19 +65,28 @@ fn assert_trap(error: RejectResponse) {
     );
 }
 
-fn main() {
-    let arguments = Arguments::parse();
-    let wasm = fs::read(env::var("IC_MEMORY_QUALIFICATION_WASM").expect("fixture path")).unwrap();
+fn connect_to_server() -> PocketIc {
     // The caller owns server startup/teardown. Never implicitly spawn or
     // download a binary as part of qualification.
     let url = env::var("IC_TESTKIT_POCKET_IC_URL").expect("caller-selected PocketIC server URL");
-    let pic = PocketIcBuilder::new()
+    PocketIcBuilder::new()
         .with_server_url(url.parse().unwrap())
         .with_application_subnet()
-        .build();
+        .build()
+}
+
+fn install_fixture(pic: &PocketIc, wasm: &[u8]) -> ExternalPrincipal {
     let canister = pic.create_canister();
     pic.add_cycles(canister, 100_000_000_000_000);
-    pic.install_canister(canister, wasm.clone(), Vec::new(), None);
+    pic.install_canister(canister, wasm.to_vec(), Vec::new(), None);
+    canister
+}
+
+fn main() {
+    let arguments = Arguments::parse();
+    let wasm = fs::read(env::var("IC_MEMORY_QUALIFICATION_WASM").expect("fixture path")).unwrap();
+    let pic = connect_to_server();
+    let canister = install_fixture(&pic, &wasm);
     let snapshot = || {
         Snapshot::decode(
             &pic.query_call(canister, canister, "snapshot", Vec::new())

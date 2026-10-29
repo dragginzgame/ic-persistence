@@ -5,9 +5,7 @@ pub(super) fn qualify(pic: &PocketIc) {
     let wasm =
         std::fs::read(std::env::var("IC_MEMORY_QUALIFICATION_WASM").expect("Memory fixture path"))
             .unwrap();
-    let canister = pic.create_canister();
-    pic.add_cycles(canister, 100_000_000_000_000);
-    pic.install_canister(canister, wasm.clone(), Vec::new(), None);
+    let canister = super::install_fixture(pic, &wasm);
     let snapshot = || {
         super::Snapshot::decode(
             &pic.query_call(canister, canister, "snapshot", Vec::new())
@@ -64,15 +62,10 @@ pub(super) fn qualify(pic: &PocketIc) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ic_platform::pocket_ic::PocketIcBuilder;
     #[test]
     #[ignore = "requires an explicitly prepared server URL and Memory fixture Wasm"]
     fn installed_backing_custody() {
-        let url = std::env::var("IC_TESTKIT_POCKET_IC_URL").expect("caller-selected server URL");
-        let pic = PocketIcBuilder::new()
-            .with_server_url(url.parse().unwrap())
-            .with_application_subnet()
-            .build();
+        let pic = crate::connect_to_server();
         qualify(&pic);
     }
 }

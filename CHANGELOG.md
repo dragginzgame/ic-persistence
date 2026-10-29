@@ -1,5 +1,24 @@
 # Changelog
 
+## [0.54.0] - Unreleased
+
+### ⚠️ Breaking
+
+- Adopt IC Metrics 0.17. Adapter callers must also select `ic-metrics = "0.17"`
+  for matching Rust types. Serde and native IC Wire support are standard upstream;
+  persisted V1 records and allocation custody remain unchanged.
+
+### ⬆️ Dependencies
+
+- Adopt Shared Tooling 0.27.6 and host tooling 0.69.9, including the Build and
+  Testkit CLI selections. [Details](docs/changelog/0.54.md#0540---unreleased).
+
+### 🧹 Cleanup
+
+- Consolidate publication identity checks and installed qualification setup,
+  preserving release checkpoints and the caller-owned server lifecycle.
+  [Details](docs/changelog/0.54.md#0540---unreleased).
+
 ## [0.53.1] - 2026-10-28
 
 ### 🩹 Fixed

@@ -1,82 +1,57 @@
 # Current handoff
 
-Released source is 0.53.0 at `798b435adb0fcceea643a3d636c94315941d866a`.
-[Its CI](https://github.com/dragginzgame/ic-persistence/actions/runs/40692276364)
-passed all 10 supplier jobs. IcyDB reports successful published-registry adoption
-for all nine grouping cases, its 10,001-row collection/upgrade case and 16 host
-memory-admission cases, preserving original budgets. See
-[#137 — Fail closed when multiple memory runtimes alias one stable backing](https://github.com/dragginzgame/ic-persistence/issues/137).
+Released source is 0.53.1 at `1583819343fda5c31bbe62bf058e1b2927189262`.
+The pending release is 0.54.0 because Metrics Stable now exposes IC Metrics 0.17
+arithmetic types. Hosts passing those values must select `ic-metrics = "0.17"`.
+Package metadata remains 0.53.1; no release, publication, staging or push occurred.
+See [pending notes](../changelog/0.54.md#0540---unreleased).
 
-## Pending 0.53.1 teardown fix
+## Current development batch
 
-The issue remains open for a new native consumer failure: Blob's released source
-`47df5334d0c625dbf6081fd8e172f96c72764a7d` fails exact archive tests on both macOS
-architectures in [run 40701957045](https://github.com/dragginzgame/ic-blob-storage/actions/runs/40701957045).
-Fresh independent VectorMemory fixtures report `BackingAlreadyClaimed`.
+- Adopt Shared Tooling 0.27.6 at
+  `5a72359b5be19d5221334cf2c9b3204621d3f3f6` through its canonical exporter.
+  Impact preview and independent source verification cover the existing 123
+  payloads. Scheduled maintenance remains inactive.
+- Select Metrics 0.17.0 and host tooling 0.69.9, including Build/Testkit CLI pins.
+  Metrics now includes Serde/native Wire support; recording stays disabled.
+  The root lock retains its incoming Platform 0.7.4 selection. Both Platform
+  declarations remain 0.7.3 and the independent lock stays unchanged at 0.7.3.
+- Centralize publication identity guards at the existing fresh checkpoints and
+  share installed qualification connection/funding/installation setup.
+  Scenario assertions, refusal messages and caller-owned server lifecycle remain.
+- Preserve stable-structures 0.7.2, the PocketIC 16.1.0 client/server pair, feature
+  selections, Rust support, V1 records, collection formats and allocation custody.
 
-The stale-claim window is now reproduced deterministically on Linux. A fixture
-frees the last physical Rc identity allocation under the registry lock, preventing
-a legitimate new claimant from masking the observation. The old implementation
-still contains the freed identity after normal teardown and constructor panic.
-This proves the lifetime defect without depending on allocator scheduling; the
-exact macOS failures still require their native rerun for attribution/acceptance.
+## Focused evidence
 
-The local fix declares the shared claim before its backing, retiring it first
-when the last runtime/handle drops. Construction owns the Rc backing before
-acquiring its local claim, so cleanup drops the claim before freeing identity.
-Fallible authority capture completes before the claim transfers to shared state.
-Tests cover final runtime/handle release, typed growth refusal, initialization
-and capture panics, and 8000 independent constructions across four native threads.
-Duplicate-owner refusal and detached-handle custody remain enforced.
+Adoption inputs and Shared impact/refresh evidence are retained at
+`/tmp/ic-persistence-adoption-20261029/`, including the incoming patch, both
+incoming locks and the prior handoff. Earlier cleanup edits remain in this batch.
 
-See [pending notes](../changelog/0.53.md#0531---unreleased). Package versions remain
-0.53.0; both catalogs/locks, toolchains and real index are unchanged. Edits are
-uncommitted; no release, publication, push or workflow dispatch is performed.
+Dependency pins, the Wasm production graph, formatting and independent snapshot
+source verification pass. All 28 Metrics adapter tests, three doctests and 65
+release-helper tests pass with the selected dependencies. Strict native and Wasm
+Metrics Clippy and native release-helper Clippy pass. Build/Testkit 0.69.9 CLI
+setup and subsequent offline admission pass using the retained 16.1.0 server.
+The Metrics adapter also checks successfully on the actual Rust 1.91 minimum.
+Full release and installed-runtime qualification were not run for this adoption;
+prior Linux/macOS acceptance is not relabelled as new-version qualification.
 
-## Qualification and native acceptance
+## Preserved runtime and recovery evidence
 
-Evidence is retained at `/tmp/ic-persistence-teardown-137/`, including original
-red tests, corrected runs, incoming locks, isolated Blob source and archive output.
-72 Memory runtime cases, 16 fixture cases and 17 Storage adapter cases pass;
-all nine custody cases also pass on actual Rust 1.91. Strict native Memory/test
-and actual Wasm library Clippy pass. Rust 1.91 builds the Memory canister fixture;
-installed PocketIC 16.1.0 qualification passes checkpoint faults, poisoned-handle
-refusal, composed handles, final release and upgrade reopening.
+The 0.53.1 fix retires backing identity claims before freeing their allocations,
+including failed construction and unwinding. Duplicate-owner refusal, detached
+lease custody and the 0.53.0 checkpoint-validation contract remain in force.
+Construction, initial bootstrap, new leases, diagnostics and growth check full
+metadata. Ordinary size/IO trust exclusive custody and reject poisoned owners;
+raw aliases and unmanaged managers remain prohibited. No hot-path scan or new
+unchecked mode is introduced.
 
-The isolated Blob copy is the exact failing source, with an investigation-only
-Cargo config patch selecting local candidate Memory 0.53.0. Canonical coordinated
-archive generation, graph/lock admission, all targets, doctests and final source
-integrity checks pass on Linux. Metadata proves the extracted tests resolve the
-candidate Memory source. All 339 core cases pass, including the reported missing
-grant case; the normal parallel runner is retained. Blob source is not edited,
-its original sibling checkout stays untouched, and the override is not publication.
-Archive evidence is under `blob-source/target/package/blob-verification.Pru0iM/`
-beneath the investigation directory. The patch remains open for delivery and
-required supplier/native checks, including Blob archive acceptance on both Macs.
-No Linux or prior green run is relabelled as new-patch macOS acceptance.
-
-## Preserved runtime contract, tooling and recovery
-
-The maintainer-selected 0.53.0 contract remains: construction, initial bootstrap,
-new leases, diagnostics and growth perform full metadata validation. Size and
-safe/raw IO trust exclusive backing custody between checkpoints, check virtual
-bounds and refuse poisoned owners. Raw aliases/unmanaged managers are prohibited,
-including over excluded IDs; truthful identities and one Memory crate identity
-remain required. No hot-path scan, new unchecked mode or stored format is added.
-
-Original cost/consumer measurements and their source/lock/Wasm hashes remain at
-`/tmp/ic-persistence-cost-137/`. Earlier supplier and fixture evidence remains at
-`/tmp/ic-persistence-issue-137/` and `/tmp/ic-persistence-fixture-custody-fix/`.
-Platform stays 0.7.3, Tooling/Build/Testkit 0.69.6, stable-structures 0.7.2 and
-PocketIC client/server 16.1.0. Shared 0.27.3 remains reviewed at
-`7ee5c83744aa822ecd070703dbf0a7d95076d5f6`. Adoption evidence remains at
-`/tmp/ic-persistence-adoption-073-0696/`, `/tmp/ic-persistence-adoption-20261028/`
-and `/tmp/ic-persistence-deps-20261028/`, with each original source identity.
-
-Preserve all release journals, receipts, failed attempts and retained archives.
-Original Memory/Storage history survives through the
-[migration maps](../migration/ic-persistence.md) and
-[historical exports](../history/pull-requests/README.md). Keep verified backups at
-`/home/adam/projects/ic-persistence-retirement-2026-10-20/` and all mirrors,
-exports and recovery plans. Original checkout retirement was authorized; last
-GitHub deletions were refused for missing `delete_repo`, with no retry in scope.
+Earlier evidence remains at `/tmp/ic-persistence-teardown-137/`,
+`/tmp/ic-persistence-cost-137/`, `/tmp/ic-persistence-issue-137/` and
+`/tmp/ic-persistence-fixture-custody-fix/`. The previous handoff retained with this
+adoption records their exact source identities and native qualification limits.
+Preserve all release journals, failed attempts, receipts and retained archives.
+Keep retirement backups at `/home/adam/projects/ic-persistence-retirement-2026-10-20/`
+and the historical exports linked by the migration guides. No repository deletion
+or retirement retry is in scope.

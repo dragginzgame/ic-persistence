@@ -1,7 +1,7 @@
 # IC Metrics Stable
 
 This package is maintained and released by IC Persistence alongside Memory and
-Storage. The dependency-free `ic-metrics` arithmetic crate remains independently
+Storage. The `ic-metrics` arithmetic crate remains independently
 maintained in [IC Metrics](https://github.com/dragginzgame/ic-metrics).
 The [migration guide](https://github.com/dragginzgame/ic-persistence/blob/main/docs/migration/ic-metrics-stable.md) records source
 provenance, version selection and unchanged API/storage contracts.
@@ -9,7 +9,8 @@ provenance, version selection and unchanged API/storage contracts.
 Optional durable counter, aggregate, summary and histogram snapshots in **one stable
 B-tree map per canister**. Multiple components share that map with permanent
 namespace/name keys. Adding this package is the opt-in: `ic-metrics` alone stays
-allocation-free, dependency-free, `no_std` and volatile. This adapter uses `std` and IC Storage’s governed upstream-map facade,
+allocation-free, `no_std` and volatile, with Serde and native IC Wire support.
+This adapter uses `std` and IC Storage’s governed upstream-map facade,
 allocates bounded records and supports native hosts and Wasm with Rust 1.91.
 
 The host owns one `ic-memory` allocation pool and bootstrap. It declares one
@@ -21,9 +22,9 @@ for the selected dependency's declaration and lifecycle APIs.
 Memory and Storage are published from IC Persistence with their existing crate
 names. Hosts select `ic-metrics-stable`, `ic-memory` and `ic-storage` from the same
 Persistence release line when supplying a map to this adapter. The adapter now
-inherits Persistence's version; `ic-metrics` retains its independent 0.16 line.
+inherits Persistence's version; `ic-metrics` retains its independent 0.17 line.
 Hosts passing arithmetic values to the adapter must also select
-`ic-metrics = "0.16"`; 0.15 values have a different Rust type identity.
+`ic-metrics = "0.17"`; 0.16 values have a different Rust type identity.
 Earlier dependency generations have
 different Rust handle/map type identities; update them together. The 0.50
 alignment preserves the preceding library implementations and stored formats.

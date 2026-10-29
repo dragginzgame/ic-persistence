@@ -40,6 +40,24 @@ fn registry_response(response: &str, name: &str, version: &str, digest: &str) ->
 }
 
 impl<E: Execute> Repository<E> {
+    // Re-observe both identities at each publication checkpoint; never cache
+    // admission across the registry observation or upload effect.
+    fn check_publication_identity(
+        &self,
+        release: &InspectedRelease,
+        tag: &str,
+        timing: &str,
+    ) -> Result<()> {
+        require(
+            self.release_commit()? == *release,
+            &format!("release changed {timing} publication"),
+        )?;
+        require(
+            self.check_tag(&release.selection.version, &release.commit)? == tag,
+            &format!("release tag changed {timing} publication"),
+        )
+    }
+
     fn registry_contains(&self, name: &str, version: &str, digest: &str) -> Result<bool> {
         require(packages().contains(&name), "unknown publication package")?;
         self.version_parts(version)?;
@@ -77,14 +95,7 @@ impl<E: Execute> Repository<E> {
             })
             .collect::<Result<Vec<_>>>()?;
         for (name, digest, exists) in packages {
-            require(
-                self.release_commit()? == release,
-                "release changed before publication",
-            )?;
-            require(
-                self.check_tag(version, head)? == tag,
-                "release tag changed before publication",
-            )?;
+            self.check_publication_identity(&release, &tag, "before")?;
             if exists {
                 println!("Already published and checksum verified: {name} {version}");
                 continue;
@@ -113,14 +124,7 @@ impl<E: Execute> Repository<E> {
                     "--no-verify",
                 ],
             )?;
-            require(
-                self.release_commit()? == release,
-                "release changed during publication",
-            )?;
-            require(
-                self.check_tag(version, head)? == tag,
-                "release tag changed during publication",
-            )?;
+            self.check_publication_identity(&release, &tag, "during")?;
             if !dry_run {
                 require(
                     self.registry_contains(name, version, digest)?,
