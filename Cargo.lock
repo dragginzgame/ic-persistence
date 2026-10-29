@@ -276,7 +276,7 @@ dependencies = [
 
 [[package]]
 name = "ic-memory"
-version = "0.53.1"
+version = "0.54.0"
 dependencies = [
  "clap",
  "ic-build",
@@ -305,7 +305,7 @@ dependencies = [
 
 [[package]]
 name = "ic-metrics-stable"
-version = "0.53.1"
+version = "0.54.0"
 dependencies = [
  "ic-memory",
  "ic-metrics",
@@ -333,7 +333,7 @@ dependencies = [
 
 [[package]]
 name = "ic-storage"
-version = "0.53.1"
+version = "0.54.0"
 dependencies = [
  "ic-memory",
  "ic-platform",
