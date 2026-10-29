@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.54.1] - Unreleased
+
+### ➕ Added
+
+- Set up unpublished `ic-logging-stable` for future governed durable logging,
+  with an explicit Observability restoration handoff and no runtime API yet.
+  [Guide](crates/ic-logging-stable/README.md).
+
+### ⬆️ Dependencies
+
+- Adopt Testkit and host tooling 0.69.11, including Build and Testkit CLI
+  selections. Preserve the PocketIC 16.1.0 client/server pair and existing
+  feature boundaries. [Details](docs/changelog/0.54.md#0541---unreleased).
+
 ## [0.54.0] - 2026-10-29
 
 ### ⚠️ Breaking

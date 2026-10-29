@@ -30,9 +30,9 @@ check_dependency_cache() {
 }
 manifest_version="$(RUSTUP_TOOLCHAIN="$toolchain" \
     bash scripts/ci/read-cargo-workspace-version.sh --stable Cargo.toml)"
-package_names="$(bash scripts/ci/read-persistence-packages.sh)"
+package_names="$(bash scripts/ci/read-persistence-packages.sh --workspace)"
 IFS=$'\t' read -r -a packages <<< "$package_names"
-# All published packages inherit the one workspace release identity.
+# All workspace members inherit the one release identity, including scaffolds.
 for package in "${packages[@]}"; do
     "${YQ:-yq}" -p toml -o json '.' "crates/$package/Cargo.toml" | jq -e --arg name "$package" '
         .package | if .name == $name and .version == {workspace: true}

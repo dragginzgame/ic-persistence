@@ -37,7 +37,7 @@ use std::{
 
 mod metadata;
 mod packages;
-use packages::{package_manifest, packages};
+use packages::{package_manifest, packages, workspace_packages};
 mod publication;
 mod qualification;
 use ArchiveLocation::{Retained, Working};
@@ -521,7 +521,7 @@ fn check_lock_update(before: &[u8], after: &str, previous: &str, version: &str) 
     verify_workspace_release_projection(
         before,
         after,
-        &packages().map(|package| WorkspaceVersionProjection {
+        &workspace_packages().map(|package| WorkspaceVersionProjection {
             package,
             previous,
             next: version,
@@ -818,7 +818,7 @@ impl<E: Execute> Repository<E> {
             };
             surfaces.insert(path.to_owned(), ReleaseSurface { original, expected });
         }
-        for name in packages().into_iter().skip(1) {
+        for name in workspace_packages().into_iter().skip(1) {
             let original = self.member_release_manifest(Some(source), name)?;
             surfaces.insert(
                 package_manifest(name),

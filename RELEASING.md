@@ -180,7 +180,8 @@ They validate source/input identities, finalize the root and detail notes with
 the saved UTC date, update Cargo metadata, preserve the saved README and qualify the packages. The
 explicit staged file set is `Cargo.toml`, `Cargo.lock`, `crates/ic-memory/README.md`, `CHANGELOG.md`
 and the candidate minor-line detail file. The root lock edit changes only the
-local `ic-memory`, `ic-storage` and `ic-metrics-stable` package versions; the independent qualification
+local `ic-memory`, `ic-storage`, `ic-metrics-stable` and unpublished
+`ic-logging-stable` package versions; the independent qualification
 lock is not a release edit. Git mutations belong exclusively to the common runner.
 
 Preflight checks both working files and the entire index. Restoring a working
@@ -190,7 +191,7 @@ metadata from the selected SHA and require its sole parent, release subject and
 exact prepared metadata to match saved intent.
 
 The root `[workspace.package]` owns the release version and MSRV;
-all three package manifests inherit them and stay unchanged during a bump.
+all four package manifests inherit them and stay unchanged during a bump.
 The helper launcher requires all inherited declarations and matching local lock
 versions. Interrupted metadata recovery copies all member manifests unchanged
 and leaves tracked inputs intact; the root manifest is rendered for the selected
@@ -335,8 +336,9 @@ Current focused evidence is recorded in
 
 ## Coordinated package publication
 
-Memory, Storage and Metrics Stable inherit the common workspace version. Preparation updates
-all three local lock records and the internal Memory/Storage requirements; the Storage and Metrics Stable manifests
+Memory, Storage, Metrics Stable and the unpublished Logging Stable scaffold inherit
+the common workspace version. Preparation updates all four local lock records and
+the internal Memory/Storage requirements; the Storage and Metrics Stable manifests
 are admitted unchanged as a source-bound release surface. The initial 0.50.0
 conversion is complete. Pre-consolidation receipts and plans retain their
 original source/tooling; do not convert them with the current adapter.
@@ -348,6 +350,13 @@ consumer patches registry names only to those extracted archives, avoiding Cargo
 temporary-registry offline download failure and preventing accidental use of an
 older published Memory. Its manifest/lock/logs are retained under
 `target/package-qualification/`; the maintained root lock is unchanged.
+
+Logging Stable remains `publish = false`: it advances with the workspace but has
+no archive receipt or publication entry. Existing receipt fields and publication
+order remain unchanged. Its implemented adapter and publication integration must
+be qualified before adding it to the publication roster.
+Resume saved releases from before this scaffold using their original source and
+tooling; the current workspace projection requires its fourth local lock record.
 
 `make publish` admits clean release source, exact tag, all three archives and receipts
 before registry effects. It observes all three crates.io versions; only HTTP 404 means

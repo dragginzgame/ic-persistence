@@ -16,12 +16,12 @@ cover maintenance permission preflight, single-tool freshness and retained
 validation excerpts; no scheduled maintenance is activated. Exported bytes and
 modes are compared against this independently selected source commit.
 
-The current dependency adoption selects IC Metrics 0.17.0 and host tooling 0.69.9,
+The current dependency adoption selects IC Metrics 0.17.0 and host tooling 0.69.11,
 including the separate Build/Testkit CLI selections. Metrics' arithmetic types
 require caller alignment to 0.17 and now carry standard Serde/native Wire support.
-The pending consumer release is 0.54.0; V1 records, collection formats and custody
+The pending consumer release is 0.54.1; V1 records, collection formats and custody
 remain unchanged. Both Platform declarations retain 0.7.3; the incoming library
-lock already selected 0.7.4 and the independent lock remains unchanged at 0.7.3.
+lock already selected 0.7.5 and the independent lock remains unchanged at 0.7.3.
 The stable-structures 0.7.2 substrate, PocketIC 16.1.0 pair and Rust selections are
 retained. This consumer has no cached baseline recipe to migrate for Tooling's
 timer-state fix. CLI source selection and actual installed admission remain

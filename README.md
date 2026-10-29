@@ -8,6 +8,7 @@ canisters, maintained in one repository and published as three crates.
 | `ic-memory` | Allocation identities, admission, runtime bootstrap and exclusive leases | [Memory](crates/ic-memory/README.md) |
 | `ic-storage` | Governed collection adapters over Memory leases | [Storage](crates/ic-storage/README.md) |
 | `ic-metrics-stable` | Validated metric snapshots in governed Storage maps | [Metrics Stable](crates/ic-metrics-stable/README.md) |
+| `ic-logging-stable` | Unpublished scaffold for a future durable logging adapter | [Logging Stable](crates/ic-logging-stable/README.md) |
 
 Storage depends on Memory. There is no umbrella crate. Upstream
 `ic-stable-structures` retains collection algorithms and persisted formats;
@@ -15,7 +16,8 @@ applications retain lifecycle and recovery policy. The stable metric adapter
 owns its V1 records here; allocation-free arithmetic remains in IC Metrics.
 See [ownership](docs/ownership.md) and [safety](SAFETY.md).
 
-The root Cargo workspace owns all three packages, one dependency catalog and one
+The root Cargo workspace owns the three published packages and the logging
+scaffold, one dependency catalog and one
 lockfile, with Rust 1.91 as the minimum. Run Make and Cargo commands here.
 The independent [installed runtime runner](testing/runtime-qualification/README.md)
 retains its host-only lockfile. Archive consumer qualification uses isolated,

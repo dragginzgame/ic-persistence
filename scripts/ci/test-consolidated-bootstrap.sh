@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Actual offline Cargo and the selected editor; no fixture Git/release effects.
 set -euo pipefail
-package_names="$(bash scripts/ci/read-persistence-packages.sh)"
+package_names="$(bash scripts/ci/read-persistence-packages.sh --workspace)"
 IFS=$'\t' read -r -a packages <<< "$package_names"
 unset RELEASE_CACHE_PREPARE MAKEFLAGS MFLAGS MAKEOVERRIDES GNUMAKEFLAGS MAKEFILES
 root="$(pwd -P)"
@@ -51,7 +51,7 @@ for state in lock-first manifest-first; do
         lock-first) cp candidate.lock Cargo.lock ;;
         manifest-first) cp candidate.toml Cargo.toml; expected="$next" ;;
     esac
-    shasum -a 256 Cargo.toml Cargo.lock crates/ic-memory/Cargo.toml crates/ic-storage/Cargo.toml crates/ic-metrics-stable/Cargo.toml > "$state.inputs.sha256"
+    shasum -a 256 Cargo.toml Cargo.lock crates/ic-memory/Cargo.toml crates/ic-storage/Cargo.toml crates/ic-metrics-stable/Cargo.toml crates/ic-logging-stable/Cargo.toml > "$state.inputs.sha256"
     bash scripts/dev/run-repo-tool.sh "$pin" version > "$state.stdout" 2> "$state.stderr"
     [[ "$(cat "$state.stdout")" == "$expected" ]] || exit 1
     shasum -a 256 -c "$state.inputs.sha256"

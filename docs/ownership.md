@@ -5,6 +5,11 @@ key-to-ID bindings, host-wide placement, admission before commitment, protected
 ledger recovery and exclusive checked handles. It does not own application data,
 collection semantics, component lifecycle or deployment policy.
 
+The fourth workspace member, `ic-logging-stable`, is an unpublished scaffold.
+Its [handoff guide](../crates/ic-logging-stable/README.md) reserves durable encoding
+and governed Storage integration for Persistence while IC Observability owns
+logging semantics and validated restoration. It exposes no runtime API yet.
+
 ## Public entry points
 
 The root [workspace catalog](../Cargo.toml) owns dependency and package selection;
@@ -97,6 +102,10 @@ the existing coordinated-order mapping. Workflow callers carry complete receipts
 rather than parallel digest arrays. Changing package membership or order requires
 explicit receipt compatibility review. This is release policy, not another
 dependency or version catalog.
+`unpublished-packages.json` beside that roster names the logging scaffold.
+Workspace version projection and interrupted-release bootstrap combine both
+rosters; archive receipts and publication use only the published roster. A name
+cannot belong to both. The three existing receipt digest fields are unchanged.
 The Makefile's `FORMAT_RUST_ARGS` owns the consumer formatter roster, including
 the independent workspace and edition-2024 package consumer; the shared driver
 owns ordering, visible passes and uncached standalone execution. `qualify-runtime.sh`
