@@ -5,10 +5,11 @@ key-to-ID bindings, host-wide placement, admission before commitment, protected
 ledger recovery and exclusive checked handles. It does not own application data,
 collection semantics, component lifecycle or deployment policy.
 
-The fourth workspace member, `ic-logging-stable`, is an unpublished scaffold.
-Its [handoff guide](../crates/ic-logging-stable/README.md) reserves durable encoding
-and governed Storage integration for Persistence while IC Observability owns
-logging semantics and validated restoration. It exposes no runtime API yet.
+The fourth workspace member, `ic-logging-stable`, is an unpublished checkpoint
+adapter. Its [guide](../crates/ic-logging-stable/README.md) records bounded V1
+encoding and governed Storage integration owned by Persistence. IC Observability's
+published Logging 0.17.2 owns logging semantics and validated restoration. Hosts
+own checkpoint identity and cadence; no second logging engine is introduced.
 
 ## Public entry points
 
@@ -102,7 +103,7 @@ the existing coordinated-order mapping. Workflow callers carry complete receipts
 rather than parallel digest arrays. Changing package membership or order requires
 explicit receipt compatibility review. This is release policy, not another
 dependency or version catalog.
-`unpublished-packages.json` beside that roster names the logging scaffold.
+`unpublished-packages.json` beside that roster names the logging adapter.
 Workspace version projection and interrupted-release bootstrap combine both
 rosters; archive receipts and publication use only the published roster. A name
 cannot belong to both. The three existing receipt digest fields are unchanged.

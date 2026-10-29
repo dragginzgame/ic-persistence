@@ -4,8 +4,9 @@
 
 ### ➕ Added
 
-- Set up unpublished `ic-logging-stable` for future governed durable logging,
-  with an explicit Observability restoration handoff and no runtime API yet.
+- Add unpublished `ic-logging-stable` with bounded governed checkpoints using
+  published Logging 0.17.2. Reopening preserves sequence/time watermarks;
+  checkpoint admission rejects regression and rewritten history before mutation.
   [Guide](crates/ic-logging-stable/README.md).
 
 ### ⬆️ Dependencies

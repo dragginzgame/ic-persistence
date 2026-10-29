@@ -336,7 +336,7 @@ Current focused evidence is recorded in
 
 ## Coordinated package publication
 
-Memory, Storage, Metrics Stable and the unpublished Logging Stable scaffold inherit
+Memory, Storage, Metrics Stable and the unpublished Logging Stable adapter inherit
 the common workspace version. Preparation updates all four local lock records and
 the internal Memory/Storage requirements; the Storage and Metrics Stable manifests
 are admitted unchanged as a source-bound release surface. The initial 0.50.0
@@ -355,7 +355,7 @@ Logging Stable remains `publish = false`: it advances with the workspace but has
 no archive receipt or publication entry. Existing receipt fields and publication
 order remain unchanged. Its implemented adapter and publication integration must
 be qualified before adding it to the publication roster.
-Resume saved releases from before this scaffold using their original source and
+Resume saved releases from before Logging Stable using their original source and
 tooling; the current workspace projection requires its fourth local lock record.
 
 `make publish` admits clean release source, exact tag, all three archives and receipts

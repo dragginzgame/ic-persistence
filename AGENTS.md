@@ -16,9 +16,11 @@ vendored files or attribute dirty shared source to a committed export.
 The virtual repository-root workspace owns shared package metadata and the
 dependency catalog. The library packages are `crates/ic-memory/`,
 `crates/ic-storage/` and `crates/ic-metrics-stable/`, plus the unpublished
-`crates/ic-logging-stable/` scaffold. Logging Stable owns future governed durable
-logging integration; IC Observability owns logging semantics and restoration.
-No logging runtime API or stored format is selected by the scaffold.
+`crates/ic-logging-stable/` adapter. Logging Stable owns bounded V1 checkpoints
+over governed Storage maps; IC Observability's published Logging 0.17.2 owns
+logging semantics and validated restoration. Hosts own clocks, identity,
+retention scheduling and checkpoint cadence. Keep Logging Stable outside archive
+receipts and publication until that integration is explicitly selected.
 Memory owns allocation governance, bootstrap and exclusive leases; Storage owns
 governed collections over those leases. Metrics Stable owns validated V1 metric
 snapshots over Storage maps and depends on the external
@@ -195,7 +197,7 @@ requires a different style.
 ## Consolidated release identity
 
 All four packages share the workspace version and advance together. The logging
-scaffold remains `publish = false` and outside archive/publication receipts.
+adapter remains `publish = false` and outside archive/publication receipts.
 Keep the
 public APIs, collection formats and allocation custody unchanged during tooling
 cleanup. Storage retains its existing lint policy and declaration boundary.

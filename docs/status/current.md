@@ -1,69 +1,57 @@
 # Current handoff
 
-Released source is 0.54.0 at `9ca2e8e39f8ab5d1b8501e4d843b25c614719a13`.
-Pending 0.54.1 adopts Testkit/host tooling 0.69.11 and adds an unpublished Logging
-Stable workspace scaffold. Package metadata remains 0.54.0; no release,
-publication, staging or push occurred. See [pending notes](../changelog/0.54.md#0541---unreleased).
+The checkout is based on the maintainer's scaffold/tooling commit
+`bf38fe0`, following released 0.54.0 source
+`9ca2e8e39f8ab5d1b8501e4d843b25c614719a13`. Pending notes remain 0.54.1;
+package metadata remains 0.54.0. No staging, commit, push, merge or release effect
+was performed during the integration below.
 
-## Current development batch
+## Logging integration
 
-- Align Build, artifact/filesystem/process helpers and native Testkit requirements
-  to 0.69.11, plus the separate Build and Testkit CLI selections. Reviewed upstream
-  release commit is `d7aed4d0f878a8e8c1686fc71e2bbe45f1062f82`.
-- Tooling adoption preserved incoming selections. The logging scaffold adds one
-  local lock record and no dependencies. The library lock already selected host
-  tooling 0.69.11 and Platform 0.7.5. Both Platform declarations
-  remain 0.7.3 and the independent qualification lock retains Platform 0.7.3.
-- Shared Tooling stays at 0.27.6, commit
-  `5a72359b5be19d5221334cf2c9b3204621d3f3f6`. Metrics stays at 0.17.0.
-  Features, Rust support, stable-structures 0.7.2 and PocketIC 16.1.0 remain.
-- The upstream Testkit snapshot/process cleanup requires no Persistence caller
-  migration. Public APIs, V1 records, collection formats and custody are unchanged.
-  Scheduled maintenance remains inactive.
-- `ic-logging-stable` has inherited metadata, an MIT license and a handoff guide,
-  but no runtime API, stored format or upstream dependency. The maintainer owns
-  the Observability restoration work. Version projection and bootstrap cover all
-  four members; publication and receipts still cover the existing three crates.
+[PR #138 — Prepare governed stable checkpoints for IC Logging](https://github.com/dragginzgame/ic-persistence/pull/138)
+at `7a871520d1aec08ed6040d07a0b55e7d9bdfc65e` is combined locally with the
+existing scaffold, release rosters and host tooling work. The working tree now
+contains the adapter implementation, not just its original empty scaffold.
 
-## Focused evidence and installation
+The root catalog and lock select published registry Logging 0.17.2, checksum
+`8ead6c0fa5b61da08c5238e61ad57e9acf7c42a2af35c41657be5e60ea93e88f`.
+No sibling source override, copied Logging engine or candidate checksum is used.
+The incoming lock's host tooling 0.69.12 and Platform 0.7.6 selections are
+preserved. The separate runtime-qualification lock is byte-identical to its input.
+Build/Testkit CLI pins remain the separately prepared 0.69.11 selections.
 
-Inputs are retained at `/tmp/ic-persistence-tooling-06911.OMkw5Z/`, including both incoming
-locks and the preceding handoff. Formatting, snapshot integrity, dependency pins
-and the Wasm production graph pass. All 65 native release-helper tests and strict
-release-helper Clippy pass with host tooling 0.69.11.
+Logging Stable owns bounded V1 checkpoint encoding and continuity checks over a
+host-opened governed Storage map. Canonical Logging owns restore, append, paging
+and retention. Empty/exhausted checkpoints retain both append watermarks;
+regression, rewritten issued rows and resurrection of pruned rows refuse before
+mutation. Identical saves perform no stable writes. Hosts own clocks, identity,
+allocation, lifecycle, authorization and checkpoint cadence.
 
-The logging scaffold compiles natively and for Wasm. Metadata confirms publication
-is disabled and there are no dependencies. Pin/graph, license and documentation
-checks pass. Updated 65-case release-helper and consumer adapter fixtures pass.
-Actual offline bootstrap with all four members admits both interrupted metadata
-states without changing fixture inputs; retained evidence is at
-`/tmp/ic-persistence-bootstrap.CzvHVp/`. Adapter evidence is at
-`/tmp/ic-memory-release-adapters.CsRr2e/`; the earlier graph-stub mismatch is
-retained at `/tmp/ic-memory-release-adapters.B6xz1e/`.
+The logging package remains unpublished. All four members participate in version
+projection and interrupted-release bootstrap. Only the original three crates
+participate in archives, receipts and publication. Existing Memory/Storage/Metrics
+formats, custody, Rust support, Shared 0.27.6 and PocketIC 16.1.0 are retained.
 
-Build and Testkit CLI 0.69.11 setup pass. The first Testkit installation wait
-expired while ic-timers owned the shared slot. A later setup observed its release
-and reused the completed installation without modifying the foreign lock/build.
-Subsequent offline Build CLI and Testkit CLI/server admission both pass.
-Full release and installed-runtime qualification were not run for this adoption;
-prior native/installed evidence is not relabelled as 0.69.11 qualification.
+## Focused evidence and delivery boundary
 
-## Preserved runtime and recovery evidence
+Inputs and the preceding handoff are retained at
+`/tmp/ic-persistence-logging-integration.k23sYP/`. Normal locked dependency preparation succeeds.
+On the published graph, all seven Logging Stable tests and both doctests pass on
+Rust 1.99.1 and actual Rust 1.91. Strict native all-target and Wasm library Clippy
+pass after completing API error documentation. Formatting, pins, production graph,
+licenses, documentation links and consumer release-adapter fixtures pass.
+Adapter evidence is at `/tmp/ic-memory-release-adapters.lDwOWG/`.
+Real offline bootstrap admits both interrupted metadata states with unchanged
+fixture inputs at `/tmp/ic-persistence-bootstrap.wCaeVv/`.
 
-The 0.53.1 fix retires backing identity claims before freeing their allocations,
-including failed construction and unwinding. Duplicate-owner refusal, detached
-lease custody and the 0.53.0 checkpoint-validation contract remain in force.
-Construction, initial bootstrap, new leases, diagnostics and growth check full
-metadata. Ordinary size/IO trust exclusive custody and reject poisoned owners;
-raw aliases and unmanaged managers remain prohibited. No hot-path scan or new
-unchecked mode is introduced.
+The PR's original CI failure was dependency preparation before Logging 0.17.2
+was available. Its remote head has not been updated with this local integration;
+old failed CI is not new-source acceptance. The combined tree is ready for the
+maintainer's contribution flow and fresh required CI. Full release, native macOS
+and installed Logging update/query/trap/upgrade qualification remain unrun.
+Publication of Logging Stable remains a separate explicit decision.
 
-The 0.54.0 adoption evidence remains at `/tmp/ic-persistence-adoption-20261029/`.
-Earlier runtime evidence remains at `/tmp/ic-persistence-teardown-137/`,
-`/tmp/ic-persistence-cost-137/`, `/tmp/ic-persistence-issue-137/` and
-`/tmp/ic-persistence-fixture-custody-fix/`. Their original source identities and
-native qualification limits remain with those artifacts and retained handoffs.
-Preserve all release journals, failed attempts, receipts and retained archives.
-Keep retirement backups at `/home/adam/projects/ic-persistence-retirement-2026-10-20/`
-and historical exports linked by the migration guides. No repository deletion
-or retirement retry is in scope.
+Preserve the earlier scaffold/bootstrap, native custody and adoption evidence
+linked by the retained incoming handoff, along with all release journals,
+receipts, failed attempts and archives. Runtime checkpoint/custody policy remains
+as documented in the public Memory guide. No repository retirement retry is in scope.

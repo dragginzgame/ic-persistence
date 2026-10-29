@@ -6,9 +6,18 @@ version.workspace = true
 license.workspace = true
 repository.workspace = true
 authors.workspace = true
-description = "Preparation for governed stable storage of IC Logging history"
+description = "Optional governed stable checkpoints for IC Logging"
 readme = "README.md"
 publish = false
+
+[dependencies]
+ic-logging.workspace = true
+ic-memory.workspace = true
+ic-storage.workspace = true
+thiserror.workspace = true
+
+[dev-dependencies]
+ic-memory = { workspace = true, features = ["test-support"] }
 
 [lints.rust]
 missing_docs = "warn"
