@@ -180,7 +180,7 @@ They validate source/input identities, finalize the root and detail notes with
 the saved UTC date, update Cargo metadata, preserve the saved README and qualify the packages. The
 explicit staged file set is `Cargo.toml`, `Cargo.lock`, `crates/ic-memory/README.md`, `CHANGELOG.md`
 and the candidate minor-line detail file. The root lock edit changes only the
-local `ic-memory`, `ic-storage`, `ic-metrics-stable` and unpublished
+local `ic-memory`, `ic-storage`, `ic-metrics-stable` and
 `ic-logging-stable` package versions; the independent qualification
 lock is not a release edit. Git mutations belong exclusively to the common runner.
 
@@ -336,33 +336,35 @@ Current focused evidence is recorded in
 
 ## Coordinated package publication
 
-Memory, Storage, Metrics Stable and the unpublished Logging Stable adapter inherit
+Memory, Storage, Metrics Stable and Logging Stable inherit
 the common workspace version. Preparation updates all four local lock records and
-the internal Memory/Storage requirements; the Storage and Metrics Stable manifests
+the internal Memory/Storage requirements; the Storage and both stable-adapter manifests
 are admitted unchanged as a source-bound release surface. The initial 0.50.0
 conversion is complete. Pre-consolidation receipts and plans retain their
 original source/tooling; do not convert them with the current adapter.
 
-All three qualified archive digests are retained in every package receipt. Packaging
-creates all three archives offline and independently builds extracted packages and a
+All four qualified archive digests are retained in every package receipt. Packaging
+creates all four archives offline and independently builds extracted packages and a
 consumer on native Rust 1.91 and the selected compiler, then checks Wasm. The
 consumer patches registry names only to those extracted archives, avoiding Cargo's
 temporary-registry offline download failure and preventing accidental use of an
 older published Memory. Its manifest/lock/logs are retained under
 `target/package-qualification/`; the maintained root lock is unchanged.
 
-Logging Stable remains `publish = false`: it advances with the workspace but has
-no archive receipt or publication entry. Existing receipt fields and publication
-order remain unchanged. Its implemented adapter and publication integration must
-be qualified before adding it to the publication roster.
-Resume saved releases from before Logging Stable using their original source and
-tooling; the current workspace projection requires its fourth local lock record.
+The canonical `packages.json` roster selects Memory, Storage, Metrics Stable and
+Logging Stable in that order. Each package receipt requires `package_sha256`,
+`storage_sha256`, `metrics_sha256` and `logging_sha256`; a missing Logging digest
+never defaults or skips qualification. The extracted consumer checks Logging
+checkpoint reopen and empty-history watermarks alongside Metrics and shared leases.
+Resume saved releases with three-package receipts using their original source
+and tooling. Do not convert or overwrite those receipts with this adapter.
 
-`make publish` admits clean release source, exact tag, all three archives and receipts
-before registry effects. It observes all three crates.io versions; only HTTP 404 means
+`make publish` admits clean release source, exact tag, all four archives and receipts
+before registry effects. It observes all four crates.io versions; only HTTP 404 means
 absent. A conflicting checksum, yanked version or failed observation stops the
 command before uploading. It uploads Memory first, confirms the expected registry
-checksum, then uploads Storage and finally Metrics Stable. `--no-verify` avoids repeating compilation during
+checksum, then uploads Storage, Metrics Stable and finally Logging Stable.
+`--no-verify` avoids repeating compilation during
 upload: the exact archives already have independent package qualification.
 
 Shared's canonical publication runner retains each attempt, exact package selector,
@@ -376,4 +378,4 @@ automatic overwrite, version selection or retry occurs. If visibility is delayed
 the command stops and can be rerun later. `publish-dry-run` never supplies evidence
 of real publication; Storage's registry resolution may still require Memory's
 selected release to be available. The offline archive consumer proves the
-unpublished pair independently. No real publication was performed by migration.
+coordinated packages independently. No real publication was performed by migration.

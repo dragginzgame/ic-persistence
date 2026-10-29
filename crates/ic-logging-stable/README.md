@@ -1,7 +1,7 @@
 # IC Logging Stable
 
 Optional bounded checkpoints for IC Logging, following Metrics Stable's explicit
-load/save model. The package is unpublished and consumes published Logging
+load/save model. The package is prepared for its first publication and consumes Logging
 0.17.2's validated `LogSnapshot` restoration contract.
 
 IC Observability owns the engine, snapshot admission, append, retention, UTF-8

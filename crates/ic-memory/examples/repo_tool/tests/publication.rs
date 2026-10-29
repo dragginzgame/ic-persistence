@@ -1,6 +1,72 @@
 use super::*;
 
 #[test]
+fn logging_upload_rejection_and_lost_response_resume_without_replaying_dependencies() {
+    for (fault, count_after_failure, logging_uploads) in [
+        (RegistryFault::LoggingUpload, 3, 2),
+        (RegistryFault::LoggingUploadResponseLost, 4, 1),
+    ] {
+        let fixture = Fixture::new();
+        fixture.release();
+        fixture.fail_registry(fault);
+        assert!(fixture.repo.publish(false).is_err());
+        assert_eq!(
+            fixture.repo.exec.state.borrow().registry.published.len(),
+            count_after_failure
+        );
+        fixture.repo.exec.state.borrow_mut().clear_faults();
+        fixture.repo.publish(false).unwrap();
+        fixture.repo.publish(false).unwrap();
+        let state = fixture.repo.exec.state.borrow();
+        assert_eq!(state.registry.published.len(), packages().len());
+        for name in packages() {
+            let uploads = state
+                .calls
+                .iter()
+                .filter(|call| {
+                    is_cargo_call(call, "publish")
+                        && call.windows(2).any(|pair| pair == ["--package", name])
+                })
+                .count();
+            assert_eq!(
+                uploads,
+                if name == "ic-logging-stable" {
+                    logging_uploads
+                } else {
+                    1
+                }
+            );
+        }
+    }
+}
+
+#[test]
+fn missing_or_changed_logging_archive_refuses_before_any_registry_observation() {
+    for missing in [true, false] {
+        let fixture = Fixture::new();
+        fixture.release();
+        let archive = fixture
+            .repo
+            .package_path("ic-logging-stable", &fixture.selection.version)
+            .unwrap();
+        if missing {
+            fs::remove_file(archive).unwrap();
+        } else {
+            fs::write(archive, b"foreign logging archive").unwrap();
+        }
+        let before = fixture.repo.exec.state.borrow().calls.len();
+        assert!(fixture.repo.publish(false).is_err());
+        let state = fixture.repo.exec.state.borrow();
+        assert!(
+            state.calls[before..]
+                .iter()
+                .all(|call| call[0] != "curl" && !is_cargo_call(call, "publish"))
+        );
+        assert!(state.registry.published.is_empty());
+    }
+}
+
+#[test]
 fn publication_reconciles_a_lost_upload_response_without_reuploading_memory() {
     let fixture = Fixture::new();
     fixture.release();
@@ -8,7 +74,10 @@ fn publication_reconciles_a_lost_upload_response_without_reuploading_memory() {
     assert!(fixture.repo.publish(false).is_err());
     fixture.repo.exec.state.borrow_mut().clear_faults();
     fixture.repo.publish(false).unwrap();
-    assert_eq!(fixture.repo.exec.state.borrow().registry.published.len(), 3);
+    assert_eq!(
+        fixture.repo.exec.state.borrow().registry.published.len(),
+        packages().len()
+    );
     assert_eq!(
         fixture
             .repo
@@ -19,13 +88,13 @@ fn publication_reconciles_a_lost_upload_response_without_reuploading_memory() {
             .iter()
             .filter(|call| is_cargo_call(call, "publish"))
             .count(),
-        3
+        packages().len()
     );
 }
 
 #[test]
 fn registry_conflicts_or_unknown_status_refuse_before_any_upload() {
-    for package in ["ic-storage", "ic-metrics-stable"] {
+    for package in packages().into_iter().skip(1) {
         for failure in [
             RegistryFault::RegistryForbidden,
             RegistryFault::RegistryError,
@@ -49,10 +118,13 @@ fn registry_conflicts_or_unknown_status_refuse_before_any_upload() {
                     package.to_owned(),
                     if failure == RegistryFault::Checksum {
                         "wrong".to_owned()
-                    } else if package == "ic-storage" {
-                        evidence.storage_sha256
                     } else {
-                        evidence.metrics_sha256
+                        evidence
+                            .archives()
+                            .find(|(name, _)| *name == package)
+                            .unwrap()
+                            .1
+                            .to_owned()
                     },
                 );
             fixture.fail_registry(failure.clone());

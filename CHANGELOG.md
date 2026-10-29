@@ -4,6 +4,8 @@
 
 ### ➕ Added
 
+- Prepare Logging Stable publication with four qualified archives, a mandatory
+  logging receipt digest and resumable dependency-ordered uploads.
 - Add focused installed Logging qualification for query non-persistence,
   update/upgrade rollback and reopen with empty-history watermarks.
   [Details](docs/changelog/0.54.md#0542).

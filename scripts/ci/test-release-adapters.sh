@@ -620,7 +620,6 @@ cp "$ROOT/scripts/dev/run-repo-tool.sh" "$FIXTURE/scripts/dev/"
 cp "$ROOT/scripts/ci/read-persistence-packages.sh" "$FIXTURE/scripts/ci/"
 mkdir -p "$FIXTURE/crates/ic-memory/examples/repo_tool"
 cp "$ROOT/crates/ic-memory/examples/repo_tool/packages.json" "$FIXTURE/crates/ic-memory/examples/repo_tool/"
-cp "$ROOT/crates/ic-memory/examples/repo_tool/unpublished-packages.json" "$FIXTURE/crates/ic-memory/examples/repo_tool/"
 # Exercise the real published renderer; substitute only tool-store selection.
 fixture_editor="$(RUSTUP_TOOLCHAIN="$FIXTURE_TOOLCHAIN" bash "$ROOT/scripts/dev/install-rust-tools.sh" \
     --consumer "$ROOT" --package ic-build --version "$IC_BUILD_RELEASE_METADATA_VERSION" \
@@ -682,7 +681,7 @@ printf '[package]\nname = "ic-metrics-stable"\nversion.workspace = true\n' > cra
 echo fixture > crates/ic-metrics-stable/README.md
 touch crates/ic-metrics-stable/src/lib.rs
 mkdir -p crates/ic-logging-stable/src
-printf '[package]\nname = "ic-logging-stable"\nversion.workspace = true\npublish = false\n' > crates/ic-logging-stable/Cargo.toml
+printf '[package]\nname = "ic-logging-stable"\nversion.workspace = true\n' > crates/ic-logging-stable/Cargo.toml
 echo scaffold > crates/ic-logging-stable/README.md
 touch crates/ic-logging-stable/src/lib.rs
 cp Cargo.toml original-manifest
@@ -836,22 +835,13 @@ check_release_cache_preparation() {
 # A failed or malformed roster cannot dispatch cache preparation or the helper.
 roster=crates/ic-memory/examples/repo_tool/packages.json
 cp "$roster" original-roster
-for invalid in 'not-json' '["ic-memory"]' '["ic-memory","ic-memory","ic-storage"]' '["ic-memory","ic-storage","../escape"]'; do
+for invalid in 'not-json' '["ic-memory"]' '["ic-memory","ic-storage","ic-metrics-stable"]' '["ic-memory","ic-storage","ic-metrics-stable","ic-metrics-stable"]' '["ic-memory","ic-storage","ic-metrics-stable","../escape"]'; do
     printf '%s\n' "$invalid" > "$roster"
     status=0
     bash scripts/dev/run-repo-tool.sh "$FIXTURE_TOOLCHAIN" version > roster-refusal.log 2>&1 || status=$?
     [[ "$status" != 0 && ! -e calls ]] || exit 1
 done
 cp original-roster "$roster"
-unpublished=crates/ic-memory/examples/repo_tool/unpublished-packages.json
-cp "$unpublished" original-unpublished-roster
-for invalid in 'not-json' '[]' '["ic-memory"]' '["../escape"]'; do
-    printf '%s\n' "$invalid" > "$unpublished"
-    status=0
-    bash scripts/dev/run-repo-tool.sh "$FIXTURE_TOOLCHAIN" version > roster-refusal.log 2>&1 || status=$?
-    [[ "$status" != 0 && ! -e calls ]] || exit 1
-done
-cp original-unpublished-roster "$unpublished"
 [[ "$(make --no-print-directory -s release-version)" == 0.12.3 ]] || exit 1
 [[ "$(cat calls)" == $'normal-cache\nnormal' ]] || exit 1
 check_publication_environment

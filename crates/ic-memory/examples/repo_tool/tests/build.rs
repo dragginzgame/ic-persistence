@@ -188,6 +188,10 @@ impl BuildEffects {
             directory.join(format!("ic-metrics-stable-{}.crate", Self::version(root)?)),
             format!("metrics-{bytes}"),
         )?;
+        fs::write(
+            directory.join(format!("ic-logging-stable-{}.crate", Self::version(root)?)),
+            format!("logging-{bytes}"),
+        )?;
         if self.fail.as_ref() == Some(&BuildFault::Package) {
             return Err("fixture package failure".into());
         }

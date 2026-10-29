@@ -94,7 +94,7 @@ impl<E: Execute> Repository<E> {
             "unexpected package version",
         )?;
         expected["workspace"]["package"]["version"] = toml::Value::String(version.to_owned());
-        let aliases: Vec<_> = workspace_packages()
+        let aliases: Vec<_> = packages()
             .into_iter()
             .filter(|name| expected["workspace"]["dependencies"].get(*name).is_some())
             .collect();
@@ -129,7 +129,7 @@ impl<E: Execute> Repository<E> {
     ) -> Result<String> {
         let updated = render_workspace_lock(
             text,
-            &workspace_packages().map(|package| WorkspaceVersionProjection {
+            &packages().map(|package| WorkspaceVersionProjection {
                 package,
                 previous,
                 next: version,

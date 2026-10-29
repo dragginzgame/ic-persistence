@@ -8,6 +8,8 @@ pub(super) enum RegistryFault {
     RegistryForbidden,
     RegistryYanked,
     StorageUpload,
+    LoggingUpload,
+    LoggingUploadResponseLost,
     UploadResponseLost,
     Checksum,
 }
@@ -52,12 +54,20 @@ impl RegistryEffects {
             if name == "ic-storage" && self.fail.as_ref() == Some(&RegistryFault::StorageUpload) {
                 return Err("Storage upload refused".into());
             }
+            if name == "ic-logging-stable"
+                && self.fail.as_ref() == Some(&RegistryFault::LoggingUpload)
+            {
+                return Err("Logging upload refused".into());
+            }
             let archive = target
                 .join("package")
                 .join(format!("{name}-{}.crate", BuildEffects::version(root)?));
             let digest = Repository::<Substitute>::sha256(&archive)?;
             self.published.insert(name.to_owned(), digest);
-            if self.fail.as_ref() == Some(&RegistryFault::UploadResponseLost) {
+            if self.fail.as_ref() == Some(&RegistryFault::UploadResponseLost)
+                || (name == "ic-logging-stable"
+                    && self.fail.as_ref() == Some(&RegistryFault::LoggingUploadResponseLost))
+            {
                 return Err("response lost after accepted upload".into());
             }
         }

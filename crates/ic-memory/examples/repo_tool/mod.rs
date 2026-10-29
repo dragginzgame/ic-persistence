@@ -37,7 +37,7 @@ use std::{
 
 mod metadata;
 mod packages;
-use packages::{package_manifest, packages, workspace_packages};
+use packages::{package_manifest, packages};
 mod publication;
 mod qualification;
 use ArchiveLocation::{Retained, Working};
@@ -232,6 +232,7 @@ struct PackageEvidence {
     package_sha256: String,
     storage_sha256: String,
     metrics_sha256: String,
+    logging_sha256: String,
     commands: Vec<Vec<String>>,
 }
 
@@ -258,11 +259,12 @@ impl PackageEvidence {
         lock_sha256: String,
         commands: Vec<Vec<String>>,
     ) -> Result<Self> {
-        let [memory, storage, metrics] = packages();
+        let [memory, storage, metrics, logging] = packages();
         let version = &validation.selection.version;
         let package_sha256 = repo.record_package(memory, version)?;
         let storage_sha256 = repo.record_package(storage, version)?;
         let metrics_sha256 = repo.record_package(metrics, version)?;
+        let logging_sha256 = repo.record_package(logging, version)?;
         Ok(Self {
             validation,
             package_head,
@@ -270,6 +272,7 @@ impl PackageEvidence {
             package_sha256,
             storage_sha256,
             metrics_sha256,
+            logging_sha256,
             commands,
         })
     }
@@ -279,6 +282,7 @@ impl PackageEvidence {
             self.package_sha256.as_str(),
             self.storage_sha256.as_str(),
             self.metrics_sha256.as_str(),
+            self.logging_sha256.as_str(),
         ])
     }
 }
@@ -521,7 +525,7 @@ fn check_lock_update(before: &[u8], after: &str, previous: &str, version: &str) 
     verify_workspace_release_projection(
         before,
         after,
-        &workspace_packages().map(|package| WorkspaceVersionProjection {
+        &packages().map(|package| WorkspaceVersionProjection {
             package,
             previous,
             next: version,
@@ -818,7 +822,7 @@ impl<E: Execute> Repository<E> {
             };
             surfaces.insert(path.to_owned(), ReleaseSurface { original, expected });
         }
-        for name in workspace_packages().into_iter().skip(1) {
+        for name in packages().into_iter().skip(1) {
             let original = self.member_release_manifest(Some(source), name)?;
             surfaces.insert(
                 package_manifest(name),

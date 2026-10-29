@@ -1,11 +1,11 @@
 # Implementation ownership
 
-IC Persistence maintains three published crates. IC Memory owns durable allocation governance for one backing memory: permanent
+IC Persistence maintains four coordinated packages. IC Memory owns durable allocation governance for one backing memory: permanent
 key-to-ID bindings, host-wide placement, admission before commitment, protected
 ledger recovery and exclusive checked handles. It does not own application data,
 collection semantics, component lifecycle or deployment policy.
 
-The fourth workspace member, `ic-logging-stable`, is an unpublished checkpoint
+The fourth workspace member, `ic-logging-stable`, is a checkpoint
 adapter. Its [guide](../crates/ic-logging-stable/README.md) records bounded V1
 encoding and governed Storage integration owned by Persistence. IC Observability's
 published Logging 0.17.2 owns logging semantics and validated restoration. Hosts
@@ -98,15 +98,15 @@ current API and safety contract for present integration.
 The consumer release package roster lives in
 `crates/ic-memory/examples/repo_tool/packages.json`, embedded by the Rust adapter
 and admitted by `scripts/ci/read-persistence-packages.sh` for shell callers.
-The receipt owner collects and projects the three named digest fields through
+The receipt owner collects and projects the four named digest fields through
 the existing coordinated-order mapping. Workflow callers carry complete receipts
 rather than parallel digest arrays. Changing package membership or order requires
 explicit receipt compatibility review. This is release policy, not another
 dependency or version catalog.
-`unpublished-packages.json` beside that roster names the logging adapter.
-Workspace version projection and interrupted-release bootstrap combine both
-rosters; archive receipts and publication use only the published roster. A name
-cannot belong to both. The three existing receipt digest fields are unchanged.
+Workspace version projection, bootstrap, archives and publication use that same
+four-package roster. Receipts require `logging_sha256` alongside the three
+existing digest fields. Saved releases from before this selection must resume
+with their original source/tooling; receipts are never converted or defaulted.
 The Makefile's `FORMAT_RUST_ARGS` owns the consumer formatter roster, including
 the independent workspace and edition-2024 package consumer; the shared driver
 owns ordering, visible passes and uncached standalone execution. `qualify-runtime.sh`

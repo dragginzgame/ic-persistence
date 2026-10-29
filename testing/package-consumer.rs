@@ -1,8 +1,11 @@
 //! Independent archive consumer: shared lease identity, custody and reopen bytes.
+use ic_logging::{EntryInput, Level, Limits, Log};
+use ic_logging_stable::{LogIdentity, LogKey, LoggingStore};
 use ic_memory::{MemoryManagerConfig, RuntimeOpenError, VectorMemory, testing::fixture_runtime};
 use ic_metrics::MeasurementCounter;
 use ic_metrics_stable::{MetricIdentity, MetricKey, MetricsStore};
 use ic_storage::adapter::StableBTreeMap;
+use std::num::NonZeroUsize;
 
 fn main() {
     let backing = VectorMemory::default();
@@ -11,7 +14,7 @@ fn main() {
             backing.clone(),
             "archive",
             "archive.",
-            &["archive.map.v1", "archive.metrics.v1"],
+            &["archive.map.v1", "archive.metrics.v1", "archive.logging.v1"],
             MemoryManagerConfig::default(),
         )
         .unwrap()
@@ -52,4 +55,49 @@ fn main() {
         reopened.load_counter(&key, &identity).unwrap(),
         Some(counter)
     );
+
+    let key = LogKey::new("archive", "worker").unwrap();
+    let identity = LogIdentity { epoch: 7 };
+    let limits = Limits {
+        max_entries: NonZeroUsize::new(4).unwrap(),
+        max_message_bytes: 64,
+        max_label_bytes: 32,
+    };
+    let mut log = Log::new(limits);
+    log.append(EntryInput {
+        created_at_secs: 20,
+        level: Level::Info,
+        source: "worker",
+        topic: None,
+        message: "archive checkpoint",
+    })
+    .unwrap();
+    let mut store = LoggingStore::new(StableBTreeMap::new(
+        runtime.open_memory("archive.logging.v1").unwrap(),
+    ));
+    store.save(&key, identity, &log).unwrap();
+    assert!(matches!(
+        runtime.open_memory("archive.logging.v1"),
+        Err(RuntimeOpenError::AlreadyOpen { .. })
+    ));
+    drop(store.into_map());
+    let mut reopened = LoggingStore::new(StableBTreeMap::load(
+        runtime.open_memory("archive.logging.v1").unwrap(),
+    ));
+    let mut restored = reopened.load(&key, identity, limits).unwrap().unwrap();
+    assert_eq!(restored.snapshot(), log.snapshot());
+    assert_eq!(restored.prune_expired(21, 0, 4).removed, 1);
+    reopened.save(&key, identity, &restored).unwrap();
+    drop(reopened.into_map());
+    let reopened = LoggingStore::new(StableBTreeMap::load(
+        runtime.open_memory("archive.logging.v1").unwrap(),
+    ));
+    let empty = reopened
+        .load(&key, identity, limits)
+        .unwrap()
+        .unwrap()
+        .snapshot();
+    assert!(empty.entries.is_empty());
+    assert_eq!(empty.next_sequence, Some(1));
+    assert_eq!(empty.last_created_at_secs, Some(20));
 }
