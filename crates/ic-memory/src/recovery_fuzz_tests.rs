@@ -1,5 +1,5 @@
 //! Reproducible bounded mutation campaigns over the maintained recovery boundaries.
-use crate::{Memory, VectorMemory, stable_cell, test_cbor::hex_fixture};
+use crate::{Memory, VectorMemory, stable_cell, test_wire::hex_fixture};
 
 fn exercise(bytes: &[u8]) {
     let memory = VectorMemory::default();
@@ -30,14 +30,14 @@ fn exercise(bytes: &[u8]) {
 fn campaign(mut seed: u64, iterations: usize) {
     let corpus = [
         hex_fixture(include_str!(
-            "../fixtures/current/ledger_commit_store_single.cbor.hex"
+            "../fixtures/current/ledger_commit_store_single.wire.hex"
         )),
         hex_fixture(include_str!(
-            "../fixtures/current/single_allocation_ledger.cbor.hex"
+            "../fixtures/current/single_allocation_ledger.wire.hex"
         )),
-        vec![0x9f, 0xff],
-        vec![0x5b, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff],
-        vec![0x81; 34],
+        vec![128, 2],  // A count beyond the 255-row ceiling.
+        vec![255; 10], // An invalid/unbacked varint.
+        [crate::encoding::RECORD_MAGIC, &[1, 128]].concat(), // Truncated snapshot.
     ];
     for bytes in &corpus {
         exercise(bytes);

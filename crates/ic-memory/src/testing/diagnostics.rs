@@ -491,8 +491,8 @@ mod tests {
 
         for (code, expected) in cases {
             assert_eq!(
-                crate::test_cbor::to_value(code).expect("diagnostic code value"),
-                crate::test_cbor::Value::Text(expected.to_string())
+                serde_json::to_value(code).expect("diagnostic code value"),
+                serde_json::Value::String(expected.to_string())
             );
         }
     }

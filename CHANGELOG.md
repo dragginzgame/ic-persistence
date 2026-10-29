@@ -1,5 +1,23 @@
 # Changelog
 
+## [0.56.0] - Unreleased
+
+### 💥 Breaking
+
+- Replace Memory's allocation-ledger and Cell record CBOR with bounded IC Wire.
+  Earlier retained bytes require host-owned reset/transition before adoption;
+  no legacy decoder or automatic reset is provided. Decoder/encoding errors now
+  use Wire. [Contract and adoption](docs/current-ledger.md).
+
+### 🧹 Cleanup
+
+- Reuse upstream bounded-Cell checks, derive bootstrap input manifests from the
+  package roster, and share preparation/final packaging command construction.
+  Keep decoder admission and clean-release requirements.
+  [Details](docs/changelog/0.56.md#0560---unreleased).
+- Separate release execution from orchestration and organize qualification
+  fixtures and ledger regressions by contract for easier focused maintenance.
+
 ## [0.55.3] - 2026-10-29
 
 ### ⬆️ Dependencies

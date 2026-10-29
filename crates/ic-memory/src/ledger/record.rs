@@ -18,7 +18,7 @@ use serde::{Deserialize, Serialize};
 #[serde(deny_unknown_fields)]
 pub struct AllocationLedger {
     pub(crate) current_generation: u64,
-    #[serde(deserialize_with = "crate::cbor::deserialize_records")]
+    #[serde(deserialize_with = "crate::encoding::deserialize_records")]
     pub(crate) records: Vec<AllocationRecord>,
 }
 

@@ -23,9 +23,9 @@ fn committed_bindings_serialize_checked_key_and_slot() {
             "stable_key": "app.rows.v1", "slot": 10,
         })
     );
-    let mut bytes = Vec::new();
-    serde_cbor::to_writer(&mut bytes, declaration).unwrap();
-    assert_eq!(bytes, b"\xa2\x6astable_key\x6bapp.rows.v1\x64slot\x0a");
+    let bytes = ic_wire::native::encode(declaration, limits()).unwrap();
+    let decoded: (String, u8) = ic_wire::native::decode(&bytes, limits()).unwrap();
+    assert_eq!(decoded, ("app.rows.v1".to_owned(), 10));
 }
 
 #[test]
@@ -39,10 +39,9 @@ fn diagnostic_metadata_accepts_printable_ascii_through_the_byte_limit() {
         let grant = MemoryAuthority::new(value.as_str(), "app.").unwrap();
         let json = serde_json::json!({"authority":value,"key_prefix":"app."});
         assert_eq!(serde_json::to_value(&grant).unwrap(), json);
-        let mut bytes = Vec::new();
-        serde_cbor::to_writer(&mut bytes, &grant).unwrap();
-        let wire: serde_json::Value = serde_cbor::from_reader(bytes.as_slice()).unwrap();
-        assert_eq!(wire, json);
+        let bytes = ic_wire::native::encode(&grant, limits()).unwrap();
+        let wire: (String, String) = ic_wire::native::decode(&bytes, limits()).unwrap();
+        assert_eq!(wire, (value.clone(), "app.".to_owned()));
         #[cfg(feature = "test-support")]
         {
             assert_eq!(
@@ -50,7 +49,7 @@ fn diagnostic_metadata_accepts_printable_ascii_through_the_byte_limit() {
                 grant
             );
             assert_eq!(
-                serde_cbor::from_reader::<MemoryAuthority, _>(bytes.as_slice()).unwrap(),
+                ic_wire::native::decode::<MemoryAuthority>(&bytes, limits()).unwrap(),
                 grant
             );
         }
@@ -99,9 +98,18 @@ fn authority_decode_rejects_invalid_metadata_before_pool_assembly() {
         serde_json::json!({"authority":"app","key_prefix":"app.","extra":true}),
     ] {
         assert!(serde_json::from_value::<MemoryAuthority>(grant.clone()).is_err());
-        let mut bytes = Vec::new();
-        serde_cbor::to_writer(&mut bytes, &grant).unwrap();
-        assert!(serde_cbor::from_reader::<MemoryAuthority, _>(bytes.as_slice()).is_err());
+        let mut bytes = ic_wire::native::encode(
+            &(
+                grant["authority"].as_str().unwrap(),
+                grant["key_prefix"].as_str().unwrap(),
+            ),
+            limits(),
+        )
+        .unwrap();
+        if grant.get("extra").is_some() {
+            bytes.push(1);
+        }
+        assert!(ic_wire::native::decode::<MemoryAuthority>(&bytes, limits()).is_err());
         assert!(
             serde_json::from_value::<MemoryAllocationPool>(
                 serde_json::json!({"authorities":[grant],"excluded_ids":[]})
@@ -120,5 +128,14 @@ fn authority_decode_preserves_current_shape_and_required_fields() {
         let mut incomplete = json.clone();
         incomplete.as_object_mut().unwrap().remove(field);
         assert!(serde_json::from_value::<MemoryAuthority>(incomplete).is_err());
+    }
+}
+
+const fn limits() -> ic_wire::Limits {
+    ic_wire::Limits {
+        bytes: 4096,
+        allocation: 32768,
+        nodes: 256,
+        depth: 16,
     }
 }

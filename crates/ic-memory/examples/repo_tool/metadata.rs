@@ -1,5 +1,6 @@
 //! Release metadata rendering through the selected shared owners.
 use super::*;
+use std::io::Write as _;
 
 impl<E: Execute> Repository<E> {
     pub(super) fn validate_date(&self, date: &str) -> Result<()> {

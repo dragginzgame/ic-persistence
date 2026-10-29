@@ -269,11 +269,14 @@ impl<E: Execute> Repository<E> {
     }
 
     pub(super) fn preparation_commands(&self) -> Result<[Vec<String>; 3]> {
-        let pin = format!("+{}", self.toolchain()?);
+        let toolchain = self.toolchain()?;
+        let pin = format!("+{toolchain}");
+        let mut packaging = self.final_package_command()?;
+        packaging.push("--allow-dirty".to_owned());
         Ok([
             vec![
                 "cargo".to_owned(),
-                pin.clone(),
+                pin,
                 "update".to_owned(),
                 "--workspace".to_owned(),
                 "--offline".to_owned(),
@@ -282,14 +285,9 @@ impl<E: Execute> Repository<E> {
                 "make".to_owned(),
                 "--no-print-directory".to_owned(),
                 "fmt-check".to_owned(),
-                format!("VALIDATION_TOOLCHAIN={}", self.toolchain()?),
+                format!("VALIDATION_TOOLCHAIN={toolchain}"),
             ],
-            vec![
-                "bash".to_owned(),
-                "scripts/ci/package-workspace.sh".to_owned(),
-                pin.trim_start_matches('+').to_owned(),
-                "--allow-dirty".to_owned(),
-            ],
+            packaging,
         ])
     }
 

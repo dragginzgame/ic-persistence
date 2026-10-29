@@ -48,7 +48,7 @@ pub enum StableCellPayloadError {
 ///
 /// Stable-cell ledger record validation failure.
 ///
-/// Record errors retain the CBOR decoder's typed source. Ledger recovery and
+/// Record errors retain the IC Wire decoder's typed source. Ledger recovery and
 /// allocation integrity remain separate checks after decoding.
 ///
 
@@ -60,7 +60,7 @@ pub enum StableCellLedgerError {
     Payload(#[from] StableCellPayloadError),
     /// Stable-cell value bytes are not a valid ledger record.
     #[error("stable-cell ledger record decode failed: {0}")]
-    Record(#[source] serde_cbor::Error),
+    Record(#[source] ic_wire::Error),
 }
 
 /// Decode the raw value payload from an `ic-stable-structures::Cell` memory.
@@ -133,10 +133,15 @@ pub fn stable_cell_payload_length<M: Memory>(
 ///
 /// The returned record is decoded DTO state, not authority. The runtime
 /// validates protected commit recovery before trusting any ledger payload.
-pub fn decode_stable_cell_commit_store(
-    bytes: &[u8],
-) -> Result<LedgerCommitStore, serde_cbor::Error> {
-    crate::cbor::from_slice_exact(bytes)
+pub fn decode_stable_cell_commit_store(bytes: &[u8]) -> Result<LedgerCommitStore, ic_wire::Error> {
+    use crate::encoding::{RECORD_LIMITS, RECORD_MAGIC};
+    if bytes.len() > crate::constants::MAX_LEDGER_RECORD_BYTES {
+        return Err(ic_wire::Error::Limit);
+    }
+    let payload = bytes
+        .strip_prefix(RECORD_MAGIC)
+        .ok_or(ic_wire::Error::Malformed)?;
+    ic_wire::native::decode(payload, RECORD_LIMITS)
 }
 
 /// Fallibly decode a ledger record from its stable-cell envelope and value.
@@ -164,33 +169,21 @@ pub fn decode_stable_cell_commit_store_from_memory<M: Memory>(
 ///
 
 pub struct EncodedLedgerRecord {
-    buffer: crate::bounded_writer::BoundedWriter,
+    bytes: Vec<u8>,
 }
 
 impl EncodedLedgerRecord {
-    pub(crate) fn new(record: &LedgerCommitStore) -> Result<Self, usize> {
-        // Payload lengths plus small DTO-sized slack are only a capacity hint,
-        // not a second CBOR layout calculation. The writer owns the exact bound.
-        let capacity = record
-            .current()
-            .map_or(0, |slot| slot.payload().len())
-            .saturating_add(std::mem::size_of::<LedgerCommitStore>().saturating_mul(2))
-            .min(crate::constants::MAX_LEDGER_RECORD_BYTES);
-        let mut buffer = crate::bounded_writer::BoundedWriter::new(
-            Vec::with_capacity(capacity),
-            crate::constants::MAX_LEDGER_RECORD_BYTES,
-        );
-        if let Err(error) = serde_cbor::to_writer(&mut buffer, record) {
-            if buffer.attempted_len > crate::constants::MAX_LEDGER_RECORD_BYTES {
-                return Err(buffer.attempted_len);
-            }
-            panic!("LedgerCommitStore serialize failed: {error}");
-        }
-        Ok(Self { buffer })
+    pub(crate) fn new(record: &LedgerCommitStore) -> Result<Self, ic_wire::Error> {
+        use crate::encoding::{RECORD_LIMITS, RECORD_MAGIC};
+        let payload = ic_wire::native::encode(record, RECORD_LIMITS)?;
+        let mut bytes = Vec::with_capacity(RECORD_MAGIC.len() + payload.len());
+        bytes.extend_from_slice(RECORD_MAGIC);
+        bytes.extend_from_slice(&payload);
+        Ok(Self { bytes })
     }
 
     pub(crate) const fn len(&self) -> usize {
-        self.buffer.bytes.len()
+        self.bytes.len()
     }
 }
 
@@ -198,10 +191,10 @@ impl Storable for EncodedLedgerRecord {
     const BOUND: Bound = Bound::Unbounded;
 
     fn to_bytes(&self) -> Cow<'_, [u8]> {
-        Cow::Borrowed(&self.buffer.bytes)
+        Cow::Borrowed(&self.bytes)
     }
     fn into_bytes(self) -> Vec<u8> {
-        self.buffer.bytes
+        self.bytes
     }
     fn from_bytes(_: Cow<'_, [u8]>) -> Self {
         panic!("publication bytes cannot recover ledger authority")
@@ -211,23 +204,18 @@ impl Storable for EncodedLedgerRecord {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::test_cbor::hex_fixture;
+    use crate::test_wire::hex_fixture;
     use ic_platform::stable_structures::{Cell, VectorMemory};
 
     #[test]
-    fn publication_payload_refuses_oversized_chunks_before_buffering() {
-        use std::io::Write as _;
-
-        let mut encoded = EncodedLedgerRecord {
-            buffer: crate::bounded_writer::BoundedWriter::new(
-                Vec::new(),
-                crate::constants::MAX_LEDGER_RECORD_BYTES,
-            ),
+    fn publication_refuses_oversized_payload_before_cell_mutation() {
+        let record = LedgerCommitStore {
+            current: Some(crate::physical::CommittedGenerationBytes::new(
+                1,
+                vec![0; crate::constants::MAX_COMMITTED_PAYLOAD_BYTES + 1],
+            )),
         };
-        let oversized = vec![0; crate::constants::MAX_LEDGER_RECORD_BYTES + 1];
-        assert!(encoded.buffer.write_all(&oversized).is_err());
-        assert_eq!(encoded.len(), 0);
-        assert_eq!(encoded.buffer.bytes.capacity(), 0);
+        assert!(EncodedLedgerRecord::new(&record).is_err());
     }
 
     #[test]
@@ -250,7 +238,7 @@ mod tests {
     #[test]
     fn current_stable_cell_record_fixture_recovers() {
         let bytes = hex_fixture(include_str!(
-            "../fixtures/current/ledger_commit_store_single.cbor.hex"
+            "../fixtures/current/ledger_commit_store_single.wire.hex"
         ));
         let record = decode_stable_cell_commit_store(&bytes).expect("stable-cell fixture");
 
@@ -269,7 +257,7 @@ mod tests {
         );
         assert_eq!(
             bytes,
-            crate::test_cbor::to_vec(&record).expect("re-encoded stable-cell fixture")
+            EncodedLedgerRecord::new(&record).unwrap().into_bytes()
         );
         assert_eq!(
             record
@@ -282,35 +270,20 @@ mod tests {
 
     #[test]
     fn malformed_payload_bytes_fail_closed_without_mutating_memory() {
+        use crate::encoding::RECORD_MAGIC;
         let original = hex_fixture(include_str!(
-            "../fixtures/current/ledger_commit_store_single.cbor.hex"
+            "../fixtures/current/ledger_commit_store_single.wire.hex"
         ));
-        let start = original
-            .windows(8)
-            .position(|bytes| bytes == b"\x67payload")
-            .unwrap()
-            + 8;
-        let oversized = u32::try_from(crate::constants::MAX_COMMITTED_PAYLOAD_BYTES + 1).unwrap();
-        let mut cases = Vec::new();
-        for replacement in [
-            vec![0x5a, 0xff, 0xff, 0xff, 0xff],
-            vec![0x5f, 0xff],
-            vec![0x41],
-            vec![0xff],
-        ] {
-            let mut bytes = original[..start].to_vec();
-            bytes.extend(replacement);
+        let mut cases = vec![original[..original.len() - 1].to_vec()];
+        // Valid prefix and present snapshot followed by hostile/truncated integers.
+        for tail in [vec![255; 32], vec![1], vec![2]] {
+            let mut bytes = RECORD_MAGIC.to_vec();
+            bytes.extend_from_slice(&tail);
             cases.push(bytes);
         }
-        let mut bytes = original[..start].to_vec();
-        bytes.push(0x5a);
-        bytes.extend_from_slice(&oversized.to_be_bytes());
-        bytes.resize(bytes.len() + oversized as usize, 0);
-        cases.push(bytes);
         for bytes in cases {
             let memory = VectorMemory::default();
-            let pages = (bytes.len() + STABLE_CELL_HEADER_SIZE).div_ceil(65_536);
-            memory.grow(pages as u64);
+            memory.grow(1);
             memory.write(0, STABLE_CELL_MAGIC);
             memory.write(3, &[STABLE_CELL_LAYOUT_VERSION]);
             memory.write(4, &u32::try_from(bytes.len()).unwrap().to_le_bytes());
@@ -336,32 +309,24 @@ mod tests {
         let err =
             decode_stable_cell_commit_store(&bytes).expect_err("trailing bytes must fail closed");
 
-        assert!(err.to_string().contains("trailing bytes"));
+        assert_eq!(err, ic_wire::Error::Trailing);
     }
 
     #[test]
-    fn stable_cell_ledger_record_rejects_unknown_top_level_fields() {
-        use crate::test_cbor::Value;
-
-        let Value::Map(mut map) = crate::test_cbor::to_value(LedgerCommitStore::default()).unwrap()
-        else {
-            panic!("commit store map");
-        };
-        map.insert(Value::Text("future_field".to_string()), Value::Bool(true));
-        let bytes = crate::test_cbor::to_vec(&Value::Map(map)).expect("unknown-field stable cell");
-
-        let err = decode_stable_cell_commit_store(&bytes)
-            .expect_err("unknown stable-cell record field must fail closed");
-
-        assert!(err.to_string().contains("future_field"));
+    fn stable_cell_ledger_record_rejects_extra_top_level_data() {
+        let mut bytes = EncodedLedgerRecord::new(&LedgerCommitStore::default())
+            .unwrap()
+            .into_bytes();
+        bytes.push(1);
+        assert_eq!(
+            decode_stable_cell_commit_store(&bytes),
+            Err(ic_wire::Error::Trailing)
+        );
     }
 
     #[test]
     fn stable_cell_ledger_record_requires_an_explicit_current_snapshot() {
-        let bytes = crate::test_cbor::to_vec(&serde_json::json!({})).unwrap();
-        let err = decode_stable_cell_commit_store(&bytes)
-            .expect_err("missing current snapshot must not initialize");
-        assert!(err.to_string().contains("current"));
+        assert!(decode_stable_cell_commit_store(crate::encoding::RECORD_MAGIC).is_err());
     }
 
     #[test]
@@ -476,13 +441,38 @@ mod tests {
     }
 
     #[test]
-    fn hostile_cbor_is_rejected_on_production_record_decode() {
-        let huge_array = [0x9b, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff];
-        let huge_string = [0x7b, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff];
-        let mut nested = vec![0x81; crate::constants::MAX_LEDGER_NESTING + 1];
-        nested.push(0);
-        for bytes in [&huge_array[..], &huge_string[..], &nested, &[0xa1], &[0xff]] {
-            assert!(decode_stable_cell_commit_store(bytes).is_err());
+    fn hostile_wire_lengths_reject_on_production_record_decode() {
+        use crate::encoding::{RECORD_LIMITS, RECORD_MAGIC};
+        // Schema-correct snapshot prefix, then an unbacked payload length.
+        let prefix = ic_wire::native::encode(&Some((1_u64, 0_u64, 0_u64)), RECORD_LIMITS).unwrap();
+        for length in [
+            crate::constants::MAX_COMMITTED_PAYLOAD_BYTES + 1,
+            usize::MAX,
+        ] {
+            let mut bytes = RECORD_MAGIC.to_vec();
+            bytes.extend_from_slice(&prefix);
+            bytes.extend(ic_wire::native::encode(&length, RECORD_LIMITS).unwrap());
+            assert!(decode_stable_cell_commit_store(&bytes).is_err());
         }
+        // A fully backed oversized opaque payload also fails its static bound.
+        let payload = vec![0; crate::constants::MAX_COMMITTED_PAYLOAD_BYTES + 1];
+        let oversized =
+            ic_wire::BytesRef::<{ crate::constants::MAX_COMMITTED_PAYLOAD_BYTES + 1 }>::new(
+                &payload,
+            )
+            .unwrap();
+        let mut bytes = RECORD_MAGIC.to_vec();
+        bytes.extend(
+            ic_wire::native::encode(&Some((1_u64, 0_u64, 0_u64, oversized)), RECORD_LIMITS)
+                .unwrap(),
+        );
+        assert!(decode_stable_cell_commit_store(&bytes).is_err());
+        assert_eq!(
+            decode_stable_cell_commit_store(&vec![
+                0;
+                crate::constants::MAX_LEDGER_RECORD_BYTES + 1
+            ]),
+            Err(ic_wire::Error::Limit)
+        );
     }
 }

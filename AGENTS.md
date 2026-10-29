@@ -32,6 +32,13 @@ READMEs live under their packages.
 The repository is IC Persistence; published crate identities remain unchanged.
 Follow the [workspace layout rules](rules/rust-workspaces.md).
 
+The pending 0.56.0 ledger hard cut uses IC Wire for logical records and the
+framed Cell value (`ICML`, protected marker `ICMWIRE1`). Earlier CBOR images are
+retired by the maintainer's explicit hard-cut instruction. No legacy decoder or
+automatic reset is allowed. Hosts own fresh/reset installation or a separately
+reviewed transition; never clear only governance while retaining unmanaged claims.
+See [the current ledger contract](docs/current-ledger.md).
+
 Product contracts and numeric limits remain owned by this crate. Host support
 and prerequisites are declared in [docs/host-support.md](docs/host-support.md).
 

@@ -1,5 +1,15 @@
 # Current ownership ledger qualification
 
+## Pending 0.56.0 Wire hard cut
+
+The current implementation replaces both CBOR layers with bounded IC Wire native
+records. Earlier measurements and installed checks below retain their original
+sources and byte formats; they do not qualify the Wire cut. See the
+[current contract](current-ledger.md) and [handoff](status/current.md) for the
+selected source, focused evidence and remaining installed/release qualification.
+
+## Earlier qualification history
+
 The 0.48 state-free `ICMKEY01` cut and its source-bound evidence are
 recorded in [the 0.48 release notes](changelog/0.48.md). Sections below retain
 their original source/format qualification; older lifecycle-state and stored-format
@@ -656,7 +666,7 @@ speedup is inferred from that complexity change.
 ## Native allocation measurements
 
 Linux x86-64, Rust 1.99.0, selected root lockfile, standard Cargo release profile,
-one test thread. The [maintained harness](../crates/ic-memory/tests/allocation_measurements.rs)
+one test thread. The [maintained harness](../crates/ic-memory/src/allocation_measurements_tests.rs)
 counts this thread's System allocation requests. Existing input/fixture memory is
 excluded; measured results are dropped and the counter verifies zero live bytes
 at each boundary. This is requested heap, not RSS or IC instructions/cycles.

@@ -27,8 +27,8 @@ test-support = []
 
 [dependencies]
 ic-platform = { workspace = true, features = ["stable-structures"] }
+ic-wire.workspace = true
 serde.workspace = true
-serde_cbor.workspace = true
 thiserror.workspace = true
 
 [dev-dependencies]

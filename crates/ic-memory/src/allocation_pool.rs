@@ -195,7 +195,7 @@ impl<'de> Deserialize<'de> for MemoryAllocationPool {
         #[serde(deny_unknown_fields)]
         struct Pool {
             authorities: Vec<MemoryAuthority>,
-            #[serde(deserialize_with = "crate::cbor::deserialize_records")]
+            #[serde(deserialize_with = "crate::encoding::deserialize_records")]
             excluded_ids: Vec<u8>,
         }
         let pool = Pool::deserialize(deserializer)?;
@@ -373,9 +373,9 @@ mod tests {
                 serde_json::from_value::<MemoryAllocationPool>(json).unwrap(),
                 pool
             );
-            let bytes = crate::test_cbor::to_vec(&pool).unwrap();
+            let bytes = crate::test_wire::to_vec(&pool).unwrap();
             assert_eq!(
-                crate::cbor::from_slice_exact::<MemoryAllocationPool>(&bytes).unwrap(),
+                crate::test_wire::from_slice::<MemoryAllocationPool>(&bytes).unwrap(),
                 pool
             );
         }

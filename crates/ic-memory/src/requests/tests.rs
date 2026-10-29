@@ -126,9 +126,9 @@ fn decoded_requests_preserve_checked_fields_and_enforce_request_admission() {
         serde_json::from_value::<MemoryRequest>(json.clone()).unwrap(),
         request
     );
-    let bytes = crate::test_cbor::to_vec(&request).unwrap();
+    let bytes = crate::test_wire::to_vec(&request).unwrap();
     assert_eq!(
-        crate::test_cbor::from_slice::<MemoryRequest>(&bytes).unwrap(),
+        crate::test_wire::from_slice::<MemoryRequest>(&bytes).unwrap(),
         request
     );
     for (field, value) in [
@@ -142,8 +142,15 @@ fn decoded_requests_preserve_checked_fields_and_enforce_request_admission() {
         let mut invalid = json.clone();
         invalid[field] = value;
         assert!(serde_json::from_value::<MemoryRequest>(invalid.clone()).is_err());
-        let bytes = crate::test_cbor::to_vec(&invalid).unwrap();
-        assert!(crate::test_cbor::from_slice::<MemoryRequest>(&bytes).is_err());
+        let mut bytes = crate::test_wire::to_vec(&(
+            invalid["authority"].as_str().unwrap(),
+            invalid["stable_key"].as_str().unwrap(),
+        ))
+        .unwrap();
+        if field == "extra" {
+            bytes.push(1);
+        }
+        assert!(crate::test_wire::from_slice::<MemoryRequest>(&bytes).is_err());
     }
     // The raw constructor retains authority-before-key error precedence.
     assert!(matches!(

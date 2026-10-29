@@ -16,24 +16,21 @@ cover maintenance permission preflight, single-tool freshness and retained
 validation excerpts; no scheduled maintenance is activated. Exported bytes and
 modes are compared against this independently selected source commit.
 
-Both maintained catalogs select IC Platform 0.8.1 and IC Wire 0.7.22. Memory and
-Storage retain the exact `ic-stable-structures` 0.7.2 substrate. Build, Host
-Artifacts/FS/Process and Testkit Native now select published 0.70.0; the exact
-Build metadata editor and Testkit server CLI pins are also 0.70.0. Native test
-support no longer retains Platform 0.7.6. The independent graph changes only
-Wire/derive, retaining Platform 0.8.1 and PocketIC client/server 16.1.0.
+The library [dependency catalog](../Cargo.toml) owns direct package requirements
+and feature selections; its [lockfile](../Cargo.lock) owns resolved identities.
+The independent qualification [catalog](../testing/runtime-qualification/Cargo.toml)
+and [lockfile](../testing/runtime-qualification/Cargo.lock) retain their separate
+host graph. The [Build editor pin](../ci/release-tools.env) and
+[Testkit CLI pin](../ci/runtime-tools.env) select executables independently.
+Read those owners for versions rather than copying their inventories here.
 
-The incoming root lock already selected Wire/derive 0.7.22 and Metrics 0.17.3;
-those identities are preserved. Both catalogs retain their previous Wire feature
-selections. Published Wire library source is identical to 0.7.21. No public
-Persistence API, stored format or retirement policy changes; Tooling's upstream
-ledger/Registry type changes are outside this consumer's exposed interfaces.
-
-Released Persistence is 0.55.2 and pending notes select compatible 0.55.3. Rust,
-server and Shared snapshot selections are unchanged. Native CLI preparation and
-offline admission remain explicit, separate from release/publication and installed
-application qualification. Source and executable selection do not establish live
-consumer acceptance. No native profiler source profile is consumed here.
+The production graph admits one Platform provider and the exact qualified
+substrate declared in [the local overlay](../AGENTS.md). Library admission,
+executable setup/check and installed qualification remain separate authorities.
+Selection alone does not establish acceptance or permit relabelling older proof.
+The [release ledger](../CHANGELOG.md) and [current handoff](status/current.md)
+record completed changes and scoped work without becoming release gates. A
+dependency update activates neither maintenance schedules nor a snapshot refresh.
 
 ### Earlier adoption and qualification records
 

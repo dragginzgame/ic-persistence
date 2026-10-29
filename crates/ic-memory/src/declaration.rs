@@ -85,7 +85,7 @@ mod tests {
         let mut value = serde_json::to_value(declaration("app.orders.v1", 100)).unwrap();
         value["slot"] = serde_json::json!(255);
         assert!(serde_json::from_value::<AllocationDeclaration>(value.clone()).is_err());
-        let bytes = crate::test_cbor::to_vec(&value).unwrap();
-        assert!(crate::test_cbor::from_slice::<AllocationDeclaration>(&bytes).is_err());
+        let bytes = crate::test_wire::to_vec(&("app.orders.v1", 255_u8)).unwrap();
+        assert!(crate::test_wire::from_slice::<AllocationDeclaration>(&bytes).is_err());
     }
 }

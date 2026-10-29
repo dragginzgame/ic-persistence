@@ -82,11 +82,11 @@ fn key_text_store(text_bytes: usize) -> LedgerCommitStore {
         vec![crate::AllocationRecord::from_declaration(&declaration)],
     )
     .unwrap();
-    let mut dto = serde_json::to_value(ledger.records()).unwrap();
-    dto[0]["stable_key"] =
-        serde_json::Value::String(format!("app.{}.v1", "x".repeat(text_bytes - 7)));
-    let mut payload = Vec::new();
-    serde_cbor::to_writer(&mut payload, &dto).unwrap();
+    let payload = crate::test_wire::to_vec(&vec![(
+        format!("app.{}.v1", "x".repeat(text_bytes - 7)),
+        ledger.records()[0].slot().id(),
+    )])
+    .unwrap();
     let mut physical = crate::LedgerCommitStore::default();
     physical.commit_payload_at_generation(1, payload).unwrap();
     physical

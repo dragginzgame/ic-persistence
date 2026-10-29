@@ -75,11 +75,10 @@
 //! collections consume these leases through IC Storage’s governed wrappers.
 
 mod allocation_pool;
-mod bounded_writer;
-mod cbor;
 mod constants;
 mod declaration;
 mod diagnostics;
+mod encoding;
 mod hash;
 mod key;
 mod ledger;
@@ -94,23 +93,15 @@ mod text;
 mod validation;
 
 #[cfg(test)]
-mod test_cbor {
+mod test_wire {
     use serde::{Serialize, de::DeserializeOwned};
 
-    pub use serde_cbor::Value;
-
-    pub fn to_vec<T: Serialize>(value: &T) -> Result<Vec<u8>, serde_cbor::Error> {
-        let mut bytes = Vec::new();
-        serde_cbor::to_writer(&mut bytes, value)?;
-        Ok(bytes)
+    pub fn to_vec<T: Serialize + ?Sized>(value: &T) -> Result<Vec<u8>, ic_wire::Error> {
+        ic_wire::native::encode(value, crate::encoding::RECORD_LIMITS)
     }
 
-    pub fn from_slice<T: DeserializeOwned>(bytes: &[u8]) -> Result<T, serde_cbor::Error> {
-        crate::cbor::from_slice_exact(bytes)
-    }
-
-    pub fn to_value<T: Serialize>(value: T) -> Result<Value, serde_cbor::Error> {
-        serde_cbor::value::to_value(value)
+    pub fn from_slice<T: DeserializeOwned>(bytes: &[u8]) -> Result<T, ic_wire::Error> {
+        ic_wire::native::decode(bytes, crate::encoding::RECORD_LIMITS)
     }
 
     pub fn hex_fixture(contents: &str) -> Vec<u8> {

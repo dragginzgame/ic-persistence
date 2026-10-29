@@ -19,9 +19,7 @@ pub fn sort_unstable_by<T>(values: &mut [T], compare: impl Fn(&T, &T) -> Orderin
         }
     }) {
         if descending {
-            for start in 0..values.len() / 2 {
-                values.swap(start, values.len() - 1 - start);
-            }
+            values.reverse();
         }
         return;
     }

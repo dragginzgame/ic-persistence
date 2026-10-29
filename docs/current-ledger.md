@@ -26,26 +26,33 @@ the staged commit, persists the owning Cell, then constructs committed allocatio
 authority. There is no intermediate persistence-confirmation token or public
 manual commit path. Any failure before persistence publishes no new authority.
 
-The records-only payload is a definite-length CBOR array, limited to 64 KiB.
-The enclosing protected record is limited to 64 KiB + 4 KiB. The one `current`
-snapshot uses `ICMKEY01`; marker, generation, payload length and bytes are
-checksum-bound. The opaque payload is a byte string. Logical recovery takes its
-`current_generation` from the checked header rather than decoding another
-counter. JSON is diagnostic output, not an alternate snapshot input.
+The records-only payload is an IC Wire native sequence, limited to 64 KiB and
+255 rows. Each positional row contains a borrowed stable-key string and a numeric
+slot. Decoding admits the shared byte, allocation, node and depth budgets before
+Memory checks key/slot grammar and ownership integrity. Key text is borrowed
+until its length and grammar have been checked; malformed input cannot request
+an unchecked owned key allocation.
 
-The pending 0.49 codec replacement uses serde_cbor with the same current bytes and
-fixtures. It does not change `ICMKEY01`, map/array shapes, integer widths, opaque
-byte strings or checksum inputs, and requires no retained-image retirement.
-Memory still checks byte, text, nesting and collection bounds before allocation
-and requires exact consumption. Public decoder errors now carry
-`serde_cbor::Error` rather than Ciborium errors; callers
-that inspect the source type must update when adopting 0.49.
+The Cell value begins with `ICML`, followed by an IC Wire native commit-store
+record. Its required positional `current` option distinguishes explicit absence
+from truncated input. The complete value is limited to 64 KiB + 4 KiB. A present
+snapshot uses marker `ICMWIRE1`; marker, generation, payload length and opaque
+payload bytes are checksum-bound. Logical recovery takes its generation from
+that checked header. JSON remains diagnostic output, not a durable input format.
+Wire owns serialization, resource admission and exact input consumption; Memory
+owns the schema, numeric ceilings, checksum and recovery decisions.
 
-Recovery checks the marker/checksum, bounded record-array CBOR and ownership
-integrity. Present invalid or incompatible state
-cannot initialize genesis or fall back to another generation. Publication checks
-exact successors. IC message execution owns stable-write rollback; arbitrary
-native backing needs its own transaction boundary.
+The pending 0.56.0 hard cut replaces both earlier CBOR layers and removes the
+CBOR dependency and local syntax walker. Public raw-record decoder failures now
+carry `ic_wire::Error`; runtime serialization refusal is
+`RuntimeBootstrapError::StableCellLedgerEncode`. Callers inspecting the previous
+error types must update. Existing manager and Cell substrate layouts do not change.
+
+Recovery checks framing, marker/checksum, bounded Wire records and ownership
+integrity. Present invalid or incompatible state cannot initialize genesis or
+fall back to another generation. Publication checks exact successors. IC message
+execution owns stable-write rollback; arbitrary native backing needs its own
+transaction boundary.
 
 Physical diagnostics remain `CommitSnapshotDiagnostic::{Empty, Valid, Invalid}`.
 Only `Valid` carries a checksum-checked generation, and logical ledger recovery
@@ -74,18 +81,19 @@ This pool policy is not durable ownership and changes no retained key/ID mapping
 
 ## Hard cut and retained installations
 
-The maintainer approved retirement of earlier ledger images, including ICMSNAP1
-and the pending ICMREC01 shape, for the state-free 0.48 cut: fresh/reset memory
-is acceptable. `ICMKEY01`
-identifies state-free key/ID records and the sole protected generation. Incompatible enclosing shapes fail during record
-decoding; otherwise an unsupported marker rejects with
-`CommitRecoveryError::UnsupportedFormat`. Numeric slots and the pinned upstream
-manager/Cell layout remain unchanged. There is one current reader and fixture
-set; no old-format decoder, converter or automatic reset is included.
+The maintainer explicitly approved a hard cut to Wire for 0.56.0. Earlier
+CBOR ledger/Cell bytes, including `ICMKEY01`, are retired: hosts need fresh/reset
+memory or their own separately reviewed transition before installing this
+release. The new `ICML` Cell-value prefix and `ICMWIRE1` protected marker are
+incompatible with those bytes. Incompatible enclosing shapes fail record decoding;
+a mismatched protected marker fails with `CommitRecoveryError::UnsupportedFormat`.
+There is one current reader and fixture set, with no legacy decoder, converter,
+fallback, or automatic reset. Numeric slots, allocation custody and the pinned
+manager/Cell layout remain unchanged.
 
 This approval changes source/fixture support. It resets no deployed canister,
 real stable memory or backup. Consumers must rebuild on the new minor, adopt the
-key-only request and numeric exclusion APIs, and retain their own schema checks.
+current Wire record/error contracts, and retain their own schema checks.
 Each application owns its retained-data disposition and installation qualification.
 
 Before installing over earlier bytes, identify the installation and its explicit

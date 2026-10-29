@@ -48,9 +48,9 @@ mod tests {
                 serde_json::from_value::<MemoryManagerSlot>(json).unwrap(),
                 slot
             );
-            let bytes = crate::test_cbor::to_vec(&slot).unwrap();
+            let bytes = crate::test_wire::to_vec(&slot).unwrap();
             assert_eq!(
-                crate::cbor::from_slice_exact::<MemoryManagerSlot>(&bytes).unwrap(),
+                crate::test_wire::from_slice::<MemoryManagerSlot>(&bytes).unwrap(),
                 slot
             );
         }
@@ -64,8 +64,9 @@ mod tests {
             serde_json::json!({}),
         ] {
             assert!(serde_json::from_value::<MemoryManagerSlot>(json.clone()).is_err());
-            let bytes = crate::test_cbor::to_vec(&json).unwrap();
-            assert!(crate::cbor::from_slice_exact::<MemoryManagerSlot>(&bytes).is_err());
+        }
+        for bytes in [&[][..], &[255], &[1, 0]] {
+            assert!(crate::test_wire::from_slice::<MemoryManagerSlot>(bytes).is_err());
         }
     }
 }

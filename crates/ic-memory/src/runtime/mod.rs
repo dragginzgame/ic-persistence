@@ -456,9 +456,8 @@ fn write_ledger_cell<M: Memory, P>(
     memory: RuntimeMemory<M>,
     record: &LedgerCommitStore,
 ) -> Result<RuntimeMemory<M>, RuntimeBootstrapError<P>> {
-    let encoded = EncodedLedgerRecord::new(record).map_err(|value_size| {
-        RuntimeBootstrapError::StableCellLedgerWriteTooLarge { value_size }
-    })?;
+    let encoded =
+        EncodedLedgerRecord::new(record).map_err(RuntimeBootstrapError::StableCellLedgerEncode)?;
     let value_size = encoded.len();
     // The record limit is below u32::MAX, including the eight-byte cell header.
     let required_bytes = STABLE_CELL_VALUE_OFFSET + value_size as u64;

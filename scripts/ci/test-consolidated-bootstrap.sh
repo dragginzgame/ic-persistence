@@ -3,6 +3,10 @@
 set -euo pipefail
 package_names="$(bash scripts/ci/read-persistence-packages.sh)"
 IFS=$'\t' read -r -a packages <<< "$package_names"
+manifests=()
+for package in "${packages[@]}"; do
+    manifests+=("crates/$package/Cargo.toml")
+done
 unset RELEASE_CACHE_PREPARE MAKEFLAGS MFLAGS MAKEOVERRIDES GNUMAKEFLAGS MAKEFILES
 root="$(pwd -P)"
 pin="$(sed -n 's/^channel = "\([^"]*\)"$/\1/p' rust-toolchain.toml)"
@@ -51,7 +55,7 @@ for state in lock-first manifest-first; do
         lock-first) cp candidate.lock Cargo.lock ;;
         manifest-first) cp candidate.toml Cargo.toml; expected="$next" ;;
     esac
-    shasum -a 256 Cargo.toml Cargo.lock crates/ic-memory/Cargo.toml crates/ic-storage/Cargo.toml crates/ic-metrics-stable/Cargo.toml crates/ic-logging-stable/Cargo.toml > "$state.inputs.sha256"
+    shasum -a 256 Cargo.toml Cargo.lock "${manifests[@]}" > "$state.inputs.sha256"
     bash scripts/dev/run-repo-tool.sh "$pin" version > "$state.stdout" 2> "$state.stderr"
     [[ "$(cat "$state.stdout")" == "$expected" ]] || exit 1
     shasum -a 256 -c "$state.inputs.sha256"

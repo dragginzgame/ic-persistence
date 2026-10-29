@@ -40,8 +40,16 @@ pub extern "C" fn ic_memory_wasm_diagnostics_size_probe_export() -> u32 {
             let slot = slot.try_borrow().ok()?;
             let runtime = slot.as_ref()?;
             let report = runtime.diagnostic_export().ok()?;
-            let mut bytes = Vec::new();
-            serde_cbor::to_writer(&mut bytes, &report).ok()?;
+            let bytes = ic_wire::native::encode(
+                &report,
+                ic_wire::Limits {
+                    bytes: 1024 * 1024,
+                    allocation: 8 * 1024 * 1024,
+                    nodes: 64 * 1024,
+                    depth: 32,
+                },
+            )
+            .ok()?;
             u32::try_from(bytes.len()).ok()
         })
         .unwrap_or(u32::MAX)
@@ -54,8 +62,16 @@ pub extern "C" fn ic_memory_wasm_diagnostics_size_probe_allocations() -> u32 {
             let slot = slot.try_borrow().ok()?;
             let runtime = slot.as_ref()?;
             let report = runtime.memory_allocations().ok()?;
-            let mut bytes = Vec::new();
-            serde_cbor::to_writer(&mut bytes, &report).ok()?;
+            let bytes = ic_wire::native::encode(
+                &report,
+                ic_wire::Limits {
+                    bytes: 1024 * 1024,
+                    allocation: 8 * 1024 * 1024,
+                    nodes: 64 * 1024,
+                    depth: 32,
+                },
+            )
+            .ok()?;
             u32::try_from(bytes.len()).ok()
         })
         .unwrap_or(u32::MAX)

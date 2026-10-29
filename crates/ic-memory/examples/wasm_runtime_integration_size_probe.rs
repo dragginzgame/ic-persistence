@@ -70,8 +70,16 @@ pub extern "C" fn ic_memory_wasm_runtime_integration_size_probe_summary() -> u32
         .with(|slot| {
             let slot = slot.try_borrow().ok()?;
             let summary = slot.as_ref()?.memory_allocation_summary().ok()?;
-            let mut bytes = Vec::new();
-            serde_cbor::to_writer(&mut bytes, &summary).ok()?;
+            let bytes = ic_wire::native::encode(
+                &summary,
+                ic_wire::Limits {
+                    bytes: 1024 * 1024,
+                    allocation: 8 * 1024 * 1024,
+                    nodes: 64 * 1024,
+                    depth: 32,
+                },
+            )
+            .ok()?;
             u32::try_from(bytes.len()).ok()
         })
         .unwrap_or(u32::MAX)

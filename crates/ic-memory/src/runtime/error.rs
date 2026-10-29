@@ -123,12 +123,9 @@ pub enum RuntimeBootstrapError<P> {
     /// Stable-cell ledger storage is corrupt before protected recovery can run.
     #[error(transparent)]
     StableCellLedger(#[from] StableCellLedgerError),
-    /// The encoded stable-cell ledger record exceeds its bounded size ceiling.
-    #[error("stable-cell ledger record size {value_size} cannot be written to stable memory")]
-    StableCellLedgerWriteTooLarge {
-        /// Encoded stable-cell ledger record size in bytes.
-        value_size: usize,
-    },
+    /// Wire refused ledger serialization before stable mutation.
+    #[error("stable-cell ledger encoding failed: {0}")]
+    StableCellLedgerEncode(#[source] ic_wire::Error),
     /// Stable-cell ledger capacity reservation failed before commitment.
     #[error(transparent)]
     LedgerGrowth(#[from] RuntimeGrowError),

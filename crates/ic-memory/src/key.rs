@@ -263,10 +263,10 @@ mod tests {
         let json = serde_json::to_string(&key).unwrap();
         assert_eq!(json, "\"app.users.v1\"");
         assert_eq!(serde_json::from_str::<StableKey>(&json).unwrap(), key);
-        let bytes = crate::test_cbor::to_vec(&key).unwrap();
-        assert_eq!(bytes, b"\x6capp.users.v1");
+        let bytes = crate::test_wire::to_vec(&key).unwrap();
+        assert_eq!(bytes, b"\x0capp.users.v1");
         assert_eq!(
-            crate::test_cbor::from_slice::<StableKey>(&bytes).unwrap(),
+            crate::test_wire::from_slice::<StableKey>(&bytes).unwrap(),
             key
         );
 
@@ -280,8 +280,8 @@ mod tests {
         ] {
             let json = serde_json::to_string(invalid).unwrap();
             assert!(serde_json::from_str::<StableKey>(&json).is_err());
-            let bytes = crate::test_cbor::to_vec(&invalid).unwrap();
-            assert!(crate::test_cbor::from_slice::<StableKey>(&bytes).is_err());
+            let bytes = crate::test_wire::to_vec(&invalid).unwrap();
+            assert!(crate::test_wire::from_slice::<StableKey>(&bytes).is_err());
         }
     }
 

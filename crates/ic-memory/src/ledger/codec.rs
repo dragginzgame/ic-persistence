@@ -1,101 +1,46 @@
-// Logical ownership is direct CBOR inside the protected physical byte string.
-// The physical snapshot is the sole format/framing owner.
+//! The checked physical header owns generation; Wire owns bounded record bytes.
+
+use crate::{constants::MAX_ALLOCATIONS, encoding::LEDGER_LIMITS};
+use serde::Deserialize;
+
 pub(super) fn encode_ledger(
     ledger: &super::AllocationLedger,
 ) -> Result<Vec<u8>, super::LedgerIntegrityError> {
-    let mut writer =
-        crate::bounded_writer::BoundedWriter::new(Vec::new(), crate::constants::MAX_LEDGER_BYTES);
-    match serde_cbor::to_writer(&mut writer, &ledger.records()) {
-        Ok(()) => Ok(writer.bytes),
-        Err(_) if writer.attempted_len > crate::constants::MAX_LEDGER_BYTES => {
-            Err(super::LedgerIntegrityError::LimitExceeded {
-                resource: "ledger bytes",
-                limit: crate::constants::MAX_LEDGER_BYTES,
-            })
-        }
-        Err(error) => {
-            panic!("allocation ledger serialization failed: {error}")
-        }
-    }
+    ic_wire::native::encode(ledger.records(), LEDGER_LIMITS).map_err(|error| match error {
+        ic_wire::Error::Limit => super::LedgerIntegrityError::LimitExceeded {
+            resource: "ledger encoding",
+            limit: crate::constants::MAX_LEDGER_BYTES,
+        },
+        other => panic!("allocation ledger serialization failed: {other}"),
+    })
 }
 
 pub(super) fn decode_ledger(
     bytes: &[u8],
     generation: u64,
 ) -> Result<super::AllocationLedger, String> {
-    // The protected header owns generation; the payload is only a bounded array.
-    #[derive(serde::Deserialize)]
-    #[serde(transparent)]
-    struct Records(
-        #[serde(deserialize_with = "crate::cbor::deserialize_records")]
-        Vec<super::AllocationRecord>,
-    );
-
-    // Only definite arrays are the logical record wire shape.
-    if bytes.first().is_none_or(|byte| byte >> 5 != 4) {
-        return Err("ledger payload must be a CBOR record array".to_string());
+    // Borrow all untrusted text: no String allocation precedes key admission.
+    #[derive(Deserialize)]
+    struct Record<'a> {
+        stable_key: &'a str,
+        slot: u8,
     }
-    let Records(records) = crate::cbor::from_slice_exact(bytes).map_err(|err| err.to_string())?;
+    let records: ic_wire::List<Record<'_>, MAX_ALLOCATIONS> =
+        ic_wire::native::decode(bytes, LEDGER_LIMITS).map_err(|error| error.to_string())?;
+    let records = records
+        .into_vec()
+        .into_iter()
+        .map(|record| {
+            Ok(super::AllocationRecord {
+                stable_key: crate::StableKey::parse(record.stable_key)
+                    .map_err(|error| error.to_string())?,
+                slot: crate::MemoryManagerSlot::new(record.slot)
+                    .map_err(|error| error.to_string())?,
+            })
+        })
+        .collect::<Result<Vec<_>, String>>()?;
     Ok(super::AllocationLedger {
         current_generation: generation,
         records,
     })
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    #[test]
-    fn ledger_writer_admits_exact_ceiling_and_refuses_without_partial_append() {
-        use std::io::Write;
-
-        let mut writer = crate::bounded_writer::BoundedWriter::new(
-            Vec::new(),
-            crate::constants::MAX_COMMITTED_PAYLOAD_BYTES,
-        );
-        let chunk = [42; 4096];
-        for _ in 0..crate::constants::MAX_LEDGER_BYTES / chunk.len() {
-            writer.write_all(&chunk).unwrap();
-        }
-        assert_eq!(
-            writer.bytes.len(),
-            crate::constants::MAX_COMMITTED_PAYLOAD_BYTES
-        );
-        writer.write_all(&[]).unwrap();
-        assert_eq!(
-            writer.write(&[42]).unwrap_err().kind(),
-            std::io::ErrorKind::WriteZero
-        );
-        assert_eq!(
-            writer.bytes.len(),
-            crate::constants::MAX_COMMITTED_PAYLOAD_BYTES
-        );
-        assert!(writer.bytes.iter().all(|&byte| byte == 42));
-
-        let mut writer = crate::bounded_writer::BoundedWriter::new(
-            Vec::new(),
-            crate::constants::MAX_COMMITTED_PAYLOAD_BYTES,
-        );
-        let before = writer.bytes.clone();
-        assert!(
-            writer
-                .write(&vec![42; crate::constants::MAX_LEDGER_BYTES + 1])
-                .is_err()
-        );
-        assert_eq!(writer.bytes, before);
-    }
-
-    #[test]
-    fn bounded_ledger_encoding_matches_canonical_cbor() {
-        for generations in [0, 1, 24, 256, 1024] {
-            let ledger = super::super::AllocationLedger {
-                current_generation: generations,
-                records: Vec::new(),
-            };
-            let mut payload = Vec::new();
-            serde_cbor::to_writer(&mut payload, &ledger.records()).unwrap();
-            let expected = payload;
-            assert_eq!(encode_ledger(&ledger).unwrap(), expected);
-        }
-    }
 }

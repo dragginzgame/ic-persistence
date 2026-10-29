@@ -415,9 +415,9 @@ before claiming complete workflow coverage. Uncommitted edits have no CI result.
 
 The repository root is a virtual Cargo workspace. Shared package metadata,
 dependencies, profiles and the selected lockfile remain there; the library
-package, examples, tests, current wire fixtures and full package guide live in
-`crates/ic-memory/`, `crates/ic-storage/` and `crates/ic-metrics-stable/`.
-All three are default workspace members.
+packages, examples, tests, current wire fixtures and package guides live in
+`crates/ic-memory/`, `crates/ic-storage/`, `crates/ic-metrics-stable/` and
+`crates/ic-logging-stable/`. All four are default workspace members.
 A checkout path dependency selects the corresponding package, for example
 `ic-memory = { path = "../ic-persistence/crates/ic-memory" }`. Storage's internal
 Memory edge is path-plus-version and shares the root Memory identity.

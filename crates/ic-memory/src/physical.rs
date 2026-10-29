@@ -1,8 +1,8 @@
 use crate::hash::{FNV_OFFSET, fnv64};
 use serde::{Deserialize, Serialize};
 
-// ICMKEY01 identifies one protected generation with a records-only CBOR payload.
-const COMMIT_MARKER: u64 = 0x4943_4D4B_4559_3031;
+// ICMWIRE1 identifies a protected generation with a records-only Wire payload.
+const COMMIT_MARKER: u64 = 0x4943_4D57_4952_4531;
 
 ///
 /// CommittedGenerationBytes
@@ -12,10 +12,10 @@ const COMMIT_MARKER: u64 = 0x4943_4D4B_4559_3031;
 /// This private DTO is the current physical snapshot representation. Its
 /// recovered bytes are untrusted until marker/checksum validation and ledger
 /// decoding/integrity validation have both succeeded.
-/// The records-only payload encodes as a bounded CBOR byte string. Diagnostic
-/// JSON output is permitted, but JSON arrays are not a snapshot input format. Direct serde
-/// decoding is a DTO operation; maintained durable readers additionally
-/// preflight CBOR before allocation.
+/// The records-only payload encodes as bounded opaque Wire bytes. Diagnostic
+/// JSON output is permitted, but is not a snapshot input format. Direct Serde
+/// decoding is a DTO operation; durable readers additionally admit Wire resource
+/// budgets and exact input consumption before protected recovery.
 ///
 
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
@@ -32,44 +32,20 @@ pub struct CommittedGenerationBytes {
     pub(crate) payload: Vec<u8>,
 }
 
-// The persisted codec admits opaque byte strings; fixtures use this same shape.
+// Use the shared byte bound for opaque payloads; no consumer-owned byte visitor.
 mod opaque_payload {
     use crate::constants::MAX_COMMITTED_PAYLOAD_BYTES;
-    use serde::{Deserializer, Serializer, de::Visitor};
+    use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
     pub fn serialize<S: Serializer>(bytes: &[u8], serializer: S) -> Result<S::Ok, S::Error> {
-        if bytes.len() > MAX_COMMITTED_PAYLOAD_BYTES {
-            return Err(serde::ser::Error::custom(
-                "ledger byte string exceeds payload bound",
-            ));
-        }
-        serializer.serialize_bytes(bytes)
+        ic_wire::BytesRef::<MAX_COMMITTED_PAYLOAD_BYTES>::new(bytes)
+            .map_err(serde::ser::Error::custom)?
+            .serialize(serializer)
     }
 
     pub fn deserialize<'de, D: Deserializer<'de>>(deserializer: D) -> Result<Vec<u8>, D::Error> {
-        struct Bytes;
-        impl Visitor<'_> for Bytes {
-            type Value = Vec<u8>;
-
-            fn expecting(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-                f.write_str("a bounded opaque ledger byte string")
-            }
-
-            fn visit_bytes<E: serde::de::Error>(self, bytes: &[u8]) -> Result<Self::Value, E> {
-                if bytes.len() > MAX_COMMITTED_PAYLOAD_BYTES {
-                    return Err(E::custom("ledger byte string exceeds payload bound"));
-                }
-                Ok(bytes.to_vec())
-            }
-
-            fn visit_byte_buf<E: serde::de::Error>(self, bytes: Vec<u8>) -> Result<Self::Value, E> {
-                if bytes.len() > MAX_COMMITTED_PAYLOAD_BYTES {
-                    return Err(E::custom("ledger byte string exceeds payload bound"));
-                }
-                Ok(bytes)
-            }
-        }
-        deserializer.deserialize_byte_buf(Bytes)
+        ic_wire::Bytes::<MAX_COMMITTED_PAYLOAD_BYTES>::deserialize(deserializer)
+            .map(ic_wire::Bytes::into_vec)
     }
 }
 
@@ -262,7 +238,7 @@ pub enum CommitRecoveryError {
     /// The current snapshot is explicitly absent.
     #[error("no committed ledger generation is present")]
     NoValidGeneration,
-    /// The snapshot marker does not identify the current direct-CBOR format.
+    /// The snapshot marker does not identify the current Wire format.
     #[error("unsupported physical ledger format marker {marker:#x}")]
     UnsupportedFormat { marker: u64 },
     /// A present snapshot failed marker/checksum validation.
@@ -333,9 +309,9 @@ mod tests {
                 .commit_payload_at_generation(generation, vec![3])
                 .unwrap();
             assert_eq!(store.authoritative().unwrap().generation(), generation);
-            let bytes = crate::test_cbor::to_vec(&store).unwrap();
+            let bytes = crate::test_wire::to_vec(&store).unwrap();
             assert_eq!(
-                crate::cbor::from_slice_exact::<crate::LedgerCommitStore>(&bytes).unwrap(),
+                crate::test_wire::from_slice::<crate::LedgerCommitStore>(&bytes).unwrap(),
                 store
             );
         }
@@ -424,33 +400,38 @@ mod tests {
         store
             .commit_payload_at_generation(0, vec![0; crate::constants::MAX_COMMITTED_PAYLOAD_BYTES])
             .unwrap();
-        let bytes = crate::test_cbor::to_vec(&store).unwrap();
+        let bytes = crate::test_wire::to_vec(&store).unwrap();
         assert!(bytes.len() <= crate::constants::MAX_LEDGER_RECORD_BYTES);
-        let decoded: crate::LedgerCommitStore = crate::cbor::from_slice_exact(&bytes).unwrap();
+        let decoded: crate::LedgerCommitStore = crate::test_wire::from_slice(&bytes).unwrap();
         assert_eq!(decoded, store);
         assert!(decoded.authoritative().is_ok());
         let oversized = CommittedGenerationBytes::new(
             0,
             vec![0; crate::constants::MAX_COMMITTED_PAYLOAD_BYTES + 1],
         );
-        assert!(crate::test_cbor::to_vec(&oversized).is_err());
+        assert!(crate::test_wire::to_vec(&oversized).is_err());
     }
 
     #[test]
     fn payload_uses_bounded_binary_bytes() {
+        #[derive(serde::Deserialize)]
+        struct Borrowed<'a> {
+            generation: u64,
+            commit_marker: u64,
+            checksum: u64,
+            #[serde(borrow)]
+            payload: ic_wire::BytesRef<'a, { crate::constants::MAX_COMMITTED_PAYLOAD_BYTES }>,
+        }
         let record = CommittedGenerationBytes::new(7, vec![0, 24, 255]);
-        let bytes = crate::test_cbor::to_vec(&record).unwrap();
-        let value: serde_cbor::Value = crate::cbor::from_slice_exact(&bytes).unwrap();
-        let serde_cbor::Value::Map(fields) = value else {
-            panic!("record map")
-        };
-        let (_, payload) = fields
-            .iter()
-            .find(|(key, _)| matches!(key, serde_cbor::Value::Text(text) if text == "payload"))
-            .unwrap();
-        assert_eq!(*payload, serde_cbor::Value::Bytes(vec![0, 24, 255]));
+        let bytes = crate::test_wire::to_vec(&record).unwrap();
+        let decoded: Borrowed<'_> =
+            ic_wire::native::decode(&bytes, crate::encoding::RECORD_LIMITS).unwrap();
+        assert_eq!(decoded.generation, record.generation);
+        assert_eq!(decoded.commit_marker, record.commit_marker);
+        assert_eq!(decoded.checksum, record.checksum);
+        assert_eq!(decoded.payload.as_slice(), &[0, 24, 255]);
         assert_eq!(
-            crate::cbor::from_slice_exact::<CommittedGenerationBytes>(&bytes).unwrap(),
+            crate::test_wire::from_slice::<CommittedGenerationBytes>(&bytes).unwrap(),
             record
         );
     }

@@ -1,44 +1,31 @@
-<p align="center">
-  <img src="https://raw.githubusercontent.com/dragginzgame/shared-assets/main/ic-memory/ic-memory-readme-header.svg" alt="IC Memory — Stops upgrades from mixing up stored data" width="100%">
-</p>
+# IC Memory current Wire fixtures
 
-# ic-memory Current Wire Fixtures
+This is the only maintained durable fixture set. Files ending in `.wire.hex`
+contain lowercase hexadecimal bytes. Tests decode, recover and re-encode them
+through the production Wire paths to catch accidental format drift.
 
-These fixtures pin the current durable wire shape.
+The Cell value is `ICML` followed by an IC Wire native commit-store record. Its
+positional `current` option is required. A present snapshot contains generation,
+`ICMWIRE1` marker, checksum and a bounded opaque byte payload, in that order.
+The payload is a variable-length sequence of permanent key/numeric-slot rows;
+its generation comes only from the checked physical header. ID 255 is refused.
 
-Files ending in `.hex` contain lowercase hexadecimal bytes. Tests decode the
-hex into the actual durable bytes, recover or validate them, and re-encode the
-current output to catch accidental wire-format drift in reviewable text form.
+The 0.56.0 hard cut retires earlier CBOR bytes. Fresh/reset memory or a separately
+reviewed host transition is required. No old decoder or automatic clearing is
+included. See [the current ledger contract](../../../../docs/current-ledger.md).
 
-Intentional protocol hard cuts replace these fixtures in place. The repository
-contains exactly one current fixture set and one current decoder path.
+- `*_ledger.wire.hex`: logical record sequence, without Cell framing.
+- `ledger_commit_store_single.wire.hex`: the full framed Cell value.
+- `snapshot_store_valid.wire.hex`: a valid generation-two Cell value.
+- `snapshot_store_corrupt.wire.hex`: the same snapshot with a corrupt checksum.
+- `memory_manager_slot.wire.hex`: the numeric checked-slot representation.
 
-Slots encode their numeric ID directly. Construction and decoding both reject
-sentinel ID 255. The 0.41.0 hard cut replaces the former nested representation.
+Regenerate explicitly with the production encoders:
 
-The current `ICMKEY01` physical snapshot contains a bounded definite-length CBOR
-byte string whose payload is the allocation-record array. The header alone owns
-the generation. Its marker, generation, payload length and bytes are checksum-bound;
-recovery constructs the logical ledger using that checked generation. Record
-fields are permanent key and numeric slot only.
+```sh
+cargo test -p ic-memory --lib --locked --offline regenerate_current_wire_fixtures -- --ignored
+```
 
-Earlier images, including ICMSNAP1 and pending ICMREC01, are retired by the maintainer-authorized
-0.48.0 cut. Fresh/reset memory is required; incompatible bytes fail without
-automatic clearing. See [the current ledger contract](../../../../docs/current-ledger.md).
-There is one current fixture set and no earlier-format reader.
-
-Fixture groups:
-
-- `*_ledger.cbor.hex`: record-array payload bytes; generation is supplied by the
-  enclosing protected snapshot, or explicitly by the payload fixture test.
-- `ledger_commit_store_single.cbor.hex`: full `LedgerCommitStore` bytes
-  with one allocation snapshot, also used directly as the Cell value.
-- `snapshot_store_valid.cbor.hex`: one valid current physical snapshot.
-- `snapshot_store_corrupt.cbor.hex`: one corrupt current snapshot; recovery
-  refuses it without initializing or publishing allocations.
-- `memory_manager_slot.cbor.hex`: checked `MemoryManagerSlot` bytes.
-
-Fixtures are regenerated through the maintained bounded payload and commit-store
-encoders. The Cell value remains the commit store itself. Numeric checked slots,
-manager and Cell layouts retain the pinned substrate contract. No previous
-payload decoder or automatic reset path is retained.
+Manager and Cell header layouts remain owned by the pinned substrate. Fixtures
+change only the Cell value and ledger payload contract; recovery never rewrites
+retained bytes on rejection.

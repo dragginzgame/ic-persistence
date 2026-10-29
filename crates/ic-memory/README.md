@@ -380,14 +380,18 @@ DTOs, bounded raw commit-store readers and passive export construction also
 require `test-support`; recovered authority remains internal. Bounded Cell payload
 inspection remains available without granting allocation authority.
 
-The current durable ledger uses checked numeric slots and the `ICMKEY01`
-checksummed snapshot. Its protected header owns the generation; the bounded
-CBOR byte-string payload contains only the allocation-record array. Recovery
-constructs the logical ledger with that checked generation. The 0.48.0 format
-cut retires earlier images, including ICMSNAP1 and pending ICMREC01: use
-fresh/reset memory. Invalid
-or incompatible bytes reject without initializing genesis or clearing memory.
-See the [current ledger contract](../../docs/current-ledger.md).
+The durable ledger uses IC Wire native records under an `ICML` Cell-value
+prefix and an `ICMWIRE1` checksummed snapshot. The protected header owns the
+generation; the bounded opaque payload contains only permanent key/numeric-slot
+records. Wire owns byte/allocation/node/depth admission and exact decoding;
+Memory retains ownership, checksum, generation and custody checks.
+
+The pending 0.56.0 hard cut retires the earlier CBOR ledger and Cell records.
+Hosts must use fresh/reset memory or complete a separately reviewed transition
+before adoption. Incompatible bytes fail without initializing genesis or clearing
+memory; no legacy decoder or automatic reset is provided. Raw decoder errors use
+`ic_wire::Error`. See the [current ledger contract](../../docs/current-ledger.md)
+for retained-data obligations and error changes.
 
 For fixture runtimes, opt in to `test-support` and call `testing::fixture_runtime`
 with explicit backing memory, owner, namespace, stable-key list and bucket

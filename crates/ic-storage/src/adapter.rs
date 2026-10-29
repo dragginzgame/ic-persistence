@@ -596,18 +596,10 @@ impl<T: Storable> Storable for BoundedValue<T> {
     }
 
     fn from_bytes(bytes: Cow<'_, [u8]>) -> Self {
-        let Bound::Bounded {
-            max_size,
-            is_fixed_size,
-        } = T::BOUND
-        else {
+        if matches!(T::BOUND, Bound::Unbounded) {
             unreachable!("bounded cell record must declare a bound");
-        };
-        if is_fixed_size {
-            assert_eq!(bytes.len(), max_size as usize);
-        } else {
-            assert!(bytes.len() <= max_size as usize);
         }
+        T::check_bounds(&bytes);
         Self(T::from_bytes(bytes))
     }
 }

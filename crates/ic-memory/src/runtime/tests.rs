@@ -643,9 +643,7 @@ fn diagnostics_reject_invalid_persisted_slots_before_measuring_sizes() {
         .unwrap();
     let record = runtime.ledger_record_from_memory().unwrap();
     let ledger = record.recover().unwrap().into_ledger();
-    let mut value = serde_json::to_value(ledger.records()).unwrap();
-    value[0]["slot"] = serde_json::json!(255);
-    let payload = crate::test_cbor::to_vec(&value).unwrap();
+    let payload = crate::test_wire::to_vec(&vec![("ic_memory.ledger.v1", 255_u8)]).unwrap();
     // Keep physical framing/checksums valid so recovery reaches slot validation.
     let mut physical = crate::LedgerCommitStore::default();
     physical
@@ -691,7 +689,11 @@ fn diagnostics_reject_invalid_persisted_slots_before_measuring_sizes() {
 fn doctor_preserves_distinct_record_decode_causes_without_writes() {
     let declarations = SealedDeclarationSnapshot::new(vec![]).unwrap();
     let mut messages = Vec::new();
-    for bytes in [vec![0xff], vec![0xa0]] {
+    let mut trailing = crate::encoding::RECORD_MAGIC.to_vec();
+    trailing.extend_from_slice(&[0, 0]);
+    let mut malformed = crate::encoding::RECORD_MAGIC.to_vec();
+    malformed.push(2);
+    for bytes in [trailing, malformed] {
         let cause = crate::decode_stable_cell_commit_store(&bytes)
             .unwrap_err()
             .to_string();

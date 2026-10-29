@@ -1,47 +1,66 @@
 # Current handoff
 
-Released source is Persistence 0.55.2 at `464a400`. Pending 0.55.3 adopts published
-IC Tooling 0.70.0 and IC Wire 0.7.22. Own versions remain 0.55.2; no commit,
-release, registry publication, application deployment or data reset ran here.
+The release ledger's latest completed entry is 0.55.3. Package versions remain
+0.55.3; the combined pending draft is now [0.56.0](../changelog/0.56.md) because
+Memory's persisted ledger and error contracts change. No repository staging,
+commit, release, registry upload, deployment or data reset ran here.
 
-## Selected graph and boundaries
+## Current Wire cut
 
-Root Build, Host Artifacts/FS/Process and Testkit Native select 0.70.0. The exact
-managed Build metadata editor and Testkit server CLI pins also select 0.70.0 and
-are prepared through the reviewed installer. Platform is now solely 0.8.1 in the
-root graph: Testkit Native no longer retains its older 0.7.6 facade.
+The maintainer explicitly requested IC Wire and a hard cut. Logical ownership
+records and the enclosing Cell value now use bounded Wire native encoding.
+`ICML` identifies the Cell value; `ICMWIRE1` identifies the protected generation.
+Wire owns byte/allocation/node/depth admission and exact consumption. Memory
+retains numeric ceilings, checksum, generation, key/slot integrity, allocation
+custody and same-format recovery. Logical key text borrows input until validation.
 
-Both catalogs/locks select Wire/derive 0.7.22 with existing default-feature and
-capability choices. The incoming dirty root lock already selected that version;
-Metrics 0.17.3 and unrelated identities are preserved. The independent graph
-advances only Wire/derive from 0.7.21. Wire 0.7.23 was still an unpublished draft
-when dependencies were selected. The published 0.7.21/0.7.22 library source trees
-are identical; current consumer bytes and rejection behavior remain qualified
-separately. No reset, decoder fallback or runtime API rewrite is introduced.
+The main [catalog](../../Cargo.toml)/[lock](../../Cargo.lock) no longer declare or
+resolve `serde_cbor` or `half`; the local CBOR walker and bounded writer are gone.
+Platform 0.8.2 was already selected in the incoming dirty lockfile and is preserved.
+The independent qualification [catalog](../../testing/runtime-qualification/Cargo.toml)
+and [lock](../../testing/runtime-qualification/Cargo.lock) are unchanged. Its
+external PocketIC client still depends on CBOR; no Memory package belongs to that
+separate host graph.
 
-The stable-structures 0.7.2 substrate, PocketIC client/server 16.1.0, Rust selections,
-independent workspace and reviewed Shared Tooling 0.27.6 snapshot are unchanged.
-Tooling's upstream ledger/Registry type changes are not public Persistence APIs.
-Four-package release ordering, mandatory Logging digests and original-source
-recovery of older receipts remain the maintained policy.
+The [current ledger contract](../current-ledger.md) owns adoption requirements.
+Earlier CBOR images require fresh/reset installation or a separately reviewed
+host transition before adoption. Never clear only governance while leaving
+application collection bytes behind. No legacy reader, fallback or automatic
+reset is provided. Raw-record errors expose `ic_wire::Error`; runtime encoding
+refusals use `StableCellLedgerEncode`. Manager/Cell headers and application
+collection formats are unchanged. Current fixtures were regenerated through the
+production writers and re-encoding tests pin their bytes.
 
-## Focused evidence
+## Preserved cleanup and upstream prerequisite
 
-Strict release-helper Clippy, both stable adapters' all-target Clippy and the
-independent runner's all-target Clippy pass. The real selected metadata CLI admits
-both manifest-first and lock-first interrupted bootstrap states without changing
-tracked fixture inputs. The selected Testkit 0.70.0 CLI admits the prepared
-16.1.0 server cache offline; no server was launched.
+Earlier local work reuses substrate Cell bounds, derives bootstrap manifests from
+the package roster, shares preparation/final packaging commands, organizes process
+execution and test contracts, caches roster parsing and uses slice reversal.
+Host/adoption guidance identifies all four packages and authoritative selections.
+Those changes remain part of the pending batch; prior evidence stays under
+`/tmp/ic-persistence-cleanup.Vgl85C/` and `/tmp/ic-persistence-cleanup-five.R61Zf4/`.
+The earlier 68 release-helper tests passed before this format cut; they are not a
+live release qualification for the new codec.
 
-All 38 stable-adapter unit tests and five doctests pass, including current frozen
-Wire rows, malformed records and continuity. All four runner unit tests pass;
-its two explicitly installed tests remain ignored. The four-package version/
-receipt projection regression passes. Logging fixture Wasm Clippy, dependency
-pins, production graph, formatting, doc links and diff checks pass.
+Observability [PR #100](https://github.com/dragginzgame/ic-observability/pull/100)
+provides `Log::into_snapshot` for the separate Logging round-trip cleanup. Its
+isolated consumer proof and prepared patch remain in the earlier evidence folder.
+Production Logging adoption still awaits a published release; this checkout adds
+no path override or replacement implementation.
 
-The selected native Testkit metered-backing regression and complete evidence are
-retained in
-`/tmp/ic-persistence-tooling-wire.NBx4Tn/`, together with incoming manifests,
-lockfiles, CLI pins and the prior handoff. No full release suite, installed
-runtime, native macOS or performance qualification is claimed. Earlier evidence
-retains its original source/package identities; no attempt or archive was removed.
+## Focused Wire evidence
+
+Logs and selected source hashes are retained under `/tmp/ic-memory-wire-cut.9sHjJ0/`.
+Memory's 187 unit tests and five diagnostic integration tests pass with
+`test-support`; eight tests remain explicitly ignored, including measurements and
+fixture regeneration. Explicit fixture regeneration passed separately. Storage's
+17 library tests cover governed collection reopen and corruption/refusal paths.
+Strict Memory library/test Clippy and selected Wasm diagnostic/IO-example Clippy
+pass. Pin and production-graph checks admit the selected normal Wasm graph.
+
+The published API doctests, actual Rust 1.91 Wasm compilation, final formatting,
+local documentation links and diff checks are recorded with their final commands.
+Earlier failed development checks remain retained, rather than relabelled as
+passes. No full release suite, installed PocketIC IO/upgrade/rollback, macOS,
+Wasm size or cost measurement is claimed. Installed qualification remains a
+release prerequisite; earlier CBOR installation evidence does not qualify Wire.
