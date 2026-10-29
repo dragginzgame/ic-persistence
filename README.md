@@ -1,10 +1,9 @@
 # IC Persistence
 
 An unpublished [`ic-logging-stable`](crates/ic-logging-stable/README.md) adapter
-adds explicit bounded logging checkpoints alongside Metrics Stable. Its candidate
-implementation requires Logging 0.17.2's validated restore contract; registry and
-installed-runtime qualification remain pending. Heap Logging selects no stable
-store automatically.
+adds explicit bounded logging checkpoints alongside Metrics Stable, using
+published Logging 0.17.2's validated restore contract. Hosts select the adapter
+and checkpoint cadence; heap Logging selects no stable store automatically.
 
 Allocation governance and governed stable collections for Internet Computer
 canisters, maintained in one repository and published as three crates.
@@ -14,6 +13,7 @@ canisters, maintained in one repository and published as three crates.
 | `ic-memory` | Allocation identities, admission, runtime bootstrap and exclusive leases | [Memory](crates/ic-memory/README.md) |
 | `ic-storage` | Governed collection adapters over Memory leases | [Storage](crates/ic-storage/README.md) |
 | `ic-metrics-stable` | Validated metric snapshots in governed Storage maps | [Metrics Stable](crates/ic-metrics-stable/README.md) |
+| `ic-logging-stable` (unpublished) | Bounded logging checkpoints in governed Storage maps | [Logging Stable](crates/ic-logging-stable/README.md) |
 
 Storage depends on Memory. There is no umbrella crate. Upstream
 `ic-stable-structures` retains collection algorithms and persisted formats;
@@ -21,8 +21,10 @@ applications retain lifecycle and recovery policy. The stable metric adapter
 owns its V1 records here; allocation-free arithmetic remains in IC Metrics.
 See [ownership](docs/ownership.md) and [safety](SAFETY.md).
 
-The root Cargo workspace owns all three packages, one dependency catalog and one
-lockfile, with Rust 1.91 as the minimum. Run Make and Cargo commands here.
+The root Cargo workspace owns four packages, one dependency catalog and one
+lockfile, with Rust 1.91 as the minimum. Coordinated version projection covers
+all four; publication and archive receipts select the three published packages.
+Run Make and Cargo commands here.
 The independent [installed runtime runner](testing/runtime-qualification/README.md)
 retains its host-only lockfile. Archive consumer qualification uses isolated,
 generated workspaces so a workspace path dependency cannot mask missing package

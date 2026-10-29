@@ -5,8 +5,9 @@ distinguish current integration guidance from historical engineering evidence.
 
 ## Start here
 
-- [IC Persistence overview](../README.md) and [migration map](migration/ic-persistence.md) describe the two-package repository.
+- [IC Persistence overview](../README.md) and [migration map](migration/ic-persistence.md) describe the repository and its consolidation history.
 - [Governed Storage collections](../crates/ic-storage/README.md) cover collection leases, regions and upstream formats.
+- [Logging Stable](../crates/ic-logging-stable/README.md) covers explicit bounded logging checkpoints and installed qualification.
 
 - [Project overview and quick start](../crates/ic-memory/README.md) explains in plain language
   what `ic-memory` protects, when it is useful, and how to integrate it.

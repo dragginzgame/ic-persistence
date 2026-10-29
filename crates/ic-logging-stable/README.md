@@ -1,9 +1,8 @@
 # IC Logging Stable
 
 Optional bounded checkpoints for IC Logging, following Metrics Stable's explicit
-load/save model. The package is unpublished. It requires the new validated
-`LogSnapshot` contract prepared for Logging 0.17.2; registry-only qualification
-must follow that upstream release.
+load/save model. The package is unpublished and consumes the validated
+`LogSnapshot` contract from published Logging 0.17.2.
 
 IC Observability owns the engine, snapshot admission, append, retention, UTF-8
 truncation and cursor scans. IC Persistence owns durable encoding and governed
@@ -94,3 +93,10 @@ query non-persistence and whole-application upgrade acceptance require installed
 consumer qualification. Native VectorMemory tests prove codec/storage behaviour,
 not IC effects or instruction/cycle costs. Diagnostic history never authorizes
 retrying uncertain paid effects or proves that a remote effect completed.
+
+The [installed qualification fixture](examples/logging_qualification/main.rs)
+and its [host runner](../../testing/runtime-qualification/README.md) exercise
+query non-persistence, update/upgrade rollback, successful reopen and watermarks
+after pruning all rows. Run `make test-runtime-logging` with prepared dependencies
+and server. This checks the supplied host's original Wasm, not application
+acceptance, optimized variants or cost measurements.

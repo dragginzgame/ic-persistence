@@ -23,9 +23,8 @@ snapshots over Storage maps and depends on the external
 The unpublished `crates/ic-logging-stable/` candidate owns bounded V1 logging
 checkpoints over governed Storage maps. IC Observability owns canonical snapshot
 restoration, append, retention and paging. Hosts select identity and checkpoint
-cadence. Its normal graph waits for published Logging 0.17.2; candidate fixture
-evidence is not registry or installed-runtime qualification. Keep it outside
-publication until the existing release-roster work and owning qualification land.
+cadence. Its normal graph selects published Logging 0.17.2. It remains outside
+the publication/archive roster; coordinated version projection includes it.
 Storage depends on Memory, never the reverse. Package source, tests and canonical
 READMEs live under their packages.
 The repository is IC Persistence; published crate identities remain unchanged.
@@ -197,7 +196,8 @@ requires a different style.
 
 ## Consolidated release identity
 
-All three packages share the workspace version and advance together. Keep the
+All four packages share the workspace version and advance together; only the
+three published packages participate in publication and archive receipts. Keep the
 public APIs, collection formats and allocation custody unchanged during tooling
 cleanup. Storage retains its existing lint policy and declaration boundary.
 The completed import and preserved history are recorded in the

@@ -49,6 +49,7 @@ ic-host-artifacts = { version = "0.69.9", default-features = false }
 ic-host-fs = { version = "0.69.9", default-features = false }
 ic-host-process = { version = "0.69.9", default-features = false }
 ic-testkit-native = { version = "0.69.9", default-features = false }
+ic-wire = "0.7.21"
 serde_json = "1.0"
 toml = "1.1.6"
 trybuild = "1.0.121"

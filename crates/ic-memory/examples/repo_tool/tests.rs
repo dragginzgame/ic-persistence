@@ -124,9 +124,9 @@ fn is_package_call(call: &[String]) -> bool {
                 .is_some_and(|script| script == "scripts/ci/package-workspace.sh")
 }
 
-const MANIFEST: &str = "[workspace]\nmembers = [\"crates/ic-memory\", \"crates/ic-storage\", \"crates/ic-metrics-stable\"]\n[workspace.package]\nversion = \"0.12.3\"\nrust-version = \"1.88.0\"\n[workspace.dependencies]\nic-memory = { path = \"crates/ic-memory\", version = \"0.12.3\" }\nic-storage = { path = \"crates/ic-storage\", version = \"0.12.3\" }\nother = \"0.12.3\"\n";
+const MANIFEST: &str = "[workspace]\nmembers = [\"crates/ic-memory\", \"crates/ic-storage\", \"crates/ic-metrics-stable\", \"crates/ic-logging-stable\"]\n[workspace.package]\nversion = \"0.12.3\"\nrust-version = \"1.88.0\"\n[workspace.dependencies]\nic-memory = { path = \"crates/ic-memory\", version = \"0.12.3\" }\nic-storage = { path = \"crates/ic-storage\", version = \"0.12.3\" }\nother = \"0.12.3\"\n";
 const PACKAGE: &str = "[package]\nname = \"ic-memory\"\nversion.workspace = true\n";
-const LOCK: &str = "version = 4\n[[package]]\nname = \"ic-metrics-stable\"\nversion = \"0.12.3\"\ndependencies = [\"ic-memory\", \"ic-storage\"]\n[[package]]\nname = \"ic-storage\"\nversion = \"0.12.3\"\ndependencies = [\"ic-memory\"]\n[[package]]\nname = \"ic-memory\"\nversion = \"0.12.3\"\n[[package]]\nname = \"other\"\nversion = \"0.12.3\"\n";
+const LOCK: &str = "version = 4\n[[package]]\nname = \"ic-metrics-stable\"\nversion = \"0.12.3\"\ndependencies = [\"ic-memory\", \"ic-storage\"]\n[[package]]\nname = \"ic-storage\"\nversion = \"0.12.3\"\ndependencies = [\"ic-memory\"]\n[[package]]\nname = \"ic-memory\"\nversion = \"0.12.3\"\n[[package]]\nname = \"ic-logging-stable\"\nversion = \"0.12.3\"\ndependencies = [\"ic-memory\", \"ic-storage\"]\n[[package]]\nname = \"other\"\nversion = \"0.12.3\"\n";
 
 #[test]
 fn native_metadata_refuses_invalid_selected_manifest_without_touching_lock() {
@@ -191,7 +191,11 @@ fn helper_output_cannot_change_locked_dependency_selection() {
             .unwrap();
     assert_eq!(
         rendered,
-        same_name_registry.replacen("version = \"0.12.3\"", "version = \"0.13.0\"", 3)
+        same_name_registry.replacen(
+            "version = \"0.12.3\"",
+            "version = \"0.13.0\"",
+            workspace_packages().len()
+        )
     );
     let changed = LOCK.replace("0.12.3", "0.13.0");
     let error = check_lock_update(LOCK.as_bytes(), &changed, "0.12.3", "0.13.0").unwrap_err();
@@ -200,6 +204,35 @@ fn helper_output_cannot_change_locked_dependency_selection() {
         Some(ic_build::cargo::lock_projection::LockProjectionError::ChangedInputs)
     ));
     fixture.assert_original();
+}
+
+#[test]
+fn coordinated_version_projection_includes_unpublished_logging_without_an_archive() {
+    let fixture = Fixture::new();
+    fixture.prepare().unwrap();
+    let lock: toml::Value =
+        toml::from_str(&fixture.repo.text("Cargo.lock", None).unwrap()).unwrap();
+    for name in workspace_packages() {
+        let record = lock["package"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|record| record["name"].as_str() == Some(name))
+            .unwrap();
+        assert_eq!(record["version"].as_str(), Some("0.13.0"));
+    }
+    let prepared: PackageEvidence = serde_json::from_slice(
+        &fs::read(fixture.repo.receipt_path("0.13.0", Prepared).unwrap()).unwrap(),
+    )
+    .unwrap();
+    assert_eq!(
+        prepared
+            .archives()
+            .map(|(name, _)| name)
+            .collect::<Vec<_>>(),
+        packages()
+    );
+    assert!(!packages().contains(&"ic-logging-stable"));
 }
 
 #[test]
@@ -257,7 +290,7 @@ fn large_changelog_finalization_preserves_complete_history() {
 fn release_version_requires_the_named_package_to_inherit_the_workspace_identity() {
     let fixture = Fixture::new();
     assert_eq!(fixture.repo.version(None).unwrap(), "0.12.3");
-    for name in packages() {
+    for name in workspace_packages() {
         for manifest in [
             String::new(),
             "[workspace]\n".to_owned(),
@@ -330,11 +363,11 @@ impl Fixture {
                 "# Detail\n\n## [0.13.0]\n\nFixture changes.\n".to_owned(),
             ),
         ]);
-        for (name, library) in packages()
-            .into_iter()
-            .skip(1)
-            .zip(["// storage fixture\n", "// metrics fixture\n"])
-        {
+        for (name, library) in workspace_packages().into_iter().skip(1).zip([
+            "// storage fixture\n",
+            "// metrics fixture\n",
+            "// logging fixture\n",
+        ]) {
             source.insert(
                 package_manifest(name),
                 format!("[package]\nname = {name:?}\nversion.workspace = true\n"),
@@ -2242,6 +2275,7 @@ fn all_release_kinds_finalize_root_and_detail_notes_at_saved_date() {
                 "CHANGELOG.md",
                 "Cargo.lock",
                 "Cargo.toml",
+                &package_manifest("ic-logging-stable"),
                 PACKAGE_README,
                 &package_manifest("ic-metrics-stable"),
                 &package_manifest("ic-storage"),

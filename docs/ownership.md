@@ -45,6 +45,11 @@ published `ic-metrics` arithmetic crate. Hosts own sampling, attribution,
 allocation keys, bootstrap, collection lifecycle, cadence and resets. Neither
 Memory nor Storage depends on the adapter. See [the import guide](migration/ic-metrics-stable.md).
 
+The unpublished IC Logging Stable package owns bounded V1 checkpoints over the
+same governed Storage boundary. Published IC Logging owns canonical restoration,
+append, retention and paging. Hosts own epochs, allocation, lifecycle and explicit
+save cadence. See [the package guide](../crates/ic-logging-stable/README.md).
+
 ## Dependencies and external capabilities
 
 | Owner | Boundary |
@@ -52,6 +57,7 @@ Memory nor Storage depends on the adapter. See [the import guide](migration/ic-m
 | `ic-platform::stable_structures` | Exact 0.7.2 manager/Cell substrate and backing `Memory` identities. Memory retains the checked layout adapters needed for bounded reads and fallible growth; product admission checks the transitive protocol identity. |
 | `ic-storage::adapter` | Production typed collections over `RuntimeMemory`. Storage depends on Memory; Memory must not depend back on Storage or expose its raw collection substrate. |
 | `ic-metrics-stable` | Metric identities, records and restoration over governed Storage collections. Memory supplies allocation facts, not a second metric store. |
+| `ic-logging-stable` | Bounded checkpoint codec and continuity over governed Storage maps. Logging owns engine admission and retention; hosts own cadence and identity. |
 | Hosts such as Canic; components such as IcyDB | Complete component composition, policy identity, application admission, lifecycle, database schemas and operator response assembly. |
 | `ic-host-fs`, `ic-host-process`, `ic-host-artifacts` | Native publication, bounded processes, file observation and artifact hashing/copying used by repo-tool. These are native-only development dependencies. |
 | `ic-build` | Available Cargo metadata/configuration observation and lock projection admission used by repo-tool. Memory retains release intent, command recipes, budgets and source/package custody. |

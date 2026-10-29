@@ -2,7 +2,7 @@
 .PHONY: help test version ensure-clean fetch-dependencies check-pins check-production-graph \
         install-tools tools-check install-host-tools host-tools-check install-ic-tools ic-tools-check test-tools test-failure-evidence test-offline-tool-reuse \
         lint-tooling test-hooks test-tooling test-fixture-cell validate validate-toolchain wasm-size \
-        install-runtime-server runtime-server-check test-runtime \
+        install-runtime-server runtime-server-check test-runtime test-runtime-logging \
         install-release-tools release-tools-check \
         test-release-adapters test-package-admission validation-compilers-check \
         release-version release-preflight release-verify release-prepare-version \
@@ -49,6 +49,7 @@ help:
 	@echo 'Focused checks: shared-tooling-check, tools-check, test-tools, test-failure-evidence, check-pins, check-production-graph, test-tooling, test-fixture-cell, test-release-adapters, test-hooks, fmt-check, lint-tooling.'
 	@echo 'Formatting: fmt. Full release checks: validate, validate-toolchain.'
 	@echo 'Installed runtime: install-runtime-server (explicit Testkit setup), runtime-server-check (offline), test-runtime (prepared server and locked caches).'
+	@echo 'Focused installed Logging proof: test-runtime-logging (original Wasm only; no optimizer or other runtime suites).'
 	@echo 'Report: cloc (root workspace; CLOC_MANIFEST selects an independent Cargo manifest). Fleet reports run in Shared Tooling.'
 	@echo 'Maintainer releases: release-patch, release-minor, release-major; normal targets start fresh; release-resume VERSION=X.Y.Z recovers a saved attempt.'
 
@@ -73,10 +74,16 @@ runtime-server-check:
 # Focused installed IO/upgrade qualification, separate from the library gates.
 # Build before launch so compilation does not consume the server lifetime.
 test-runtime: runtime-server-check ic-tools-check
-	+cargo +$(VALIDATION_TOOLCHAIN) build --locked --offline --profile wasm-size --target wasm32-unknown-unknown --example wasm-io-qualification --example wasm-storage-qualification
+	+cargo +$(VALIDATION_TOOLCHAIN) build --locked --offline --profile wasm-size --target wasm32-unknown-unknown --example wasm-io-qualification --example wasm-storage-qualification --example wasm-logging-qualification
 	+cargo +$(VALIDATION_TOOLCHAIN) build --locked --offline --manifest-path testing/runtime-qualification/Cargo.toml --target-dir target/runtime-qualification
 	+@cli="$$($(TESTKIT_CLI) --check)" && \
 	  bash scripts/ci/qualify-runtime.sh "$(CURDIR)" "$$cli" "$(TESTKIT_SERVER_DIRECTORY)" "$(CURDIR)/.tools/ic/bin/wasm-opt" "$(IC_TOOL_PINS)"
+
+test-runtime-logging: runtime-server-check
+	+cargo +$(VALIDATION_TOOLCHAIN) build -p ic-logging-stable --locked --offline --profile wasm-size --target wasm32-unknown-unknown --example wasm-logging-qualification
+	+cargo +$(VALIDATION_TOOLCHAIN) build --locked --offline --manifest-path testing/runtime-qualification/Cargo.toml --target-dir target/runtime-qualification
+	+@cli="$$($(TESTKIT_CLI) --check)" && \
+	  bash scripts/ci/qualify-runtime.sh "$(CURDIR)" "$$cli" "$(TESTKIT_SERVER_DIRECTORY)" - "$(IC_TOOL_PINS)" --logging-only
 
 test-failure-evidence:
 	bash scripts/ci/test-failure-evidence.sh $${FAILURE_EVIDENCE_DIRECTORY:+"$$FAILURE_EVIDENCE_DIRECTORY"}

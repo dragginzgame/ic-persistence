@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Actual offline Cargo and the selected editor; no fixture Git/release effects.
 set -euo pipefail
-package_names="$(bash scripts/ci/read-persistence-packages.sh)"
+package_names="$(bash scripts/ci/read-persistence-packages.sh --workspace)"
 IFS=$'\t' read -r -a packages <<< "$package_names"
 unset RELEASE_CACHE_PREPARE MAKEFLAGS MFLAGS MAKEOVERRIDES GNUMAKEFLAGS MAKEFILES
 root="$(pwd -P)"
@@ -43,6 +43,8 @@ for package in "${packages[@]}"; do
     "$editor" --max-input-bytes "$CARGO_RELEASE_METADATA_MAX_BYTES" lock candidate.lock "$package_previous" "$next" "$package" > candidate-next.lock
     mv candidate-next.lock candidate.lock
 done
+member_inputs=()
+for package in "${packages[@]}"; do member_inputs+=("crates/$package/Cargo.toml"); done
 for state in lock-first manifest-first; do
     cp original.toml Cargo.toml
     cp original.lock Cargo.lock
@@ -51,7 +53,7 @@ for state in lock-first manifest-first; do
         lock-first) cp candidate.lock Cargo.lock ;;
         manifest-first) cp candidate.toml Cargo.toml; expected="$next" ;;
     esac
-    shasum -a 256 Cargo.toml Cargo.lock crates/ic-memory/Cargo.toml crates/ic-storage/Cargo.toml crates/ic-metrics-stable/Cargo.toml > "$state.inputs.sha256"
+    shasum -a 256 Cargo.toml Cargo.lock "${member_inputs[@]}" > "$state.inputs.sha256"
     bash scripts/dev/run-repo-tool.sh "$pin" version > "$state.stdout" 2> "$state.stderr"
     [[ "$(cat "$state.stdout")" == "$expected" ]] || exit 1
     shasum -a 256 -c "$state.inputs.sha256"
