@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.55.3] - Unreleased
+
+### ⬆️ Dependencies
+
+- Adopt IC Tooling 0.70.0 and IC Wire 0.7.22, including the matching Build and
+  Testkit CLI pins. Align native test support on Platform 0.8.1 while preserving
+  stored formats and the PocketIC 16.1.0 pair.
+  [Details](docs/changelog/0.55.md#0553---unreleased).
+
 ## [0.55.2] - 2026-10-29
 
 ### ⬆️ Dependencies

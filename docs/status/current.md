@@ -1,47 +1,47 @@
 # Current handoff
 
-Released source is Persistence 0.55.1 at `c3700a1`. Pending 0.55.2 adopts published
-IC Platform 0.8.1. Own package versions remain 0.55.1; no commit, release,
-publication, deployment or stable-data reset ran during this adoption.
+Released source is Persistence 0.55.2 at `464a400`. Pending 0.55.3 adopts published
+IC Tooling 0.70.0 and IC Wire 0.7.22. Own versions remain 0.55.2; no commit,
+release, registry publication, application deployment or data reset ran here.
 
-## Selected Platform boundary
+## Selected graph and boundaries
 
-Both maintained catalogs select Platform 0.8.1 with their existing default-feature
-and opt-in capability selections. Memory/Storage still use the exact registry
-`ic-stable-structures` 0.7.2 package. Public substrate types, custody, allocations,
-collection formats and both stable adapters' Wire records are unchanged.
-Platform's raw Principal/runtime split needs no source repair: PocketIC supplies
-external conversions for the runner; the Logging fixture keeps the raw CDK owner.
+Root Build, Host Artifacts/FS/Process and Testkit Native select 0.70.0. The exact
+managed Build metadata editor and Testkit server CLI pins also select 0.70.0 and
+are prepared through the reviewed installer. Platform is now solely 0.8.1 in the
+root graph: Testkit Native no longer retains its older 0.7.6 facade.
 
-The root's production normal/build graph admits one Platform 0.8.1 identity.
-Testkit Native 0.69.14 independently retains Platform 0.7.6 in native-only dev
-support. Its stable-memory substrate still has the same exact package identity.
-The independent qualification lock advances only Platform 0.7.3 to 0.8.1;
-PocketIC client/server 16.1.0, tool/compiler pins and workspace scope are unchanged.
+Both catalogs/locks select Wire/derive 0.7.22 with existing default-feature and
+capability choices. The incoming dirty root lock already selected that version;
+Metrics 0.17.3 and unrelated identities are preserved. The independent graph
+advances only Wire/derive from 0.7.21. Wire 0.7.23 was still an unpublished draft
+when dependencies were selected. The published 0.7.21/0.7.22 library source trees
+are identical; current consumer bytes and rejection behavior remain qualified
+separately. No reset, decoder fallback or runtime API rewrite is introduced.
 
-The incoming dirty root lock had already selected Build/Host/Testkit Native
-0.69.14 and Metrics 0.17.3. Those selections are preserved. Initial offline
-resolution briefly selected cached Testkit Native 0.69.13; explicit targeted
-resolution restored 0.69.14 before qualification. No downgrade is retained.
-Root Platform macros advance to 0.8.1 and unused thiserror 1 packages are pruned.
+The stable-structures 0.7.2 substrate, PocketIC client/server 16.1.0, Rust selections,
+independent workspace and reviewed Shared Tooling 0.27.6 snapshot are unchanged.
+Tooling's upstream ledger/Registry type changes are not public Persistence APIs.
+Four-package release ordering, mandatory Logging digests and original-source
+recovery of older receipts remain the maintained policy.
 
 ## Focused evidence
 
-Strict Memory/Storage library/test Clippy with test support passes. Logging's
-Wasm library/fixture Clippy and the independent runner's all-target Clippy pass.
-All four runner unit tests pass; its two explicitly installed tests remain ignored.
-Production graph/substrate identity and dependency pin checks pass.
+Strict release-helper Clippy, both stable adapters' all-target Clippy and the
+independent runner's all-target Clippy pass. The real selected metadata CLI admits
+both manifest-first and lock-first interrupted bootstrap states without changing
+tracked fixture inputs. The selected Testkit 0.70.0 CLI admits the prepared
+16.1.0 server cache offline; no server was launched.
 
-All 12 stable-Cell tests and the governed collection reopen regression pass.
-Formatting, local documentation links and diff checks pass. Session evidence is
-retained under `/tmp/ic-persistence-platform-081.ueTdXi/`. No fresh
-installed runtime, full release or native macOS qualification is claimed. The
-unchanged substrate and client/server pair do not require a new matrix merely
-because Platform's package version changed.
+All 38 stable-adapter unit tests and five doctests pass, including current frozen
+Wire rows, malformed records and continuity. All four runner unit tests pass;
+its two explicitly installed tests remain ignored. The four-package version/
+receipt projection regression passes. Logging fixture Wasm Clippy, dependency
+pins, production graph, formatting, doc links and diff checks pass.
 
-Incoming manifests/locks and the previous handoff are retained in that evidence
-directory. Earlier release receipts, archives and qualification logs retain their
-original source identities; do not reinterpret them as Platform 0.8 acceptance.
-The four-package publication roster and required Logging receipt digest remain.
-Metrics' existing old-row retirement contract remains in force; this Platform
-adoption introduces no new reset requirement.
+The selected native Testkit metered-backing regression and complete evidence are
+retained in
+`/tmp/ic-persistence-tooling-wire.NBx4Tn/`, together with incoming manifests,
+lockfiles, CLI pins and the prior handoff. No full release suite, installed
+runtime, native macOS or performance qualification is claimed. Earlier evidence
+retains its original source/package identities; no attempt or archive was removed.

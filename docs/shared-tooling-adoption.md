@@ -16,23 +16,24 @@ cover maintenance permission preflight, single-tool freshness and retained
 validation excerpts; no scheduled maintenance is activated. Exported bytes and
 modes are compared against this independently selected source commit.
 
-Both maintained catalogs now select published IC Platform 0.8.1 without default
-features. Memory and Storage retain the exact `ic-stable-structures` 0.7.2
-substrate; the production graph admits one Platform identity. The independent
-qualification lock changes only Platform, retaining PocketIC 16.1.0 and its
-caller-owned server. Platform's external Principal feature split is supplied by
-its selected PocketIC capability; no new consumer feature is needed. The root's
-existing Testkit Native 0.69.14 still selects Platform 0.7.6 only in the native
-development graph. Incoming Tooling/Testkit 0.69.14 and Metrics 0.17.3 lock
-selections are preserved, not attributed to this Platform adoption. Executable
-Build/Testkit CLI pins remain 0.69.11. Source, CLI selection and installed
-qualification remain separate authorities.
+Both maintained catalogs select IC Platform 0.8.1 and IC Wire 0.7.22. Memory and
+Storage retain the exact `ic-stable-structures` 0.7.2 substrate. Build, Host
+Artifacts/FS/Process and Testkit Native now select published 0.70.0; the exact
+Build metadata editor and Testkit server CLI pins are also 0.70.0. Native test
+support no longer retains Platform 0.7.6. The independent graph changes only
+Wire/derive, retaining Platform 0.8.1 and PocketIC client/server 16.1.0.
 
-Released Persistence is 0.55.1 and pending notes select compatible 0.55.2. This
-adoption changes no public substrate type, allocation/collection format or stable
-adapter record. Rust/compiler pins, the independent workspace boundary and the
-reviewed Shared snapshot remain unchanged. No profiler native source profile is
-consumed here; its separate Platform 0.8.1 consumer migration does not apply.
+The incoming root lock already selected Wire/derive 0.7.22 and Metrics 0.17.3;
+those identities are preserved. Both catalogs retain their previous Wire feature
+selections. Published Wire library source is identical to 0.7.21. No public
+Persistence API, stored format or retirement policy changes; Tooling's upstream
+ledger/Registry type changes are outside this consumer's exposed interfaces.
+
+Released Persistence is 0.55.2 and pending notes select compatible 0.55.3. Rust,
+server and Shared snapshot selections are unchanged. Native CLI preparation and
+offline admission remain explicit, separate from release/publication and installed
+application qualification. Source and executable selection do not establish live
+consumer acceptance. No native profiler source profile is consumed here.
 
 ### Earlier adoption and qualification records
 
