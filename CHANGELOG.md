@@ -1,14 +1,36 @@
 # Changelog
 
-## [0.54.2]
+## [0.55.1] - Unreleased
 
 ### ➕ Added
 
-- Prepare Logging Stable publication with four qualified archives, a mandatory
-  logging receipt digest and resumable dependency-ordered uploads.
-- Add focused installed Logging qualification for query non-persistence,
-  update/upgrade rollback and reopen with empty-history watermarks.
-  [Details](docs/changelog/0.54.md#0542).
+- Prepare Logging Stable publication alongside Memory, Storage and Metrics Stable,
+  with four-archive qualification, mandatory Logging receipt digests and resumable
+  dependency-ordered uploads. Actual publication remains a separate action.
+  [#139 — Enable coordinated publication of IC Logging Stable](https://github.com/dragginzgame/ic-persistence/pull/139).
+
+### 🧪 Testing
+
+- Add installed Logging checkpoint qualification for query non-persistence,
+  trapped update/upgrade rollback, retained reopen and empty-history watermarks.
+  [#138 — Qualify stable Logging rollback and upgrade behavior](https://github.com/dragginzgame/ic-persistence/pull/138).
+  [Details](docs/changelog/0.55.md).
+
+## [0.55.0] - 2026-10-29
+
+### ⚠️ Breaking
+
+- Replace Metrics Stable's fixed-width records with bounded IC Wire checkpoints.
+  All old metrics data is explicitly retired: hosts must clear their metrics map
+  before upgrading or supply a fresh governed map, and advance reset epochs.
+  There is no legacy decoder or automatic reset. Allocation and collection formats
+  remain unchanged. [Upgrade guide](crates/ic-metrics-stable/README.md#upgrade-disposition).
+
+### 🧹 Cleanup
+
+- Use IC Wire for both stable adapters, removing their custom binary codecs while
+  preserving validated restoration and checkpoint continuity. Logging Stable stays
+  unpublished. [Details](docs/changelog/0.55.md).
 
 ## [0.54.1] - 2026-10-29
 

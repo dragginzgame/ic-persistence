@@ -1,70 +1,63 @@
-# Current handoff — Logging Stable publication preparation
+# Current handoff
 
-The maintainer selected a separate publication PR on 2026-10-29, following
-installed qualification [PR #138](https://github.com/dragginzgame/ic-persistence/pull/138).
-This isolated branch starts at its head
-`1928117a04655cfc3319060379eae682b2f12e8c`, incorporating released Persistence
-0.54.1. The contribution is stacked on #138; merge that qualification first and
-retarget this branch to main. Workspace versions remain 0.54.1 and compatible
-notes remain 0.54.2. No actual merge, release or registry upload is selected.
-The normal Persistence checkout is untouched.
+Released source is Persistence 0.55.0 at `1ff8f93`. Pending 0.55.1 integrates
+[PR #138 — Qualify stable Logging rollback and upgrade behavior](https://github.com/dragginzgame/ic-persistence/pull/138)
+and [PR #139 — Enable coordinated publication of IC Logging Stable](https://github.com/dragginzgame/ic-persistence/pull/139).
+Own versions remain 0.55.0. No release, registry upload, application deployment or
+actual stable-data deletion ran. Source adoption does not publish Logging.
 
-## Publication contract
+## Accepted source and recovery boundaries
 
-The canonical `packages.json` roster now selects Memory, Storage, Metrics Stable
-and Logging Stable, in dependency order. All four participate in coordinated
-version projection, interrupted metadata bootstrap, archive qualification,
-prepared/final receipts, checksum reconciliation and publication. The retired
-unpublished roster and its alternate reader mode are removed.
+PR #138 merged at `6a6c86b6`. The publication branch is reconciled normally with
+that main. Both production Wire codecs remain byte-identical to released 0.55.0.
+PR #139 changes no runtime source or selected lockfiles relative to merged #138.
+The fixture additions preserve every original registry identity. Root Wire keeps
+default features disabled; the independent graph retains PocketIC 16.1.0.
 
-Every package receipt requires `logging_sha256` alongside the three existing
-archive digests. Missing/unknown receipt fields refuse; no default, converter or
-legacy reader is introduced. Retain older saved-release receipts and resume
-those releases using their original source and tooling. Registry observation
-admits all four names/checksums before any upload. Logging uploads last; a refused
-final upload retries only that package, and a lost successful response reconciles
-its checksum without uploading it again. Existing identity/tag checkpoints and
-immutable retained archives remain authoritative.
+One canonical four-package roster owns workspace projection, bootstrap, archive
+qualification, receipts and dependency-ordered publication. The old unpublished
+side roster is removed. Current prepared/final receipts require `logging_sha256`.
+Older releases and receipts must use their original source/tooling; no conversion
+or missing-field fallback is maintained. Logging uploads last; all four registry
+identities are observed before any upload effect.
 
-The extracted archive consumer now selects all four exact unpacked packages and
-the public Logging type family from the Logging Stable manifest. It exercises
-shared governed lease custody, Logging checkpoint reopen and sequence/time
-watermarks after pruning all rows. Admission still refuses substituted package
-paths and dependency drift before compilation. Rust 1.91, the selected compiler
-and Wasm remain the archive consumer targets.
+Metrics' approved hard cut still requires explicitly retiring old metrics rows or
+supplying fresh governed backing and advancing reset epochs. No legacy decoder
+or automatic reset exists. Never clear Memory's allocator or unrelated collections.
+[Upgrade disposition](../../crates/ic-metrics-stable/README.md#upgrade-disposition).
 
-## Qualification and retained evidence
+## Focused evidence on reconciled source
 
-Publication preparation changes no production runtime code, persisted V1 record,
-package version, dependency, shared snapshot or independent runtime graph.
-The parent PR's installed Logging source and evidence remain applicable. Its
-[CI run 40873315791](https://github.com/dragginzgame/ic-persistence/actions/runs/40873315791)
-passes all original/O3/Os/Oz runtime jobs and MSRV on Linux and both macOS hosts.
-The original local probe remains at
-`/tmp/ic-logging-stable-20261029/target/qualification/runtime/attempt.pUTvdW/`.
-The parent's handoff and earlier evidence are retained in Git history and its
-isolated checkout; do not relabel those receipts as publication evidence.
+- All 68 release-helper regressions and strict helper Clippy pass, including
+  mandatory Logging receipts, missing/corrupt archive refusal before registry
+  observation, rejected final upload and lost-response reconciliation without
+  replaying earlier package uploads.
+- Four exact development archives qualify offline; the extracted consumer runs
+  on Rust 1.99.1 and 1.91 and checks for Wasm. Source/archive hashes stay unchanged.
+  These `--allow-dirty` development archives are not publication receipts.
+- Actual archive admission/substitution refusals, native compiler dispatch,
+  manifest-first/lock-first bootstrap and release-adapter substitutes pass.
+- Selected ShellCheck with source companions, pins, production graph, doc links,
+  formatting and diff checks pass. Bare ShellCheck lacked source companions; the
+  corrected documented selection passes. The first release-adapter attempt lacked
+  the isolated host-tool cache; it is retained, and the prepared-cache rerun passes.
+- #138's original-Wasm installed proof passes on the current 0.55 Wire source:
+  query non-persistence, trapped update/upgrade rollback, retained reopen,
+  timestamp refusal and empty-history sequence/time watermarks. Fixture/library
+  Wasm Clippy, independent runner Clippy and focused protocol regressions pass.
 
-Current publication logs use `/tmp/ic-logging-publication-*.log`; package archive
-qualification retains its own manifests, lock admissions, archives, compiler
-outputs and checksums under this checkout's `target/package-qualification/`.
-The positive four-archive proof passes at `attempt.4wr4s9`: each extracted crate
-checks natively, the consumer runs on Rust 1.99.1 and 1.91 and checks on Wasm,
-and all source/archive checksums remain unchanged. The Logging crate SHA-256 is
-`5e54050a3d4c4a58c9d390bc95b9bbe11baac68c0f453c35aa0a0d004a08ffd7`.
-These are dirty development archives, never clean-release publication receipts.
+Archive evidence: `/tmp/ic-persistence-pr-adoption.2mnEQI/target/package-qualification/attempt.HJWViI/`.
+Installed evidence: `/tmp/ic-persistence-pr-adoption.2mnEQI/target/qualification/runtime/attempt.FjZ2Kp/`.
+Wasm SHA-256: `eec5e928d560a998e03113ec1b8fccefddb8f6d5c6296285df730cf2f7156399`.
+Other logs/failed attempts: `/tmp/pr138-*`, `/tmp/pr139-*` and retained fixture paths
+in those logs. The local Testkit-owned server ran only for the focused proof.
 
-Strict release-helper Clippy passes. The helper batch has 68 passing tests across
-67 initial passes and the corrected archive-transfer-count rerun; preserve the
-initial failed log. The new cases cover mandatory Logging receipts, final-upload
-rejection/lost-response recovery and missing/corrupt Logging archive refusal
-before registry observation. Archive admission and catalog-compiler dispatch
-fixtures pass at `/tmp/ic-persistence-package-admission.fnayE1`. Real offline
-bootstrap passes both interrupted metadata states at
-`/tmp/ic-persistence-bootstrap.KVg7K6` without changing inputs. Formatting,
-ShellCheck, graph/pin/boundary, snapshot, link, license and diff checks pass;
-both tracked lockfiles remain byte-identical to the parent.
+Updated hosted CI runs asynchronously and retains its exact PR-head identity.
+Historical complete Linux/macOS original/O3/Os/Oz acceptance belongs to `1928117a`;
+it is not relabelled as new merged-source qualification. No fresh full release,
+macOS/optimized matrix, live Canic/Jobs acceptance or cost measurement is claimed.
 
-Release-helper tests use substituted Git/registry effects. They never authorize
-or prove a real upload. Actual publication still requires a separately selected
-clean tagged release and its full release gates.
+Prior handoffs and codec evidence remain in `/tmp/pr139-retained-previous-handoff.md`,
+`/tmp/pr138-retained-previous-handoff.md`, `/tmp/ic-persistence-before-metrics-wire-handoff.md`
+and `/tmp/ic-persistence-logging-wire.AFMlbH/`. Retain all earlier journals,
+receipts and archives; next release/publication uses the new four-package contract.

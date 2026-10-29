@@ -115,7 +115,7 @@ check-production-graph:
 		--forbid-pattern '^clap(?:_|$$)' \
 		--forbid pocket-ic --forbid serde_json --forbid toml --forbid trybuild \
 		--forbid-feature ic-memory/test-support \
-		--require ic-stable-structures=1 --require ic-memory=1 --require ic-storage=1 --require ic-platform=1 --require ic-metrics=1 --require ic-logging=1
+		--require ic-stable-structures=1 --require ic-memory=1 --require ic-storage=1 --require ic-platform=1 --require ic-metrics=1 --require ic-logging=1 --require ic-wire=1
 
 # Install exact, checksum-verified tools separately; these checks are offline.
 lint-tooling:

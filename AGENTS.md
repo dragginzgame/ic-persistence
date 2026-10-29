@@ -16,7 +16,7 @@ vendored files or attribute dirty shared source to a committed export.
 The virtual repository-root workspace owns shared package metadata and the
 dependency catalog. The library packages are `crates/ic-memory/`,
 `crates/ic-storage/`, `crates/ic-metrics-stable/` and
-`crates/ic-logging-stable/` adapter. Logging Stable owns bounded V1 checkpoints
+`crates/ic-logging-stable/` adapter. Logging Stable owns bounded IC Wire checkpoints
 over governed Storage maps; IC Observability's published Logging 0.17.2 owns
 logging semantics and validated restoration. Hosts own clocks, identity,
 retention scheduling and checkpoint cadence. The maintainer selected Logging
@@ -24,7 +24,7 @@ Stable publication integration on 2026-10-29: all four packages participate in
 archive qualification, receipts and dependency-ordered publication. Actual
 release and publication commands retain their separate authorization.
 Memory owns allocation governance, bootstrap and exclusive leases; Storage owns
-governed collections over those leases. Metrics Stable owns validated V1 metric
+governed collections over those leases. Metrics Stable owns validated IC Wire metric
 snapshots over Storage maps and depends on the external
 `ic-metrics` arithmetic crate. Hosts own metric attribution, lifecycle and cadence.
 Storage depends on Memory, never the reverse. Package source, tests and canonical

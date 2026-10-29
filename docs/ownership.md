@@ -6,7 +6,7 @@ ledger recovery and exclusive checked handles. It does not own application data,
 collection semantics, component lifecycle or deployment policy.
 
 The fourth workspace member, `ic-logging-stable`, is a checkpoint
-adapter. Its [guide](../crates/ic-logging-stable/README.md) records bounded V1
+adapter. Its [guide](../crates/ic-logging-stable/README.md) records bounded IC Wire
 encoding and governed Storage integration owned by Persistence. IC Observability's
 published Logging 0.17.2 owns logging semantics and validated restoration. Hosts
 own checkpoint identity and cadence; no second logging engine is introduced.
@@ -45,7 +45,7 @@ Its existing source and formats are unchanged by the repository consolidation.
 Storage depends on Memory through the root path-plus-version catalog; Memory
 does not depend on Storage.
 
-IC Metrics Stable owns validated V1 metric records and restoration in
+IC Metrics Stable owns validated IC Wire metric records and restoration in
 `crates/ic-metrics-stable`. It depends on Memory, Storage and the independently
 published `ic-metrics` arithmetic crate. Hosts own sampling, attribution,
 allocation keys, bootstrap, collection lifecycle, cadence and resets. Neither

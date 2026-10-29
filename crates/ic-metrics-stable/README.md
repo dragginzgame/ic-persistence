@@ -4,7 +4,7 @@ This package is maintained and released by IC Persistence alongside Memory and
 Storage. The `ic-metrics` arithmetic crate remains independently
 maintained in [IC Metrics](https://github.com/dragginzgame/ic-metrics).
 The [migration guide](https://github.com/dragginzgame/ic-persistence/blob/main/docs/migration/ic-metrics-stable.md) records source
-provenance, version selection and unchanged API/storage contracts.
+provenance and earlier version selections; the current format cut is described below.
 
 Optional durable counter, aggregate, summary and histogram snapshots in **one stable
 B-tree map per canister**. Multiple components share that map with permanent
@@ -37,14 +37,19 @@ component. `ic-memory`'s governance allocations are separate. This package never
 allocates memory IDs, registers keys, creates a global store or installs lifecycle
 hooks.
 
-Metrics' V1 record layout is separate from Memory's allocation-ledger format.
-Memory 0.50 retains the allocation format introduced in 0.48 and preserved by
-0.49's `serde_cbor` backend replacement. This alignment requires no data reset.
-Earlier ICMSNAP1/ICMREC01 images remain retired and require host-owned fresh/reset
-backing under Memory's version-bound disposition. Metrics neither converts those
-images nor clears memory on failure.
-An unchanged Metrics record or B-tree format does not establish allocation-ledger
-compatibility or authorize clearing existing memory.
+## Upgrade disposition
+
+The IC Wire storage cut requires the next Persistence minor release. The
+maintainer has explicitly retired all old Metrics rows: clear the host-owned
+metrics map before adopting this format, or supply a known fresh governed map.
+Use the old release's host administration before upgrading when a reset is needed.
+No old-format decoder, automatic reset or migration is provided. Unknown retained
+rows fail closed on load/save/remove and are never replaced as a fallback.
+The new record discriminator is `ICMW`; it must not be confused with the retired
+fixed-width layout. Namespace/name keys, the B-tree format and Memory's allocation
+ledger are unchanged. Clearing metrics does not authorize resetting the allocator
+or unrelated stable collections. Increment the host's reset epoch when restarting
+metric history.
 
 ## Store operations
 
@@ -69,8 +74,7 @@ and `store.into_map()` transfer that same collection and its allocation lease.
 Hosts select `StableBTreeMap::new(handle)` for known fresh storage or
 `StableBTreeMap::load(handle)` for a known retained map. The store constructor
 wraps the supplied collection without touching storage. The generic parameter
-remains the runtime's backing memory, and the B-tree format and Metrics V1 rows
-are unchanged. No custom tree format or additional memory ID is introduced.
+remains the runtime's backing memory, and the B-tree format remains unchanged. Rows use the current Wire contract. No custom tree format or additional memory ID is introduced.
 
 `into_map` transfers the collection and its allocation lease to the host for
 administration. Drop the store or returned map before reopening the allocation.
@@ -154,20 +158,17 @@ identifiers, values and numeric admission.
 - Namespace/name keys are stable ASCII identifiers, up to 64/128 bytes. Units
   use the same alphabet and have a 64-byte limit. These namespaces separate rows;
   the canister still owns authorization and label cardinality.
-- Every V1 record has a format discriminator, kind, unit, reset epoch and explicit
-  little-endian state. Kinds 1/2/3 remain aggregate/summary/histogram; kind 4 is
-  a scalar counter's 16-byte `u128` total followed by one overflow byte (0 or 1).
-  Counters have no sample count, maximum or latest value. Existing kinds retain
-  their exact layouts; this adapter introduces no record-format reset. An older
-  adapter cannot read kind 4, so hosts must retain counter-aware code when reopening
-  those rows.
-  Records retain `u128` totals, maxima/latest, count/total overflow
-  flags, histogram bounds, disjoint bucket counts and their flags. It never copies
-  raw Rust struct memory. Histograms admit at most 256 finite bounds; records are
-  limited to 4,608 bytes at the codec boundary. Constructor-admitted units and
-  shape-admitted encoders are bounded together at compile time; the largest
-  current encoded record is 4,474 bytes. Stored bytes still undergo independent
-  size, envelope and numeric validation.
+- Records begin with `ICMW`, followed by an IC Wire native Serde/Postcard
+  envelope containing kind, unit, reset epoch and a borrowed bounded state byte
+  string. The state is another bounded Wire payload. This separation lets explicit
+  removal validate an envelope without interpreting corrupt numeric state.
+  Kinds 1/2/3/4 select aggregate/summary/histogram/counter. Records retain `u128`
+  totals, optional maxima/latest, sticky overflow flags and disjoint histogram
+  buckets. Persistence restores through Metrics' typed arithmetic admission.
+  Histograms admit at most 256 finite bounds; complete records admit 6,144 bytes.
+  Each Wire operation has explicit traversal allowances of 1 MiB allocation,
+  16,384 nodes and depth 16; these are conservative admission charges, not measured
+  heap sizes. Borrowed envelope fields and bounded lists constrain decoded data.
 - Load checks kind, unit, epoch and exact histogram bounds, then restores through
   the core's typed numeric admission. Unknown formats, truncation, trailing bytes
   and malformed state are errors; they never silently create an empty metric.
@@ -182,7 +183,8 @@ identifiers, values and numeric admission.
   Supply the latest retained state before recording; numeric checks do not
   establish sample attribution, ordering or provenance.
 - Deliberate reset/retirement uses `remove` with the old identity. It verifies the
-  envelope and discards the payload explicitly, including unreadable payloads.
+  envelope and discards the payload explicitly, including unreadable numeric
+  state. The complete outer byte-string framing must still be valid.
   For a reset, save the replacement with a new epoch in the same update message,
   without an await between operations. It never retires/reuses the allocation ID.
 
