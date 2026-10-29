@@ -82,23 +82,21 @@ fn store_retains_allocation_lease_through_map_transfer() {
 }
 
 #[test]
-fn frozen_v1_rows_reopen_through_the_governed_map() {
+fn frozen_wire_rows_reopen_through_the_governed_map() {
     let backing = VectorMemory::default();
     let mut records = StableBTreeMap::<Vec<u8>, Vec<u8>, _>::new(admitted_memory(backing.clone()));
     let id = MetricIdentity::new("x", 3).unwrap();
-    // Independent frozen V1 empty rows for all four metric families. In the
-    // zero-bound histogram the finite-bound count and overflow are both zero.
+    // Frozen empty Wire states, independent of the production encoder.
     for (name, kind, payload) in [
-        ("aggregate", 1, 33),
-        ("summary", 2, 41),
-        ("histogram", 3, 44),
-        ("counter", 4, 17),
+        ("aggregate", 1, 5),
+        ("summary", 2, 6),
+        ("histogram", 3, 8),
+        ("counter", 4, 2),
     ] {
         let key = MetricKey::new("app", name).unwrap();
-        let mut bytes = b"ICM\x01".to_vec();
-        bytes.extend_from_slice(&[kind, 1, b'x']);
-        bytes.extend_from_slice(&3_u64.to_le_bytes());
-        bytes.resize(bytes.len() + payload, 0);
+        let mut bytes = b"ICMW".to_vec();
+        bytes.extend_from_slice(&[kind, 1, b'x', 3, payload]);
+        bytes.resize(bytes.len() + usize::from(payload), 0);
         records.insert(key.0, bytes);
     }
     let before: Vec<_> = records
@@ -143,8 +141,7 @@ fn frozen_v1_rows_reopen_through_the_governed_map() {
     drop(store);
     let records = StableBTreeMap::<Vec<u8>, Vec<u8>, _>::load(admitted_memory(backing));
     let bytes = records.get(&key("counter").0).unwrap();
-    assert_eq!(&bytes[..7], b"ICM\x01\x04\x01x");
-    assert_eq!(&bytes[15..31], &9_u128.to_le_bytes());
+    assert_eq!(bytes, b"ICMW\x04\x01x\x03\x02\x09\x00");
 }
 
 #[test]
@@ -174,8 +171,7 @@ fn store() -> MetricsStore<VectorMemory> {
 }
 
 fn encode<T: crate::metric::StoredMetric>(identity: &MetricIdentity, value: &T) -> Vec<u8> {
-    let payload_size = T::ENCODED_SIZE.unwrap();
-    codec::encode(identity, value, payload_size)
+    codec::encode(identity, value).unwrap()
 }
 
 fn assert_rejected_record<T: crate::metric::StoredMetric + std::fmt::Debug>(
@@ -394,7 +390,7 @@ fn exact_caps_and_overflow_flags_survive_storage_and_continue() {
 }
 
 #[test]
-fn aggregate_v1_envelope_errors_and_explicit_removal() {
+fn aggregate_wire_envelope_errors_and_explicit_removal() {
     let mut store = store();
     let key = key("app");
     let bytes = encode(&identity(), &Aggregate::EMPTY);
@@ -416,50 +412,60 @@ fn aggregate_v1_envelope_errors_and_explicit_removal() {
         codec::decode::<Aggregate>(&flags, &identity(), &()),
         Err(StoreError::MalformedRecord)
     );
-    store.map.insert(key.0.clone(), trailing);
+    store
+        .map
+        .insert(key.0.clone(), wire_row(1, "instructions", 0, &[4]));
     assert!(store.remove(&key, &identity()).unwrap());
 }
 
+// The independent fixture uses plain tuples with the declared field order.
+fn wire_state<T: serde::Serialize>(kind: u8, identity: &MetricIdentity, state: &T) -> Vec<u8> {
+    let state = ic_wire::native::encode(state, fixture_limits()).unwrap();
+    wire_row(kind, &identity.unit, identity.epoch, &state)
+}
+
+fn fixture_limits() -> ic_wire::Limits {
+    ic_wire::Limits {
+        bytes: codec::MAX_RECORD_BYTES,
+        allocation: 1024 * 1024,
+        nodes: 16 * 1024,
+        depth: 16,
+    }
+}
+
+fn wire_row(kind: u8, unit: &str, epoch: u64, state: &[u8]) -> Vec<u8> {
+    let payload = ic_wire::BytesRef::<{ codec::MAX_RECORD_BYTES }>::new(state).unwrap();
+    let encoded = ic_wire::native::encode(&(kind, unit, epoch, payload), fixture_limits()).unwrap();
+    let mut bytes = b"ICMW".to_vec();
+    bytes.extend_from_slice(&encoded);
+    bytes
+}
+
 #[test]
-fn v1_encoding_is_explicit_and_rejects_invalid_numeric_state() {
+fn wire_encoding_is_explicit_and_rejects_invalid_numeric_state() {
     let mut value = Aggregate::EMPTY;
     value.record(7);
     let identity = MetricIdentity::new("x", 3).unwrap();
-    let bytes = encode(&identity, &value);
-    let mut expected = b"ICM\x01\x01\x01x".to_vec();
-    expected.extend_from_slice(&3_u64.to_le_bytes());
-    expected.extend_from_slice(&1_u64.to_le_bytes());
-    expected.extend_from_slice(&7_u128.to_le_bytes());
-    expected.extend_from_slice(&7_u64.to_le_bytes());
-    expected.push(0);
-    assert_eq!(bytes, expected);
+    let aggregate = (1_u64, 7_u128, Some(7_u64), false, false);
+    let expected = wire_state(1, &identity, &aggregate);
+    assert_eq!(encode(&identity, &value), expected);
+    assert_eq!(expected, b"ICMW\x01\x01x\x03\x06\x01\x07\x01\x07\x00\x00");
     let summary = Summary::from_parts(value, Some(7)).unwrap();
-    let mut summary_bytes = expected.clone();
-    summary_bytes[4] = 2;
-    summary_bytes.extend_from_slice(&7_u64.to_le_bytes());
-    assert_eq!(encode(&identity, &summary), summary_bytes);
     assert_eq!(
-        codec::decode::<Summary>(&summary_bytes, &identity, &()),
-        Ok(summary)
+        encode(&identity, &summary),
+        wire_state(2, &identity, &(aggregate, Some(7_u64)))
     );
     let mut histogram = Histogram::new([10]).unwrap();
     histogram.record(7);
-    let mut histogram_bytes = expected;
-    histogram_bytes[4] = 3;
-    histogram_bytes.extend_from_slice(&1_u16.to_le_bytes());
-    histogram_bytes.extend_from_slice(&10_u64.to_le_bytes());
-    histogram_bytes.extend_from_slice(&1_u64.to_le_bytes());
-    histogram_bytes.push(0);
-    histogram_bytes.extend_from_slice(&0_u64.to_le_bytes());
-    histogram_bytes.push(0);
-    assert_eq!(encode(&identity, &histogram), histogram_bytes);
     assert_eq!(
-        codec::decode::<Histogram<1>>(&histogram_bytes, &identity, &[10]),
-        Ok(histogram)
+        encode(&identity, &histogram),
+        wire_state(
+            3,
+            &identity,
+            &(aggregate, vec![(10_u64, 1_u64, false)], 0_u64, false)
+        )
     );
-    let mut invalid = bytes;
-    // The admitted V1 envelope is 15 bytes here; change exact total to zero.
-    invalid[23..39].fill(0);
+    let invalid = wire_state(1, &identity, &(1_u64, 0_u128, Some(7_u64), false, false));
     assert!(matches!(
         codec::decode::<Aggregate>(&invalid, &identity, &()),
         Err(StoreError::InvalidState(_))
@@ -535,14 +541,11 @@ fn counter_checkpoints_preserve_wide_caps_identity_and_explicit_resets() {
 }
 
 #[test]
-fn counter_v1_records_reject_corruption_before_checkpoint_or_reset() {
+fn counter_wire_records_reject_corruption_before_checkpoint_or_reset() {
     let value = Counter::from_parts(7, false).unwrap();
     let identity = MetricIdentity::new("x", 3).unwrap();
     let bytes = encode(&identity, &value);
-    let mut expected = b"ICM\x01\x04\x01x".to_vec();
-    expected.extend_from_slice(&3_u64.to_le_bytes());
-    expected.extend_from_slice(&7_u128.to_le_bytes());
-    expected.push(0);
+    let expected = b"ICMW\x04\x01x\x03\x02\x07\x00".to_vec();
     assert_eq!(bytes, expected);
     let mut malformed = Vec::new();
     let mut trailing = bytes.clone();
@@ -579,7 +582,7 @@ fn counter_v1_records_reject_corruption_before_checkpoint_or_reset() {
     // Explicit disposition can retire a known envelope with invalid payload.
     store
         .map
-        .insert(key.0.clone(), expected[..expected.len() - 1].to_vec());
+        .insert(key.0.clone(), wire_row(4, "x", 3, &[7, 2]));
     assert!(store.remove(&key, &identity).unwrap());
     assert!(!store.remove(&key, &identity).unwrap());
     // An aggregate's existing kind cannot be reinterpreted as a scalar counter.
@@ -607,9 +610,8 @@ fn inconsistent_summary_latest_rejects_load_and_save_without_overwrite() {
     summary.record(10);
     summary.record(10);
     let mut bytes = encode(&identity, &summary);
-    // V1 stores latest as the final eight bytes. Zero contradicts two tens.
-    let latest_offset = bytes.len() - 8;
-    bytes[latest_offset..].copy_from_slice(&0_u64.to_le_bytes());
+    // A present zero latest contradicts two tens.
+    *bytes.last_mut().unwrap() = 0;
     store.map.insert(key.0.clone(), bytes.clone());
     drop(store);
     let mut reopened = MetricsStore::new(StableBTreeMap::load(admitted_memory(memory)));
@@ -683,7 +685,7 @@ fn bounded_inputs_empty_zero_and_idempotent_checkpoints() {
         Err(StoreError::TooManyBounds)
     );
     assert_eq!(store.map.get(&oversized_key.0), Some(vec![0]));
-    let bytes = vec![0; 4609];
+    let bytes = vec![0; codec::MAX_RECORD_BYTES + 1];
     assert_eq!(
         codec::decode::<Aggregate>(&bytes, &identity(), &()),
         Err(StoreError::RecordTooLarge)
@@ -1029,31 +1031,40 @@ fn histogram_checkpoints_preserve_each_bucket_count_and_flag() {
 }
 
 #[test]
-fn v1_encoding_has_exact_lengths_and_bounded_histograms() {
-    fn check<T: crate::metric::StoredMetric>(value: &T, size: usize) {
-        let identity = MetricIdentity::new(&"x".repeat(64), 3).unwrap();
+fn wire_encoding_admits_bounded_histograms_and_numeric_extremes() {
+    fn check<T: crate::metric::StoredMetric>(value: &T) {
+        let identity = MetricIdentity::new(&"x".repeat(64), u64::MAX).unwrap();
         let bytes = encode(&identity, value);
-        assert_eq!(bytes.len(), size + 64);
+        assert!(bytes.len() <= codec::MAX_RECORD_BYTES);
         assert!(codec::decode::<T>(&bytes, &identity, value.configuration()).unwrap() == *value);
     }
-    check(&Aggregate::EMPTY, 47);
-    check(&Counter::ZERO, 31);
-    check(&Counter::from_parts(u128::MAX, true).unwrap(), 31);
-    check(&Summary::EMPTY, 55);
-    check(&Histogram::new([]).unwrap(), 58);
-    check(
-        &Histogram::new(std::array::from_fn::<_, 256, _>(|i| i as u64)).unwrap(),
-        58 + 17 * 256,
-    );
+    check(&Aggregate::EMPTY);
+    check(&Counter::ZERO);
+    check(&Counter::from_parts(u128::MAX, true).unwrap());
+    check(&Summary::EMPTY);
+    check(&Histogram::new([]).unwrap());
+    let bounds = std::array::from_fn::<_, 256, _>(|i| u64::MAX - 255 + i as u64);
+    check(&Histogram::new(bounds).unwrap());
     let wide = Aggregate::from_parts(u64::MAX, u128::MAX, Some(u64::MAX), true, true).unwrap();
-    check(&wide, 47);
-    check(&Summary::from_parts(wide, Some(u64::MAX)).unwrap(), 55);
+    check(&wide);
+    check(&Summary::from_parts(wide, Some(u64::MAX)).unwrap());
+    check(
+        &Histogram::from_parts(
+            std::array::from_fn::<_, 256, _>(|i| i as u64),
+            [u64::MAX; 256],
+            u64::MAX,
+            [true; 256],
+            true,
+            wide,
+        )
+        .unwrap(),
+    );
     assert_eq!(
-        <Histogram<257> as crate::metric::StoredMetric>::ENCODED_SIZE,
+        <Histogram<257> as crate::metric::StoredMetric>::ADMISSION,
         Err(StoreError::TooManyBounds)
     );
     assert_eq!(
-        <Histogram<{ usize::MAX }> as crate::metric::StoredMetric>::ENCODED_SIZE,
+        <Histogram<{ usize::MAX }> as crate::metric::StoredMetric>::ADMISSION,
         Err(StoreError::TooManyBounds)
     );
 }
@@ -1135,7 +1146,7 @@ fn public_histogram_load_admits_expected_bounds_before_reading_a_row() {
 
 // Mutate persisted bytes independently of the decoder's field/range formulas.
 // A changed byte can be another valid state; admission is not corruption detection.
-fn check_v1_mutations<T: crate::metric::StoredMetric + std::fmt::Debug>(
+fn check_wire_mutations<T: crate::metric::StoredMetric + std::fmt::Debug>(
     value: &T,
 ) -> (usize, usize) {
     let memory = WriteCountingMemory::default();
@@ -1205,7 +1216,7 @@ fn check_v1_mutations<T: crate::metric::StoredMetric + std::fmt::Debug>(
 }
 
 #[test]
-fn v1_byte_mutations_preserve_canonical_admission_and_rejected_checkpoints() {
+fn wire_byte_mutations_preserve_canonical_admission_and_rejected_checkpoints() {
     let mut aggregate = Aggregate::EMPTY;
     let mut summary = Summary::EMPTY;
     let mut histogram = Histogram::new([0, 10, u64::MAX]).unwrap();
@@ -1217,17 +1228,17 @@ fn v1_byte_mutations_preserve_canonical_admission_and_rejected_checkpoints() {
     let overflowed =
         Aggregate::from_parts(u64::MAX, u128::MAX, Some(u64::MAX), true, true).unwrap();
     let outcomes = [
-        check_v1_mutations(&Counter::ZERO),
-        check_v1_mutations(&Counter::from_parts(u128::MAX, false).unwrap()),
-        check_v1_mutations(&Counter::from_parts(u128::MAX, true).unwrap()),
-        check_v1_mutations(&Aggregate::EMPTY),
-        check_v1_mutations(&aggregate),
-        check_v1_mutations(&overflowed),
-        check_v1_mutations(&Summary::EMPTY),
-        check_v1_mutations(&summary),
-        check_v1_mutations(&Summary::from_parts(overflowed, Some(u64::MAX)).unwrap()),
-        check_v1_mutations(&Histogram::new([]).unwrap()),
-        check_v1_mutations(&histogram),
+        check_wire_mutations(&Counter::ZERO),
+        check_wire_mutations(&Counter::from_parts(u128::MAX, false).unwrap()),
+        check_wire_mutations(&Counter::from_parts(u128::MAX, true).unwrap()),
+        check_wire_mutations(&Aggregate::EMPTY),
+        check_wire_mutations(&aggregate),
+        check_wire_mutations(&overflowed),
+        check_wire_mutations(&Summary::EMPTY),
+        check_wire_mutations(&summary),
+        check_wire_mutations(&Summary::from_parts(overflowed, Some(u64::MAX)).unwrap()),
+        check_wire_mutations(&Histogram::new([]).unwrap()),
+        check_wire_mutations(&histogram),
     ];
     assert!(outcomes.iter().all(|(_, refused)| *refused > 0));
     assert!(outcomes.iter().any(|(admitted, _)| *admitted > 0));
@@ -1292,42 +1303,28 @@ fn checkpoint_continuity_matches_independent_reachable_states() {
 }
 
 #[test]
-fn populated_frozen_v1_rows_reopen_without_reencoding() {
+fn populated_wire_rows_reopen_without_reencoding() {
     // Independent field layout: deliberately do not use the production encoder.
     let id = identity();
     let backing = VectorMemory::default();
     let mut map = StableBTreeMap::<Vec<u8>, Vec<u8>, _>::new(admitted_memory(backing.clone()));
     let maximum = u64::MAX;
     let total = u128::from(maximum) * 2;
-    let mut aggregate = Vec::new();
-    aggregate.extend_from_slice(&2_u64.to_le_bytes());
-    aggregate.extend_from_slice(&total.to_le_bytes());
-    aggregate.extend_from_slice(&maximum.to_le_bytes());
-    aggregate.push(0);
-    let mut summary = aggregate.clone();
-    summary.extend_from_slice(&maximum.to_le_bytes());
-    let mut histogram = aggregate.clone();
-    histogram.extend_from_slice(&1_u16.to_le_bytes());
-    histogram.extend_from_slice(&maximum.to_le_bytes());
-    histogram.extend_from_slice(&2_u64.to_le_bytes());
-    histogram.push(0);
-    histogram.extend_from_slice(&0_u64.to_le_bytes());
-    histogram.push(0);
-    let mut counter = u128::MAX.to_le_bytes().to_vec();
-    counter.push(1);
+    let aggregate = (2_u64, total, Some(maximum), false, false);
     let mut originals = Vec::new();
-    for (name, kind, payload) in [
-        ("aggregate", 1, aggregate),
-        ("summary", 2, summary),
-        ("histogram", 3, histogram),
-        ("counter", 4, counter),
+    for (name, bytes) in [
+        ("aggregate", wire_state(1, &id, &aggregate)),
+        ("summary", wire_state(2, &id, &(aggregate, Some(maximum)))),
+        (
+            "histogram",
+            wire_state(
+                3,
+                &id,
+                &(aggregate, vec![(maximum, 2_u64, false)], 0_u64, false),
+            ),
+        ),
+        ("counter", wire_state(4, &id, &(u128::MAX, true))),
     ] {
-        let mut bytes = b"ICM\x01".to_vec();
-        bytes.push(kind);
-        bytes.push(u8::try_from(id.unit.len()).unwrap());
-        bytes.extend_from_slice(id.unit.as_bytes());
-        bytes.extend_from_slice(&id.epoch.to_le_bytes());
-        bytes.extend_from_slice(&payload);
         let key = key(name);
         map.insert(key.0.clone(), bytes.clone());
         originals.push((key, bytes));
@@ -1357,4 +1354,46 @@ fn populated_frozen_v1_rows_reopen_without_reencoding() {
     for (key, bytes) in originals {
         assert_eq!(map.get(&key.0), Some(bytes));
     }
+}
+
+#[test]
+fn wire_collection_and_frame_limits_refuse_without_replacement() {
+    let memory = WriteCountingMemory::default();
+    let writes = memory.writes.clone();
+    let mut store = MetricsStore::new(StableBTreeMap::new(admitted_memory(memory)));
+    let key = key("limits");
+    let identity = identity();
+    let value = Histogram::new([]).unwrap();
+    let state = (
+        (0_u64, 0_u128, None::<u64>, false, false),
+        vec![(0_u64, 0_u64, false); 257],
+        0_u64,
+        false,
+    );
+    let too_many = wire_state(3, &identity, &state);
+    let too_large = vec![0; codec::MAX_RECORD_BYTES + 1];
+    for (bytes, error) in [
+        (too_many, StoreError::MalformedRecord),
+        (too_large, StoreError::RecordTooLarge),
+    ] {
+        store.map.insert(key.0.clone(), bytes.clone());
+        assert_rejected_record(&mut store, &writes, &key, &identity, &value, (bytes, error));
+    }
+    // The largest syntactic field widths must pass codec budgets even if their
+    // impossible distribution is subsequently refused by arithmetic admission.
+    let maximum = u64::MAX;
+    let state = (
+        (maximum, u128::MAX, Some(maximum), true, true),
+        (0..256_u64)
+            .map(|i| (maximum - 255 + i, maximum, true))
+            .collect::<Vec<_>>(),
+        maximum,
+        true,
+    );
+    let bytes = wire_state(3, &identity, &state);
+    let bounds = std::array::from_fn::<_, 256, _>(|i| maximum - 255 + i as u64);
+    assert!(matches!(
+        codec::decode::<Histogram<256>>(&bytes, &identity, &bounds),
+        Err(StoreError::InvalidState(_))
+    ));
 }

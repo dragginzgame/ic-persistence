@@ -4,10 +4,9 @@ use ic_metrics::{
     MeasurementAggregate, MeasurementCounter, MeasurementHistogram, MeasurementSummary,
 };
 
-use crate::{
-    MAX_HISTOGRAM_BOUNDS, StoreError,
-    codec::{self, Decoder, MetricKind},
-};
+use serde::{Deserialize, Serialize};
+
+use crate::{MAX_HISTOGRAM_BOUNDS, StoreError, codec::MetricKind};
 
 pub trait StoredMetric: Sized + Eq {
     type Configuration: ?Sized;
@@ -16,14 +15,67 @@ pub trait StoredMetric: Sized + Eq {
     fn same_state(&self, previous: &Self) -> bool {
         self == previous
     }
-    const ENCODED_SIZE: Result<usize, StoreError>;
-    // Called only after ENCODED_SIZE admits this metric's static shape.
-    fn encode_state(&self, bytes: &mut Vec<u8>);
-    fn decode_state(
-        configuration: &Self::Configuration,
-        decoder: &mut Decoder<'_>,
-    ) -> Result<Self, StoreError>;
+    type State: Serialize + serde::de::DeserializeOwned;
+    const ADMISSION: Result<(), StoreError> = Ok(());
+    fn state(&self) -> Self::State;
+    fn restore(configuration: &Self::Configuration, state: Self::State)
+    -> Result<Self, StoreError>;
     fn continues(&self, previous: &Self) -> bool;
+}
+
+// These private records preserve typed arithmetic admission after Wire has
+// admitted syntax and traversal. They are not a second arithmetic authority.
+///
+/// `AggregateState`
+///
+/// Stored fields admitted by the canonical arithmetic constructor after decoding.
+///
+
+#[derive(Deserialize, Serialize)]
+pub struct AggregateState {
+    pub samples: u64,
+    pub total: u128,
+    pub maximum: Option<u64>,
+    pub samples_overflowed: bool,
+    pub total_overflowed: bool,
+}
+
+impl From<MeasurementAggregate> for AggregateState {
+    fn from(value: MeasurementAggregate) -> Self {
+        Self {
+            samples: value.samples(),
+            total: value.total(),
+            maximum: value.maximum(),
+            samples_overflowed: value.samples_overflowed(),
+            total_overflowed: value.total_overflowed(),
+        }
+    }
+}
+
+impl AggregateState {
+    fn restore(self) -> Result<MeasurementAggregate, StoreError> {
+        Ok(MeasurementAggregate::from_parts(
+            self.samples,
+            self.total,
+            self.maximum,
+            self.samples_overflowed,
+            self.total_overflowed,
+        )?)
+    }
+}
+
+///
+/// `HistogramState`
+///
+/// Bounded disjoint buckets and aggregate fields awaiting arithmetic admission.
+///
+
+#[derive(Deserialize, Serialize)]
+pub struct HistogramState {
+    pub aggregate: AggregateState,
+    pub buckets: ic_wire::List<(u64, u64, bool), MAX_HISTOGRAM_BOUNDS>,
+    pub overflow: u64,
+    pub overflowed: bool,
 }
 
 // Monotonic differences are admitted once. Counts describe exact additions
@@ -75,15 +127,14 @@ impl StoredMetric for MeasurementCounter {
         &()
     }
 
-    const ENCODED_SIZE: Result<usize, StoreError> = Ok(codec::COUNTER_BYTES);
+    type State = (u128, bool);
 
-    fn encode_state(&self, bytes: &mut Vec<u8>) {
-        bytes.extend_from_slice(&self.total().to_le_bytes());
-        bytes.push(u8::from(self.total_overflowed()));
+    fn state(&self) -> Self::State {
+        (self.total(), self.total_overflowed())
     }
 
-    fn decode_state((): &(), decoder: &mut Decoder<'_>) -> Result<Self, StoreError> {
-        Ok(Self::from_parts(decoder.u128()?, decoder.flag()?)?)
+    fn restore((): &(), (total, overflowed): Self::State) -> Result<Self, StoreError> {
+        Ok(Self::from_parts(total, overflowed)?)
     }
 
     fn continues(&self, previous: &Self) -> bool {
@@ -100,14 +151,14 @@ impl StoredMetric for MeasurementAggregate {
         &()
     }
 
-    const ENCODED_SIZE: Result<usize, StoreError> = Ok(codec::AGGREGATE_BYTES);
+    type State = AggregateState;
 
-    fn encode_state(&self, bytes: &mut Vec<u8>) {
-        codec::aggregate(bytes, *self);
+    fn state(&self) -> Self::State {
+        (*self).into()
     }
 
-    fn decode_state((): &(), decoder: &mut Decoder<'_>) -> Result<Self, StoreError> {
-        decoder.aggregate()
+    fn restore((): &(), state: Self::State) -> Result<Self, StoreError> {
+        state.restore()
     }
 
     fn continues(&self, previous: &Self) -> bool {
@@ -123,23 +174,14 @@ impl StoredMetric for MeasurementSummary {
         &()
     }
 
-    const ENCODED_SIZE: Result<usize, StoreError> = Ok(codec::SUMMARY_BYTES);
+    type State = (AggregateState, Option<u64>);
 
-    fn encode_state(&self, bytes: &mut Vec<u8>) {
-        codec::aggregate(bytes, self.aggregate());
-        bytes.extend_from_slice(&self.latest().unwrap_or(0).to_le_bytes());
+    fn state(&self) -> Self::State {
+        (self.aggregate().into(), self.latest())
     }
 
-    fn decode_state((): &(), decoder: &mut Decoder<'_>) -> Result<Self, StoreError> {
-        let aggregate = decoder.aggregate()?;
-        let latest = decoder.u64()?;
-        if aggregate.samples() == 0 && latest != 0 {
-            return Err(StoreError::MalformedRecord);
-        }
-        Ok(Self::from_parts(
-            aggregate,
-            (aggregate.samples() != 0).then_some(latest),
-        )?)
+    fn restore((): &(), (aggregate, latest): Self::State) -> Result<Self, StoreError> {
+        Ok(Self::from_parts(aggregate.restore()?, latest)?)
     }
 
     fn continues(&self, previous: &Self) -> bool {
@@ -186,63 +228,53 @@ impl<const N: usize> StoredMetric for MeasurementHistogram<N> {
         }
     }
 
-    const ENCODED_SIZE: Result<usize, StoreError> = if N > MAX_HISTOGRAM_BOUNDS {
+    type State = HistogramState;
+    const ADMISSION: Result<(), StoreError> = if N > MAX_HISTOGRAM_BOUNDS {
         Err(StoreError::TooManyBounds)
     } else {
-        Ok(codec::HISTOGRAM_BASE_BYTES + codec::HISTOGRAM_BUCKET_BYTES * N)
+        Ok(())
     };
 
-    fn encode_state(&self, bytes: &mut Vec<u8>) {
-        codec::aggregate(bytes, self.aggregate());
-        #[expect(
-            clippy::cast_possible_truncation,
-            reason = "ENCODED_SIZE admits at most 256 bounds before encoding"
-        )]
-        let count = N as u16;
-        bytes.extend_from_slice(&count.to_le_bytes());
-        for ((bound, count), flag) in self
-            .upper_bounds()
-            .iter()
-            .zip(self.bucket_counts())
-            .zip(self.bucket_overflowed())
-        {
-            bytes.extend_from_slice(&bound.to_le_bytes());
-            bytes.extend_from_slice(&count.to_le_bytes());
-            bytes.push(u8::from(*flag));
+    fn state(&self) -> Self::State {
+        HistogramState {
+            aggregate: self.aggregate().into(),
+            buckets: ic_wire::List::new(
+                self.upper_bounds()
+                    .iter()
+                    .copied()
+                    .zip(self.bucket_counts().iter().copied())
+                    .zip(self.bucket_overflowed().iter().copied())
+                    .map(|((bound, count), flag)| (bound, count, flag))
+                    .collect(),
+            )
+            .expect("static histogram shape was admitted before serialization"),
+            overflow: self.overflow(),
+            overflowed: self.overflow_count_overflowed(),
         }
-        bytes.extend_from_slice(&self.overflow().to_le_bytes());
-        bytes.push(u8::from(self.overflow_count_overflowed()));
     }
 
-    fn decode_state(
+    fn restore(
         configuration: &Self::Configuration,
-        decoder: &mut Decoder<'_>,
+        state: Self::State,
     ) -> Result<Self, StoreError> {
-        let aggregate = decoder.aggregate()?;
-        let length = usize::from(decoder.u16()?);
-        if length > MAX_HISTOGRAM_BOUNDS {
-            return Err(StoreError::TooManyBounds);
-        }
-        if length != N {
+        if state.buckets.as_slice().len() != N {
             return Err(StoreError::BoundsMismatch);
         }
         let mut bounds = [0; N];
         let mut counts = [0; N];
         let mut flags = [false; N];
-        for ((bound, count), flag) in bounds.iter_mut().zip(&mut counts).zip(&mut flags) {
-            *bound = decoder.u64()?;
-            *count = decoder.u64()?;
-            *flag = decoder.flag()?;
+        for (index, &(bound, count, flag)) in state.buckets.as_slice().iter().enumerate() {
+            bounds[index] = bound;
+            counts[index] = count;
+            flags[index] = flag;
         }
-        let overflow = decoder.u64()?;
-        let overflow_count_overflowed = decoder.flag()?;
         let value = Self::from_parts(
             bounds,
             counts,
-            overflow,
+            state.overflow,
             flags,
-            overflow_count_overflowed,
-            aggregate,
+            state.overflowed,
+            state.aggregate.restore()?,
         )?;
         if value.upper_bounds() != configuration {
             return Err(StoreError::BoundsMismatch);

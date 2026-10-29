@@ -56,7 +56,7 @@ it never becomes absence. Sequence exhaustion remains exhausted after reopen.
 The host supplies the same epoch across ordinary upgrades and owns generation
 identity; schema validity cannot establish authenticity or instance continuity.
 
-## Bounds and durable V1 contract
+## Bounds and IC Wire checkpoint contract
 
 Namespaces/names contain 1..=64 / 1..=128 ASCII bytes from letters, digits,
 `._/-:`. Each key encodes namespace, NUL, name. The host bounds key cardinality
@@ -66,15 +66,27 @@ encoded record is at most 65,536 bytes; not every combination of maximum setting
 fits that byte ceiling. Oversized saves fail before map mutation. Snapshot copies
 and checkpoint comparisons scale with retained history, unlike cursor scans.
 
-V1 uses `ICL` plus byte `1`, an eight-byte epoch, three four-byte fixed limits,
-optional next sequence and last timestamp, then a four-byte row count. Optional
-values use a 0/1 byte followed by eight bytes when present. All integers are
-little-endian. Each oldest-first row carries sequence/time (eight bytes each),
-severity (0..=4 for Debug/Info/Ok/Warn/Error), a 0/1 truncation flag, source text,
-a 0/1 topic presence flag and optional topic text, then message text. Text uses
-a four-byte UTF-8 byte length. Rust layouts and enum discriminants are not stored.
-Decoding checks bytes, counts, lengths, flags, UTF-8 and full consumption before
-canonical `Log::restore` admission. Unknown formats never select another reader.
+The format uses `ICL` plus discriminator `2`, followed by IC Wire's unframed
+Serde/Postcard payload. The private schema carries epoch, three fixed limits,
+optional next sequence and timestamp, then oldest-first entries. Each entry
+carries sequence, timestamp, severity, truncation flag, source, optional topic and
+message. The schema's severity order is Debug/Info/Ok/Warn/Error. IC Wire owns
+primitive representation, UTF-8 and trailing-byte refusal; Persistence does not
+maintain another primitive encoder or parser.
+
+IC Wire admits at most 1,024 decoded rows and applies explicit byte, node,
+depth and allocation-traversal allowances. The payload allowance excludes the
+four-byte format marker. The 4 MiB traversal allowance is conservative accounting,
+not measured heap use; node/depth allowances are 65,600 and 16. Decoded text
+borrows the input until configured label/message limits pass, before constructing
+owned entries for canonical `Log::restore`. Codec resource failures are typed.
+Unknown formats never select another reader or a reset fallback.
+
+The previous unpublished experimental checkpoint bytes are incompatible. A host
+retaining them must use its original tooling for explicit export/rewrite or
+select a fresh allocation. This codec does not perform that migration or reset.
+Metrics Stable has its own IC Wire format and explicit
+[old-data reset requirement](../ic-metrics-stable/README.md#upgrade-disposition).
 
 Save verifies the old row and rejects decreasing/exhaustion-clearing watermarks,
 rewritten issued rows and resurrection of pruned rows. An unchanged next sequence

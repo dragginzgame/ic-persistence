@@ -44,6 +44,9 @@ pub enum StoreError {
     /// A stored field, length, flag, UTF-8 string or trailing byte is invalid.
     #[error("malformed log checkpoint")]
     MalformedRecord,
+    /// Shared codec allocation or resource admission failed.
+    #[error("log checkpoint codec failed: {0}")]
+    Codec(#[from] ic_wire::Error),
     /// Unknown durable format discriminator.
     #[error("unsupported log checkpoint format")]
     UnsupportedFormat,
