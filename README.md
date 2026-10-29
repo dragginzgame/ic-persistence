@@ -1,5 +1,11 @@
 # IC Persistence
 
+An unpublished [`ic-logging-stable`](crates/ic-logging-stable/README.md) adapter
+adds explicit bounded logging checkpoints alongside Metrics Stable. Its candidate
+implementation requires Logging 0.17.2's validated restore contract; registry and
+installed-runtime qualification remain pending. Heap Logging selects no stable
+store automatically.
+
 Allocation governance and governed stable collections for Internet Computer
 canisters, maintained in one repository and published as three crates.
 

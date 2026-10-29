@@ -1,0 +1,23 @@
+[package]
+name = "ic-logging-stable"
+edition.workspace = true
+rust-version.workspace = true
+version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+description = "Optional governed stable checkpoints for IC Logging"
+readme = "README.md"
+publish = false
+
+[dependencies]
+ic-logging.workspace = true
+ic-memory.workspace = true
+ic-storage.workspace = true
+thiserror.workspace = true
+
+[dev-dependencies]
+ic-memory = { workspace = true, features = ["test-support"] }
+
+[lints]
+workspace = true

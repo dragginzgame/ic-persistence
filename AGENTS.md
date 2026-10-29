@@ -20,6 +20,12 @@ Memory owns allocation governance, bootstrap and exclusive leases; Storage owns
 governed collections over those leases. Metrics Stable owns validated V1 metric
 snapshots over Storage maps and depends on the external
 `ic-metrics` arithmetic crate. Hosts own metric attribution, lifecycle and cadence.
+The unpublished `crates/ic-logging-stable/` candidate owns bounded V1 logging
+checkpoints over governed Storage maps. IC Observability owns canonical snapshot
+restoration, append, retention and paging. Hosts select identity and checkpoint
+cadence. Its normal graph waits for published Logging 0.17.2; candidate fixture
+evidence is not registry or installed-runtime qualification. Keep it outside
+publication until the existing release-roster work and owning qualification land.
 Storage depends on Memory, never the reverse. Package source, tests and canonical
 READMEs live under their packages.
 The repository is IC Persistence; published crate identities remain unchanged.

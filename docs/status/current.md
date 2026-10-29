@@ -1,57 +1,66 @@
-# Current handoff
+# Current handoff — Logging Stable candidate
 
-Released source is 0.53.1 at `1583819343fda5c31bbe62bf058e1b2927189262`.
-The pending release is 0.54.0 because Metrics Stable now exposes IC Metrics 0.17
-arithmetic types. Hosts passing those values must select `ic-metrics = "0.17"`.
-Package metadata remains 0.53.1; no release, publication, staging or push occurred.
-See [pending notes](../changelog/0.54.md#0540---unreleased).
+This isolated draft starts from released 0.54.0 source
+`9ca2e8e39f8ab5d1b8501e4d843b25c614719a13`. The maintainer selected a separate
+adapter PR awaiting Logging 0.17.2. The normal Persistence checkout's uncommitted
+scaffold, release-roster and tooling batch is untouched and is not copied here.
+Package versions remain 0.54.0; compatible candidate notes are 0.54.1. Publication
+stays disabled for Logging Stable. Existing publication packages remain unchanged.
 
-## Current development batch
+## Candidate contract
 
-- Adopt Shared Tooling 0.27.6 at
-  `5a72359b5be19d5221334cf2c9b3204621d3f3f6` through its canonical exporter.
-  Impact preview and independent source verification cover the existing 123
-  payloads. Scheduled maintenance remains inactive.
-- Select Metrics 0.17.0 and host tooling 0.69.9, including Build/Testkit CLI pins.
-  Metrics now includes Serde/native Wire support; recording stays disabled.
-  The root lock retains its incoming Platform 0.7.4 selection. Both Platform
-  declarations remain 0.7.3 and the independent lock stays unchanged at 0.7.3.
-- Centralize publication identity guards at the existing fresh checkpoints and
-  share installed qualification connection/funding/installation setup.
-  Scenario assertions, refusal messages and caller-owned server lifecycle remain.
-- Preserve stable-structures 0.7.2, the PocketIC 16.1.0 client/server pair, feature
-  selections, Rust support, V1 records, collection formats and allocation custody.
+`ic-logging-stable` checkpoints complete canonical Logging state through one
+host-opened governed Storage map. It owns bounded V1 bytes, corruption admission
+and checkpoint continuity, with no second append/retention/paging implementation.
+The [package guide](../../crates/ic-logging-stable/README.md) owns byte layout,
+bounds and host integration. Hosts own allocation declarations, backing custody,
+log identity, clocks, authorization, lifecycle and checkpoint/retention cadence.
 
-## Focused evidence
+Loads distinguish absent rows from valid empty or exhausted histories. Empty
+checkpoints retain time and sequence watermarks. Save rejects regressed counters,
+changed limits/identity, rewritten issued rows and resurrection of pruned rows.
+Identical checkpoints validate and skip stable writes. The same key is replaced;
+pruning does not accumulate archival rows or discard watermark metadata. Explicit
+removal checks the old identity and configuration; reset/generation authority is
+host-owned. Diagnostic history never authorizes retries or proves paid effects.
 
-Adoption inputs and Shared impact/refresh evidence are retained at
-`/tmp/ic-persistence-adoption-20261029/`, including the incoming patch, both
-incoming locks and the prior handoff. Earlier cleanup edits remain in this batch.
+The adapter accepts at most 1,024 configured entries, 4,096 message bytes and 128
+bytes per label, with a 65,536-byte complete record ceiling. These are separate
+bounds; maximum settings need not fit simultaneously. Decoding bounds lengths and
+counts before constructing rows and always calls the canonical Logging restore
+boundary. Unknown formats and malformed state have no reset/initialization fallback.
 
-Dependency pins, the Wasm production graph, formatting and independent snapshot
-source verification pass. All 28 Metrics adapter tests, three doctests and 65
-release-helper tests pass with the selected dependencies. Strict native and Wasm
-Metrics Clippy and native release-helper Clippy pass. Build/Testkit 0.69.9 CLI
-setup and subsequent offline admission pass using the retained 16.1.0 server.
-The Metrics adapter also checks successfully on the actual Rust 1.91 minimum.
-Full release and installed-runtime qualification were not run for this adoption;
-prior Linux/macOS acceptance is not relabelled as new-version qualification.
+## Focused candidate evidence
 
-## Preserved runtime and recovery evidence
+`/tmp/ic-logging-stable-candidate` is an isolated two-member qualification
+workspace containing the actual candidate adapter and Observability source. Only
+fixture manifests adapt the candidate dependency: Logging 0.17.1 metadata with the
+new uncommitted restore API is a workspace member, never a production path patch.
+The adapter runtime source files match this draft byte-for-byte. Published
+Memory/Storage 0.54.0 runtime source trees match the Persistence base exactly.
+Candidate lock/source inputs and logs remain in that fixture and
+`/tmp/ic-logging-stable-candidate-*.log`.
 
-The 0.53.1 fix retires backing identity claims before freeing their allocations,
-including failed construction and unwinding. Duplicate-owner refusal, detached
-lease custody and the 0.53.0 checkpoint-validation contract remain in force.
-Construction, initial bootstrap, new leases, diagnostics and growth check full
-metadata. Ordinary size/IO trust exclusive custody and reject poisoned owners;
-raw aliases and unmanaged managers remain prohibited. No hot-path scan or new
-unchecked mode is introduced.
+Strict native Clippy passes. Rust 1.91 passes seven native governed store/codec
+regressions, a complete host reopen doctest, a raw-backing compile-fail proof and
+Wasm compilation. Tests cover empty/exhausted reopen, lease custody, malformed
+lengths/flags/UTF-8, identity/configuration and byte refusals, zero writes for
+identical/refused checkpoints, pruned-row resurrection refusal and storage reuse.
+These are candidate-source/native proofs, not published dependency qualification,
+installed update/query/trap/upgrade acceptance or IC performance evidence.
 
-Earlier evidence remains at `/tmp/ic-persistence-teardown-137/`,
-`/tmp/ic-persistence-cost-137/`, `/tmp/ic-persistence-issue-137/` and
-`/tmp/ic-persistence-fixture-custody-fix/`. The previous handoff retained with this
-adoption records their exact source identities and native qualification limits.
-Preserve all release journals, failed attempts, receipts and retained archives.
-Keep retirement backups at `/home/adam/projects/ic-persistence-retirement-2026-10-20/`
-and the historical exports linked by the migration guides. No repository deletion
-or retirement retry is in scope.
+## Explicit draft prerequisites
+
+The root catalog requires Logging 0.17.2; the released 0.17.1 API cannot build this
+adapter. Normal locked checks require the upstream release and a fresh root lock
+selection. No checksum, source identity or lock entry is invented for an unreleased
+package. The existing scaffold/release-roster work must be integrated before a
+coordinated release; this draft does not duplicate its metadata transaction work.
+The adapter remains unpublished until owning qualification and release integration.
+
+No existing Memory, Storage or Metrics Stable API/schema/runtime source changed.
+The independent runtime-qualification workspace, both original locks, shared
+snapshot and underlying stable-structures 0.7.2 selection remain unchanged.
+Full validation, installed-runtime qualification, native macOS and release effects
+are unselected. Preserve original evidence and unresolved recovery records in the
+normal checkout; this draft does not replace or relabel them.

@@ -103,12 +103,12 @@ check-production-graph:
 	  [ "$$substrate" = 'registry+https://github.com/rust-lang/crates.io-index#ic-stable-structures@0.7.2' ] || \
 	  { printf 'Unsupported stable-memory substrate identity: %s\n' "$$substrate" >&2; exit 1; }
 	+RUSTUP_TOOLCHAIN=$(VALIDATION_TOOLCHAIN) RUSTUP_AUTO_INSTALL=0 perl scripts/ci/check-cargo-graph.pl \
-		--consumer "$(CURDIR)" --package ic-storage --package ic-metrics-stable --target wasm32-unknown-unknown \
+		--consumer "$(CURDIR)" --package ic-storage --package ic-metrics-stable --package ic-logging-stable --target wasm32-unknown-unknown \
 		--forbid ic-build --forbid-pattern '^ic-host-' --forbid-pattern '^ic-testkit(?:-|$$)' \
 		--forbid-pattern '^clap(?:_|$$)' \
 		--forbid pocket-ic --forbid serde_json --forbid toml --forbid trybuild \
 		--forbid-feature ic-memory/test-support \
-		--require ic-stable-structures=1 --require ic-memory=1 --require ic-storage=1 --require ic-platform=1 --require ic-metrics=1
+		--require ic-stable-structures=1 --require ic-memory=1 --require ic-storage=1 --require ic-platform=1 --require ic-metrics=1 --require ic-logging=1
 
 # Install exact, checksum-verified tools separately; these checks are offline.
 lint-tooling:
@@ -216,6 +216,7 @@ check-license:
 	cmp LICENSE crates/ic-memory/LICENSE
 	perl scripts/ci/check-license.pl --kind mit --file crates/ic-storage/LICENSE
 	perl scripts/ci/check-license.pl --kind mit --file crates/ic-metrics-stable/LICENSE
+	perl scripts/ci/check-license.pl --kind mit --file crates/ic-logging-stable/LICENSE
 
 check-doc-links:
-	perl scripts/ci/check-documentation-links.pl --root "$(CURDIR)" README.md AGENTS.md docs/status/current.md docs/migration/ic-persistence.md docs/migration/ic-metrics-stable.md docs/storage/upstreams.md crates/ic-storage/README.md crates/ic-metrics-stable/README.md docs/archive/private-btree/*.md docs/history/ic-storage/index.md
+	perl scripts/ci/check-documentation-links.pl --root "$(CURDIR)" README.md AGENTS.md docs/status/current.md docs/migration/ic-persistence.md docs/migration/ic-metrics-stable.md docs/storage/upstreams.md crates/ic-storage/README.md crates/ic-metrics-stable/README.md crates/ic-logging-stable/README.md docs/archive/private-btree/*.md docs/history/ic-storage/index.md

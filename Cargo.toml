@@ -1,7 +1,17 @@
 [workspace]
 resolver = "3"
-members = ["crates/ic-memory", "crates/ic-metrics-stable", "crates/ic-storage"]
-default-members = ["crates/ic-memory", "crates/ic-metrics-stable", "crates/ic-storage"]
+members = [
+    "crates/ic-logging-stable",
+    "crates/ic-memory",
+    "crates/ic-metrics-stable",
+    "crates/ic-storage",
+]
+default-members = [
+    "crates/ic-logging-stable",
+    "crates/ic-memory",
+    "crates/ic-metrics-stable",
+    "crates/ic-storage",
+]
 exclude = ["testing/runtime-qualification"]
 
 [workspace.package]
@@ -20,6 +30,7 @@ categories = ["wasm", "data-structures"]
 
 [workspace.dependencies]
 # Production dependencies
+ic-logging = { version = "0.17.2", default-features = false }
 ic-memory = { path = "crates/ic-memory", version = "0.54.0" }
 ic-metrics = "0.17"
 ic-platform = { version = "0.7.3", default-features = false }

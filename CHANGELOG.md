@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.54.1]
+
+### ➕ Added
+
+- Prepare an unpublished, separately selected Logging Stable adapter with bounded
+  V1 checkpoints over governed Storage maps. Reopening preserves pruned/exhausted
+  watermarks; checkpoint admission rejects regression and rewritten history.
+  Logging 0.17.2 publication and normal locked-graph qualification remain pending.
+  [Details](docs/changelog/0.54.md#0541).
+
 ## [0.54.0] - 2026-10-29
 
 ### ⚠️ Breaking
