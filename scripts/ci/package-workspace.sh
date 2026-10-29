@@ -38,9 +38,11 @@ cp testing/package-consumer.rs "$attempt/consumer/src/main.rs"
 # Match the public arithmetic types selected by the exact extracted adapter.
 metrics="$(jq -er '.[] | select(.name == "ic-metrics-stable") | .root' "$attempt/packages.json")"
 metrics_requirement="$(yq -p toml -o yaml -r '.dependencies.ic-metrics.version' "$metrics/Cargo.toml")"
+logging="$(jq -er '.[] | select(.name == "ic-logging-stable") | .root' "$attempt/packages.json")"
+logging_requirement="$(yq -p toml -o yaml -r '.dependencies.ic-logging.version' "$logging/Cargo.toml")"
 # Project every disposable manifest from the same extracted-package observation.
 perl -MJSON::PP -e '
-    my ($map,$metrics_requirement,$msrv,$directory)=@ARGV;
+    my ($map,$metrics_requirement,$logging_requirement,$msrv,$directory)=@ARGV;
     open my $in, "<", $map or die $!;
     my $packages=decode_json(do { local $/; <$in> });
     close $in or die $!;
@@ -59,8 +61,9 @@ perl -MJSON::PP -e '
         print $out " }\n";
     }
     print $out "ic-metrics = ", encode_json($metrics_requirement), "\n";
+    print $out "ic-logging = ", encode_json($logging_requirement), "\n";
     close $out or die $!;
-' "$attempt/packages.json" "$metrics_requirement" "$msrv" "$attempt"
+' "$attempt/packages.json" "$metrics_requirement" "$logging_requirement" "$msrv" "$attempt"
 # Seed each disposable graph from the selected lock. Cargo may prune unused
 # entries or add the fixture root, but external selections must remain exact.
 admit_graph() {

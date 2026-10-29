@@ -93,7 +93,10 @@ export FIXTURE_MSRV=1.90.0 MSRV_EVENTS="$fixture/msrv-events" MSRV_ADMISSION_EVE
 REJECT_MODE=selected-msrv PATH="$fixture/bin:$PATH" bash scripts/ci/package-workspace.sh "$pin" --allow-dirty > "$fixture/msrv.log" 2>&1
 printf '%s\n' "$pin" "$FIXTURE_MSRV" > "$fixture/expected-admission"
 cmp "$fixture/expected-admission" "$MSRV_ADMISSION_EVENTS"
-printf '+%s\n' "$pin" "$pin" "$pin" "$pin" "$FIXTURE_MSRV" "$pin" > "$fixture/expected-compilers"
+{
+    for package in "${packages[@]}"; do printf '+%s\n' "$pin"; done
+    printf '+%s\n' "$pin" "$FIXTURE_MSRV" "$pin"
+} > "$fixture/expected-compilers"
 cut -d ' ' -f 1 "$MSRV_EVENTS" > "$fixture/observed-compilers"
 cmp "$fixture/expected-compilers" "$fixture/observed-compilers"
 echo 'Archive fixture metadata and compiler dispatch follow the admitted catalog MSRV (substitutes only).'

@@ -2,6 +2,13 @@
 
 ## [0.55.1] - Unreleased
 
+### ➕ Added
+
+- Prepare Logging Stable publication alongside Memory, Storage and Metrics Stable,
+  with four-archive qualification, mandatory Logging receipt digests and resumable
+  dependency-ordered uploads. Actual publication remains a separate action.
+  [#139 — Enable coordinated publication of IC Logging Stable](https://github.com/dragginzgame/ic-persistence/pull/139).
+
 ### 🧪 Testing
 
 - Add installed Logging checkpoint qualification for query non-persistence,

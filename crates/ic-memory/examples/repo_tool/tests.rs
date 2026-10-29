@@ -203,12 +203,12 @@ fn helper_output_cannot_change_locked_dependency_selection() {
 }
 
 #[test]
-fn coordinated_version_projection_includes_unpublished_logging_without_an_archive() {
+fn coordinated_version_projection_and_receipts_include_all_four_packages() {
     let fixture = Fixture::new();
     fixture.prepare().unwrap();
     let lock: toml::Value =
         toml::from_str(&fixture.repo.text("Cargo.lock", None).unwrap()).unwrap();
-    for name in workspace_packages() {
+    for name in packages() {
         let record = lock["package"]
             .as_array()
             .unwrap()
@@ -228,7 +228,7 @@ fn coordinated_version_projection_includes_unpublished_logging_without_an_archiv
             .collect::<Vec<_>>(),
         packages()
     );
-    assert!(!packages().contains(&"ic-logging-stable"));
+    assert!(packages().contains(&"ic-logging-stable"));
 }
 
 #[test]
@@ -286,7 +286,7 @@ fn large_changelog_finalization_preserves_complete_history() {
 fn release_version_requires_the_named_package_to_inherit_the_workspace_identity() {
     let fixture = Fixture::new();
     assert_eq!(fixture.repo.version(None).unwrap(), "0.12.3");
-    for name in workspace_packages() {
+    for name in packages() {
         for manifest in [
             String::new(),
             "[workspace]\n".to_owned(),
@@ -359,19 +359,14 @@ impl Fixture {
                 "# Detail\n\n## [0.13.0]\n\nFixture changes.\n".to_owned(),
             ),
         ]);
-        for (name, library) in workspace_packages().into_iter().skip(1).zip([
+        for (name, library) in packages().into_iter().skip(1).zip([
             "// storage fixture\n",
             "// metrics fixture\n",
-            "// logging scaffold\n",
+            "// logging fixture\n",
         ]) {
-            let publication = if packages().contains(&name) {
-                ""
-            } else {
-                "publish = false\n"
-            };
             source.insert(
                 package_manifest(name),
-                format!("[package]\nname = {name:?}\nversion.workspace = true\n{publication}"),
+                format!("[package]\nname = {name:?}\nversion.workspace = true\n"),
             );
             source.insert(format!("crates/{name}/src/lib.rs"), library.to_owned());
         }
@@ -699,6 +694,7 @@ fn streamed_receipts_preserve_json_and_reject_partial_serialization() {
             package_sha256: "memory".to_owned(),
             storage_sha256: "storage".to_owned(),
             metrics_sha256: "metrics".to_owned(),
+            logging_sha256: "logging".to_owned(),
             commands: vec![vec!["package".to_owned()]],
         };
         assert_eq!(
@@ -710,6 +706,7 @@ fn streamed_receipts_preserve_json_and_reject_partial_serialization() {
                 "package_sha256": "memory",
                 "storage_sha256": "storage",
                 "metrics_sha256": "metrics",
+                "logging_sha256": "logging",
                 "commands": [["package"]],
             })
         );
@@ -718,12 +715,16 @@ fn streamed_receipts_preserve_json_and_reject_partial_serialization() {
             [
                 ("ic-memory", "memory"),
                 ("ic-storage", "storage"),
-                ("ic-metrics-stable", "metrics")
+                ("ic-metrics-stable", "metrics"),
+                ("ic-logging-stable", "logging")
             ]
         );
         let mut unknown = serde_json::to_value(&evidence).unwrap();
         unknown["unknown"] = serde_json::json!(true);
         assert!(serde_json::from_value::<PackageEvidence>(unknown).is_err());
+        let mut incomplete = serde_json::to_value(&evidence).unwrap();
+        incomplete.as_object_mut().unwrap().remove("logging_sha256");
+        assert!(serde_json::from_value::<PackageEvidence>(incomplete).is_err());
         Processes.write_json(&path, &evidence).unwrap();
         let original = fs::read(&path).unwrap();
         let evidence: PackageEvidence = serde_json::from_slice(&original).unwrap();
@@ -2349,7 +2350,7 @@ fn archive_publication_errors_preserve_validation_and_reconcile_visible_bytes() 
         assert_eq!(fs::read(&foreign).unwrap(), b"unrelated evidence");
         assert_eq!(
             transfers() - before_retry,
-            usize::from(phase == FileFault::ArchiveBefore) + 2
+            usize::from(phase == FileFault::ArchiveBefore) + packages().len() - 1
         );
         fs::write(&retained, b"corrupted retained archive").unwrap();
         assert!(fixture.repo.record_package("ic-memory", "0.13.0").is_err());
@@ -3184,9 +3185,15 @@ fn coordinated_publication_resumes_only_matching_packages_in_dependency_order() 
         .collect();
     assert_eq!(
         uploads,
-        ["ic-memory", "ic-storage", "ic-storage", "ic-metrics-stable"]
+        [
+            "ic-memory",
+            "ic-storage",
+            "ic-storage",
+            "ic-metrics-stable",
+            "ic-logging-stable"
+        ]
     );
-    assert_eq!(state.registry.published.len(), 3);
+    assert_eq!(state.registry.published.len(), packages().len());
     let requests: Vec<_> = state
         .calls
         .iter()
@@ -3207,6 +3214,7 @@ fn storage_archive_and_manifest_are_bound_to_the_coordinated_release() {
     for (package, path) in [
         ("ic-storage", package_manifest("ic-storage")),
         ("ic-metrics-stable", package_manifest("ic-metrics-stable")),
+        ("ic-logging-stable", package_manifest("ic-logging-stable")),
     ] {
         let fixture = Fixture::new();
         fixture.release();

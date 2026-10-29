@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Actual offline Cargo and the selected editor; no fixture Git/release effects.
 set -euo pipefail
-package_names="$(bash scripts/ci/read-persistence-packages.sh --workspace)"
+package_names="$(bash scripts/ci/read-persistence-packages.sh)"
 IFS=$'\t' read -r -a packages <<< "$package_names"
 unset RELEASE_CACHE_PREPARE MAKEFLAGS MFLAGS MAKEOVERRIDES GNUMAKEFLAGS MAKEFILES
 root="$(pwd -P)"

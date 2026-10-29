@@ -30,7 +30,7 @@ check_dependency_cache() {
 }
 manifest_version="$(RUSTUP_TOOLCHAIN="$toolchain" \
     bash scripts/ci/read-cargo-workspace-version.sh --stable Cargo.toml)"
-package_names="$(bash scripts/ci/read-persistence-packages.sh --workspace)"
+package_names="$(bash scripts/ci/read-persistence-packages.sh)"
 IFS=$'\t' read -r -a packages <<< "$package_names"
 # All workspace members inherit the one release identity, including unpublished ones.
 for package in "${packages[@]}"; do
