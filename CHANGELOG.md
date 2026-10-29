@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.55.2] - Unreleased
+
+### ⬆️ Dependencies
+
+- Adopt IC Platform 0.8.1 for the storage substrate boundary, Logging fixture and
+  independent runtime qualification. The underlying substrate and persisted
+  formats are unchanged. [Details](docs/changelog/0.55.md#0552---unreleased).
+
 ## [0.55.1] - 2026-10-29
 
 ### ➕ Added

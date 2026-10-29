@@ -33,7 +33,7 @@ categories = ["wasm", "data-structures"]
 ic-logging = { version = "0.17.2", default-features = false }
 ic-memory = { path = "crates/ic-memory", version = "0.55.1" }
 ic-metrics = "0.17"
-ic-platform = { version = "0.7.3", default-features = false }
+ic-platform = { version = "0.8.1", default-features = false }
 ic-storage = { path = "crates/ic-storage", version = "0.55.1" }
 ic-wire = { version = "0.7.21", default-features = false }
 serde = { version = "1.0", default-features = false, features = [

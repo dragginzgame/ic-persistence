@@ -16,16 +16,23 @@ cover maintenance permission preflight, single-tool freshness and retained
 validation excerpts; no scheduled maintenance is activated. Exported bytes and
 modes are compared against this independently selected source commit.
 
-The current dependency adoption selects IC Metrics 0.17.0 and host tooling 0.69.11,
-including the separate Build/Testkit CLI selections. Metrics' arithmetic types
-require caller alignment to 0.17 and now carry standard Serde/native Wire support.
-The pending consumer release is 0.54.1; V1 records, collection formats and custody
-remain unchanged. Both Platform declarations retain 0.7.3; the incoming library
-lock already selected 0.7.5 and the independent lock remains unchanged at 0.7.3.
-The stable-structures 0.7.2 substrate, PocketIC 16.1.0 pair and Rust selections are
-retained. This consumer has no cached baseline recipe to migrate for Tooling's
-timer-state fix. CLI source selection and actual installed admission remain
-separate from native/runtime qualification.
+Both maintained catalogs now select published IC Platform 0.8.1 without default
+features. Memory and Storage retain the exact `ic-stable-structures` 0.7.2
+substrate; the production graph admits one Platform identity. The independent
+qualification lock changes only Platform, retaining PocketIC 16.1.0 and its
+caller-owned server. Platform's external Principal feature split is supplied by
+its selected PocketIC capability; no new consumer feature is needed. The root's
+existing Testkit Native 0.69.14 still selects Platform 0.7.6 only in the native
+development graph. Incoming Tooling/Testkit 0.69.14 and Metrics 0.17.3 lock
+selections are preserved, not attributed to this Platform adoption. Executable
+Build/Testkit CLI pins remain 0.69.11. Source, CLI selection and installed
+qualification remain separate authorities.
+
+Released Persistence is 0.55.1 and pending notes select compatible 0.55.2. This
+adoption changes no public substrate type, allocation/collection format or stable
+adapter record. Rust/compiler pins, the independent workspace boundary and the
+reviewed Shared snapshot remain unchanged. No profiler native source profile is
+consumed here; its separate Platform 0.8.1 consumer migration does not apply.
 
 ### Earlier adoption and qualification records
 
