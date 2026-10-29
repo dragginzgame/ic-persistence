@@ -105,3 +105,10 @@ query non-persistence and whole-application upgrade acceptance require installed
 consumer qualification. Native `VectorMemory` tests prove codec/storage behaviour,
 not IC effects or instruction/cycle costs. Diagnostic history never authorizes
 retrying uncertain paid effects or proves that a remote effect completed.
+
+The [installed qualification fixture](examples/logging_qualification/main.rs)
+and its [host runner](../../testing/runtime-qualification/README.md) exercise
+query non-persistence, update/upgrade rollback, successful reopen and watermarks
+after pruning all rows. Run `make test-runtime-logging` with prepared dependencies
+and server. This checks the supplied host's original Wasm, not application
+acceptance, optimized variants or cost measurements.

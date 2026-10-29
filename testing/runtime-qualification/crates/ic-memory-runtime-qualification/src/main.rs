@@ -1,4 +1,5 @@
 //! Explicit installed qualification of the supplied current-graph fixture.
+mod logging;
 mod ownership;
 mod storage;
 
@@ -21,6 +22,9 @@ struct Arguments {
     /// Measure valid IO only, skipping rejection and upgrade checks.
     #[arg(long)]
     measure_valid_io: bool,
+    /// Qualify only the supplied logging fixture, without Memory/Storage suites.
+    #[arg(long, conflicts_with = "measure_valid_io")]
+    logging_only: bool,
 }
 
 /// Decoded fields of the supplied Memory fixture's exact 26-byte snapshot.
@@ -84,6 +88,10 @@ fn install_fixture(pic: &PocketIc, wasm: &[u8]) -> ExternalPrincipal {
 
 fn main() {
     let arguments = Arguments::parse();
+    if arguments.logging_only {
+        logging::qualify(&connect_to_server());
+        return;
+    }
     let wasm = fs::read(env::var("IC_MEMORY_QUALIFICATION_WASM").expect("fixture path")).unwrap();
     let pic = connect_to_server();
     let canister = install_fixture(&pic, &wasm);
@@ -162,6 +170,7 @@ fn main() {
     if !arguments.measure_valid_io {
         storage::qualify(&pic);
         ownership::qualify(&pic);
+        logging::qualify(&pic);
     }
 }
 
@@ -205,6 +214,14 @@ mod tests {
 
     #[test]
     fn measurement_arguments_reject_extra_tokens() {
+        assert!(
+            Arguments::try_parse_from(["runner", "--logging-only"])
+                .unwrap()
+                .logging_only
+        );
+        assert!(
+            Arguments::try_parse_from(["runner", "--logging-only", "--measure-valid-io"]).is_err()
+        );
         assert!(
             !Arguments::try_parse_from(["runner"])
                 .unwrap()

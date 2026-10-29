@@ -203,6 +203,35 @@ fn helper_output_cannot_change_locked_dependency_selection() {
 }
 
 #[test]
+fn coordinated_version_projection_includes_unpublished_logging_without_an_archive() {
+    let fixture = Fixture::new();
+    fixture.prepare().unwrap();
+    let lock: toml::Value =
+        toml::from_str(&fixture.repo.text("Cargo.lock", None).unwrap()).unwrap();
+    for name in workspace_packages() {
+        let record = lock["package"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|record| record["name"].as_str() == Some(name))
+            .unwrap();
+        assert_eq!(record["version"].as_str(), Some("0.13.0"));
+    }
+    let prepared: PackageEvidence = serde_json::from_slice(
+        &fs::read(fixture.repo.receipt_path("0.13.0", Prepared).unwrap()).unwrap(),
+    )
+    .unwrap();
+    assert_eq!(
+        prepared
+            .archives()
+            .map(|(name, _)| name)
+            .collect::<Vec<_>>(),
+        packages()
+    );
+    assert!(!packages().contains(&"ic-logging-stable"));
+}
+
+#[test]
 fn changed_transform_input_is_retained_and_refused_on_retry() {
     let fixture = Fixture::new();
     let repo = Repository {
@@ -257,7 +286,7 @@ fn large_changelog_finalization_preserves_complete_history() {
 fn release_version_requires_the_named_package_to_inherit_the_workspace_identity() {
     let fixture = Fixture::new();
     assert_eq!(fixture.repo.version(None).unwrap(), "0.12.3");
-    for name in packages() {
+    for name in workspace_packages() {
         for manifest in [
             String::new(),
             "[workspace]\n".to_owned(),

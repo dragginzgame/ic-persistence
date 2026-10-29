@@ -21,6 +21,14 @@ thiserror.workspace = true
 [dev-dependencies]
 ic-memory = { workspace = true, features = ["test-support"] }
 
+[target.'cfg(target_arch = "wasm32")'.dev-dependencies]
+ic-platform = { workspace = true, features = ["cdk"] }
+
+[[example]]
+name = "wasm-logging-qualification"
+path = "examples/logging_qualification/main.rs"
+crate-type = ["cdylib"]
+
 [lints.rust]
 missing_docs = "warn"
 unsafe_code = "forbid"

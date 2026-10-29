@@ -1,0 +1,198 @@
+//! Explicit installed checkpoint qualification; no application endpoint is exported by the library.
+
+#[cfg(target_arch = "wasm32")]
+mod protocol;
+
+#[cfg(target_arch = "wasm32")]
+mod canister {
+    use super::protocol::{self, Append, Outcome, Reply, Row, Snapshot, Update, Upgrade};
+    use ic_logging::{AppendError, EntryInput, Level, Limits, Log};
+    use ic_logging_stable::{LogIdentity, LogKey, LoggingStore};
+    use ic_memory::{
+        DefaultMemoryImpl, MemoryManagerConfig, MemoryRuntime, testing::fixture_runtime,
+    };
+    use ic_platform::cdk;
+    use ic_storage::adapter::StableBTreeMap;
+    use ic_wire::native;
+    use serde::{Serialize, de::DeserializeOwned};
+    use std::{cell::RefCell, num::NonZeroUsize};
+
+    const KEY: &str = "logging.fixture.v1";
+    const IDENTITY: LogIdentity = LogIdentity { epoch: 7 };
+    const LIMITS: Limits = Limits {
+        max_entries: NonZeroUsize::new(4).unwrap(),
+        max_message_bytes: 64,
+        max_label_bytes: 32,
+    };
+
+    struct Host {
+        _runtime: MemoryRuntime<DefaultMemoryImpl>,
+        store: LoggingStore<DefaultMemoryImpl>,
+        log: Log,
+    }
+    thread_local! { static HOST: RefCell<Option<Host>> = const { RefCell::new(None) }; }
+
+    fn required<T>(value: Result<T, impl std::fmt::Debug>) -> T {
+        value.unwrap_or_else(|error| cdk::api::trap(format!("logging fixture refused: {error:?}")))
+    }
+    fn key() -> LogKey {
+        required(LogKey::new("fixture", "worker"))
+    }
+    fn admit() -> Result<(), String> {
+        if ic_platform::ic0::msg_arg_data_size() > protocol::REQUEST.bytes {
+            return Err("logging fixture frame limit".into());
+        }
+        Ok(())
+    }
+    #[allow(
+        clippy::needless_pass_by_value,
+        reason = "CDK decoder signature owns argument bytes"
+    )]
+    fn decode<T: DeserializeOwned, const ID: u64>(bytes: Vec<u8>) -> T {
+        required(native::decode_request(ID, &bytes, protocol::REQUEST))
+    }
+    fn encode<T: Serialize, const ID: u64>(value: T) -> Vec<u8> {
+        required(native::encode_response(ID, &value, protocol::RESPONSE))
+    }
+    fn open(fresh: bool) {
+        let runtime = required(fixture_runtime(
+            DefaultMemoryImpl::default(),
+            "logging",
+            "logging.",
+            &[KEY],
+            MemoryManagerConfig::default(),
+        ));
+        let memory = required(runtime.open_memory(KEY));
+        let mut store = LoggingStore::new(if fresh {
+            StableBTreeMap::new(memory)
+        } else {
+            StableBTreeMap::load(memory)
+        });
+        let log = if fresh {
+            let log = Log::new(LIMITS);
+            required(store.save(&key(), IDENTITY, &log));
+            log
+        } else {
+            required(store.load(&key(), IDENTITY, LIMITS))
+                .unwrap_or_else(|| cdk::api::trap("retained log checkpoint is absent"))
+        };
+        HOST.with_borrow_mut(|slot| {
+            *slot = Some(Host {
+                _runtime: runtime,
+                store,
+                log,
+            });
+        });
+    }
+    fn with_host<T>(action: impl FnOnce(&mut Host) -> T) -> T {
+        HOST.with_borrow_mut(|slot| action(slot.as_mut().expect("initialized logging fixture")))
+    }
+    fn snapshot(log: &Log) -> Snapshot {
+        let state = log.snapshot();
+        Snapshot {
+            next_sequence: state.next_sequence,
+            last_created_at_secs: state.last_created_at_secs,
+            rows: state
+                .entries
+                .into_iter()
+                .map(|row| Row {
+                    sequence: row.sequence,
+                    created_at_secs: row.created_at_secs,
+                    message: row.message,
+                    truncated: row.truncated,
+                })
+                .collect(),
+        }
+    }
+    fn append(host: &mut Host, input: &Append) -> Outcome {
+        let outcome = match host.log.append(EntryInput {
+            created_at_secs: input.created_at_secs,
+            source: "probe",
+            topic: None,
+            level: Level::Info,
+            message: &input.message,
+        }) {
+            Ok(sequence) => Outcome::Appended(sequence),
+            Err(AppendError::TimestampRegressed { .. }) => return Outcome::TimestampRefused,
+            Err(AppendError::LabelTooLong { .. }) => return Outcome::LabelRefused,
+            Err(AppendError::SequenceExhausted) => return Outcome::Exhausted,
+        };
+        required(host.store.save(&key(), IDENTITY, &host.log));
+        if input.trap_after_save {
+            cdk::api::trap("logging fixture trap after checkpoint");
+        }
+        outcome
+    }
+
+    #[cdk::init]
+    fn init() {
+        required(admit());
+        let _: () = decode::<_, { protocol::INIT_ID }>(cdk::api::msg_arg_data());
+        open(true);
+    }
+
+    #[cdk::post_upgrade]
+    fn upgrade() {
+        required(admit());
+        let mode: Upgrade = decode::<_, { protocol::UPGRADE_ID }>(cdk::api::msg_arg_data());
+        open(false);
+        if matches!(mode, Upgrade::TrapAfterCheckpoint) {
+            with_host(|host| {
+                let created_at_secs = host.log.snapshot().last_created_at_secs.unwrap_or(0);
+                append(
+                    host,
+                    &Append {
+                        created_at_secs,
+                        message: "upgrade checkpoint".into(),
+                        trap_after_save: true,
+                    },
+                );
+            });
+        }
+    }
+
+    #[cdk::query(
+        guard = "admit",
+        decode_with = "decode::<_, { protocol::QUERY_ID }>",
+        encode_with = "encode::<_, { protocol::QUERY_ID }>"
+    )]
+    fn logging_query(input: Option<Append>) -> Reply {
+        with_host(|host| {
+            let outcome = input.map_or(Outcome::Read, |input| append(host, &input));
+            Reply {
+                outcome,
+                snapshot: snapshot(&host.log),
+            }
+        })
+    }
+
+    #[cdk::update(
+        guard = "admit",
+        decode_with = "decode::<_, { protocol::UPDATE_ID }>",
+        encode_with = "encode::<_, { protocol::UPDATE_ID }>"
+    )]
+    fn logging_update(input: Update) -> Reply {
+        with_host(|host| {
+            let outcome = match input {
+                Update::Append(input) => append(host, &input),
+                Update::Prune {
+                    now_secs,
+                    max_age_secs,
+                    max_remove,
+                } => {
+                    let batch =
+                        host.log
+                            .prune_expired(now_secs, max_age_secs, usize::from(max_remove));
+                    required(host.store.save(&key(), IDENTITY, &host.log));
+                    Outcome::Pruned(
+                        u64::try_from(batch.removed).expect("bounded fixture row count"),
+                    )
+                }
+            };
+            Reply {
+                outcome,
+                snapshot: snapshot(&host.log),
+            }
+        })
+    }
+}

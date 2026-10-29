@@ -9,3 +9,5 @@ license.workspace = true
 [dependencies]
 clap.workspace = true
 ic-platform.workspace = true
+ic-wire.workspace = true
+serde.workspace = true

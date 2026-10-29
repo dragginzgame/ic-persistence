@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.55.1] - Unreleased
+
+### 🧪 Testing
+
+- Add installed Logging checkpoint qualification for query non-persistence,
+  trapped update/upgrade rollback, retained reopen and empty-history watermarks.
+  [#138 — Qualify stable Logging rollback and upgrade behavior](https://github.com/dragginzgame/ic-persistence/pull/138).
+  [Details](docs/changelog/0.55.md).
+
 ## [0.55.0] - 2026-10-29
 
 ### ⚠️ Breaking
