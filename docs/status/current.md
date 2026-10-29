@@ -1,57 +1,69 @@
 # Current handoff
 
-The checkout is based on the maintainer's scaffold/tooling commit
-`bf38fe0`, following released 0.54.0 source
-`9ca2e8e39f8ab5d1b8501e4d843b25c614719a13`. Pending notes remain 0.54.1;
-package metadata remains 0.54.0. No staging, commit, push, merge or release effect
-was performed during the integration below.
+Released source is 0.54.1 at
+`447a9bb272ffa4551fe6c6ad7f7d1211121f99f0`. Pending notes now select breaking
+0.55.0 for Metrics Stable's Wire storage cut and the earlier unpublished Logging
+codec adoption. Package versions remain 0.54.1. No staging, commit, push, release,
+installed-runtime execution or actual stable-data deletion was performed.
 
-## Logging integration
+## Accepted storage cut
 
-[PR #138 — Prepare governed stable checkpoints for IC Logging](https://github.com/dragginzgame/ic-persistence/pull/138)
-at `7a871520d1aec08ed6040d07a0b55e7d9bdfc65e` is combined locally with the
-existing scaffold, release rosters and host tooling work. The working tree now
-contains the adapter implementation, not just its original empty scaffold.
+The maintainer explicitly approved a hard cut, no legacy decoders, and retirement
+of all old Metrics data. Hosts must clear the metrics map with their old release
+before upgrading or supply a known fresh governed map, and advance reset epochs.
+Never reset Memory's allocator or unrelated collections to clear metrics.
+[Upgrade disposition](../../crates/ic-metrics-stable/README.md#upgrade-disposition)
+is canonical. Old rows are refused without replacement; no automatic reset or
+migration engine is introduced.
 
-The root catalog and lock select published registry Logging 0.17.2, checksum
-`8ead6c0fa5b61da08c5238e61ad57e9acf7c42a2af35c41657be5e60ea93e88f`.
-No sibling source override, copied Logging engine or candidate checksum is used.
-The incoming lock's host tooling 0.69.12 and Platform 0.7.6 selections are
-preserved. The separate runtime-qualification lock is byte-identical to its input.
-Build/Testkit CLI pins remain the separately prepared 0.69.11 selections.
+Metrics now uses `ICMW` plus a bounded IC Wire native Serde/Postcard envelope,
+with a borrowed state byte string containing a separately bounded Wire payload.
+This preserves explicit removal of invalid numeric state after envelope admission.
+Private Serde state records feed Metrics' canonical arithmetic constructors, so
+numeric failures retain typed errors. Identity/configuration, append continuity,
+static histogram admission and unchanged zero-write saves stay in Persistence.
+The complete record ceiling is 6,144 bytes; histograms still admit 256 finite
+bounds. Each codec operation allows 1 MiB conservative allocation charges,
+16,384 nodes and depth 16. These are admission allowances, not measured heap use.
 
-Logging Stable owns bounded V1 checkpoint encoding and continuity checks over a
-host-opened governed Storage map. Canonical Logging owns restore, append, paging
-and retention. Empty/exhausted checkpoints retain both append watermarks;
-regression, rewritten issued rows and resurrection of pruned rows refuse before
-mutation. Identical saves perform no stable writes. Hosts own clocks, identity,
-allocation, lifecycle, authorization and checkpoint cadence.
+Logging's earlier Wire implementation remains in the working batch: borrowed
+checkpoint fields are checked before canonical `Log::restore`, and the format
+uses `ICL` plus discriminator 2. Prior experimental Logging bytes require explicit
+host retirement or rewrite using old tooling. Logging remains unpublished; the
+three-package publication roster and Memory/Storage formats/custody are unchanged.
 
-The logging package remains unpublished. All four members participate in version
-projection and interrupted-release bootstrap. Only the original three crates
-participate in archives, receipts and publication. Existing Memory/Storage/Metrics
-formats, custody, Rust support, Shared 0.27.6 and PocketIC 16.1.0 are retained.
+The root already selected Wire 0.7.21 without default features and Serde. Metrics
+now inherits those selections; no external package versions changed. Neither the
+independent qualification graph nor compiler/tool/server selections changed.
 
-## Focused evidence and delivery boundary
+## Focused evidence
 
-Inputs and the preceding handoff are retained at
-`/tmp/ic-persistence-logging-integration.k23sYP/`. Normal locked dependency preparation succeeds.
-On the published graph, all seven Logging Stable tests and both doctests pass on
-Rust 1.99.1 and actual Rust 1.91. Strict native all-target and Wasm library Clippy
-pass after completing API error documentation. Formatting, pins, production graph,
-licenses, documentation links and consumer release-adapter fixtures pass.
-Adapter evidence is at `/tmp/ic-memory-release-adapters.lDwOWG/`.
-Real offline bootstrap admits both interrupted metadata states with unchanged
-fixture inputs at `/tmp/ic-persistence-bootstrap.wCaeVv/`.
+Metrics' 29 unit tests and three doctests pass with the locked offline graph on
+Rust 1.99.1. Tests cover frozen current Wire bytes, populated reopen, wide numeric
+state, maximum/zero histogram shapes, malformed/truncated/trailing records,
+collection/record limits, typed arithmetic refusal, canonical mutation admission,
+continuity and refused/unchanged zero-write checkpoints. Initial maximum histogram
+cases exposed insufficient traversal allowances; the corrected budgets pass.
 
-The PR's original CI failure was dependency preparation before Logging 0.17.2
-was available. Its remote head has not been updated with this local integration;
-old failed CI is not new-source acceptance. The combined tree is ready for the
-maintainer's contribution flow and fresh required CI. Full release, native macOS
-and installed Logging update/query/trap/upgrade qualification remain unrun.
-Publication of Logging Stable remains a separate explicit decision.
+Strict native all-target and Wasm library Clippy pass for Metrics. Actual Rust
+1.91 Wasm library compilation passes. Dependency pins, production graph and doc
+links pass; formatting and diff checks pass. Logs are retained under
+`/tmp/metrics-wire-*`, including failed development checks. No performance delta,
+full release, macOS or installed Wire-format upgrade qualification is claimed.
 
-Preserve the earlier scaffold/bootstrap, native custody and adoption evidence
-linked by the retained incoming handoff, along with all release journals,
-receipts, failed attempts and archives. Runtime checkpoint/custody policy remains
-as documented in the public Memory guide. No repository retirement retry is in scope.
+Earlier Logging evidence remains bound to its source: nine tests, two doctests,
+native/Wasm strict Clippy and Rust 1.91 compilation. The earlier frozen Metrics
+V1 results qualify only the now-retired layout. Historical evidence is never
+relabelled as acceptance of the new format. Prior handoffs/evidence are retained
+at `/tmp/ic-persistence-before-metrics-wire-handoff.md` and
+`/tmp/ic-persistence-logging-wire.AFMlbH/`.
+
+## Sibling codec follow-ups
+
+The requested scan is tracked in existing
+[Canic #381 — Stable record encoding](https://github.com/dragginzgame/canic/issues/381),
+[Auth #109 — Replace stored-record codec](https://github.com/dragginzgame/ic-auth/issues/109),
+[IcyDB #592 — Investigate schema artifact codecs](https://github.com/dragginzgame/icydb/issues/592),
+and [Profiler #5 — Investigate process transport](https://github.com/dragginzgame/ic-profiler/issues/5).
+No sibling source was edited. These owners retain format, retained-state and
+integration decisions; no speedup or implementation is claimed there.

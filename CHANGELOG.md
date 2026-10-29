@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.55.0] - Unreleased
+
+### ⚠️ Breaking
+
+- Replace Metrics Stable's fixed-width records with bounded IC Wire checkpoints.
+  All old metrics data is explicitly retired: hosts must clear their metrics map
+  before upgrading or supply a fresh governed map, and advance reset epochs.
+  There is no legacy decoder or automatic reset. Allocation and collection formats
+  remain unchanged. [Upgrade guide](crates/ic-metrics-stable/README.md#upgrade-disposition).
+
+### 🧹 Cleanup
+
+- Use IC Wire for both stable adapters, removing their custom binary codecs while
+  preserving validated restoration and checkpoint continuity. Logging Stable stays
+  unpublished. [Details](docs/changelog/0.55.md).
+
 ## [0.54.1] - 2026-10-29
 
 ### ➕ Added

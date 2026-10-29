@@ -246,7 +246,7 @@ fi
 printf 'tree\n' >> protocol-events
 printf '%s\n' 'ic-storage v0.0.0' 'ic-memory v0.0.0' \
     'ic-metrics-stable v0.0.0' 'ic-logging-stable v0.0.0' 'ic-logging v0.17.2' 'ic-metrics v0.15.8' \
-    'ic-platform v0.6.5' 'ic-stable-structures v0.7.2'
+    'ic-platform v0.6.5' 'ic-stable-structures v0.7.2' 'ic-wire v0.7.21'
 STUB
 chmod +x "$FIXTURE/protocol-bin/cargo"
 for result in valid wrong-version wrong-source missing failed-observation; do

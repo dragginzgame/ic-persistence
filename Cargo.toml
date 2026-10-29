@@ -35,6 +35,7 @@ ic-memory = { path = "crates/ic-memory", version = "0.54.1" }
 ic-metrics = "0.17"
 ic-platform = { version = "0.7.3", default-features = false }
 ic-storage = { path = "crates/ic-storage", version = "0.54.1" }
+ic-wire = { version = "0.7.21", default-features = false }
 serde = { version = "1.0", default-features = false, features = [
     "alloc",
     "derive",

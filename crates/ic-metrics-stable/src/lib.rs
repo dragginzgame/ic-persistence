@@ -5,7 +5,7 @@
 //! platform read or endpoint. Keys are namespaced, not authentication boundaries.
 //! Stable writes must run in update execution; queries cannot make them durable.
 //!
-//! Stored values have an explicit V1 encoding, independent of Rust layout. The
+//! Stored values have an explicit IC Wire encoding, independent of Rust layout. The
 //! adapter rejects incompatible identities/configuration and malformed values.
 //! Underlying collection geometry, allocation failures and IC execution traps
 //! retain IC Storage's collection contract, not recoverable codec errors.
@@ -44,12 +44,15 @@ pub enum StoreError {
     /// The stored record exceeds the admitted byte budget.
     #[error("metric record exceeds byte budget")]
     RecordTooLarge,
-    /// Missing bytes, invalid flags or trailing data in a V1 record.
+    /// Missing bytes, invalid flags or trailing data in a Wire record.
     #[error("malformed metric record")]
     MalformedRecord,
     /// The record has an unknown format discriminator; it is never reinterpreted.
     #[error("unsupported metric record format")]
     UnsupportedFormat,
+    /// IC Wire refused serialization or resource traversal.
+    #[error("metric codec: {0}")]
+    Codec(#[from] ic_wire::Error),
     /// The stored metric uses a different arithmetic kind.
     #[error("metric kind differs")]
     KindMismatch,
@@ -283,7 +286,7 @@ impl<M: Memory> MetricsStore<M> {
         identity: &MetricIdentity,
         bounds: &[u64; N],
     ) -> Result<Option<MeasurementHistogram<N>>, StoreError> {
-        MeasurementHistogram::<N>::ENCODED_SIZE?;
+        MeasurementHistogram::<N>::ADMISSION?;
         if validate_histogram_bounds(bounds).is_err() {
             return Err(StoreError::InvalidState(
                 MeasurementStateError::InvalidBounds,
@@ -314,11 +317,11 @@ impl<M: Memory> MetricsStore<M> {
         identity: &MetricIdentity,
         configuration: &T::Configuration,
     ) -> Result<Option<T>, StoreError> {
-        T::ENCODED_SIZE?;
+        T::ADMISSION?;
         self.load_admitted::<T>(key, identity, configuration)
     }
 
-    // Callers admit the static size before inspecting stored bytes.
+    // Callers admit the static shape before inspecting stored bytes.
     fn load_admitted<T: StoredMetric>(
         &self,
         key: &MetricKey,
@@ -339,7 +342,7 @@ impl<M: Memory> MetricsStore<M> {
         identity: &MetricIdentity,
         value: &T,
     ) -> Result<(), StoreError> {
-        let payload_size = T::ENCODED_SIZE?;
+        T::ADMISSION?;
         if let Some(previous) = self.load_admitted::<T>(key, identity, value.configuration())? {
             if value.same_state(&previous) {
                 return Ok(());
@@ -348,7 +351,7 @@ impl<M: Memory> MetricsStore<M> {
                 return Err(StoreError::StateRegression);
             }
         }
-        let bytes = codec::encode(identity, value, payload_size);
+        let bytes = codec::encode(identity, value)?;
         self.map.insert(key.0.clone(), bytes);
         Ok(())
     }
