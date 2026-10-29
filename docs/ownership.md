@@ -5,6 +5,12 @@ key-to-ID bindings, host-wide placement, admission before commitment, protected
 ledger recovery and exclusive checked handles. It does not own application data,
 collection semantics, component lifecycle or deployment policy.
 
+The fourth workspace member, `ic-logging-stable`, is an unpublished checkpoint
+adapter. Its [guide](../crates/ic-logging-stable/README.md) records bounded V1
+encoding and governed Storage integration owned by Persistence. IC Observability's
+published Logging 0.17.2 owns logging semantics and validated restoration. Hosts
+own checkpoint identity and cadence; no second logging engine is introduced.
+
 ## Public entry points
 
 The root [workspace catalog](../Cargo.toml) owns dependency and package selection;
@@ -45,11 +51,6 @@ published `ic-metrics` arithmetic crate. Hosts own sampling, attribution,
 allocation keys, bootstrap, collection lifecycle, cadence and resets. Neither
 Memory nor Storage depends on the adapter. See [the import guide](migration/ic-metrics-stable.md).
 
-The unpublished IC Logging Stable package owns bounded V1 checkpoints over the
-same governed Storage boundary. Published IC Logging owns canonical restoration,
-append, retention and paging. Hosts own epochs, allocation, lifecycle and explicit
-save cadence. See [the package guide](../crates/ic-logging-stable/README.md).
-
 ## Dependencies and external capabilities
 
 | Owner | Boundary |
@@ -57,7 +58,6 @@ save cadence. See [the package guide](../crates/ic-logging-stable/README.md).
 | `ic-platform::stable_structures` | Exact 0.7.2 manager/Cell substrate and backing `Memory` identities. Memory retains the checked layout adapters needed for bounded reads and fallible growth; product admission checks the transitive protocol identity. |
 | `ic-storage::adapter` | Production typed collections over `RuntimeMemory`. Storage depends on Memory; Memory must not depend back on Storage or expose its raw collection substrate. |
 | `ic-metrics-stable` | Metric identities, records and restoration over governed Storage collections. Memory supplies allocation facts, not a second metric store. |
-| `ic-logging-stable` | Bounded checkpoint codec and continuity over governed Storage maps. Logging owns engine admission and retention; hosts own cadence and identity. |
 | Hosts such as Canic; components such as IcyDB | Complete component composition, policy identity, application admission, lifecycle, database schemas and operator response assembly. |
 | `ic-host-fs`, `ic-host-process`, `ic-host-artifacts` | Native publication, bounded processes, file observation and artifact hashing/copying used by repo-tool. These are native-only development dependencies. |
 | `ic-build` | Available Cargo metadata/configuration observation and lock projection admission used by repo-tool. Memory retains release intent, command recipes, budgets and source/package custody. |
@@ -103,6 +103,10 @@ the existing coordinated-order mapping. Workflow callers carry complete receipts
 rather than parallel digest arrays. Changing package membership or order requires
 explicit receipt compatibility review. This is release policy, not another
 dependency or version catalog.
+`unpublished-packages.json` beside that roster names the logging adapter.
+Workspace version projection and interrupted-release bootstrap combine both
+rosters; archive receipts and publication use only the published roster. A name
+cannot belong to both. The three existing receipt digest fields are unchanged.
 The Makefile's `FORMAT_RUST_ARGS` owns the consumer formatter roster, including
 the independent workspace and edition-2024 package consumer; the shared driver
 owns ordering, visible passes and uncached standalone execution. `qualify-runtime.sh`

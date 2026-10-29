@@ -245,8 +245,7 @@ fi
 [[ "$1" == tree ]] || exit 99
 printf 'tree\n' >> protocol-events
 printf '%s\n' 'ic-storage v0.0.0' 'ic-memory v0.0.0' \
-    'ic-metrics-stable v0.0.0' 'ic-metrics v0.15.8' \
-    'ic-logging-stable v0.0.0' 'ic-logging v0.17.2' \
+    'ic-metrics-stable v0.0.0' 'ic-logging-stable v0.0.0' 'ic-logging v0.17.2' 'ic-metrics v0.15.8' \
     'ic-platform v0.6.5' 'ic-stable-structures v0.7.2'
 STUB
 chmod +x "$FIXTURE/protocol-bin/cargo"
@@ -620,7 +619,8 @@ cp "$ROOT/scripts/ci/read-cargo-workspace-version.sh" \
 cp "$ROOT/scripts/dev/run-repo-tool.sh" "$FIXTURE/scripts/dev/"
 cp "$ROOT/scripts/ci/read-persistence-packages.sh" "$FIXTURE/scripts/ci/"
 mkdir -p "$FIXTURE/crates/ic-memory/examples/repo_tool"
-cp "$ROOT/crates/ic-memory/examples/repo_tool/packages.json" "$ROOT/crates/ic-memory/examples/repo_tool/unpublished-packages.json" "$FIXTURE/crates/ic-memory/examples/repo_tool/"
+cp "$ROOT/crates/ic-memory/examples/repo_tool/packages.json" "$FIXTURE/crates/ic-memory/examples/repo_tool/"
+cp "$ROOT/crates/ic-memory/examples/repo_tool/unpublished-packages.json" "$FIXTURE/crates/ic-memory/examples/repo_tool/"
 # Exercise the real published renderer; substitute only tool-store selection.
 fixture_editor="$(RUSTUP_TOOLCHAIN="$FIXTURE_TOOLCHAIN" bash "$ROOT/scripts/dev/install-rust-tools.sh" \
     --consumer "$ROOT" --package ic-build --version "$IC_BUILD_RELEASE_METADATA_VERSION" \
@@ -637,10 +637,6 @@ exit_status="${EDITOR_STATUS:-0}"
 printf '%s\n' "$FIXTURE_RELEASE_EDITOR"
 STUB
 cd "$FIXTURE"
-local workspace_names
-workspace_names="$(bash scripts/ci/read-persistence-packages.sh --workspace)"
-local -a workspace_members
-IFS=$'\t' read -r -a workspace_members <<< "$workspace_names"
 cat > Cargo.toml <<'MANIFEST'
 [workspace]
 members = ["crates/ic-memory", "crates/ic-storage", "crates/ic-metrics-stable", "crates/ic-logging-stable"]
@@ -687,7 +683,7 @@ echo fixture > crates/ic-metrics-stable/README.md
 touch crates/ic-metrics-stable/src/lib.rs
 mkdir -p crates/ic-logging-stable/src
 printf '[package]\nname = "ic-logging-stable"\nversion.workspace = true\npublish = false\n' > crates/ic-logging-stable/Cargo.toml
-echo fixture > crates/ic-logging-stable/README.md
+echo scaffold > crates/ic-logging-stable/README.md
 touch crates/ic-logging-stable/src/lib.rs
 cp Cargo.toml original-manifest
 cat > bin/cargo <<'STUB'
@@ -755,6 +751,8 @@ case "$2" in
             cmp crates/ic-storage/Cargo.toml "$(dirname "$7")/crates/ic-storage/Cargo.toml"
             cmp crates/ic-metrics-stable/Cargo.toml "$(dirname "$7")/crates/ic-metrics-stable/Cargo.toml"
             cmp crates/ic-metrics-stable/src/lib.rs "$(dirname "$7")/crates/ic-metrics-stable/src/lib.rs"
+            cmp crates/ic-logging-stable/Cargo.toml "$(dirname "$7")/crates/ic-logging-stable/Cargo.toml"
+            cmp crates/ic-logging-stable/src/lib.rs "$(dirname "$7")/crates/ic-logging-stable/src/lib.rs"
             echo bootstrap >> calls
         else
             [[ "$6" == --example && "$7" == repo-tool && "$8" == -- ]] || exit 1
@@ -845,6 +843,15 @@ for invalid in 'not-json' '["ic-memory"]' '["ic-memory","ic-memory","ic-storage"
     [[ "$status" != 0 && ! -e calls ]] || exit 1
 done
 cp original-roster "$roster"
+unpublished=crates/ic-memory/examples/repo_tool/unpublished-packages.json
+cp "$unpublished" original-unpublished-roster
+for invalid in 'not-json' '[]' '["ic-memory"]' '["../escape"]'; do
+    printf '%s\n' "$invalid" > "$unpublished"
+    status=0
+    bash scripts/dev/run-repo-tool.sh "$FIXTURE_TOOLCHAIN" version > roster-refusal.log 2>&1 || status=$?
+    [[ "$status" != 0 && ! -e calls ]] || exit 1
+done
+cp original-unpublished-roster "$unpublished"
 [[ "$(make --no-print-directory -s release-version)" == 0.12.3 ]] || exit 1
 [[ "$(cat calls)" == $'normal-cache\nnormal' ]] || exit 1
 check_publication_environment
@@ -971,10 +978,7 @@ MANIFEST
 cmp formatted-manifest Cargo.toml
 cmp prepared-lock Cargo.lock
 # A parser emitting plausible facts before failing cannot start Cargo preparation.
-local -a member_manifests
-member_manifests=()
-for package in "${workspace_members[@]}"; do member_manifests+=("crates/$package/Cargo.toml"); done
-for input in Cargo.toml Cargo.lock "${member_manifests[@]}"; do
+for input in Cargo.toml Cargo.lock crates/ic-memory/Cargo.toml crates/ic-storage/Cargo.toml crates/ic-metrics-stable/Cargo.toml crates/ic-logging-stable/Cargo.toml; do
     cp calls saved-parser-calls
     status=0
     TOML_PARSER_FAILURE="$input" bash scripts/dev/run-repo-tool.sh "$FIXTURE_TOOLCHAIN" version \
@@ -997,10 +1001,10 @@ cmp duplicate-manifest Cargo.toml
 cmp prepared-lock Cargo.lock
 cp original-manifest Cargo.toml
 # Reject malformed lock values before shell capture can trim or discard bytes.
-for package in "${workspace_members[@]}"; do
+for package in ic-memory ic-storage ic-metrics-stable ic-logging-stable; do
     for version in '13' '"0.13.0\n"' '"0.13.0\u0000"'; do
         printf 'version = 4\n' > Cargo.lock
-        for other in "${workspace_members[@]}"; do
+        for other in ic-memory ic-storage ic-metrics-stable ic-logging-stable; do
             value='"0.12.3"'
             if [[ "$other" == "$package" ]]; then value="$version"; fi
             printf '[[package]]\nname = "%s"\nversion = %s\n' "$other" "$value" >> Cargo.lock
@@ -1030,7 +1034,7 @@ cmp saved-calls calls
 cmp original-manifest Cargo.toml
 cmp conflicting-lock Cargo.lock
 cp prepared-lock Cargo.lock
-for package in "${workspace_members[@]}"; do
+for package in ic-memory ic-storage ic-metrics-stable ic-logging-stable; do
     manifest="crates/$package/Cargo.toml"
     cp "$manifest" saved-member
     for refusal in missing explicit-version; do

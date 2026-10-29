@@ -1,75 +1,73 @@
-# Current handoff — Logging Stable qualification
+# Current handoff — installed Logging qualification
 
-This isolated contribution starts from released Persistence 0.54.0 source
-`9ca2e8e39f8ab5d1b8501e4d843b25c614719a13`. The maintainer selected a separate
-adapter PR, [#138](https://github.com/dragginzgame/ic-persistence/pull/138).
-The normal checkout's unrelated scaffold/tooling edits remain untouched.
-Workspace versions remain 0.54.0; compatible candidate notes are 0.54.1.
-Logging Stable remains unpublished. Version projection includes four members;
-publication and archive receipts retain the original three-package roster.
+This contribution incorporates released Persistence 0.54.1 source
+`447a9bb272ffa4551fe6c6ad7f7d1211121f99f0`, which integrated the Logging Stable
+adapter and four-member release roster. Workspace versions remain 0.54.1; the
+new compatible notes are 0.54.2. Logging Stable remains unpublished. The existing
+three packages retain archive/publication authority. No new release is selected.
 
-## Checkpoint boundary
+[PR #138](https://github.com/dragginzgame/ic-persistence/pull/138) now adds installed
+Logging qualification, its bounded fixture protocol and release-helper regression
+coverage. The isolated checkout is `/tmp/ic-logging-stable-20261029`; the normal
+Persistence checkout is not edited by this contribution. The incoming 0.54.1
+handoff is retained at `/tmp/ic-logging-stable-main-0541-handoff.md`, including
+its earlier `/tmp/ic-persistence-logging-integration.k23sYP/` evidence references.
+Preserve existing journals, receipts and recovery archives.
 
-`ic-logging-stable` checkpoints complete canonical Logging state through one
-host-opened governed Storage map. It owns bounded V1 bytes, corruption admission
-and checkpoint continuity. Logging owns restoration, append, retention and paging.
-The [package guide](../../crates/ic-logging-stable/README.md) defines byte layout,
-bounds and host integration. Hosts own allocation declarations, backing custody,
-epochs, clocks, authorization, lifecycle and checkpoint/retention cadence.
+## Retained package boundary
 
-Loads distinguish absence from valid empty/exhausted histories. Empty checkpoints
-retain time and sequence watermarks. Save rejects regressed counters, changed
-limits/identity, rewritten issued rows and resurrection of pruned rows. Identical
-checkpoints skip stable writes. Explicit removal checks the old identity/limits;
-reset/generation authority stays with the host. Diagnostic history never
-authorizes retries or proves paid effects.
+The [Logging Stable guide](../../crates/ic-logging-stable/README.md) owns bounded
+V1 load/save/remove checkpoints over host-opened governed Storage maps. Published
+Logging 0.17.2 owns canonical restoration, append, retention and paging. Hosts own
+allocation, identity, clocks, authorization, lifecycle and checkpoint cadence.
+Empty/exhausted histories retain watermarks. Malformed or regressing state never
+falls back to reset; identical checkpoints skip writes. No production adapter,
+Memory, Storage or Metrics Stable runtime source/API/format changes in this batch.
 
-The adapter admits at most 1,024 configured entries, 4,096 message bytes and 128
-bytes per label, with a 65,536-byte complete record ceiling. Maximum settings need
-not fit simultaneously. Decoding bounds bytes/counts before constructing rows
-and calls canonical Logging restoration. Malformed or unknown state never falls
-back to reset/initialization.
+The root graph retains main's Platform 0.7.6 and native host tooling 0.69.12
+selections; Build/Testkit CLI selections remain 0.69.11. The independent runner
+retains Platform 0.7.3, native Testkit 0.69.9 and PocketIC client 16.1.0. Every
+existing package identity in both main-branch locks is preserved. Additions
+supply the fixture's CDK and shared native Wire protocol. Shared Tooling remains
+reviewed 0.27.6 and the stable-structures substrate remains 0.7.2.
 
-## Published dependency evidence
+## Focused qualification
 
-The root lock selects registry Logging 0.17.2, published 2026-10-29, checksum
-`8ead6c0fa5b61da08c5238e61ad57e9acf7c42a2af35c41657be5e60ea93e88f`.
-No path patch, synthetic checksum or candidate API substitutes for it. Both locks
-retain every previous package identity; additions supply the adapter/probe and
-its shared native Wire protocol. Existing Memory, Storage and Metrics Stable
-runtime APIs/formats, Shared Tooling snapshot and stable-structures 0.7.2 are
-unchanged. Library Platform remains 0.7.4; the native runner remains 0.7.3.
+On the reconciled 0.54.1 graph, strict native adapter, Wasm probe and release-helper
+Clippy pass. Rust 1.91 passes all seven adapter tests, both doctests and Wasm
+probe compilation. The two affected release-helper tests pass: projection of all
+four versions with only three receipt archives, and inherited manifest identity
+admission including the unpublished member. The independent native host source
+and lock are unchanged from its four passing tests/two existing ignored installed
+tests and strict Clippy proof earlier in this contribution.
 
-Strict Clippy passes for the adapter, Wasm probe, release helper and native host.
-Rust 1.91 passes seven adapter tests, a complete reopen doctest, a raw-backing
-compile-fail proof and Wasm probe compilation. Native host tests pass (four;
-two pre-existing installed tests remain ignored). Production graph/pin checks,
-66 release-helper regressions, release adapter substitutes and real offline
-interrupted-state bootstrap pass. The final helper batch reuses 65 passing tests
-and reruns the corrected expected-surface fixture; original failure logs remain.
-Bootstrap checks cover all four members and retain input checksums without
-changing tracked inputs. Logs use `/tmp/ic-logging-stable-registry-*.log`,
-`/tmp/ic-logging-stable-roster-*.log`, `/tmp/ic-logging-stable-host-*.log` and
-`/tmp/ic-logging-stable-release-adapters-3.log`.
+The reconciled graph also passes pins, production/dependency boundaries, release
+adapter substitutes and real offline bootstrap for both interrupted metadata
+states. Formatting, selected ShellCheck, documentation links, licenses and diff
+checks pass. The unchanged shared snapshot retains its verified 123-file identity.
 
-## Installed Logging evidence
+Current logs use `/tmp/ic-logging-stable-merged-*.log`. The earlier 66-test helper
+batch on the 0.54.0 graph remains separately identified in
+`/tmp/ic-logging-stable-roster-*.log`; it is not relabelled as a full 0.54.1 run.
 
-`make test-runtime-logging` passed on Linux using pinned Rust 1.99.1, original
-Wasm, Testkit CLI 0.69.9 and the prepared PocketIC 16.1.0 client/server pair.
-The fixture uses host-owned governed Memory/Storage and method-bound native Wire
-with admission before copying request bytes. It verifies query checkpoint
-non-persistence, trapped update and post-upgrade rollback, clean upgrade reopen,
-timestamp refusal and sequence/time watermarks after pruning every retained row.
+## Installed original-Wasm proof
 
-Evidence is `target/qualification/runtime/attempt.2c23BD/`, with input hashes,
-original Wasm and runtime/server logs. Wasm SHA-256:
-`bfda93e071ad82c18042089eba665e5e82beb76b06ac04ae00135b020ba68c9c`.
-The command log is `/tmp/ic-logging-stable-installed.log`. The full runtime runner
-now includes Logging for original/O3/Os/Oz variants; only the focused original
-Logging probe ran locally. This is no IC cost measurement or Canic/Jobs acceptance.
+`make test-runtime-logging` passes on Linux with Rust 1.99.1, original Wasm,
+Testkit CLI 0.69.11 and the prepared PocketIC 16.1.0 server. Evidence remains at
+`target/qualification/runtime/attempt.pUTvdW/`, including input hashes, Wasm and
+runtime/server logs. Wasm SHA-256:
+`109daef205312af64ae8e656bf24d300fc85e072bf738c513788740709c4ec0a`.
+The command log is `/tmp/ic-logging-stable-merged-installed.log`.
 
-The earlier `/tmp/ic-logging-stable-candidate` fixture and logs retain their
-candidate-source identity. They are superseded for registry admission, not
-rewritten as published-dependency evidence. Preserve unrelated recovery records
-and evidence in the normal checkout. Full validation, native macOS, the optimized
-runtime matrix, merging and release/publication remain separate work.
+The fixture checks query checkpoint non-persistence, trapped update and
+post-upgrade rollback, successful upgrade reopen, timestamp refusal, sequence/time
+watermarks after pruning every row and Wire method identity refusal. Hosts own
+the governed runtime, map and lifecycle; request admission precedes byte copying.
+The full runtime runner now includes Logging in original/O3/Os/Oz variants;
+only the focused original Logging probe ran locally. Native macOS, the optimized
+matrix, Canic/Jobs acceptance and cost measurements remain separate work.
+
+Earlier evidence at `target/qualification/runtime/attempt.2c23BD/` retains its
+0.54.0/CLI 0.69.9 identity. `/tmp/ic-logging-stable-candidate` and its logs retain
+their pre-publication source-candidate identity. None replaces the current graph's
+proof. Review/CI, merge and eventual adapter publication remain with their owner.

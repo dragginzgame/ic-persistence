@@ -44,6 +44,10 @@ mod canister {
         }
         Ok(())
     }
+    #[allow(
+        clippy::needless_pass_by_value,
+        reason = "CDK decoder signature owns argument bytes"
+    )]
     fn decode<T: DeserializeOwned, const ID: u64>(bytes: Vec<u8>) -> T {
         required(native::decode_request(ID, &bytes, protocol::REQUEST))
     }
@@ -154,9 +158,7 @@ mod canister {
     )]
     fn logging_query(input: Option<Append>) -> Reply {
         with_host(|host| {
-            let outcome = input
-                .as_ref()
-                .map_or(Outcome::Read, |input| append(host, input));
+            let outcome = input.map_or(Outcome::Read, |input| append(host, &input));
             Reply {
                 outcome,
                 snapshot: snapshot(&host.log),

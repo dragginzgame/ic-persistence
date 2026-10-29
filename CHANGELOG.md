@@ -1,15 +1,27 @@
 # Changelog
 
-## [0.54.1]
+## [0.54.2]
 
 ### ➕ Added
 
-- Prepare an unpublished, separately selected Logging Stable adapter with bounded
-  V1 checkpoints over governed Storage maps. Reopening preserves pruned/exhausted
-  watermarks; checkpoint admission rejects regression and rewritten history.
-  Uses published Logging 0.17.2 and includes a focused installed rollback/reopen
-  probe. Coordinated versions cover four members; publication still selects three.
-  [Details](docs/changelog/0.54.md#0541).
+- Add focused installed Logging qualification for query non-persistence,
+  update/upgrade rollback and reopen with empty-history watermarks.
+  [Details](docs/changelog/0.54.md#0542).
+
+## [0.54.1] - 2026-10-29
+
+### ➕ Added
+
+- Add unpublished `ic-logging-stable` with bounded governed checkpoints using
+  published Logging 0.17.2. Reopening preserves sequence/time watermarks;
+  checkpoint admission rejects regression and rewritten history before mutation.
+  [Guide](crates/ic-logging-stable/README.md).
+
+### ⬆️ Dependencies
+
+- Adopt Testkit and host tooling 0.69.11, including Build and Testkit CLI
+  selections. Preserve the PocketIC 16.1.0 client/server pair and existing
+  feature boundaries. [Details](docs/changelog/0.54.md#0541---unreleased).
 
 ## [0.54.0] - 2026-10-29
 

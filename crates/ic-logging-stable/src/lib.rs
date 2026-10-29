@@ -25,10 +25,11 @@ pub const MAX_MESSAGE_BYTES: usize = 4_096;
 pub const MAX_LABEL_BYTES: usize = 128;
 
 ///
-/// StoreError
+/// `StoreError`
 ///
 /// Typed refusal before stable mutation; backing/collection traps remain upstream.
 ///
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq, thiserror::Error)]
 pub enum StoreError {
     /// Namespace or name violates its bounded ASCII contract.
@@ -61,16 +62,21 @@ pub enum StoreError {
 }
 
 ///
-/// LogKey
+/// `LogKey`
 ///
 /// Permanent namespace/name pair; neither a credential nor an allocation declaration.
 ///
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct LogKey(Vec<u8>);
 
 impl LogKey {
     /// Admit namespace/name lengths of 1..=64 / 1..=128 bytes.
     /// Letters, digits, dot, underscore, slash, hyphen and colon are permitted.
+    ///
+    /// # Errors
+    /// Returns [`StoreError::InvalidIdentifier`] for empty, oversized or
+    /// unsupported namespace/name bytes.
     pub fn new(namespace: &str, name: &str) -> Result<Self, StoreError> {
         for (value, maximum) in [(namespace, 64), (name, 128)] {
             if value.is_empty()
@@ -91,10 +97,11 @@ impl LogKey {
 }
 
 ///
-/// LogIdentity
+/// `LogIdentity`
 ///
 /// Host-selected durable generation; upgrades alone do not reset a retained log.
 ///
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct LogIdentity {
     /// Explicit host epoch, carried unchanged across ordinary reopen operations.
@@ -105,7 +112,7 @@ pub struct LogIdentity {
 pub type LoggingMap<M> = StableBTreeMap<Vec<u8>, Vec<u8>, M>;
 
 ///
-/// LoggingStore
+/// `LoggingStore`
 ///
 /// Explicit checkpoints; the host chooses fresh creation versus retained loading
 /// of the supplied map. No constructor initializes, repairs or resets storage.
@@ -135,6 +142,13 @@ impl<M: Memory> LoggingStore<M> {
 
     /// Load and canonically restore one log under its exact identity and limits.
     /// Absence is `None`, distinct from a stored empty or exhausted log.
+    ///
+    /// # Errors
+    /// Rejects unsupported limits, malformed/unknown records, identity or limits
+    /// mismatch and state refused by canonical Logging restoration.
+    ///
+    /// # Panics
+    /// Backing IO and collection corruption retain Storage's panic behavior.
     pub fn load(
         &self,
         key: &LogKey,
@@ -151,6 +165,13 @@ impl<M: Memory> LoggingStore<M> {
     /// Checkpoint an admitted log, rejecting regression before any map write.
     /// Identical snapshots validate retained bytes and perform no stable write.
     /// Snapshot copying and comparison scale with retained history, not page size.
+    ///
+    /// # Errors
+    /// Rejects unsupported limits, retained-record admission failures, regressing
+    /// checkpoints and records exceeding the byte ceiling before map mutation.
+    ///
+    /// # Panics
+    /// Backing IO, allocation and collection failures retain Storage's behavior.
     pub fn save(
         &mut self,
         key: &LogKey,
@@ -174,6 +195,13 @@ impl<M: Memory> LoggingStore<M> {
     /// Explicitly remove a valid checkpoint after admitting its old identity/limits.
     /// For deliberate reset, save with a new host epoch in the same update without
     /// an await. Corrupt rows require host-owned map administration, never fallback.
+    ///
+    /// # Errors
+    /// Rejects the same limits, identity and retained-record failures as
+    /// [`Self::load`] before removal.
+    ///
+    /// # Panics
+    /// Backing IO and collection corruption retain Storage's panic behavior.
     pub fn remove(
         &mut self,
         key: &LogKey,

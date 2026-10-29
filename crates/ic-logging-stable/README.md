@@ -1,8 +1,8 @@
 # IC Logging Stable
 
 Optional bounded checkpoints for IC Logging, following Metrics Stable's explicit
-load/save model. The package is unpublished and consumes the validated
-`LogSnapshot` contract from published Logging 0.17.2.
+load/save model. The package is unpublished and consumes published Logging
+0.17.2's validated `LogSnapshot` restoration contract.
 
 IC Observability owns the engine, snapshot admission, append, retention, UTF-8
 truncation and cursor scans. IC Persistence owns durable encoding and governed
@@ -90,7 +90,7 @@ Corrupt records require explicit host map administration; there is no silent res
 
 Checkpoint in successful update execution. Await boundaries, IC trap rollback,
 query non-persistence and whole-application upgrade acceptance require installed
-consumer qualification. Native VectorMemory tests prove codec/storage behaviour,
+consumer qualification. Native `VectorMemory` tests prove codec/storage behaviour,
 not IC effects or instruction/cycle costs. Diagnostic history never authorizes
 retrying uncertain paid effects or proves that a remote effect completed.
 
