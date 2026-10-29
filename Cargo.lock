@@ -340,9 +340,9 @@ dependencies = [
 
 [[package]]
 name = "ic-metrics"
-version = "0.17.3"
+version = "0.17.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "70496052f8b29e4685c313355de8c12400d9fe76847cf5c127499a805e3a99c6"
+checksum = "bed85a1ce7bc80365b34b246c82a5f7711a05c6deb30be0c8132898d7ef1dccd"
 dependencies = [
  "ic-wire",
  "serde",
@@ -417,9 +417,9 @@ dependencies = [
 
 [[package]]
 name = "ic-wire"
-version = "0.7.22"
+version = "0.7.23"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a59a3244802593e1099145ee9097a5df54ba9910da34465e41c432695758ee6f"
+checksum = "98860d4ece1147bf4f32218eadde961f34bb6881c5ccf39026c5c298133db0f3"
 dependencies = [
  "bytemuck",
  "ic-wire-derive",
@@ -431,9 +431,9 @@ dependencies = [
 
 [[package]]
 name = "ic-wire-derive"
-version = "0.7.22"
+version = "0.7.23"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5f3fa190d2b65e3ee45adff745e5f13e9b2b8b03590d839c950141f1de530cea"
+checksum = "bcd8b95734ebf64025c65ebd651cc6521992af6e3dea92c2b1521d4e1dfe1186"
 dependencies = [
  "proc-macro2",
  "quote",
