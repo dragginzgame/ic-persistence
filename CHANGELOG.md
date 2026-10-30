@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.58.0] - Unreleased
+
+### ⚠️ Breaking
+
+- Adopt Platform 0.11.1, Wire 0.10.0, Metrics/Logging 0.21.0 and Tooling 0.72.0.
+  Callers exchanging exposed Wire errors or Metrics values must align dependency
+  identities. Stored bytes and codec admission are unchanged.
+  [Details](docs/changelog/0.58.md#0580---unreleased).
+
+### ⬆️ Dependencies
+
+- Align both maintained graphs and the separately prepared Build/Testkit CLI pins,
+  removing older native Platform and Wire copies.
+
 ## [0.57.0] - 2026-10-30
 
 ### ⚠️ Breaking

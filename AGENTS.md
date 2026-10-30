@@ -17,7 +17,7 @@ The virtual repository-root workspace owns shared package metadata and the
 dependency catalog. The library packages are `crates/ic-memory/`,
 `crates/ic-storage/`, `crates/ic-metrics-stable/` and
 `crates/ic-logging-stable/` adapter. Logging Stable owns bounded IC Wire checkpoints
-over governed Storage maps; IC Observability's published Logging 0.19.0 owns
+over governed Storage maps; IC Observability's published Logging 0.21.0 owns
 logging semantics and validated restoration. Logging checkpoints use discriminator 3 and an explicit retained-text ceiling.
 The maintainer retired discriminator-2 rows by hard cut: hosts own explicit row
 retirement or fresh allocations; no legacy decoder or automatic reset is allowed.
@@ -171,7 +171,7 @@ growth and installed IO/upgrade checks. Memory keeps its local layout/growth
 safeguards. Changes stop at the owned IC Platform boundary.
 
 The independent qualification workspace consumes PocketIC through IC Platform's
-optional native client boundary; its lockfile selects client 16.1.0. Testkit 0.71.0 owns the reviewed
+optional native client boundary; its lockfile selects client 16.1.0. Testkit 0.72.0 owns the reviewed
 16.1.0 server selection. Changing that pair requires repeating installed
 qualification; historical 16.0.0 client/server evidence cannot qualify the new
 pairing. Keep both lockfiles, sources, features and toolchains unchanged during

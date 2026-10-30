@@ -1,32 +1,36 @@
 # Current handoff
 
-This batch, prepared from `b281a60`, adopts Platform 0.10.0 in both maintained
-catalogs and Metrics/Logging 0.19.0 in the library. Preceding Wire 0.8 and Tooling
-0.71 adoption remains. Registry review confirms Tooling libraries and the
-prepared Build/Testkit CLI pins are already at the latest published 0.71.0.
-Shared Tooling and common tool catalogs are unchanged. No commit, own-version
-bump, release, publication or push ran.
+This batch, prepared from released `c2ee327` (0.57.0), adopts Platform 0.11.1,
+Wire 0.10.0, Metrics/Logging 0.21.0 and Tooling 0.72.0, extending the preceding
+uncommitted Wire adoption. Both maintained catalogs/locks and the separately
+prepared Build/Testkit CLI pins are aligned. No commit, own-version bump,
+release, publication or push ran. The pending changelog remains 0.58.0 because
+the stable adapters expose new Wire error identities and Metrics types change
+Rust dependency identity.
 
-Metrics now shares Wire 0.8 metadata, removing the old Wire 0.7.25 copy. The
-production graph has one Platform 0.10 runtime owner. Tooling's native test meter
-retains its required non-runtime Platform 0.9.1 provider outside production Wasm.
-Stable-structures remains 0.7.2 and PocketIC remains client/server 16.1.0.
-Public source APIs, stored bytes and allocation custody are unchanged.
+The root lock removes older native Platform and Wire providers. Production has
+one Platform runtime owner and one core Wire provider; the native meter and
+Metrics metadata now share them. Wire endpoint/platform-types features remain
+disabled. Stable-structures stays 0.7.2; PocketIC stays client/server 16.1.0.
+Stored bytes, arithmetic, Logging semantics, bounds and custody are unchanged.
+No reset or retained-data migration is needed. Shared Tooling and common catalogs
+are unchanged; prior tool generations and attempts remain retained.
 
-Evidence under `/tmp/ic-persistence-adoption11/` includes 187 Memory tests
-(eight explicit ignores), 12 Logging Stable tests, 29 Metrics Stable tests,
-strict affected Clippy, Rust 1.91 library checks, graph/pins and formatting.
+Evidence under `/tmp/ic-persistence-deps13/` includes full locked metadata for
+both graphs, production graph/pins, strict affected library/test/helper and
+independent-runner Clippy, Rust 1.91 library/test/helper checks, formatting and
+local links. All 187 Memory, 12 Logging Stable, 29 Metrics Stable and 69 release
+helper tests pass (eight explicit Memory ignores). The selected bootstrap
+recovery function passes with the real 0.72 editor and substituted Cargo effects.
+An initial offline server check refused a concurrently held tool-store lock;
+its retry passes after the owner finished. Both prepared executables are admitted.
+
 The three rebuilt original Wasm fixtures pass installed IO/frame refusals,
-upgrade rollback, Storage reopen, manager faults, custody and Logging budgets.
-Exact inputs, tools, binaries and logs remain under
-`target/qualification/runtime/attempt.4dqXS3/`; source checks match after the run.
-The first sandbox attempt could not bind loopback and is retained separately;
-the permitted retry passed. See [the installed record](../runtime-io-qualification.md#platform-010-and-observability-019-adoption--2026-10-30).
-
-Previous release-helper and prepared Tooling evidence is retained under
-`/tmp/ic-persistence-tooling10/` and the earlier installed record. It is not
-relabelled as new Platform evidence. Full release gates, optimizer variants and
-native macOS were not rerun. The previous Logging hard-cut disposition remains.
+upgrade rollback, Storage reopen, manager faults, custody and Logging budgets
+using Testkit 0.72. Source checks match after execution. Inputs, tools, binaries
+and logs remain under `target/qualification/runtime/attempt.atoCde/`.
+See [the installed record](../runtime-io-qualification.md#platform-011-and-tooling-072-adoption--2026-10-30).
+Full release gates, optimizer variants and native macOS were not rerun.
 
 Canonical owners: [ledger](../current-ledger.md),
 [Logging](../../crates/ic-logging-stable/README.md#upgrade-disposition),

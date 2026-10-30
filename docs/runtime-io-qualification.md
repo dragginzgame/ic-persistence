@@ -1,5 +1,40 @@
 # Runtime IO and maintainer improvements qualification
 
+## Platform 0.11 and Tooling 0.72 adoption — 2026-10-30
+
+The working tree based on released `c2ee327`, including the preceding unpublished
+Wire adoption, selects registry Platform 0.11.1 and Wire 0.10.0 in both maintained
+catalogs. The library selects Metrics/Logging 0.21.0 and Tooling 0.72.0. Older
+native Platform/Wire identities are removed without unrelated package changes.
+The canonical installer prepared and admitted Build editor and Testkit CLI
+0.72.0, retaining earlier generations and logs. The first offline server check
+refused a concurrently held tool-store lock (75); its unchanged retry passed
+after that owner finished. Build editor admission also passes. PocketIC remains
+client/server 16.1.0 and stable-structures remains the exact 0.7.2 substrate.
+
+The three original Wasm fixtures and independent runner were rebuilt locked and
+offline. The Testkit 0.72 run exited 0: malformed-frame/IO refusals, upgrade
+recovery, Storage reopen/rollback, six manager faults, composed custody and
+Logging query/update/upgrade/text-budget/empty-watermark behavior pass. Source
+checks match after execution. Exact source/tool/server/runner/Wasm hashes,
+retained runner, launchers and server/runtime logs remain under
+`target/qualification/runtime/attempt.atoCde/`.
+
+Focused native evidence is under `/tmp/ic-persistence-deps13/`: full locked
+metadata for both graphs, production graph/pins, affected library/test/helper
+Clippy and independent-runner Clippy pass. There are 187 passing Memory tests
+(eight explicit ignores), 12 Logging Stable tests, 29 Metrics Stable tests and
+69 release-helper tests. Rust 1.91 checks cover the affected libraries/tests and
+native release helper. The selected bootstrap recovery function passes with the
+actual prepared 0.72 editor and substituted Cargo effects; no generic runner
+matrix or live release is inferred. Formatting and local links pass.
+
+No owned Rust source, stored format, runtime custody, common catalog or server
+byte change was needed. Optional Wire endpoint/platform-types integration stays
+disabled. Full release gates, optimizer variants and native macOS were not
+rerun. No commit, package-version bump, release, publication or push ran.
+
+
 ## Platform 0.10 and Observability 0.19 adoption — 2026-10-30
 
 The working tree based on `b281a60`, preserving preceding Wire/Tooling adoption,
