@@ -28,8 +28,14 @@ use std::{
     time::{SystemTime, UNIX_EPOCH},
 };
 
+mod artifact_paths;
+use artifact_paths::ArtifactPaths;
+mod artifacts;
 mod metadata;
 mod packages;
+mod release;
+mod source;
+mod wasm;
 use packages::{package_manifest, packages};
 mod processes;
 use processes::{Execute, Processes};
@@ -153,12 +159,6 @@ const REPLACE_FILE_OPTIONS: WriteOptions = WriteOptions {
     mode: PublicationMode::Replace,
     permissions: 0o666,
 };
-const PROBES: [(&str, u64); 4] = [
-    ("core", 260_000),
-    ("diagnostics", 315_000),
-    ("admission", 264_000),
-    ("runtime_integration", 270_000),
-];
 
 ///
 /// ReleaseSelection
@@ -256,10 +256,12 @@ impl PackageEvidence {
     ) -> Result<Self> {
         let [memory, storage, metrics, logging] = packages();
         let version = &validation.selection.version;
-        let package_sha256 = repo.record_package(memory, version)?;
-        let storage_sha256 = repo.record_package(storage, version)?;
-        let metrics_sha256 = repo.record_package(metrics, version)?;
-        let logging_sha256 = repo.record_package(logging, version)?;
+        repo.version_parts(version)?;
+        let paths = repo.artifact_paths()?;
+        let package_sha256 = repo.record_package_in(&paths, memory, version)?;
+        let storage_sha256 = repo.record_package_in(&paths, storage, version)?;
+        let metrics_sha256 = repo.record_package_in(&paths, metrics, version)?;
+        let logging_sha256 = repo.record_package_in(&paths, logging, version)?;
         Ok(Self {
             validation,
             package_head,
@@ -384,45 +386,7 @@ fn check_lock_update(before: &[u8], after: &str, previous: &str, version: &str) 
     Ok(())
 }
 
-fn check_wasm_artifacts(target: &Path) -> Result<()> {
-    let artifacts = target.join("wasm32-unknown-unknown/wasm-size/examples");
-    for (probe, budget) in PROBES {
-        let path = artifacts.join(format!("wasm_{probe}_size_probe.wasm"));
-        let metadata = fs::metadata(&path)?;
-        require(metadata.is_file(), "Wasm artifact is not a regular file")?;
-        let bytes = metadata.len();
-        println!("{probe} raw Wasm: {bytes} bytes (budget: {budget} bytes)");
-        require(
-            bytes <= budget,
-            &format!("{} exceeds its raw Wasm budget", path.display()),
-        )?;
-    }
-    Ok(())
-}
-
 impl<E: Execute> Repository<E> {
-    fn wasm_size(&self) -> Result<()> {
-        let mut command = vec![
-            "cargo".to_owned(),
-            format!("+{}", self.toolchain()?),
-            "build".to_owned(),
-            "--locked".to_owned(),
-            "--offline".to_owned(),
-            "--profile".to_owned(),
-            "wasm-size".to_owned(),
-            "--target".to_owned(),
-            "wasm32-unknown-unknown".to_owned(),
-        ];
-        for (probe, _) in PROBES {
-            command.extend([
-                "--example".to_owned(),
-                format!("wasm-{}-size-probe", probe.replace('_', "-")),
-            ]);
-        }
-        self.run_command(&command)?;
-        check_wasm_artifacts(&self.target()?)
-    }
-
     fn run(&self, program: &str, args: &[&str]) -> Result<()> {
         self.exec.execute(&self.root, program, args)
     }
@@ -433,13 +397,6 @@ impl<E: Execute> Repository<E> {
 
     fn git(&self, args: &[&str]) -> Result<String> {
         Ok(self.output("git", args)?.trim().to_owned())
-    }
-
-    fn text(&self, path: &str, revision: Option<&str>) -> Result<String> {
-        match revision {
-            Some(revision) => self.output("git", &["show", &format!("{revision}:{path}")]),
-            None => Ok(fs::read_to_string(self.root.join(path))?),
-        }
     }
 
     fn version(&self, revision: Option<&str>) -> Result<String> {
@@ -466,474 +423,12 @@ impl<E: Execute> Repository<E> {
         )
     }
 
-    fn clean(&self) -> Result<()> {
-        let status = self.output(
-            "git",
-            &[
-                "--no-optional-locks",
-                "status",
-                "--porcelain",
-                "--untracked-files=all",
-            ],
-        )?;
-        require(
-            status.trim().is_empty(),
-            &format!(
-                "working tree/index must be clean; review these Git status entries:\n{}",
-                status.trim_end()
-            ),
-        )
-    }
-
-    fn target(&self) -> Result<PathBuf> {
-        let target = self.exec.cargo_target(&self.root)?;
-        require(
-            target.is_absolute(),
-            "Cargo target_directory must be absolute",
-        )?;
-        Ok(target)
-    }
-
-    fn receipt_path(&self, version: &str, stage: ReceiptStage) -> Result<PathBuf> {
-        self.version_parts(version)?;
-        let suffix = if stage == Prepared { "-prepared" } else { "" };
-        Ok(self
-            .target()?
-            .join("release-validation")
-            .join(format!("{version}{suffix}.json")))
-    }
-
-    fn package_path(&self, package: &str, version: &str) -> Result<PathBuf> {
-        self.version_parts(version)?;
-        Ok(self
-            .target()?
-            .join("package")
-            .join(format!("{package}-{version}.crate")))
-    }
-
-    fn sha256(path: &Path) -> Result<String> {
-        // Preserve the existing file-size contract; hashing uses constant memory.
-        Ok(hash_file(path, u64::MAX)?.sha256.to_string())
-    }
-
     fn identities(&self) -> Result<[String; 3]> {
         Ok([
             self.output("cargo", &[&format!("+{}", self.toolchain()?), "--version"])?,
             self.output("rustc", &[&format!("+{}", self.toolchain()?), "-Vv"])?,
             self.output("rustc", &[&format!("+{}", self.msrv()?), "-Vv"])?,
         ])
-    }
-
-    fn retained_package(&self, digest: &str) -> Result<PathBuf> {
-        let digest: Sha256Digest = digest.parse()?;
-        Ok(self
-            .target()?
-            .join("release-validation/artifacts")
-            .join(format!("{digest}.crate")))
-    }
-
-    fn record_package(&self, name: &str, version: &str) -> Result<String> {
-        let package = self.package_path(name, version)?;
-        let digest = Self::sha256(&package)?;
-        let retained = self.retained_package(&digest)?;
-        if !retained.exists() {
-            self.exec
-                .copy_verified(&package, &retained, digest.parse()?)?;
-        }
-        require(
-            Self::sha256(&retained)? == digest,
-            "retained package differs from its digest",
-        )?;
-        Ok(digest)
-    }
-
-    fn configuration(&self) -> Result<BTreeMap<String, String>> {
-        let mut configuration = BTreeMap::new();
-        for (name, value) in env::vars_os() {
-            let name = name.to_str().ok_or("non-UTF-8 environment variable name")?;
-            // The receipts identify the declared toolchains. Cargo compiler
-            // replacements or wrappers would execute outside those identities.
-            require(
-                !is_compiler_override(name),
-                &format!("unset {name} before release qualification; use the declared toolchains"),
-            )?;
-            if is_build_variable(name) {
-                configuration.insert(
-                    format!("env:{name}"),
-                    value
-                        .into_string()
-                        .map_err(|_| "non-UTF-8 build environment")?,
-                );
-            }
-        }
-        let cargo_home = env::var_os("CARGO_HOME");
-        let home = env::var_os("HOME");
-        require(
-            cargo_home.is_some() || home.is_some(),
-            "set CARGO_HOME or HOME",
-        )?;
-        // Keep conservative custody of both root names, even when Cargo shadows
-        // one. Build owns discovery, include traversal and same-read raw hashes.
-        let roots: Vec<_> =
-            configuration_directories(&self.root, cargo_home.as_deref(), home.as_deref())?
-                .iter()
-                .flat_map(|directory| [directory.join("config"), directory.join("config.toml")])
-                .filter(|path| path.exists())
-                .collect();
-        for file in observe_configurations(&roots, CONFIGURATION_LIMITS)? {
-            if let Some(field) = file.compiler_overrides.first() {
-                return Err(format!(
-                    "remove build.{field} from {} before release qualification; use the declared toolchains",
-                    file.path.display()
-                ).into());
-            }
-            // Contents may contain secrets; receipts retain only lookup labels
-            // and the hash of the exact bytes parsed by the observer.
-            configuration.insert(
-                format!("config:{}", file.path.display()),
-                file.sha256.to_string(),
-            );
-        }
-        Ok(configuration)
-    }
-
-    fn check_selection(&self, selection: &ReleaseSelection) -> Result<()> {
-        self.version_parts(&selection.previous)?;
-        self.version_parts(&selection.version)?;
-        self.validate_date(&selection.date)?;
-        require(
-            self.output(
-                "bash",
-                &[
-                    "scripts/ci/next-release-version.sh",
-                    &selection.previous,
-                    &selection.kind,
-                ],
-            )?
-            .trim()
-                == selection.version,
-            "candidate differs from the common version selection",
-        )?;
-        require(
-            self.version(Some(&selection.source))? == selection.previous,
-            "saved source version differs from the release selection",
-        )
-    }
-
-    fn member_release_manifest(&self, revision: Option<&str>, name: &str) -> Result<String> {
-        let text = self.text(&package_manifest(name), revision)?;
-        let manifest: toml::Value = toml::from_str(&text)?;
-        let package = manifest
-            .get("package")
-            .ok_or("missing Persistence package")?;
-        require(
-            package.get("name").and_then(toml::Value::as_str) == Some(name),
-            "unexpected Persistence package",
-        )?;
-        require(
-            package
-                .get("version")
-                .and_then(|version| version.get("workspace"))
-                .and_then(toml::Value::as_bool)
-                == Some(true),
-            "expected inherited Persistence version",
-        )?;
-        Ok(text)
-    }
-
-    fn surfaces(&self, selection: &ReleaseSelection) -> Result<BTreeMap<String, ReleaseSurface>> {
-        self.check_selection(selection)?;
-        let source = &selection.source;
-        let previous = &selection.previous;
-        let version = &selection.version;
-        let [major, minor, _] = self.version_parts(version)?;
-        let detail = format!("docs/changelog/{major}.{minor}.md");
-        let finalizer = self.root.join(CHANGELOG_FINALIZER);
-        let mut surfaces = BTreeMap::new();
-        for path in [
-            "Cargo.lock",
-            "Cargo.toml",
-            PACKAGE_README,
-            "CHANGELOG.md",
-            &detail,
-        ] {
-            let original = self.text(path, Some(source))?;
-            let expected = match path {
-                "Cargo.lock" => Self::replace_lock_version(&original, previous, version)?,
-                "Cargo.toml" => self.replace_workspace_version(&original, previous, version)?,
-                PACKAGE_README => original.clone(),
-                _ => self.release_changelog(
-                    &finalizer,
-                    &original,
-                    previous,
-                    version,
-                    &selection.date,
-                )?,
-            };
-            surfaces.insert(path.to_owned(), ReleaseSurface { original, expected });
-        }
-        for name in packages().into_iter().skip(1) {
-            let original = self.member_release_manifest(Some(source), name)?;
-            surfaces.insert(
-                package_manifest(name),
-                ReleaseSurface {
-                    expected: original.clone(),
-                    original,
-                },
-            );
-        }
-        Ok(surfaces)
-    }
-
-    fn check_surfaces(
-        &self,
-        selection: &ReleaseSelection,
-        surfaces: &BTreeMap<String, ReleaseSurface>,
-        revision: Option<&str>,
-        partial: bool,
-    ) -> Result<()> {
-        let mut expected_changes = Vec::new();
-        for (path, surface) in surfaces {
-            let actual = self.text(path, revision)?;
-            require(
-                actual == surface.expected || partial && actual == surface.original,
-                &format!(
-                    "{path} does not match the admitted release bytes for source {}. \
-                     For a new release, commit intended source edits first; git add alone is insufficient. \
-                     For recovery, preserve the saved plan and reconcile the conflicting file",
-                    selection.source
-                ),
-            )?;
-            if actual != surface.original {
-                expected_changes.push(path.clone());
-            }
-        }
-        let mut args = vec!["diff", "--name-only", &selection.source];
-        if let Some(revision) = revision {
-            args.push(revision);
-        }
-        args.push("--");
-        require(
-            self.output("git", &args)?
-                .lines()
-                .eq(expected_changes.iter().map(String::as_str)),
-            "release candidate contains changes outside its version surfaces",
-        )?;
-        require(
-            self.output("git", &["ls-files", "--others", "--exclude-standard"])?
-                .is_empty(),
-            "release candidate has untracked files",
-        )
-    }
-
-    fn check_index(
-        &self,
-        selection: &ReleaseSelection,
-        surfaces: &BTreeMap<String, ReleaseSurface>,
-    ) -> Result<()> {
-        for path in self
-            .output(
-                "git",
-                &["diff", "--cached", "--name-only", &selection.source, "--"],
-            )?
-            .lines()
-        {
-            let expected = surfaces
-                .get(path)
-                .ok_or("index contains unrelated release changes")?;
-            require(
-                self.git(&[
-                    "diff",
-                    "--cached",
-                    "--summary",
-                    &selection.source,
-                    "--",
-                    path,
-                ])?
-                .is_empty(),
-                "staged release metadata changes file mode or identity",
-            )?;
-            let actual = self.output("git", &["show", &format!(":{path}")])?;
-            require(
-                actual == expected.expected || actual == expected.original,
-                "staged release metadata differs from saved intent",
-            )?;
-        }
-        Ok(())
-    }
-    fn local_tag(&self, version: &str) -> Result<Option<String>> {
-        let refs = self.git(&[
-            "for-each-ref",
-            "--format=%(objectname) %(refname)",
-            "refs/tags",
-        ])?;
-        let name = format!("refs/tags/v{version}");
-        Ok(refs
-            .lines()
-            .filter_map(|line| line.split_once(' '))
-            .find(|(_, reference)| *reference == name)
-            .map(|(hash, _)| hash.to_owned()))
-    }
-
-    fn remote_ready(&self, selection: &ReleaseSelection) -> Result<()> {
-        require(
-            self.git(&["symbolic-ref", "--quiet", "--short", "HEAD"])? == selection.branch,
-            "selected release branch is not checked out",
-        )?;
-        let remote_ref = format!("refs/remotes/{}/{}", selection.remote, selection.branch);
-        self.git(&[
-            "fetch",
-            "--quiet",
-            "--no-tags",
-            &selection.remote,
-            &format!("+refs/heads/{}:{remote_ref}", selection.branch),
-        ])?;
-        self.git(&["merge-base", "--is-ancestor", &remote_ref, "HEAD"])?;
-        Ok(())
-    }
-    fn commit_check(&self, selection: &ReleaseSelection) -> Result<()> {
-        let validation = self.preparation_validation(selection)?;
-        let surfaces = self.surfaces(selection)?;
-        self.qualify_prepared(validation, &surfaces)?;
-        self.check_index(selection, &surfaces)?;
-        require(
-            self.git(&["diff", "--name-only"])?.is_empty(),
-            "release metadata has unstaged changes",
-        )?;
-        require(
-            self.git(&["diff", "--cached", "--name-only"])?
-                == self.git(&["diff", "--name-only", &selection.source])?,
-            "stage exactly the release metadata",
-        )
-    }
-
-    fn inspect_release_commit(&self, commit: &str) -> Result<InspectedRelease> {
-        self.clean()?;
-        let version = self.version(Some(commit))?;
-        let prepared: PackageEvidence =
-            serde_json::from_slice(&fs::read(self.receipt_path(&version, Prepared)?)?)?;
-        let selection = prepared.validation.selection;
-        require(
-            selection.version == version,
-            "release metadata differs from saved intent",
-        )?;
-        require(
-            self.git(&["log", "-1", "--format=%P", commit])? == selection.source,
-            "release parent differs from validated source",
-        )?;
-        require(
-            self.git(&["log", "-1", "--format=%s", commit])? == format!("Release {version}"),
-            "selected commit is not the release commit",
-        )?;
-        self.git(&["merge-base", "--is-ancestor", commit, "HEAD"])?;
-        self.check_surfaces(&selection, &self.surfaces(&selection)?, Some(commit), false)?;
-        Ok(InspectedRelease {
-            commit: commit.to_owned(),
-            selection,
-        })
-    }
-
-    fn release_commit(&self) -> Result<InspectedRelease> {
-        let release = self.inspect_release_commit(&self.git(&["rev-parse", "HEAD"])?)?;
-        self.verify_evidence(&release.selection, &release.commit, Final, Working)?;
-        Ok(release)
-    }
-
-    fn qualify_release(&self) -> Result<()> {
-        self.qualify_release_at(&self.git(&["rev-parse", "HEAD"])?)
-    }
-
-    fn qualify_release_at(&self, commit: &str) -> Result<()> {
-        let release = self.inspect_release_commit(commit)?;
-        let selection = &release.selection;
-        let version = &selection.version;
-        let head = &release.commit;
-        let mut evidence =
-            self.verify_evidence(selection, &selection.source, Prepared, Retained)?;
-        let current = self.git(&["rev-parse", "HEAD"])? == commit;
-        if self.receipt_path(version, Final)?.exists() {
-            // Recovery verifies the retained archive for the selected commit.
-            // Cargo's working archive may belong to the newer source at HEAD.
-            self.verify_evidence(
-                selection,
-                head,
-                Final,
-                if current { Working } else { Retained },
-            )?;
-            return Ok(());
-        }
-        require(
-            current,
-            "selected older release has no final qualification receipt; qualify that exact commit before recovery",
-        )?;
-        let command = self.final_package_command()?;
-        self.run_command(&command)?;
-        require(
-            self.git(&["rev-parse", "HEAD"])? == commit
-                && self.inspect_release_commit(commit)? == release,
-            "release changed during final qualification",
-        )?;
-        self.verify_inputs(&evidence.validation, true)?;
-        require(
-            Self::sha256(&self.root.join("Cargo.lock"))? == evidence.lock_sha256,
-            "final packaging changed selected dependencies",
-        )?;
-        evidence.commands.push(command);
-        let evidence = PackageEvidence::record(
-            self,
-            evidence.validation,
-            head.clone(),
-            evidence.lock_sha256,
-            evidence.commands,
-        )?;
-        self.write_evidence(&evidence, Final)
-    }
-
-    fn selected_committed_check(&self, selection: &ReleaseSelection, commit: &str) -> Result<()> {
-        require(
-            self.inspect_release_commit(commit)?.selection == *selection,
-            "commit identifies another release intent",
-        )?;
-        self.qualify_release_at(commit)
-    }
-
-    fn tagged_check(&self, selection: &ReleaseSelection, commit: &str) -> Result<InspectedRelease> {
-        let release = self.inspect_release_commit(commit)?;
-        require(
-            release.selection == *selection,
-            "tagged release identifies another intent",
-        )?;
-        self.verify_evidence(
-            selection,
-            commit,
-            Final,
-            if self.git(&["rev-parse", "HEAD"])? == commit {
-                Working
-            } else {
-                Retained
-            },
-        )?;
-        self.check_tag(&release.selection.version, &release.commit)?;
-        Ok(release)
-    }
-
-    fn push_check(&self, selection: &ReleaseSelection, commit: &str) -> Result<()> {
-        let release = self.tagged_check(selection, commit)?;
-        self.remote_ready(selection)?;
-        require(
-            self.tagged_check(selection, commit)? == release,
-            "release changed during remote inspection",
-        )?;
-        Ok(())
-    }
-    fn check_tag(&self, version: &str, head: &str) -> Result<String> {
-        let tag = self.local_tag(version)?.ok_or("release tag is missing")?;
-        self.output("bash", &[TAG_CHECKER, head, version])?;
-        require(
-            self.local_tag(version)?.as_deref() == Some(tag.as_str()),
-            "release tag changed during admission",
-        )?;
-        Ok(tag)
     }
 }
 

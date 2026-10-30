@@ -2,17 +2,17 @@
 use super::*;
 
 // Each edit keeps rollback bytes beside the exact source-derived replacement.
-struct MetadataEdit<'a> {
+struct ReleaseEdit<'a> {
     path: &'a str,
-    expected: &'a str,
+    surface: &'a ReleaseSurface,
     before: Vec<u8>,
 }
 
-impl MetadataEdit<'_> {
+impl ReleaseEdit<'_> {
     fn publish<E: Execute>(&self, repo: &Repository<E>) -> Result<()> {
-        if self.before != self.expected.as_bytes() {
+        if self.before != self.surface.expected.as_bytes() {
             repo.exec
-                .write_bytes(&repo.root.join(self.path), self.expected.as_bytes())?;
+                .write_bytes(&repo.root.join(self.path), self.surface.expected.as_bytes())?;
         }
         Ok(())
     }
@@ -33,13 +33,73 @@ impl MetadataEdit<'_> {
                     .is_ok()
             })
         } else {
-            current == self.expected.as_bytes()
+            current == self.surface.expected.as_bytes()
         };
         if owned {
             repo.exec
                 .write_bytes(&repo.root.join(self.path), &self.before)?;
         }
         Ok(())
+    }
+}
+
+// The immutable source projection and live rollback observation remain distinct.
+struct ReleasePlan<'a> {
+    edits: Vec<ReleaseEdit<'a>>,
+}
+
+impl<'a> ReleasePlan<'a> {
+    fn capture<E: Execute>(
+        repo: &Repository<E>,
+        surfaces: &'a BTreeMap<String, ReleaseSurface>,
+    ) -> Result<Self> {
+        let edits = surfaces
+            .iter()
+            .map(|(path, surface)| {
+                Ok(ReleaseEdit {
+                    path,
+                    surface,
+                    before: fs::read(repo.root.join(path))?,
+                })
+            })
+            .collect::<Result<Vec<_>>>()?;
+        Ok(Self { edits })
+    }
+
+    fn publish<E: Execute>(&self, repo: &Repository<E>) -> Result<()> {
+        // The root version is the completion marker for the complete metadata projection.
+        for edit in self
+            .edits
+            .iter()
+            .filter(|edit| edit.path != "Cargo.toml")
+            .chain(self.edits.iter().filter(|edit| edit.path == "Cargo.toml"))
+        {
+            edit.publish(repo)?;
+        }
+        Ok(())
+    }
+
+    fn rollback<E: Execute>(
+        &self,
+        repo: &Repository<E>,
+        selection: &ReleaseSelection,
+        source: Box<dyn Error>,
+    ) -> Box<dyn Error> {
+        // Restore every owned edit even when another restoration fails.
+        let mut rollback_errors = Vec::new();
+        for edit in &self.edits {
+            if let Err(error) = edit.restore(repo, selection) {
+                rollback_errors.push((edit.path.to_owned(), error));
+            }
+        }
+        if rollback_errors.is_empty() {
+            source
+        } else {
+            Box::new(PreparationError {
+                source,
+                rollback_errors,
+            })
+        }
     }
 }
 
@@ -318,55 +378,16 @@ impl<E: Execute> Repository<E> {
         )?;
         let expected = self.surfaces(selection)?;
         self.check_surfaces(selection, &expected, None, true)?;
-        let edits = expected
-            .iter()
-            .map(|(path, surface)| {
-                Ok(MetadataEdit {
-                    path,
-                    expected: &surface.expected,
-                    before: fs::read(self.root.join(path))?,
-                })
-            })
-            .collect::<Result<Vec<_>>>()?;
+        let plan = ReleasePlan::capture(self, &expected)?;
         let result = (|| -> Result<()> {
-            // Publish the root manifest last: the candidate version must imply
-            // that all other metadata, including its selected lock, is complete.
-            for edit in edits
-                .iter()
-                .filter(|edit| edit.path != "Cargo.toml")
-                .chain(edits.iter().filter(|edit| edit.path == "Cargo.toml"))
-            {
-                edit.publish(self)?;
-            }
+            plan.publish(self)?;
             // Source-derived candidate bytes remain the same throughout this
             // transaction. Re-admit the live HEAD, receipt and validation inputs
             // after publication, then qualify against this exact projection.
             self.qualify_prepared(self.preparation_validation(selection)?, &expected)?;
             Ok(())
         })();
-        if let Err(source) = result {
-            // Durable publication may report a parent-sync error after rename.
-            // Inspect current bytes before restoring only owned replacements.
-            // A failed restoration must not hide the preparation error or stop
-            // restoration of other independent, owned metadata files.
-            let mut rollback_errors = Vec::new();
-            for edit in &edits {
-                if let Err(error) = edit.restore(self, selection) {
-                    rollback_errors.push((edit.path.to_owned(), error));
-                }
-            }
-            if rollback_errors.is_empty() {
-                Err(source)
-            } else {
-                Err(PreparationError {
-                    source,
-                    rollback_errors,
-                }
-                .into())
-            }
-        } else {
-            result
-        }
+        result.map_err(|source| plan.rollback(self, selection, source))
     }
 
     pub(super) fn verify_evidence(
@@ -391,14 +412,22 @@ impl<E: Execute> Repository<E> {
             evidence.package_head == head,
             "package evidence identifies another Git HEAD",
         )?;
+        let mut paths = None;
         for (package, digest) in evidence.archives() {
+            // Preserve per-archive refusal order; discover paths only after the
+            // first digest is admitted, then reuse them within this phase.
+            let identity = digest.parse::<Sha256Digest>()?;
+            if paths.is_none() {
+                paths = Some(self.artifact_paths()?);
+            }
+            let paths = paths.as_ref().expect("artifact paths were admitted");
             require(
-                Self::sha256(&self.retained_package(digest)?)? == digest,
+                Self::sha256(&paths.retained(identity))? == digest,
                 "retained archive differs from release validation",
             )?;
             if location == Working {
                 require(
-                    Self::sha256(&self.package_path(package, &selection.version)?)? == digest,
+                    Self::sha256(&paths.package(package, &selection.version))? == digest,
                     "working package differs from release validation",
                 )?;
             }

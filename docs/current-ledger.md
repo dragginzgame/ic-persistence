@@ -42,7 +42,7 @@ that checked header. JSON remains diagnostic output, not a durable input format.
 Wire owns serialization, resource admission and exact input consumption; Memory
 owns the schema, numeric ceilings, checksum and recovery decisions.
 
-The pending 0.56.0 hard cut replaces both earlier CBOR layers and removes the
+The 0.56.0 hard cut replaces both earlier CBOR layers and removes the
 CBOR dependency and local syntax walker. Public raw-record decoder failures now
 carry `ic_wire::Error`; runtime serialization refusal is
 `RuntimeBootstrapError::StableCellLedgerEncode`. Callers inspecting the previous

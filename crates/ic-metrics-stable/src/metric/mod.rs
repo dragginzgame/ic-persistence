@@ -289,48 +289,15 @@ impl<const N: usize> StoredMetric for MeasurementHistogram<N> {
         let mut maximum_added = !change.maximum_changed;
         let mut minimum_total = 0_u128;
         let mut maximum_total = 0_u128;
-        // Project finite/overflow bucket metadata separately from admission.
-        // Intervals stay lazy: saturated or unchanged counts need no range math.
-        let bucket = |index: usize| {
-            if index < N {
-                (
-                    self.bucket_counts()[index],
-                    previous.bucket_counts()[index],
-                    self.bucket_overflowed()[index],
-                    previous.bucket_overflowed()[index],
-                )
-            } else {
-                (
-                    self.overflow(),
-                    previous.overflow(),
-                    self.overflow_count_overflowed(),
-                    previous.overflow_count_overflowed(),
-                )
-            }
-        };
-        let interval = |index: usize| {
-            let lower = if index == 0 {
-                0
-            } else {
-                self.upper_bounds()[index - 1].saturating_add(1)
-            };
-            let upper = if index < N {
-                self.upper_bounds()[index].min(change.maximum)
-            } else {
-                change.maximum
-            };
-            (lower, upper)
-        };
         for index in 0..=N {
-            let (now, prior, overflowed, prior_overflowed) = bucket(index);
-            if now < prior || (prior_overflowed && !overflowed) {
+            let Some(added) = histogram_bucket_additions(self, previous, index) else {
                 return false;
-            }
-            if !change.exact || now == prior {
+            };
+            if !change.exact || added == 0 {
                 continue;
             }
-            let (lower, upper) = interval(index);
-            let added = u128::from(now - prior);
+            let (lower, upper) = histogram_interval(self, index, change.maximum);
+            let added = u128::from(added);
             // Exact aggregate counts bound the sum of additions by u64::MAX,
             // so both range totals, including attainment, fit in u128.
             minimum_total += added * u128::from(lower);
@@ -342,4 +309,51 @@ impl<const N: usize> StoredMetric for MeasurementHistogram<N> {
         }
         !change.exact || (maximum_added && (minimum_total..=maximum_total).contains(&change.total))
     }
+}
+
+// Project the finite buckets and the overflow bucket under the same sticky-count rule.
+fn histogram_bucket_additions<const N: usize>(
+    current: &MeasurementHistogram<N>,
+    previous: &MeasurementHistogram<N>,
+    index: usize,
+) -> Option<u64> {
+    let (now, prior, overflowed, prior_overflowed) = if index < N {
+        (
+            current.bucket_counts()[index],
+            previous.bucket_counts()[index],
+            current.bucket_overflowed()[index],
+            previous.bucket_overflowed()[index],
+        )
+    } else {
+        (
+            current.overflow(),
+            previous.overflow(),
+            current.overflow_count_overflowed(),
+            previous.overflow_count_overflowed(),
+        )
+    };
+    if now < prior || (prior_overflowed && !overflowed) {
+        None
+    } else {
+        Some(now - prior)
+    }
+}
+
+// Called only for exact, changed counts; unchanged/saturated buckets stay cheap.
+fn histogram_interval<const N: usize>(
+    current: &MeasurementHistogram<N>,
+    index: usize,
+    maximum: u64,
+) -> (u64, u64) {
+    let lower = if index == 0 {
+        0
+    } else {
+        current.upper_bounds()[index - 1].saturating_add(1)
+    };
+    let upper = if index < N {
+        current.upper_bounds()[index].min(maximum)
+    } else {
+        maximum
+    };
+    (lower, upper)
 }

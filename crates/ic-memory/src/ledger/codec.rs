@@ -1,18 +1,37 @@
 //! The checked physical header owns generation; Wire owns bounded record bytes.
 
 use crate::{constants::MAX_ALLOCATIONS, encoding::LEDGER_LIMITS};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize, Serializer};
+
+#[derive(Deserialize, Serialize)]
+struct Record<'a> {
+    stable_key: &'a str,
+    slot: u8,
+}
+
+struct Records<'a>(&'a [super::AllocationRecord]);
+
+impl Serialize for Records<'_> {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        serializer.collect_seq(self.0.iter().map(|record| Record {
+            stable_key: record.stable_key().as_str(),
+            slot: record.slot().id(),
+        }))
+    }
+}
 
 pub(super) fn encode_ledger(
     ledger: &super::AllocationLedger,
 ) -> Result<Vec<u8>, super::LedgerIntegrityError> {
-    ic_wire::native::encode(ledger.records(), LEDGER_LIMITS).map_err(|error| match error {
-        ic_wire::Error::Limit => super::LedgerIntegrityError::LimitExceeded {
-            resource: "ledger encoding",
-            limit: crate::constants::MAX_LEDGER_BYTES,
+    ic_wire::native::encode(&Records(ledger.records()), LEDGER_LIMITS).map_err(
+        |error| match error {
+            ic_wire::Error::Limit => super::LedgerIntegrityError::LimitExceeded {
+                resource: "ledger encoding",
+                limit: crate::constants::MAX_LEDGER_BYTES,
+            },
+            other => panic!("allocation ledger serialization failed: {other}"),
         },
-        other => panic!("allocation ledger serialization failed: {other}"),
-    })
+    )
 }
 
 pub(super) fn decode_ledger(
@@ -20,11 +39,6 @@ pub(super) fn decode_ledger(
     generation: u64,
 ) -> Result<super::AllocationLedger, String> {
     // Borrow all untrusted text: no String allocation precedes key admission.
-    #[derive(Deserialize)]
-    struct Record<'a> {
-        stable_key: &'a str,
-        slot: u8,
-    }
     let records: ic_wire::List<Record<'_>, MAX_ALLOCATIONS> =
         ic_wire::native::decode(bytes, LEDGER_LIMITS).map_err(|error| error.to_string())?;
     let records = records

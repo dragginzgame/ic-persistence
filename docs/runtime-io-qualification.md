@@ -1,5 +1,66 @@
 # Runtime IO and maintainer improvements qualification
 
+## Complexity cleanup installed qualification — 2026-10-30
+
+The working tree based on 0.56.0 `956b2b9`, including merged Logging PR #140 and
+the ten requested structural cleanups, passes Linux x86-64 original-Wasm
+qualification. The incoming dependency lock was preserved byte-for-byte; this
+is working-tree evidence with those selected inputs, not a clean release receipt.
+
+The maintained Memory/Storage/Logging fixtures and independent runner built
+offline. Testkit CLI 0.70.0 admitted and managed PocketIC client/server 16.1.0.
+The run exited 0: twelve invalid-IO cases, failed post-persistence/geometry upgrade
+rollback, clean generation advancement, Storage Cell/map/region reopen and trap
+rollback, six manager faults, composed-handle custody and Logging watermarks all
+pass. No source fix followed this installed run.
+
+Retained source/tool/runner/server/Wasm hashes, original Wasm, build/server/runtime
+logs, incoming lock diff and the exact launcher are under
+`target/qualification/runtime/cleanup-ten.qDQNqi/`. All recorded source hashes
+matched after execution. Native focused results and structural-review evidence
+are under `/tmp/ic-persistence-ten.xUlwfE/`; the handoff binds their scope.
+Optimizer variants, macOS and the full release suite were not rerun. Valid-IO
+instruction/cycle rows do not establish codec or refactoring speed improvements.
+
+## Wire ledger installed qualification — 2026-10-30
+
+Linux x86-64 original-Wasm qualification passes for the 0.56.0 Wire source at
+`956b2b92728f82f75dd51d4d10ed52f325529e91`. The incoming dirty root lock already
+selects Build, Host Artifacts/FS/Process and Testkit Native 0.70.2 instead of the
+release commit's 0.70.0; this selection was preserved and hashed before/after.
+This qualifies those working-tree inputs, not the exact clean release graph.
+The independent runner catalog/lock remain unchanged. Rust 1.99.1 builds the
+supplied Memory, Storage and Logging fixtures offline in `wasm-size`, and builds
+the native runner offline. The admitted Testkit CLI is 0.70.0, with PocketIC
+client/server 16.1.0; Platform is 0.8.2 in the library graph and 0.8.1 in the host
+runner. Server selection passed `make runtime-server-check` before the run.
+
+The maintained runner passes:
+
+- Twelve invalid-IO traps preserve neighboring markers and prior mutations.
+- Post-persistence and geometry-conflict upgrade failures roll back; a clean
+  retry advances the generation exactly once with payload/pages preserved.
+- Storage Cell/map/region admission, retained reopen and trapped update/upgrade
+  rollback pass without replacing rejected history.
+- Six manager open/growth faults trap and roll back metadata/payload writes.
+  Composed handles retain custody through runtime drop; final release and upgrade
+  reopen preserve payloads and pages.
+- Logging query non-persistence, update/upgrade rollback, canonical reopen and
+  empty-history watermarks pass.
+
+The explicitly managed Testkit run exited 0. Exact source, tool, server, runner
+and Wasm hashes, the launch script, incoming-lock diff and build/server/runtime
+logs remain under `target/qualification/runtime/wire-original.6qzY2Z/`.
+Its launch script reproduces the single original-Wasm run through the reviewed
+CLI lifecycle; it does not run Binaryen. All selected manifest/lock/pin input
+hashes remained unchanged during execution. No fixture/source fix was needed.
+
+This is current Wire-to-Wire installed recovery evidence. It provides no CBOR
+migration reader or compatibility claim. Only disposable local canisters were
+installed; no deployed data was reset. O3/Os/Oz, native macOS and the full release
+suite were not rerun. The nine valid-IO instruction/cycle rows measure delegated
+IO, not CBOR-versus-Wire codec performance.
+
 ## IC Platform 0.6.5 boundary qualification — 2026-10-21
 
 The pending 0.50.9 working tree based on released 0.50.8 `5910f64` consumes
@@ -147,7 +208,7 @@ key uniqueness and committed chain/recovery validation remain in place.
 The [durable ledger decoder](../crates/ic-memory/src/ledger/record.rs) uses the bounded
 visitor to refuse more than 255 records before decoding an extra entry. Resolved
 declaration snapshots are internal and have no serialized input contract.
-[`PendingBootstrapCommit`](../crates/ic-memory/src/runtime/bootstrap.rs)
+`PendingBootstrapCommit` (then in `src/runtime/bootstrap.rs`)
 now warns when discarded even after consuming its enclosing `Result`. Callers
 with warning denial must complete persistence/confirmation or explicitly discard
 the value in an intentional model/test path. It does not add automatic commit,

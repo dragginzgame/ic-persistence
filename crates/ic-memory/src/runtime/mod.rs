@@ -67,11 +67,13 @@ use std::rc::Rc;
 
 enum RuntimeLifecycle {
     Unbootstrapped,
-    Bootstrapped {
-        allocations: Vec<crate::AllocationDeclaration>,
-        generation: u64,
-        binding: RuntimeBootstrapBinding,
-    },
+    Bootstrapped(CommittedRuntime),
+}
+
+struct CommittedRuntime {
+    allocations: Vec<crate::AllocationDeclaration>,
+    generation: u64,
+    binding: RuntimeBootstrapBinding,
 }
 
 struct RuntimeBootstrapBinding {
@@ -222,7 +224,7 @@ impl<M: Memory> MemoryRuntime<M> {
     /// Return whether this runtime has published committed allocation authority.
     #[must_use]
     pub const fn is_bootstrapped(&self) -> bool {
-        matches!(self.lifecycle, RuntimeLifecycle::Bootstrapped { .. })
+        matches!(self.lifecycle, RuntimeLifecycle::Bootstrapped(_))
     }
 
     /// Bootstrap this backing memory from one immutable declaration snapshot.
@@ -252,9 +254,7 @@ impl<M: Memory> MemoryRuntime<M> {
                 policy,
                 policy.runtime_bootstrap_identity(),
             ),
-            RuntimeLifecycle::Bootstrapped { .. } => {
-                self.verify_bootstrap(declarations, pool, policy)
-            }
+            RuntimeLifecycle::Bootstrapped(_) => self.verify_bootstrap(declarations, pool, policy),
         }
     }
 
@@ -272,16 +272,25 @@ impl<M: Memory> MemoryRuntime<M> {
         pool: &crate::MemoryAllocationPool,
         policy: &P,
     ) -> Result<u64, RuntimeBootstrapError<P::Error>> {
-        let RuntimeLifecycle::Bootstrapped {
-            binding,
-            generation,
-            ..
-        } = &self.lifecycle
-        else {
-            return Err(RuntimeBootstrapError::NotBootstrapped);
-        };
-        binding.validate(declarations, pool, &policy.runtime_bootstrap_identity())?;
-        Ok(*generation)
+        let committed = self
+            .committed()
+            .map_err(|_| RuntimeBootstrapError::NotBootstrapped)?;
+        committed
+            .binding
+            .validate(declarations, pool, &policy.runtime_bootstrap_identity())?;
+        Ok(committed.generation)
+    }
+
+    const fn committed_state(&self) -> Option<&CommittedRuntime> {
+        match &self.lifecycle {
+            RuntimeLifecycle::Unbootstrapped => None,
+            RuntimeLifecycle::Bootstrapped(committed) => Some(committed),
+        }
+    }
+
+    fn committed(&self) -> Result<&CommittedRuntime, RuntimeOpenError> {
+        self.committed_state()
+            .ok_or(RuntimeOpenError::NotBootstrapped)
     }
 
     fn validate_pool_custody(
@@ -333,7 +342,7 @@ impl<M: Memory> MemoryRuntime<M> {
         allocations.retain(|declaration| {
             !crate::is_ic_memory_stable_key(declaration.stable_key().as_str())
         });
-        self.lifecycle = RuntimeLifecycle::Bootstrapped {
+        self.lifecycle = RuntimeLifecycle::Bootstrapped(CommittedRuntime {
             allocations,
             generation,
             binding: RuntimeBootstrapBinding {
@@ -341,7 +350,7 @@ impl<M: Memory> MemoryRuntime<M> {
                 policy_identity,
                 pool: pool.clone(),
             },
-        };
+        });
         Ok(generation)
     }
 
@@ -350,26 +359,23 @@ impl<M: Memory> MemoryRuntime<M> {
     pub fn committed_allocations(
         &self,
     ) -> Result<&[crate::AllocationDeclaration], RuntimeOpenError> {
-        match &self.lifecycle {
-            RuntimeLifecycle::Unbootstrapped => Err(RuntimeOpenError::NotBootstrapped),
-            RuntimeLifecycle::Bootstrapped { allocations, .. } => Ok(allocations),
-        }
+        Ok(&self.committed()?.allocations)
     }
 
     /// Return the in-memory persisted generation without decoding the ledger.
     pub const fn committed_generation(&self) -> Result<u64, RuntimeOpenError> {
-        match &self.lifecycle {
-            RuntimeLifecycle::Unbootstrapped => Err(RuntimeOpenError::NotBootstrapped),
-            RuntimeLifecycle::Bootstrapped { generation, .. } => Ok(*generation),
+        match self.committed_state() {
+            Some(committed) => Ok(committed.generation),
+            None => Err(RuntimeOpenError::NotBootstrapped),
         }
     }
 
     /// Borrow the host pool bound by successful bootstrap for host projections.
     /// This is current policy, never evidence of historical ownership or free IDs.
     pub const fn allocation_pool(&self) -> Result<&crate::MemoryAllocationPool, RuntimeOpenError> {
-        match &self.lifecycle {
-            RuntimeLifecycle::Unbootstrapped => Err(RuntimeOpenError::NotBootstrapped),
-            RuntimeLifecycle::Bootstrapped { binding, .. } => Ok(&binding.pool),
+        match self.committed_state() {
+            Some(committed) => Ok(&committed.binding.pool),
+            None => Err(RuntimeOpenError::NotBootstrapped),
         }
     }
 

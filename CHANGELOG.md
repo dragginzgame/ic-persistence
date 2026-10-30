@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.56.1]
+
+### 🧹 Cleanup
+
+- Consume decoded Logging checkpoints during save comparison, avoiding another
+  copy of retained text while preserving canonical restoration, continuity
+  admission and unchanged-save write suppression.
+  [Details](docs/changelog/0.56.md#0561).
+- Simplify release preparation and artifact qualification, clarify runtime and
+  diagnostic state, and consolidate schema/continuity logic without changing
+  persisted bytes, public behavior or recovery safeguards.
+
 ## [0.56.0] - 2026-10-29
 
 ### 💥 Breaking

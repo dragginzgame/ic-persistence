@@ -456,3 +456,43 @@ fn pruning_replaces_one_checkpoint_and_reuses_storage_after_warmup() {
             .is_empty()
     );
 }
+
+#[test]
+fn rolling_retention_preserves_overlap_and_refuses_rewrites_without_writes() {
+    let memory = CountedMemory::default();
+    let writes = memory.writes.clone();
+    let mut store = LoggingStore::new(StableBTreeMap::new(admitted(memory)));
+    let mut log = Log::new(limits());
+    for time in 0..4 {
+        log.append(input(time, "original")).unwrap();
+    }
+    store.save(&key(), identity(), &log).unwrap();
+    for time in 4..6 {
+        log.append(input(time, "continued")).unwrap();
+    }
+    store.save(&key(), identity(), &log).unwrap();
+    let before = store.map.get(&key().0);
+    let mut rewritten = log.snapshot();
+    rewritten.entries[0].message = "rewritten overlap".into();
+    let rewritten = Log::restore(rewritten).unwrap();
+    writes.set(0);
+    assert_eq!(
+        store.save(&key(), identity(), &rewritten),
+        Err(StoreError::StateRegression)
+    );
+    assert_eq!(writes.get(), 0);
+    assert_eq!(store.map.get(&key().0), before);
+    // Retention can subsequently remove the entire previously retained window.
+    for time in 6..10 {
+        log.append(input(time, "new window")).unwrap();
+    }
+    store.save(&key(), identity(), &log).unwrap();
+    assert_eq!(
+        store
+            .load(&key(), identity(), limits())
+            .unwrap()
+            .unwrap()
+            .snapshot(),
+        log.snapshot()
+    );
+}

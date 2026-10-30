@@ -256,12 +256,13 @@ where
         declarations,
         pool,
         policy,
-        observation
-            .recovery
-            .as_ref()
-            .map(|(recovered, _)| recovered),
+        observation.recovery.recovered(),
     );
-    let (stable_cell, commit_recovery, ledger) = observation.into_parts();
+    let LedgerReportFields {
+        stable_cell,
+        commit_recovery,
+        ledger,
+    } = observation.into_fields();
 
     MemoryRuntimeDoctorReport {
         bootstrapped: runtime.is_bootstrapped(),
@@ -281,42 +282,65 @@ where
 // taken before policy callbacks. It never carries open or allocation authority.
 struct LedgerObservation {
     stable_cell: DiagnosticStableCell,
-    recovery: Option<(
-        Result<RecoveredLedger, LedgerCommitError>,
-        CommitSnapshotDiagnostic,
-    )>,
+    recovery: LedgerRecoveryObservation,
     observed_pages: [u64; crate::constants::MAX_ALLOCATIONS],
 }
 
+enum LedgerRecoveryObservation {
+    Unreadable,
+    Readable {
+        recovered: Result<RecoveredLedger, LedgerCommitError>,
+        diagnostic: CommitSnapshotDiagnostic,
+    },
+}
+
+impl LedgerRecoveryObservation {
+    const fn recovered(&self) -> Option<&Result<RecoveredLedger, LedgerCommitError>> {
+        match self {
+            Self::Unreadable => None,
+            Self::Readable { recovered, .. } => Some(recovered),
+        }
+    }
+}
+
+struct LedgerReportFields {
+    stable_cell: DiagnosticStableCell,
+    commit_recovery: Option<CommitSnapshotDiagnostic>,
+    ledger: Option<DiagnosticExport>,
+}
+
 impl LedgerObservation {
-    fn into_parts(
-        self,
-    ) -> (
-        DiagnosticStableCell,
-        Option<CommitSnapshotDiagnostic>,
-        Option<DiagnosticExport>,
-    ) {
-        let commit_recovery = self.recovery.as_ref().map(|(_, diagnostic)| *diagnostic);
-        let ledger = self.recovery.and_then(|(recovered, _)| {
-            recovered.ok().map(|recovered| {
-                DiagnosticExport::from_owned_ledger(recovered.into_ledger()).with_memory_sizes(
-                    |record| self.observed_pages[usize::from(record.slot().id())],
-                )
-            })
-        });
-        (self.stable_cell, commit_recovery, ledger)
+    fn into_fields(self) -> LedgerReportFields {
+        let (commit_recovery, ledger) = match self.recovery {
+            LedgerRecoveryObservation::Unreadable => (None, None),
+            LedgerRecoveryObservation::Readable {
+                recovered,
+                diagnostic,
+            } => {
+                let ledger = recovered.ok().map(|recovered| {
+                    DiagnosticExport::from_owned_ledger(recovered.into_ledger()).with_memory_sizes(
+                        |record| self.observed_pages[usize::from(record.slot().id())],
+                    )
+                });
+                (Some(diagnostic), ledger)
+            }
+        };
+        LedgerReportFields {
+            stable_cell: self.stable_cell,
+            commit_recovery,
+            ledger,
+        }
     }
 }
 
 impl<M: Memory> MemoryRuntime<M> {
     fn established_bootstrap_binding(&self) -> Option<DiagnosticRuntimeBinding> {
-        match &self.lifecycle {
-            RuntimeLifecycle::Unbootstrapped => None,
-            RuntimeLifecycle::Bootstrapped { binding, .. } => Some(DiagnosticRuntimeBinding::new(
-                binding.policy_identity,
-                binding.pool.clone(),
-            )),
-        }
+        self.committed().ok().map(|committed| {
+            DiagnosticRuntimeBinding::new(
+                committed.binding.policy_identity,
+                committed.binding.pool.clone(),
+            )
+        })
     }
 
     fn ledger_observation(&self) -> LedgerObservation {
@@ -334,9 +358,18 @@ impl<M: Memory> MemoryRuntime<M> {
             },
         };
         // Release decoded physical bytes before measuring slots or invoking policy.
-        let recovery = record.ok().map(|record| record.recover_with_diagnostic());
+        let recovery = match record {
+            Ok(record) => {
+                let (recovered, diagnostic) = record.recover_with_diagnostic();
+                LedgerRecoveryObservation::Readable {
+                    recovered,
+                    diagnostic,
+                }
+            }
+            Err(_) => LedgerRecoveryObservation::Unreadable,
+        };
         let mut observed_pages = [0; crate::constants::MAX_ALLOCATIONS];
-        if let Some((Ok(recovered), _)) = &recovery {
+        if let Some(Ok(recovered)) = recovery.recovered() {
             for record in recovered.ledger().records() {
                 let id = record.slot().id();
                 observed_pages[usize::from(id)] = self.memory_size_pages(id);
@@ -386,13 +419,17 @@ fn diagnostic_bootstrap_binding(
     pool: &crate::MemoryAllocationPool,
     lifecycle: &RuntimeLifecycle,
 ) -> DiagnosticCheck {
-    let RuntimeLifecycle::Bootstrapped { binding, .. } = lifecycle else {
+    let RuntimeLifecycle::Bootstrapped(committed) = lifecycle else {
         return DiagnosticCheck::not_run(
             DiagnosticCode::RuntimeBinding,
             "runtime has not completed bootstrap",
         );
     };
-    match binding.validate::<std::convert::Infallible>(declarations, pool, tested_policy_identity) {
+    match committed.binding.validate::<std::convert::Infallible>(
+        declarations,
+        pool,
+        tested_policy_identity,
+    ) {
         Ok(()) => DiagnosticCheck::passed(),
         Err(_) => DiagnosticCheck::failed(
             DiagnosticCode::RuntimeBinding,

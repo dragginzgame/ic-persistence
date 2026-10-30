@@ -1,6 +1,7 @@
 //! Archives release contracts.
 
 use super::*;
+use crate::repo_tool::wasm::{PROBES, check_wasm_artifacts};
 
 #[test]
 fn release_version_requires_the_named_package_to_inherit_the_workspace_identity() {
@@ -224,4 +225,39 @@ fn storage_archive_and_manifest_are_bound_to_the_coordinated_release() {
         .unwrap();
         assert!(fixture.repo.publish(true).is_err());
     }
+}
+
+#[test]
+fn coordinated_archive_receipt_uses_one_admitted_target_observation() {
+    let fixture = Fixture::new();
+    fixture.release();
+    let previous = fixture
+        .repo
+        .verify_evidence(&fixture.selection, "release", Final, Working)
+        .unwrap();
+    let expected = serde_json::to_value(&previous).unwrap();
+    fixture.repo.exec.state.borrow_mut().calls.clear();
+    let recorded = PackageEvidence::record(
+        &fixture.repo,
+        previous.validation,
+        previous.package_head,
+        previous.lock_sha256,
+        previous.commands,
+    )
+    .unwrap();
+    assert_eq!(serde_json::to_value(recorded).unwrap(), expected);
+    assert_eq!(
+        fixture
+            .repo
+            .exec
+            .state
+            .borrow()
+            .calls
+            .iter()
+            .filter(|call| call
+                .first()
+                .is_some_and(|program| program == "cargo-metadata"))
+            .count(),
+        1
+    );
 }

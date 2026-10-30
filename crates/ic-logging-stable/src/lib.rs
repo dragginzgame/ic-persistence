@@ -184,7 +184,7 @@ impl<M: Memory> LoggingStore<M> {
         validate_limits(log.limits())?;
         let current = log.snapshot();
         if let Some(bytes) = self.map.get(&key.0) {
-            let previous = codec::decode(&bytes, identity, current.limits)?.snapshot();
+            let previous = codec::decode(&bytes, identity, current.limits)?.into_snapshot();
             if previous == current {
                 return Ok(());
             }
@@ -241,20 +241,28 @@ fn validate_checkpoint(previous: &LogSnapshot, current: &LogSnapshot) -> Result<
         (None, _) => {}
         _ => return Err(StoreError::StateRegression),
     }
-    for entry in &current.entries {
-        if previous
-            .next_sequence
-            .is_none_or(|next| entry.sequence < next)
-        {
-            let previous_entry = previous
-                .entries
-                .first()
-                .and_then(|first| entry.sequence.checked_sub(first.sequence))
-                .and_then(|index| usize::try_from(index).ok())
-                .and_then(|index| previous.entries.get(index));
-            if previous_entry != Some(entry) {
-                return Err(StoreError::StateRegression);
-            }
+    let issued = current
+        .entries
+        .iter()
+        .take_while(|entry| {
+            previous
+                .next_sequence
+                .is_none_or(|next| entry.sequence < next)
+        })
+        .count();
+    if issued != 0 {
+        let start = previous
+            .entries
+            .first()
+            .and_then(|first| current.entries[0].sequence.checked_sub(first.sequence))
+            .and_then(|index| usize::try_from(index).ok())
+            .ok_or(StoreError::StateRegression)?;
+        let retained = previous
+            .entries
+            .get(start..)
+            .and_then(|tail| tail.get(..issued));
+        if retained != Some(&current.entries[..issued]) {
+            return Err(StoreError::StateRegression);
         }
     }
     Ok(())

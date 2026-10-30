@@ -1,4 +1,4 @@
-use super::{MemoryRuntime, RuntimeLifecycle, RuntimeOpenError};
+use super::{MemoryRuntime, RuntimeOpenError};
 use crate::{SealedDeclarationSnapshot, StableKey};
 use ic_platform::stable_structures::Memory;
 
@@ -44,19 +44,17 @@ impl<M: Memory> MemoryRuntime<M> {
         requirements: &SealedDeclarationSnapshot,
         authority: &str,
     ) -> Result<(), RuntimeAdoptionError> {
-        let RuntimeLifecycle::Bootstrapped {
-            binding,
-            allocations,
-            ..
-        } = &self.lifecycle
-        else {
-            return Err(RuntimeOpenError::NotBootstrapped.into());
-        };
+        let committed = self.committed()?;
         let mut found = false;
         for request in requirements.requests() {
             if request.authority() == authority {
                 found = true;
-                verify_requirement(allocations, &binding.pool, authority, request.stable_key())?;
+                verify_requirement(
+                    &committed.allocations,
+                    &committed.binding.pool,
+                    authority,
+                    request.stable_key(),
+                )?;
             }
         }
         if !found {

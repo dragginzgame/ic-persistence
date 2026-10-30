@@ -301,7 +301,7 @@ This work implements the current local consumer scope of
 [#10](https://github.com/dragginzgame/ic-memory/issues/10) and adopts the correction
 from [Shared Tooling #5](https://github.com/dragginzgame/shared-tooling/issues/5).
 Neither issue was modified. See [RELEASING.md](../RELEASING.md) for recovery and
-the [physical-slot review](current-ledger-qualification.md#post-release-physical-slot-audit)
+the [physical-slot review](history/ledger-qualification.md#post-release-physical-slot-audit)
 for the separate, unimplemented runtime simplification candidate.
 
 ## Source and scope

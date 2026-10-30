@@ -1,0 +1,184 @@
+//! Storage contracts.
+
+use super::*;
+
+#[test]
+fn store_error_retains_the_arithmetic_source() {
+    use std::error::Error as _;
+    let state = ic_metrics::MeasurementStateError::InvalidBounds;
+    let error = StoreError::from(state);
+    assert_eq!(error, StoreError::InvalidState(state));
+    assert_eq!(
+        error
+            .source()
+            .unwrap()
+            .downcast_ref::<ic_metrics::MeasurementStateError>(),
+        Some(&state)
+    );
+    assert!(StoreError::StateRegression.source().is_none());
+}
+
+#[test]
+fn store_retains_allocation_lease_through_map_transfer() {
+    let runtime = fixture_runtime(
+        VectorMemory::default(),
+        "metrics_test",
+        "metrics.",
+        &["metrics.store.v1"],
+        MemoryManagerConfig::default(),
+    )
+    .unwrap();
+    let mut store = MetricsStore::new(StableBTreeMap::new(
+        runtime.open_memory("metrics.store.v1").unwrap(),
+    ));
+    store
+        .save_counter(&key("app"), &identity(), &Counter::ZERO)
+        .unwrap();
+    assert!(matches!(
+        runtime.open_memory("metrics.store.v1"),
+        Err(RuntimeOpenError::AlreadyOpen { .. })
+    ));
+    let map: crate::MetricsMap<_> = store.into_map();
+    assert!(matches!(
+        runtime.open_memory("metrics.store.v1"),
+        Err(RuntimeOpenError::AlreadyOpen { .. })
+    ));
+    drop(map);
+    let reopened = MetricsStore::new(StableBTreeMap::load(
+        runtime.open_memory("metrics.store.v1").unwrap(),
+    ));
+    assert!(matches!(
+        runtime.open_memory("metrics.store.v1"),
+        Err(RuntimeOpenError::AlreadyOpen { .. })
+    ));
+    assert_eq!(
+        reopened.load_counter(&key("app"), &identity()),
+        Ok(Some(Counter::ZERO))
+    );
+}
+
+#[test]
+fn one_map_reopens_mixed_types_and_namespaces_with_wide_totals() {
+    let memory = VectorMemory::default();
+    let mut store = MetricsStore::new(StableBTreeMap::new(admitted_memory(memory.clone())));
+    let mut aggregate = Aggregate::EMPTY;
+    let mut summary = Summary::EMPTY;
+    let mut histogram = Histogram::new([0, 10]).unwrap();
+    for value in [0, u64::MAX, u64::MAX, 9] {
+        aggregate.record(value);
+        summary.record(value);
+        histogram.record(value);
+    }
+    store
+        .save_aggregate(&key("icydb"), &identity(), &aggregate)
+        .unwrap();
+    store
+        .save_summary(&key("canic"), &identity(), &summary)
+        .unwrap();
+    store
+        .save_histogram(&key("timers"), &identity(), &histogram)
+        .unwrap();
+    let bytes_identity = MetricIdentity::new("bytes", 0).unwrap();
+    let counter = Counter::from_parts(u128::from(u64::MAX) + 42, false).unwrap();
+    store
+        .save_counter(&key("backup"), &bytes_identity, &counter)
+        .unwrap();
+    drop(store);
+    let reopened = MetricsStore::new(StableBTreeMap::load(admitted_memory(memory)));
+    assert_eq!(
+        reopened.load_aggregate(&key("icydb"), &identity()),
+        Ok(Some(aggregate))
+    );
+    assert_eq!(
+        reopened.load_summary(&key("canic"), &identity()),
+        Ok(Some(summary))
+    );
+    assert_eq!(
+        reopened.load_histogram(&key("timers"), &identity(), &[0, 10]),
+        Ok(Some(histogram))
+    );
+    assert_eq!(
+        reopened.load_counter(&key("backup"), &bytes_identity),
+        Ok(Some(counter))
+    );
+    assert_eq!(
+        reopened.load_aggregate(&key("missing"), &identity()),
+        Ok(None)
+    );
+    assert!(aggregate.total() > u128::from(u64::MAX));
+}
+
+#[test]
+fn histogram_equality_shortcut_preserves_full_state_comparison() {
+    use crate::metric::StoredMetric;
+    fn check<const N: usize>() {
+        let bounds = std::array::from_fn::<_, N, _>(|i| i as u64);
+        let empty = Histogram::new(bounds).unwrap();
+        assert!(empty.same_state(&empty));
+        let mut previous = empty;
+        previous.record(0);
+        assert!(previous.same_state(&previous));
+        for sample in [0, u64::MAX] {
+            let mut current = previous;
+            current.record(sample);
+            assert!(!current.same_state(&previous));
+        }
+        let other_bounds =
+            Histogram::new(std::array::from_fn::<_, N, _>(|i| 1 + i as u64)).unwrap();
+        assert_eq!(empty.same_state(&other_bounds), N == 0);
+        // A clipped aggregate can remain unchanged while distribution changes.
+        let aggregate =
+            Aggregate::from_parts(u64::MAX, u128::MAX, Some(u64::MAX), true, true).unwrap();
+        let clipped =
+            Histogram::from_parts(bounds, [0; N], u64::MAX, [false; N], true, aggregate).unwrap();
+        let mut continued = clipped;
+        continued.record(0);
+        assert_eq!(continued.aggregate(), clipped.aggregate());
+        assert_eq!(continued.same_state(&clipped), N == 0);
+        if N != 0 {
+            let mut counts = [0; N];
+            counts[0] = u64::MAX;
+            let mut flags = [false; N];
+            let exact_bucket =
+                Histogram::from_parts(bounds, counts, u64::MAX, flags, true, aggregate).unwrap();
+            flags[0] = true;
+            let overflowed_bucket =
+                Histogram::from_parts(bounds, counts, u64::MAX, flags, true, aggregate).unwrap();
+            assert!(!exact_bucket.same_state(&overflowed_bucket));
+        }
+    }
+    check::<0>();
+    check::<1>();
+    check::<4>();
+    check::<8>();
+    check::<256>();
+}
+
+#[test]
+fn public_histogram_load_admits_expected_bounds_before_reading_a_row() {
+    let memory = WriteCountingMemory::default();
+    let writes = memory.writes.clone();
+    let mut store = MetricsStore::new(StableBTreeMap::new(admitted_memory(memory)));
+    let key = key("app");
+    let identity = identity();
+    for retained in [None, Some(vec![0])] {
+        if let Some(bytes) = retained.as_ref() {
+            store.map.insert(key.0.clone(), bytes.clone());
+        }
+        writes.set(0);
+        for bounds in [[10, 10], [10, 0]] {
+            assert_eq!(
+                store.load_histogram(&key, &identity, &bounds),
+                Err(StoreError::InvalidState(
+                    ic_metrics::MeasurementStateError::InvalidBounds
+                ))
+            );
+        }
+        assert_eq!(
+            store.load_histogram(&key, &identity, &[0; 257]),
+            Err(StoreError::TooManyBounds)
+        );
+        assert_eq!(store.map.get(&key.0), retained);
+        assert_eq!(writes.get(), 0);
+    }
+}
