@@ -16,6 +16,8 @@ thiserror.workspace = true
 
 [dev-dependencies]
 ic-memory = { workspace = true, features = ["test-support"] }
+ic-wire.workspace = true
+serde.workspace = true
 
 [[example]]
 name = "wasm-storage-qualification"

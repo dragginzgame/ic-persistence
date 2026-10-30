@@ -188,7 +188,7 @@ impl<M: Memory> MemoryRuntime<M> {
     pub fn memory_allocations(&self) -> Result<MemoryAllocations, RuntimeDiagnosticError> {
         let (measured, summary) = self.measure_allocations()?;
         let mut memories = Vec::with_capacity(layout::IDS);
-        for id in 0..255_u8 {
+        for id in 0..crate::MEMORY_MANAGER_INVALID_ID {
             let index = usize::from(id);
             let virtual_extent = DiagnosticMemorySize::from_wasm_pages(measured.pages[index]);
             memories.push(MemoryAllocation {
@@ -242,7 +242,7 @@ impl<M: Memory> MemoryRuntime<M> {
         let mut ledger_binding = MemoryBindingSummary::default();
         let mut unknown_binding = MemoryBindingSummary::default();
         let mut total_pages = 0;
-        for id in 0..255_u8 {
+        for id in 0..crate::MEMORY_MANAGER_INVALID_ID {
             let index = usize::from(id);
             if self.memory_size_pages(id) != measured.pages[index] {
                 return Err(super::RuntimeConstructionError::Layout(

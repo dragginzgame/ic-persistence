@@ -26,16 +26,13 @@ pub fn stage_generation<P: RuntimeBootstrapPolicy>(
     // Keep successor failures after all policy/history callbacks, as before.
     // Staged mutation remains local and is discarded on every failure.
     next.validate_bounds().map_err(AllocationStageError::from)?;
-    next.current_generation = checked_next_generation(next.current_generation)
-        .map_err(|generation| AllocationStageError::GenerationOverflow { generation })?;
+    next.current_generation =
+        next.current_generation
+            .checked_add(1)
+            .ok_or(AllocationStageError::GenerationOverflow {
+                generation: next.current_generation,
+            })?;
     Ok((next, snapshot.into_declarations()))
-}
-
-pub const fn checked_next_generation(current_generation: u64) -> Result<u64, u64> {
-    match current_generation.checked_add(1) {
-        Some(next_generation) => Ok(next_generation),
-        None => Err(current_generation),
-    }
 }
 
 #[cfg(test)]

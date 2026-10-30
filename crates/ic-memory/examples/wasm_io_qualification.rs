@@ -1,5 +1,9 @@
 //! Installed IO/lifecycle qualification fixture, not an application integration API.
-//! Raw replies avoid adding a CDK or Candid dependency to the library graph.
+//! Shared bounded Wire messages avoid local packet encoding.
+
+#[cfg(target_arch = "wasm32")]
+#[path = "support/io_protocol.rs"]
+mod protocol;
 
 #[cfg(target_arch = "wasm32")]
 #[path = "support/host.rs"]
@@ -12,8 +16,10 @@ mod host;
 )]
 mod canister {
     use super::host::RUNTIME;
-    use super::pool;
+    use super::{pool, protocol};
     use ic_memory::{GenericAllocationPolicy, Memory, MemoryManagerConfig};
+    use ic_wire::native;
+    use serde::{Serialize, de::DeserializeOwned};
 
     fn with_runtime<T>(operation: impl FnOnce(&super::host::Runtime) -> T) -> T {
         RUNTIME.with(|slot| operation(slot.borrow().as_ref().expect("initialized fixture runtime")))
@@ -52,18 +58,21 @@ mod canister {
         fn performance_counter(counter_type: u32) -> u64;
     }
 
-    fn arguments<const N: usize>() -> [u8; N] {
-        let mut bytes = [0; N];
-        // SAFETY: The fixed-size destination is writable; assert before copying.
-        unsafe {
-            assert_eq!(msg_arg_data_size(), N);
-            msg_arg_data_copy(bytes.as_mut_ptr() as usize, 0, N);
-        }
-        bytes
+    fn arguments<T: DeserializeOwned>(id: u64) -> T {
+        // SAFETY: Admit the frame length before allocating/copying argument bytes.
+        let bytes = unsafe {
+            let size = msg_arg_data_size();
+            assert!(size <= protocol::REQUEST.bytes);
+            let mut bytes = vec![0; size];
+            msg_arg_data_copy(bytes.as_mut_ptr() as usize, 0, size);
+            bytes
+        };
+        native::decode_request(id, &bytes, protocol::REQUEST).unwrap()
     }
 
-    fn reply(bytes: &[u8]) {
-        // SAFETY: The source remains valid until the system copies it.
+    fn reply(id: u64, value: &impl Serialize) {
+        let bytes = native::encode_response(id, value, protocol::RESPONSE).unwrap();
+        // SAFETY: The encoded source is live through the synchronous system copy.
         unsafe {
             msg_reply_data_append(bytes.as_ptr() as usize, bytes.len());
             msg_reply();
@@ -86,6 +95,7 @@ mod canister {
 
     #[unsafe(export_name = "canister_init")]
     extern "C" fn init() {
+        arguments::<()>(protocol::INIT_ID);
         bootstrap(0);
         let neighbor = open_memory(NEIGHBOR).unwrap();
         neighbor.grow(8).unwrap();
@@ -97,11 +107,12 @@ mod canister {
 
     #[unsafe(export_name = "canister_post_upgrade")]
     extern "C" fn post_upgrade() {
-        bootstrap(arguments::<1>()[0]);
+        bootstrap(arguments(protocol::UPGRADE_ID));
     }
 
     #[unsafe(export_name = "canister_update composition")]
     extern "C" fn composition() {
+        arguments::<()>(protocol::COMPOSITION_ID);
         // Two independent components use one host runtime. Reconstructing the
         // default backing is refused even after that owner drops, until both
         // retained component handles have released custody.
@@ -135,12 +146,12 @@ mod canister {
             generation + 1
         );
         assert_eq!(ic_memory::DefaultMemoryImpl::default().size(), physical);
-        reply(&[]);
+        reply(protocol::COMPOSITION_ID, &());
     }
 
     #[unsafe(export_name = "canister_update metadata_fault")]
     extern "C" fn metadata_fault() {
-        let mode = arguments::<1>()[0];
+        let mode: u8 = arguments(protocol::METADATA_FAULT_ID);
         assert!(mode < 6);
         let rows = open_memory(ROWS).unwrap();
         rows.write(0, &[0xA5]);
@@ -181,14 +192,13 @@ mod canister {
         // The checkpoint has poisoned the owner; even an old handle refuses IO.
         let mut byte = [0];
         rows.read(0, &mut byte);
-        reply(&byte);
+        reply(protocol::METADATA_FAULT_ID, &byte);
     }
 
     #[unsafe(export_name = "canister_query snapshot")]
     extern "C" fn snapshot() {
-        let mut bytes = with_runtime(|runtime| runtime.committed_generation().unwrap())
-            .to_le_bytes()
-            .to_vec();
+        arguments::<()>(protocol::SNAPSHOT_ID);
+        let generation = with_runtime(|runtime| runtime.committed_generation().unwrap());
         // Check assigned identities independently of payload retention.
         assert_eq!(memory_id(NEIGHBOR).unwrap(), 10);
         assert_eq!(memory_id(ROWS).unwrap(), 11);
@@ -201,20 +211,27 @@ mod canister {
         let mut markers = [0; 2];
         rows.read(0, &mut markers[..1]);
         neighbor.read(8 * PAGE - 1, &mut markers[1..]);
-        bytes.extend_from_slice(&markers);
         let summary = with_runtime(|runtime| runtime.memory_allocation_summary().unwrap());
-        bytes.extend_from_slice(&summary.physical_extent.wasm_pages.to_le_bytes());
-        bytes.extend_from_slice(&rows.size().to_le_bytes());
-        reply(&bytes);
+        reply(
+            protocol::SNAPSHOT_ID,
+            &protocol::Snapshot {
+                generation,
+                markers,
+                physical_pages: summary.physical_extent.wasm_pages,
+                rows_pages: rows.size(),
+            },
+        );
     }
 
     #[unsafe(export_name = "canister_update io")]
     extern "C" fn io() {
-        let args = arguments::<10>();
-        let operation = args[0];
-        let count = usize::from(args[1]);
+        let protocol::IoRequest {
+            operation,
+            count,
+            offset,
+        } = arguments(protocol::IO_ID);
+        let count = usize::from(count);
         assert!(count <= 2);
-        let offset = u64::from_le_bytes(args[2..].try_into().unwrap());
         let rows = open_memory(ROWS).unwrap();
         // Warm the cache and dirty valid state before the candidate failure.
         // A trap must roll this mutation back as well as reject the invalid IO.
@@ -233,9 +250,13 @@ mod canister {
         }
         // SAFETY: Same counter/execution as above.
         let instructions = unsafe { performance_counter(0) } - start;
-        let mut bytes = dst.to_vec();
-        bytes.extend_from_slice(&instructions.to_le_bytes());
-        reply(&bytes);
+        reply(
+            protocol::IO_ID,
+            &protocol::IoReply {
+                bytes: dst,
+                instructions,
+            },
+        );
     }
 }
 

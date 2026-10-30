@@ -1,56 +1,52 @@
 # Current handoff
 
-The latest release is 0.56.0. This checkout remains at `956b2b9` with uncommitted
-work; the working tree includes merged [PR #140](https://github.com/dragginzgame/ic-persistence/pull/140)
-and its published Logging 0.17.5 minimum. The combined pending draft is 0.56.1.
-All incoming dependency-lock edits were preserved exactly. No local staging,
-commit, version bump, release, publication or deployed data reset ran in this batch.
+The checkout is based on 0.56.1 `d4208ce`; the ten requested cleanup changes are
+uncommitted, with pending notes for 0.56.2. No commit, release, publication or
+push ran. Selected dependency versions remain unchanged. The root lock adds only
+Storage's dev dependency edges to Wire and Serde; the independent qualification
+manifest and lock are unchanged.
 
-## Ten requested complexity reductions
+## Ten completed complexity reductions
 
-Release preparation borrows one source projection and captures live rollback
-bytes in one plan. Artifact paths come from one admitted target observation per
-qualification phase; digest refusal ordering, archive/receipt shapes and
-root-manifest-last publication remain unchanged. The release adapter separates
-source admission, artifacts, committed-release checks and Wasm checks into private
-modules, without adding alternate workflows or caches across input changes.
+1. Memory and Storage fixtures share bounded Wire request/response schemas with
+   the host runner, including method identities and lifecycle arguments.
+2. Memory scenarios and IO measurements live in their own runner module; suite
+   setup/dispatch and the existing CLI modes remain in the entry point.
+3. Archive SHA-256 identities stay typed until receipt serialization.
+4. Publication reuses admitted artifact paths while preserving per-effect source
+   identity checks, tag checks and registry reconciliation.
+5. A standalone Perl renderer owns disposable packaging manifests; generated
+   bytes match the former inline renderer, including quoted paths.
+6. Recovery fixtures use shared byte snapshots without removing assertions.
+7. Policy, manager-ID and page-size code uses existing owned numeric limits.
+8. Identical namespace-prefix refusals share one branch.
+9. Generation staging checks its successor directly with the domain error.
+10. Declaration-claim validation owns its single-caller slot-reuse check.
 
-Doctor uses named readable/unreadable recovery observations and named report
-fields. Runtime lifecycle has one private committed payload/accessor; public
-errors and const accessors remain. Histogram continuity separates monotonic
-bucket additions from intervals. Logging compares contiguous retained history,
-retaining watermark/regression checks. The ledger writer/reader share a private
-Wire row schema; borrowed sequence serialization adds no collected row buffer.
-Current golden fixtures pin the same bytes.
-
-Metrics and runtime tests are grouped by contract with existing fixtures shared
-in their parent modules. All 29 Metrics and 19 moved runtime scenarios/assertions
-were compared against the original functions after formatting and path adjustment.
-Earlier qualification prose is preserved in
-[the history guide](../history/ledger-qualification.md), with links updated; the
-[current guide](../current-ledger-qualification.md) contains current Wire proof.
-No custody, corruption, recovery or stable-memory limits were removed.
+Public library APIs, error ordering, custody, persisted collection/ledger bytes
+and release safeguards remain unchanged. Only the private qualification packet
+format is cut over; fixture and runner must be rebuilt together. No legacy
+packet reader is included.
 
 ## Focused evidence
 
-Logs and incoming/merged patch baselines are retained under
-`/tmp/ic-persistence-ten.xUlwfE/`. All 68 existing release-helper tests pass;
-the additional coordinated-archive test separately proves unchanged receipts
-with one target observation for all four packages. Memory passes 187 library
-tests (eight explicit ignores), Metrics 29 and Logging 10, including a new rolling
-retention/overlap refusal test. Strict affected-library/test/release-helper Clippy,
-Rust 1.91 Wasm library compilation, pin and production-graph checks pass.
-Formatting, documentation links and diff checks cover the final work.
+Native logs and renderer parity evidence are under
+`/tmp/ic-persistence-round3.9AXv4N/`. All 69 release-helper tests pass; Memory
+passes 187 library tests (eight explicit ignores), Storage 17 and the independent
+runner three (two explicit ignores). Strict affected native/host/Wasm Clippy,
+Rust 1.91 Wasm checking, pin/production-graph checks and archive-admission fixtures
+pass. The extracted renderer produces byte-identical workspace, override and
+consumer manifests. Final formatting, documentation links and diff checks pass.
 
-Linux installed original-Wasm qualification also passes through the admitted
-Testkit CLI/PocketIC pair: invalid IO, successful/failed upgrades, Storage reopen,
-manager poisoning/rollback, custody and Logging watermarks. Exact source/tool/
-server/runner/Wasm hashes and all logs remain under
-`target/qualification/runtime/cleanup-ten.qDQNqi/`; source hashes match before
-and after. See [the installed record](../runtime-io-qualification.md#complexity-cleanup-installed-qualification--2026-10-30).
-This qualifies recorded working-tree inputs, not the clean release's old lock.
-Optimizer variants, macOS, full release gates and performance comparisons were
-not rerun or inferred. Earlier logs/archives keep their own source identities.
+Linux installed original-Wasm qualification passes through Testkit CLI 0.70.0
+and PocketIC 16.1.0. The run covers refused Wire frames, invalid IO, upgrade and
+update rollback, Storage reopen, manager faults, custody and Logging watermarks.
+Exact launch/source/tool/binary hashes and logs are retained under
+`target/qualification/runtime/wire-fixtures.0dwbpz/`; source hashes match after
+the run. See [the installed record](../runtime-io-qualification.md#shared-wire-fixtures-installed-qualification--2026-10-30).
+Fresh instruction/cycle CSVs belong to these Wire builds. Earlier raw-packet
+measurements are not relabelled; no performance gain is inferred. Optimizer
+variants, macOS and full release gates were not rerun.
 
 ## Retained-data boundary
 

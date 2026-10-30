@@ -1,16 +1,23 @@
 //! Installed collection/lease qualification; no application codec or recovery policy.
 
 #[cfg(target_arch = "wasm32")]
+#[path = "support/qualification_protocol.rs"]
+mod protocol;
+
+#[cfg(target_arch = "wasm32")]
 #[expect(
     unsafe_code,
     reason = "fixture-only raw IC entrypoints and reply calls"
 )]
 mod canister {
+    use super::protocol;
     use ic_memory::{
         DefaultMemoryImpl, MemoryManagerConfig, MemoryRuntime, StableCellPayloadError,
         testing::fixture_runtime,
     };
     use ic_storage::adapter::{BTreeMapRegion, BoundedCell, Memory, StableBTreeMap, StableCell};
+    use ic_wire::native;
+    use serde::{Serialize, de::DeserializeOwned};
     use std::{cell::RefCell, rc::Rc};
 
     thread_local! {
@@ -25,18 +32,21 @@ mod canister {
         fn msg_reply();
     }
 
-    fn argument() -> u8 {
-        let mut byte = 0;
-        // SAFETY: Validate the argument length before copying into one byte.
-        unsafe {
-            assert_eq!(msg_arg_data_size(), 1);
-            msg_arg_data_copy((&raw mut byte) as usize, 0, 1);
-        }
-        byte
+    fn argument<T: DeserializeOwned>(id: u64) -> T {
+        // SAFETY: Admit the complete frame before allocating/copying bytes.
+        let bytes = unsafe {
+            let size = msg_arg_data_size();
+            assert!(size <= protocol::REQUEST.bytes);
+            let mut bytes = vec![0; size];
+            msg_arg_data_copy(bytes.as_mut_ptr() as usize, 0, size);
+            bytes
+        };
+        native::decode_request(id, &bytes, protocol::REQUEST).unwrap()
     }
 
-    fn reply(bytes: &[u8]) {
-        // SAFETY: The live slice remains readable until the synchronous copy ends.
+    fn reply(id: u64, value: &impl Serialize) {
+        let bytes = native::encode_response(id, value, protocol::RESPONSE).unwrap();
+        // SAFETY: The encoded source is live through the synchronous system copy.
         unsafe {
             msg_reply_data_append(bytes.as_ptr() as usize, bytes.len());
             msg_reply();
@@ -74,6 +84,7 @@ mod canister {
 
     #[unsafe(export_name = "canister_init")]
     extern "C" fn init() {
+        argument::<()>(protocol::INIT_ID);
         bootstrap();
         with_runtime(|runtime| {
             let mut map =
@@ -106,15 +117,15 @@ mod canister {
 
     #[unsafe(export_name = "canister_update mutate")]
     extern "C" fn mutate() {
-        let mode = argument();
+        let mode: u8 = argument(protocol::MUTATE_ID);
         replace(100);
         assert_eq!(mode, 0, "injected trap after collection writes");
-        reply(&[]);
+        reply(protocol::MUTATE_ID, &());
     }
 
     #[unsafe(export_name = "canister_update cell_load_failure")]
     extern "C" fn cell_load_failure() {
-        let mode = argument();
+        let mode: u8 = argument(protocol::CELL_FAILURE_ID);
         with_runtime(|runtime| {
             let memory = runtime.open_memory("storage.probe.v1").unwrap();
             if mode != 0 {
@@ -152,13 +163,14 @@ mod canister {
             memory.read(0, &mut after);
             assert!(before == after, "failed load changed backing bytes");
         });
-        reply(&[]);
+        reply(protocol::CELL_FAILURE_ID, &());
     }
 
     #[unsafe(export_name = "canister_post_upgrade")]
     extern "C" fn upgrade() {
+        let mode: u8 = argument(protocol::UPGRADE_ID);
         bootstrap();
-        if argument() != 0 {
+        if mode != 0 {
             replace(200);
             panic!("injected upgrade trap after collection writes");
         }
@@ -166,6 +178,7 @@ mod canister {
 
     #[unsafe(export_name = "canister_query snapshot")]
     extern "C" fn snapshot() {
+        argument::<()>(protocol::SNAPSHOT_ID);
         let values = with_runtime(|runtime| {
             let map =
                 StableBTreeMap::<u64, u64>::load(runtime.open_memory("storage.map.v1").unwrap());
@@ -182,18 +195,11 @@ mod canister {
             );
             assert_eq!(map.len(), 128);
             assert_eq!(view.len(), 128);
-            [
-                runtime.committed_generation().unwrap(),
-                map.get(&0).unwrap(),
-                view.get(&0).unwrap(),
-                *cell.get(),
-            ]
+            protocol::Snapshot {
+                generation: runtime.committed_generation().unwrap(),
+                values: [map.get(&0).unwrap(), view.get(&0).unwrap(), *cell.get()],
+            }
         });
-        reply(
-            &values
-                .into_iter()
-                .flat_map(u64::to_le_bytes)
-                .collect::<Vec<_>>(),
-        );
+        reply(protocol::SNAPSHOT_ID, &values);
     }
 }

@@ -36,10 +36,9 @@ impl MemoryAuthority {
             return Err(MemoryAllocationPoolError::ReservedAuthority);
         }
         let key_prefix = key_prefix.into();
-        if !crate::key::is_key_prefix(&key_prefix) {
-            return Err(MemoryAllocationPoolError::InvalidKeyPrefix { key_prefix });
-        }
-        if key_prefix.starts_with(crate::IC_MEMORY_STABLE_KEY_PREFIX) {
+        if !crate::key::is_key_prefix(&key_prefix)
+            || key_prefix.starts_with(crate::IC_MEMORY_STABLE_KEY_PREFIX)
+        {
             return Err(MemoryAllocationPoolError::InvalidKeyPrefix { key_prefix });
         }
         Ok(Self {
@@ -104,7 +103,9 @@ impl MemoryAllocationPool {
         mut authorities: Vec<MemoryAuthority>,
         exclusions: Vec<u8>,
     ) -> Result<Self, MemoryAllocationPoolError> {
-        if authorities.len() > 254 || exclusions.len() > 255 {
+        if authorities.len() > crate::constants::MAX_EXTERNAL_DECLARATIONS
+            || exclusions.len() > crate::constants::MAX_ALLOCATIONS
+        {
             return Err(MemoryAllocationPoolError::TooManyEntries);
         }
         crate::sort::sort_unstable_by(&mut authorities, |a, b| a.key_prefix.cmp(&b.key_prefix));

@@ -1,5 +1,39 @@
 # Runtime IO and maintainer improvements qualification
 
+## Shared Wire fixtures installed qualification — 2026-10-30
+
+The working tree based on 0.56.1 `d4208ce` passes Linux x86-64 original-Wasm
+qualification after the ten cleanup changes. Memory and Storage now share bounded
+Wire protocols with the native runner; Logging retains its existing Wire protocol.
+Library APIs and durable ledger/collection formats are unchanged. Storage gains
+only dev dependency edges to already selected Wire/Serde packages; no package
+version or independent-workspace dependency selection changed.
+
+Rust 1.99.1 built the three fixtures and runner offline with locked selections.
+Rust 1.91 also checked the changed Memory/Storage Wasm examples and libraries.
+Testkit CLI 0.70.0 admitted and managed PocketIC client/server 16.1.0. The run
+exited 0, covering five refused Memory frames, four refused Storage frames,
+twelve invalid IO traps, two failed upgrades followed by a clean retry, Storage
+reopen and trapped update/upgrade rollback, six manager faults, composed-handle
+custody and Logging rollback/watermarks. Successful unit responses are decoded
+by the runner as well. No fixture or runner source change followed the installed run.
+
+Exact launch commands, source/tool/server/runner/Wasm hashes, original Wasm,
+server/runtime logs and nine valid-IO instruction/cycle rows remain under
+`target/qualification/runtime/wire-fixtures.0dwbpz/`. All recorded source hashes
+matched after execution. CSV extracts retain the fresh Wire fixture baseline;
+previous raw-packet results keep their original identities. The inner instruction
+counter covers only the IO loop; update cycles also include protocol and lease
+work. These measurements establish no codec or cleanup speedup.
+
+Native focused logs are retained under `/tmp/ic-persistence-round3.9AXv4N/`.
+The helper passes 69 tests, Memory 187 (eight explicit ignores), Storage 17 and
+the host runner three (two explicit ignores). Strict affected Clippy, manifest
+renderer byte parity, archive admission, pin/production graph and final formatting
+checks pass. Optimizer variants, macOS and full release gates were not rerun.
+This is working-tree qualification, not release/publication admission.
+
+
 ## Complexity cleanup installed qualification — 2026-10-30
 
 The working tree based on 0.56.0 `956b2b9`, including merged Logging PR #140 and

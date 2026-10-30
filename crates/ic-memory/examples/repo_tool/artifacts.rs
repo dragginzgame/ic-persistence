@@ -54,16 +54,15 @@ impl<E: Execute> Repository<E> {
         version: &str,
     ) -> Result<String> {
         let package = paths.package(name, version);
-        let digest = Self::sha256(&package)?;
-        let retained = paths.retained(digest.parse()?);
+        let digest = hash_file(&package, u64::MAX)?.sha256;
+        let retained = paths.retained(digest);
         if !retained.exists() {
-            self.exec
-                .copy_verified(&package, &retained, digest.parse()?)?;
+            self.exec.copy_verified(&package, &retained, digest)?;
         }
         require(
-            Self::sha256(&retained)? == digest,
+            hash_file(&retained, u64::MAX)?.sha256 == digest,
             "retained package differs from its digest",
         )?;
-        Ok(digest)
+        Ok(digest.to_string())
     }
 }

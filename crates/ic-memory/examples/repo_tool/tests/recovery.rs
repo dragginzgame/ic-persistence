@@ -248,14 +248,14 @@ fn committed_preparation_restart_retains_receipts_before_fresh_preparation() {
     fixture.prepare().unwrap();
     let validation = fixture.repo.validation_path("0.13.0").unwrap();
     let prepared = fixture.repo.receipt_path("0.13.0", Prepared).unwrap();
-    let old_validation = fs::read(&validation).unwrap();
-    let old_prepared = fs::read(&prepared).unwrap();
-    let old_evidence: PackageEvidence = serde_json::from_slice(&old_prepared).unwrap();
+    let old_validation = FileSnapshot::capture(&validation);
+    let old_prepared = FileSnapshot::capture(&prepared);
+    let old_evidence: PackageEvidence = serde_json::from_slice(old_prepared.bytes()).unwrap();
     let archive = fixture
         .repo
         .retained_package(&old_evidence.package_sha256)
         .unwrap();
-    let old_archive = fs::read(&archive).unwrap();
+    let old_archive = FileSnapshot::capture(&archive);
     // Substitute a clean descendant committing rollback to the original metadata.
     // No real Git commit, tag or release effect is created.
     let mut descendant = fixture.repo.exec.state.borrow().git.source.clone();
@@ -268,12 +268,13 @@ fn committed_preparation_restart_retains_receipts_before_fresh_preparation() {
     fixture.repo.preflight(&fixture.selection).unwrap();
     fixture.fail_build(BuildFault::Validate);
     assert!(fixture.repo.verify(&fixture.selection).is_err());
-    assert_eq!(fs::read(&validation).unwrap(), old_validation);
-    assert_eq!(fs::read(&prepared).unwrap(), old_prepared);
+    old_validation.assert_unchanged();
+    old_prepared.assert_unchanged();
     fixture.repo.exec.state.borrow_mut().clear_faults();
     for conflict in ["destination", "receipt"] {
         let bytes = if conflict == "destination" {
-            let mut foreign: serde_json::Value = serde_json::from_slice(&old_prepared).unwrap();
+            let mut foreign: serde_json::Value =
+                serde_json::from_slice(old_prepared.bytes()).unwrap();
             foreign["validation"]["selection"]["remote"] = serde_json::json!("other");
             serde_json::to_vec(&foreign).unwrap()
         } else {
@@ -285,19 +286,19 @@ fn committed_preparation_restart_retains_receipts_before_fresh_preparation() {
             "{conflict}"
         );
         assert_eq!(fs::read(&prepared).unwrap(), bytes);
-        assert_eq!(fs::read(&validation).unwrap(), old_validation);
-        fs::write(&prepared, &old_prepared).unwrap();
+        old_validation.assert_unchanged();
+        fs::write(&prepared, old_prepared.bytes()).unwrap();
     }
     fixture.fail_git(GitFault::History);
     assert!(fixture.repo.verify(&fixture.selection).is_err());
-    assert_eq!(fs::read(&prepared).unwrap(), old_prepared);
-    assert_eq!(fs::read(&validation).unwrap(), old_validation);
+    old_prepared.assert_unchanged();
+    old_validation.assert_unchanged();
     fixture.repo.exec.state.borrow_mut().clear_faults();
     let attempts = validation.parent().unwrap().join("attempts");
     fs::write(&attempts, b"blocked retention directory").unwrap();
     assert!(fixture.repo.verify(&fixture.selection).is_err());
-    assert_eq!(fs::read(&prepared).unwrap(), old_prepared);
-    assert_eq!(fs::read(&validation).unwrap(), old_validation);
+    old_prepared.assert_unchanged();
+    old_validation.assert_unchanged();
     fs::remove_file(&attempts).unwrap();
     fixture.repo.verify(&fixture.selection).unwrap();
     fixture.repo.prepare_selected(&fixture.selection).unwrap();
@@ -307,9 +308,17 @@ fn committed_preparation_restart_retains_receipts_before_fresh_preparation() {
         .unwrap()
         .map(|entry| fs::read(entry.unwrap().path()).unwrap())
         .collect();
-    assert!(retained.contains(&old_validation));
-    assert!(retained.contains(&old_prepared));
-    assert_eq!(fs::read(&archive).unwrap(), old_archive);
+    assert!(
+        retained
+            .iter()
+            .any(|bytes| bytes.as_slice() == old_validation.bytes())
+    );
+    assert!(
+        retained
+            .iter()
+            .any(|bytes| bytes.as_slice() == old_prepared.bytes())
+    );
+    old_archive.assert_unchanged();
 }
 
 #[test]

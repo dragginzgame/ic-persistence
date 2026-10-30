@@ -21,4 +21,7 @@ impl ArtifactPaths {
             .join("release-validation/artifacts")
             .join(format!("{digest}.crate"))
     }
+    pub(super) fn publication(&self) -> PathBuf {
+        self.target.join("release-validation/publication")
+    }
 }

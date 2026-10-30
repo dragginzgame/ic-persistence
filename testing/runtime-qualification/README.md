@@ -14,6 +14,17 @@ The Logging-owned
 fixture checks query non-persistence, update/upgrade rollback, canonical reopen
 and watermarks after pruning every row. Its bounded native Wire protocol is shared
 with the host runner; it installs no library endpoint or lifecycle hook.
+Memory and Storage also share fixture-only bounded Wire contracts with the
+runner in [`io_protocol.rs`](../../crates/ic-memory/examples/support/io_protocol.rs)
+and [`qualification_protocol.rs`](../../crates/ic-storage/examples/support/qualification_protocol.rs).
+Requests and responses bind method identities, including unit requests and
+installation/upgrade arguments. Their limits are 128 encoded bytes, 4,096
+allocation units, 128 nodes and depth eight. Canisters reject oversized input
+before copying it. Malformed, foreign and oversized requests are checked against
+the installed fixtures without retained mutation. Rebuild fixtures and runner
+together: the earlier raw packet protocol has been retired. These schemas add
+no public library endpoint and change no durable ledger or collection format.
+
 IC Platform's optional native `pocket-ic` interface supplies the client,
 locked to PocketIC 16.1.0; Testkit owns its reviewed 16.1.0 server selection
 separately. Platform adds no lifecycle wrapper or alternate client. Prepare the
@@ -49,3 +60,9 @@ Measurements retain the `valid_io` instruction rows and additionally report
 update. That cycle total includes update admission and lease opening outside
 the inner instruction counter. Corruption qualification exercises both lease
 opening and growth checkpoints and subsequent poisoned-handle refusal.
+
+The shared Wire fixtures have a fresh source-bound measurement baseline in the
+[installed qualification record](../../docs/runtime-io-qualification.md#shared-wire-fixtures-installed-qualification--2026-10-30).
+The inner instruction counter still covers only the 1,000 IO delegates; total
+update cycles include Wire decoding/reply work and lease opening. Earlier raw
+packet measurements remain historical evidence for their original builds.

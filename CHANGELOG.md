@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.56.2] - Unreleased
+
+### 🧹 Cleanup
+
+- Simplify archive publication, packaging-manifest rendering, policy checks and
+  recovery fixtures while preserving library APIs, stored bytes and release safeguards.
+  [Details](docs/changelog/0.56.md#0562---unreleased).
+
+### 🧪 Testing
+
+- Use shared bounded Wire messages for Memory/Storage installed qualification.
+  Fixture and runner must be rebuilt together; earlier raw packets are retired.
+  IO timing/cycle observations receive a fresh fixture baseline.
+
 ## [0.56.1] - 2026-10-30
 
 ### 🧹 Cleanup

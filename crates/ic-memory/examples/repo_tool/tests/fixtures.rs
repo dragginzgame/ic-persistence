@@ -377,3 +377,28 @@ impl Substitute {
         self.capture(root, "cargo", &forwarded)
     }
 }
+
+/// Bytes captured before a refused effect; file identity checks remain explicit.
+pub(super) struct FileSnapshot {
+    path: PathBuf,
+    bytes: Vec<u8>,
+}
+impl FileSnapshot {
+    pub(super) fn capture(path: &Path) -> Self {
+        Self {
+            path: path.to_owned(),
+            bytes: fs::read(path).unwrap(),
+        }
+    }
+    pub(super) const fn bytes(&self) -> &[u8] {
+        self.bytes.as_slice()
+    }
+    pub(super) fn assert_unchanged(&self) {
+        assert_eq!(
+            fs::read(&self.path).unwrap(),
+            self.bytes,
+            "changed file: {}",
+            self.path.display()
+        );
+    }
+}

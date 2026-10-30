@@ -1,10 +1,9 @@
 //! Operation-local collection access within a retained allocation region.
 use super::{Memory, Storable};
 use crate::substrate::{self, DefaultMemoryImpl};
-use ic_memory::{RuntimeGrowError, RuntimeMemory};
+use ic_memory::{RuntimeGrowError, RuntimeMemory, WASM_PAGE_SIZE_BYTES as PAGE_BYTES};
 use std::{marker::PhantomData, ops::Range, ops::RangeBounds, rc::Rc};
 
-const PAGE_BYTES: u64 = 65_536;
 const MAX_PAGES: u64 = 4_194_304;
 
 ///

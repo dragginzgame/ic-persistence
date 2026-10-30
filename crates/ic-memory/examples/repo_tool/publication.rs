@@ -94,13 +94,20 @@ impl<E: Execute> Repository<E> {
                 Ok((name, digest, published))
             })
             .collect::<Result<Vec<_>>>()?;
+        let mut paths = None;
         for (name, digest, exists) in packages {
             self.check_publication_identity(&release, &tag, "before")?;
             if exists {
                 println!("Already published and checksum verified: {name} {version}");
                 continue;
             }
-            let parent = self.target()?.join("release-validation/publication");
+            if paths.is_none() {
+                paths = Some(self.artifact_paths()?);
+            }
+            let parent = paths
+                .as_ref()
+                .expect("publication paths were admitted")
+                .publication();
             fs::create_dir_all(&parent)?;
             let attempt = parent.join(format!(
                 "{name}.{}.{}",

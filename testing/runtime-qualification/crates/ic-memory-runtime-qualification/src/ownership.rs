@@ -1,22 +1,23 @@
 //! Same-canister backing custody and retained component handles.
+use super::memory::{frame, protocol, read};
 use ic_platform::pocket_ic::PocketIc;
 
 pub(super) fn qualify(pic: &PocketIc) {
     let wasm =
         std::fs::read(std::env::var("IC_MEMORY_QUALIFICATION_WASM").expect("Memory fixture path"))
             .unwrap();
-    let canister = super::install_fixture(pic, &wasm);
-    let snapshot = || {
-        super::Snapshot::decode(
-            &pic.query_call(canister, canister, "snapshot", Vec::new())
-                .unwrap(),
-        )
-    };
+    let canister = super::install_fixture(pic, &wasm, frame(protocol::INIT_ID, &()));
+    let snapshot = || read(pic, canister);
     let initial = snapshot();
-    for mode in 0..6 {
+    for mode in 0..6_u8 {
         super::assert_trap(
-            pic.update_call(canister, canister, "metadata_fault", vec![mode])
-                .unwrap_err(),
+            pic.update_call(
+                canister,
+                canister,
+                "metadata_fault",
+                frame(protocol::METADATA_FAULT_ID, &mode),
+            )
+            .unwrap_err(),
         );
         assert_eq!(
             snapshot(),
@@ -27,29 +28,46 @@ pub(super) fn qualify(pic: &PocketIc) {
     println!(
         "installed manager checkpoints: six open/growth faults trap, poison old handles and roll back metadata/payload writes"
     );
-    pic.update_call(canister, canister, "composition", Vec::new())
+    let reply = pic
+        .update_call(
+            canister,
+            canister,
+            "composition",
+            frame(protocol::COMPOSITION_ID, &()),
+        )
+        .unwrap();
+    ic_wire::native::decode_response::<()>(protocol::COMPOSITION_ID, &reply, protocol::RESPONSE)
         .unwrap();
     assert_eq!(
         snapshot(),
-        super::Snapshot {
+        protocol::Snapshot {
             generation: initial.generation + 1,
             ..initial
         }
     );
     pic.advance_time(std::time::Duration::from_secs(300));
-    pic.upgrade_canister(canister, wasm, vec![0], None).unwrap();
+    pic.upgrade_canister(canister, wasm, frame(protocol::UPGRADE_ID, &0_u8), None)
+        .unwrap();
     assert_eq!(
         snapshot(),
-        super::Snapshot {
+        protocol::Snapshot {
             generation: initial.generation + 2,
             ..initial
         }
     );
-    pic.update_call(canister, canister, "composition", Vec::new())
+    let reply = pic
+        .update_call(
+            canister,
+            canister,
+            "composition",
+            frame(protocol::COMPOSITION_ID, &()),
+        )
+        .unwrap();
+    ic_wire::native::decode_response::<()>(protocol::COMPOSITION_ID, &reply, protocol::RESPONSE)
         .unwrap();
     assert_eq!(
         snapshot(),
-        super::Snapshot {
+        protocol::Snapshot {
             generation: initial.generation + 3,
             ..initial
         }

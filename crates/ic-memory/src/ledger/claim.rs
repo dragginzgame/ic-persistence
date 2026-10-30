@@ -1,6 +1,5 @@
 use super::{AllocationLedger, AllocationRecord};
 use crate::declaration::AllocationDeclaration;
-use crate::slot::MemoryManagerSlot;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum ClaimOutcome {
@@ -32,14 +31,11 @@ pub fn validate_declaration_claim<'ledger>(
         return Ok(ClaimOutcome::Existing);
     }
 
-    validate_new_claim(ledger, &declaration.slot)
-}
-
-pub fn validate_new_claim<'ledger>(
-    ledger: &'ledger AllocationLedger,
-    slot: &MemoryManagerSlot,
-) -> Result<ClaimOutcome, ClaimConflict<'ledger>> {
-    if let Some(record) = ledger.records().iter().find(|record| &record.slot == slot) {
+    if let Some(record) = ledger
+        .records()
+        .iter()
+        .find(|record| record.slot == declaration.slot)
+    {
         return Err(ClaimConflict::SlotReused { record });
     }
     Ok(ClaimOutcome::New)

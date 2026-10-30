@@ -397,6 +397,8 @@ version = "0.56.1"
 dependencies = [
  "ic-memory",
  "ic-platform",
+ "ic-wire",
+ "serde",
  "thiserror",
 ]
 
