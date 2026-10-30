@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.56.3] - Unreleased
+
+### 🧹 Cleanup
+
+- Simplify checkpoint encoding, separate release and metric responsibilities, and
+  group collection adapters and regression tests by contract. Public APIs, stored
+  formats and release recovery safeguards are preserved.
+  [Details](docs/changelog/0.56.md#0563---unreleased).
+
 ## [0.56.2] - 2026-10-30
 
 ### 🧹 Cleanup

@@ -1,5 +1,31 @@
 # Runtime IO and maintainer improvements qualification
 
+## Borrowed Logging encoder qualification — 2026-10-30
+
+The working tree based on 0.56.2 `841d377` passes focused Linux x86-64 installed
+Logging qualification after the ten cleanup changes. The encoder walks borrowed
+rows instead of collecting an intermediate row vector. The same row schema,
+magic, byte/resource bounds and bounded owned restoration remain; frozen-byte
+and maximum-row native checks pass. Storage collection implementation moves keep
+its public re-exports and lease/admission contracts unchanged.
+
+Rust 1.99.1 rebuilt the Logging original Wasm and the independent host runner
+with locked offline selections. Testkit CLI 0.70.0 admitted and managed PocketIC
+client/server 16.1.0. The Logging-only run exited 0: query non-persistence,
+update/upgrade rollback, checkpoint reopen and empty-history watermarks pass.
+Exact input/tool/server/runner/Wasm hashes and runtime/server logs remain in
+`target/qualification/runtime/attempt.5IgDJv/`, alongside a copy of the launcher
+and the source hashes checked after execution.
+
+Focused native and structural-preservation evidence is retained under
+`/tmp/ic-persistence-cleanup4/`. The first launcher stopped during input hashing
+because it named a nonexistent tooling-pin path; it did not start a server.
+Its log and the corrected successful launcher are both retained. No fixture or
+runtime source change followed the successful installed run. This proof covers
+Logging only; the full Memory/Storage suite, optimizer variants, macOS and release
+gates were not rerun. No performance improvement or fresh IO baseline is claimed.
+
+
 ## Shared Wire fixtures installed qualification — 2026-10-30
 
 The working tree based on 0.56.1 `d4208ce` passes Linux x86-64 original-Wasm

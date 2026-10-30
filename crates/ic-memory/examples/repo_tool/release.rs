@@ -68,7 +68,12 @@ impl<E: Execute> Repository<E> {
             "selected commit is not the release commit",
         )?;
         self.git(&["merge-base", "--is-ancestor", commit, "HEAD"])?;
-        self.check_surfaces(&selection, &self.surfaces(&selection)?, Some(commit), false)?;
+        self.check_surfaces(
+            &selection,
+            &self.surfaces(&selection)?,
+            Some(commit),
+            SurfaceState::Candidate,
+        )?;
         Ok(InspectedRelease {
             commit: commit.to_owned(),
             selection,
@@ -115,7 +120,7 @@ impl<E: Execute> Repository<E> {
                 && self.inspect_release_commit(commit)? == release,
             "release changed during final qualification",
         )?;
-        self.verify_inputs(&evidence.validation, true)?;
+        self.verify_inputs(&evidence.validation, LockState::ReleaseProjection)?;
         require(
             Self::sha256(&self.root.join("Cargo.lock"))? == evidence.lock_sha256,
             "final packaging changed selected dependencies",

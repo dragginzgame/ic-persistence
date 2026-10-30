@@ -111,7 +111,7 @@ fn release_tool_setup_and_offline_admission_precede_gates_and_version_mutation()
         fixture.fail_build(phase.clone());
         assert!(fixture.prepare().is_err());
         fixture.assert_original();
-        assert!(!fixture.repo.exec.state.borrow().calls.iter().any(|call| {
+        assert!(!fixture.repo.exec.state.borrow().has_call(|call| {
             call.iter()
                 .any(|argument| argument == "validate" || argument == "update")
         }));
@@ -119,13 +119,8 @@ fn release_tool_setup_and_offline_admission_precede_gates_and_version_mutation()
     let fixture = Fixture::new();
     fixture.prepare().unwrap();
     let state = fixture.repo.exec.state.borrow();
-    let position = |argument: &str| {
-        state
-            .calls
-            .iter()
-            .position(|call| call.iter().any(|value| value == argument))
-            .unwrap()
-    };
+    let position =
+        |argument: &str| state.call_position(|call| call.iter().any(|value| value == argument));
     assert!(position("fetch") < position("install-tools"));
     assert!(position("install-tools") < position("tools-check"));
     assert!(position("tools-check") < position("validate"));
@@ -145,15 +140,7 @@ fn release_preserves_saved_readme_bytes_without_interpreting_examples() {
         "ic-memory = { path = \"../ic-memory\" }\n",
     ] {
         let fixture = Fixture::new();
-        fixture
-            .repo
-            .exec
-            .state
-            .borrow_mut()
-            .git
-            .source
-            .insert(PACKAGE_README.to_owned(), readme.to_owned());
-        fs::write(fixture.repo.root.join(PACKAGE_README), readme).unwrap();
+        fixture.set_source(PACKAGE_README, readme);
         // Preserving source bytes must not depend on replacing the same file.
         fixture.fail_files(FileFault::WriteBefore(PACKAGE_README.into()));
         fixture.release();
@@ -184,7 +171,7 @@ fn release_input_admission_failures_preserve_files_and_receipts() {
         assert!(fixture.prepare().is_err());
         fixture.assert_original();
         assert_eq!(fs::read(&receipt).unwrap(), b"prior evidence");
-        assert!(!fixture.repo.exec.state.borrow().calls.iter().any(|call| {
+        assert!(!fixture.repo.exec.state.borrow().has_call(|call| {
             matches!(
                 call[0].as_str(),
                 "make" | "cargo" | "shared-runner" | "write" | "stream-write"
@@ -271,15 +258,7 @@ fn empty_numbered_notes_prepare_without_weakening_release_identity() {
     for path in ["CHANGELOG.md", "docs/changelog/0.13.md"] {
         let text =
             "# Notes\n\n## [0.13.0]\n\n## [0.12.3] - 2026-10-04\n\nHistory without a final newline";
-        fs::write(fixture.repo.root.join(path), text).unwrap();
-        fixture
-            .repo
-            .exec
-            .state
-            .borrow_mut()
-            .git
-            .source
-            .insert(path.to_owned(), text.to_owned());
+        fixture.set_source(path, text);
     }
     fixture.prepare().unwrap();
     fixture.stage().unwrap();
@@ -317,7 +296,7 @@ fn shared_note_finalization_preserves_history_and_refuses_conflicting_targets() 
                 fs::read_to_string(fixture.repo.root.join(path)).unwrap(),
                 edited
             );
-            assert!(!fixture.repo.exec.state.borrow().calls.iter().any(|call| {
+            assert!(!fixture.repo.exec.state.borrow().has_call(|call| {
                 matches!(
                     call[0].as_str(),
                     "make" | "cargo" | "write" | "stream-write"
@@ -345,15 +324,7 @@ fn shared_note_finalization_preserves_history_and_refuses_conflicting_targets() 
     ] {
         let fixture = Fixture::new();
         for path in ["CHANGELOG.md", "docs/changelog/0.13.md"] {
-            fs::write(fixture.repo.root.join(path), notes).unwrap();
-            fixture
-                .repo
-                .exec
-                .state
-                .borrow_mut()
-                .git
-                .source
-                .insert(path.to_owned(), notes.to_owned());
+            fixture.set_source(path, notes);
         }
         fixture.repo.preflight(&fixture.selection).unwrap();
         fixture.release();
@@ -372,15 +343,7 @@ fn shared_note_finalization_preserves_history_and_refuses_conflicting_targets() 
         "## [0.13.0]\n\n##\t[0.13.0]\t-\t2026-10-04  \nAlready released\n",
     ] {
         let fixture = Fixture::new();
-        fs::write(fixture.repo.root.join("CHANGELOG.md"), conflict).unwrap();
-        fixture
-            .repo
-            .exec
-            .state
-            .borrow_mut()
-            .git
-            .source
-            .insert("CHANGELOG.md".to_owned(), conflict.to_owned());
+        fixture.set_source("CHANGELOG.md", conflict);
         assert!(fixture.repo.preflight(&fixture.selection).is_err());
         assert!(fixture.prepare().is_err());
         fixture.assert_original();
@@ -416,15 +379,7 @@ fn all_release_kinds_finalize_root_and_detail_notes_at_saved_date() {
         fixture.selection.version = version.to_owned();
         for path in ["CHANGELOG.md", detail] {
             let text = format!("# Notes\n\n## [{version}]\n\nChanges.\n\n## 0.12.3\n\nHistory.\n");
-            fs::write(fixture.repo.root.join(path), &text).unwrap();
-            fixture
-                .repo
-                .exec
-                .state
-                .borrow_mut()
-                .git
-                .source
-                .insert(path.to_owned(), text);
+            fixture.set_source(path, &text);
         }
         fixture.prepare().unwrap();
         assert_eq!(fixture.repo.version(None).unwrap(), version);

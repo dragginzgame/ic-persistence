@@ -34,7 +34,7 @@ fn tag_changes_during_shared_admission_stop_publication() {
         fixture.release();
         fixture.fail_git(failure.clone());
         assert!(fixture.repo.publish(true).is_err(), "{failure:?}");
-        assert!(!fixture.repo.exec.state.borrow().calls.iter().any(|call| {
+        assert!(!fixture.repo.exec.state.borrow().has_call(|call| {
             call.first().is_some_and(|arg| arg == "cargo") && is_cargo_call(call, "publish")
         }));
     }
@@ -183,9 +183,7 @@ fn changed_missing_and_wrong_source_receipts_never_dispatch_publication() {
                 .exec
                 .state
                 .borrow()
-                .calls
-                .iter()
-                .any(|call| is_cargo_call(call, "publish"))
+                .has_call(|call| is_cargo_call(call, "publish"))
         );
     }
 }
@@ -416,9 +414,7 @@ fn registry_conflicts_or_unknown_status_refuse_before_any_upload() {
                     .exec
                     .state
                     .borrow()
-                    .calls
-                    .iter()
-                    .any(|call| is_cargo_call(call, "publish"))
+                    .has_call(|call| is_cargo_call(call, "publish"))
             );
         }
     }

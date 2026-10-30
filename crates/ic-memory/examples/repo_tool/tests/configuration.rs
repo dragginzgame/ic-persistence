@@ -26,7 +26,7 @@ fn compiler_environment_overrides_refuse_preparation_and_release_effects() {
         assert!(fixture.prepare().is_err());
         fixture.assert_original();
         assert_eq!(fs::read(receipt).unwrap(), b"previous evidence");
-        assert!(!fixture.repo.exec.state.borrow().calls.iter().any(|call| {
+        assert!(!fixture.repo.exec.state.borrow().has_call(|call| {
             call[0] == "make" || is_cargo_call(call, "update") || is_package_call(call)
         }));
 
@@ -122,9 +122,7 @@ fn compiler_configuration_overrides_refuse_preparation() {
                         .exec
                         .state
                         .borrow()
-                        .calls
-                        .iter()
-                        .any(|call| call[0] == "make")
+                        .has_call(|call| call[0] == "make")
                 );
             }
         }
@@ -219,9 +217,7 @@ fn configuration_budgets_refuse_before_gates_or_metadata_mutation() {
                 .exec
                 .state
                 .borrow()
-                .calls
-                .iter()
-                .any(|call| call[0] == "make")
+                .has_call(|call| call[0] == "make")
         );
     }
 }
@@ -245,9 +241,7 @@ fn included_compiler_configuration_refuses_preparation() {
             .exec
             .state
             .borrow()
-            .calls
-            .iter()
-            .any(|call| { call[0] == "make" || is_cargo_call(call, "update") })
+            .has_call(|call| { call[0] == "make" || is_cargo_call(call, "update") })
     );
 }
 

@@ -35,14 +35,19 @@ mod metadata;
 mod packages;
 mod release;
 mod source;
+use source::SurfaceState;
 mod wasm;
 use packages::{package_manifest, packages};
 mod processes;
 use processes::{Execute, Processes};
 mod publication;
 mod qualification;
+use qualification::LockState;
+mod evidence;
+mod preparation;
 use ArchiveLocation::{Retained, Working};
 use ReceiptStage::{Final, Prepared};
+use evidence::{ArchiveLocation, PackageEvidence, ReceiptStage, ValidationEvidence};
 
 #[cfg(test)]
 mod tests;
@@ -121,36 +126,6 @@ enum ToolCommand {
     },
 }
 
-///
-/// PreparationError
-///
-/// Original preparation failure together with failed metadata restorations.
-///
-/// Successful restorations and retained evidence remain available for recovery.
-///
-
-#[derive(Debug)]
-struct PreparationError {
-    source: Box<dyn Error>,
-    rollback_errors: Vec<(String, Box<dyn Error>)>,
-}
-
-impl std::fmt::Display for PreparationError {
-    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(formatter, "{}", self.source)?;
-        for (path, error) in &self.rollback_errors {
-            write!(formatter, "; could not restore {path}: {error}")?;
-        }
-        Ok(())
-    }
-}
-
-impl Error for PreparationError {
-    fn source(&self) -> Option<&(dyn Error + 'static)> {
-        Some(self.source.as_ref())
-    }
-}
-
 const PACKAGE_README: &str = "crates/ic-memory/README.md";
 const CHANGELOG_FINALIZER: &str = "scripts/ci/finalize-release-changelog.awk";
 const RELEASE_INPUT_ADMISSION: &str = "scripts/ci/validate-release-inputs.pl";
@@ -191,97 +166,6 @@ struct InspectedRelease {
 struct ReleaseSurface {
     original: String,
     expected: String,
-}
-
-///
-/// ValidationEvidence
-///
-/// Successful full-gate inputs, saved before release metadata may change.
-///
-/// The original selected lock bytes permit exact root-version refresh checks
-/// and recovery after an interrupted refresh without selecting dependencies.
-///
-
-#[derive(Debug, Deserialize, Serialize)]
-#[serde(deny_unknown_fields)]
-struct ValidationEvidence {
-    selection: ReleaseSelection,
-    lock: Vec<u8>,
-    identities: [String; 3],
-    configuration: BTreeMap<String, String>,
-    command: Vec<String>,
-}
-
-///
-/// PackageEvidence
-///
-/// Qualified package bound to the saved validation and current root lockfile.
-///
-
-#[derive(Debug, Deserialize, Serialize)]
-#[serde(deny_unknown_fields)]
-struct PackageEvidence {
-    validation: ValidationEvidence,
-    package_head: String,
-    lock_sha256: String,
-    package_sha256: String,
-    storage_sha256: String,
-    metrics_sha256: String,
-    logging_sha256: String,
-    commands: Vec<Vec<String>>,
-}
-
-// These names describe existing receipt/observation choices without changing JSON.
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-enum ReceiptStage {
-    Prepared,
-    Final,
-}
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-enum ArchiveLocation {
-    Working,
-    Retained,
-}
-
-impl PackageEvidence {
-    // Keep the fixed receipt-field mapping beside its read projection. Callers
-    // carry complete evidence rather than positional arrays of package digests.
-    fn record<E: Execute>(
-        repo: &Repository<E>,
-        validation: ValidationEvidence,
-        package_head: String,
-        lock_sha256: String,
-        commands: Vec<Vec<String>>,
-    ) -> Result<Self> {
-        let [memory, storage, metrics, logging] = packages();
-        let version = &validation.selection.version;
-        repo.version_parts(version)?;
-        let paths = repo.artifact_paths()?;
-        let package_sha256 = repo.record_package_in(&paths, memory, version)?;
-        let storage_sha256 = repo.record_package_in(&paths, storage, version)?;
-        let metrics_sha256 = repo.record_package_in(&paths, metrics, version)?;
-        let logging_sha256 = repo.record_package_in(&paths, logging, version)?;
-        Ok(Self {
-            validation,
-            package_head,
-            lock_sha256,
-            package_sha256,
-            storage_sha256,
-            metrics_sha256,
-            logging_sha256,
-            commands,
-        })
-    }
-
-    fn archives(&self) -> impl Iterator<Item = (&'static str, &str)> {
-        packages().into_iter().zip([
-            self.package_sha256.as_str(),
-            self.storage_sha256.as_str(),
-            self.metrics_sha256.as_str(),
-            self.logging_sha256.as_str(),
-        ])
-    }
 }
 
 ///

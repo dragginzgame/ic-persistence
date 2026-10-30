@@ -1,5 +1,6 @@
 //! Recovery release contracts.
 
+use super::super::preparation::PreparationError;
 use super::*;
 
 #[test]
@@ -46,9 +47,7 @@ fn version_preparation_failures_restore_files_and_preserve_evidence_and_artifact
                     .exec
                     .state
                     .borrow()
-                    .calls
-                    .iter()
-                    .any(|call| { is_package_call(call) })
+                    .has_call(|call| { is_package_call(call) })
             );
         }
     }
@@ -365,9 +364,7 @@ fn preparation_restart_recovers_from_validation_receipt_publication_errors() {
                 .exec
                 .state
                 .borrow()
-                .calls
-                .iter()
-                .any(|call| { is_cargo_call(call, "update") || is_package_call(call) })
+                .has_call(|call| { is_cargo_call(call, "update") || is_package_call(call) })
         );
 
         // Retry through fresh validation, regardless of whether publication
@@ -430,9 +427,7 @@ fn interrupted_preparation_finishes_saved_candidate_without_revalidating() {
                         .exec
                         .state
                         .borrow()
-                        .calls
-                        .iter()
-                        .any(|call| { is_cargo_call(call, "fetch") })
+                        .has_call(|call| { is_cargo_call(call, "fetch") })
                 );
             }
             // Already installed candidate bytes must survive a write refusal.
@@ -516,9 +511,7 @@ fn partial_lock_preflight_requires_saved_validation() {
                 .exec
                 .state
                 .borrow()
-                .calls
-                .iter()
-                .any(|call| { is_cargo_call(call, "fetch") })
+                .has_call(|call| { is_cargo_call(call, "fetch") })
         );
     }
 }

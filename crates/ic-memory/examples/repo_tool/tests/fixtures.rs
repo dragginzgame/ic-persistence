@@ -139,6 +139,21 @@ impl Fixture {
         }
     }
 
+    /// Set both the saved source projection and live bytes before qualification.
+    /// Intentional source/worktree mismatches must keep their separate writes.
+    pub(super) fn set_source(&self, path: &str, text: &str) {
+        let file = self.repo.root.join(path);
+        fs::create_dir_all(file.parent().unwrap()).unwrap();
+        fs::write(file, text).unwrap();
+        self.repo
+            .exec
+            .state
+            .borrow_mut()
+            .git
+            .source
+            .insert(path.to_owned(), text.to_owned());
+    }
+
     pub(super) fn prepare(&self) -> Result<()> {
         self.repo.preflight(&self.selection)?;
         self.repo.verify(&self.selection)?;
@@ -253,6 +268,17 @@ pub(super) struct State {
 }
 
 impl State {
+    pub(super) fn has_call(&self, mut predicate: impl FnMut(&[String]) -> bool) -> bool {
+        self.calls.iter().any(|call| predicate(call))
+    }
+
+    pub(super) fn call_position(&self, mut predicate: impl FnMut(&[String]) -> bool) -> usize {
+        self.calls
+            .iter()
+            .position(|call| predicate(call))
+            .expect("expected command was recorded")
+    }
+
     pub(super) fn clear_faults(&mut self) {
         self.git.fail = None;
         self.build.fail = None;

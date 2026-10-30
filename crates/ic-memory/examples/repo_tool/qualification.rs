@@ -1,107 +1,14 @@
 //! Validation and package receipts bound to selected source.
 use super::*;
 
-// Each edit keeps rollback bytes beside the exact source-derived replacement.
-struct ReleaseEdit<'a> {
-    path: &'a str,
-    surface: &'a ReleaseSurface,
-    before: Vec<u8>,
+/// Whether the selected lock may contain the admitted workspace version projection.
+#[derive(Clone, Copy, Eq, PartialEq)]
+pub(super) enum LockState {
+    Validated,
+    ReleaseProjection,
 }
 
-impl ReleaseEdit<'_> {
-    fn publish<E: Execute>(&self, repo: &Repository<E>) -> Result<()> {
-        if self.before != self.surface.expected.as_bytes() {
-            repo.exec
-                .write_bytes(&repo.root.join(self.path), self.surface.expected.as_bytes())?;
-        }
-        Ok(())
-    }
-
-    fn restore<E: Execute>(
-        &self,
-        repo: &Repository<E>,
-        selection: &ReleaseSelection,
-    ) -> Result<()> {
-        let current = fs::read(repo.root.join(self.path))?;
-        if current == self.before {
-            // Preserve file identity and permissions when no replacement needs undoing.
-            return Ok(());
-        }
-        let owned = if self.path == "Cargo.lock" {
-            std::str::from_utf8(&current).is_ok_and(|text| {
-                check_lock_update(&self.before, text, &selection.previous, &selection.version)
-                    .is_ok()
-            })
-        } else {
-            current == self.surface.expected.as_bytes()
-        };
-        if owned {
-            repo.exec
-                .write_bytes(&repo.root.join(self.path), &self.before)?;
-        }
-        Ok(())
-    }
-}
-
-// The immutable source projection and live rollback observation remain distinct.
-struct ReleasePlan<'a> {
-    edits: Vec<ReleaseEdit<'a>>,
-}
-
-impl<'a> ReleasePlan<'a> {
-    fn capture<E: Execute>(
-        repo: &Repository<E>,
-        surfaces: &'a BTreeMap<String, ReleaseSurface>,
-    ) -> Result<Self> {
-        let edits = surfaces
-            .iter()
-            .map(|(path, surface)| {
-                Ok(ReleaseEdit {
-                    path,
-                    surface,
-                    before: fs::read(repo.root.join(path))?,
-                })
-            })
-            .collect::<Result<Vec<_>>>()?;
-        Ok(Self { edits })
-    }
-
-    fn publish<E: Execute>(&self, repo: &Repository<E>) -> Result<()> {
-        // The root version is the completion marker for the complete metadata projection.
-        for edit in self
-            .edits
-            .iter()
-            .filter(|edit| edit.path != "Cargo.toml")
-            .chain(self.edits.iter().filter(|edit| edit.path == "Cargo.toml"))
-        {
-            edit.publish(repo)?;
-        }
-        Ok(())
-    }
-
-    fn rollback<E: Execute>(
-        &self,
-        repo: &Repository<E>,
-        selection: &ReleaseSelection,
-        source: Box<dyn Error>,
-    ) -> Box<dyn Error> {
-        // Restore every owned edit even when another restoration fails.
-        let mut rollback_errors = Vec::new();
-        for edit in &self.edits {
-            if let Err(error) = edit.restore(repo, selection) {
-                rollback_errors.push((edit.path.to_owned(), error));
-            }
-        }
-        if rollback_errors.is_empty() {
-            source
-        } else {
-            Box::new(PreparationError {
-                source,
-                rollback_errors,
-            })
-        }
-    }
-}
+use super::preparation::ReleasePlan;
 
 impl<E: Execute> Repository<E> {
     pub(super) fn validation_path(&self, version: &str) -> Result<PathBuf> {
@@ -140,7 +47,12 @@ impl<E: Execute> Repository<E> {
             "preflight requires the saved base version",
         )?;
         let surfaces = self.surfaces(selection)?;
-        self.check_surfaces(selection, &surfaces, None, true)?;
+        self.check_surfaces(
+            selection,
+            &surfaces,
+            None,
+            SurfaceState::OriginalOrCandidate,
+        )?;
         self.check_index(selection, &surfaces)?;
         let lock = fs::read(self.root.join("Cargo.lock"))?;
         let interrupted = lock != self.text("Cargo.lock", Some(&selection.source))?.as_bytes();
@@ -186,7 +98,12 @@ impl<E: Execute> Repository<E> {
             self.git(&["rev-parse", "HEAD"])? == selection.source,
             "source changed during preflight",
         )?;
-        self.check_surfaces(selection, &surfaces, None, true)?;
+        self.check_surfaces(
+            selection,
+            &surfaces,
+            None,
+            SurfaceState::OriginalOrCandidate,
+        )?;
         self.check_index(selection, &surfaces)
     }
 
@@ -220,7 +137,7 @@ impl<E: Execute> Repository<E> {
             self.git(&["rev-parse", "HEAD"])? == selection.source,
             "source changed during validation",
         )?;
-        self.verify_inputs(&evidence, false)?;
+        self.verify_inputs(&evidence, LockState::Validated)?;
         let path = self.validation_path(&selection.version)?;
         let stale_prepared = self.superseded_preparation(selection)?;
         self.retain_receipt(&path, "validated", &selection.version)?;
@@ -283,7 +200,11 @@ impl<E: Execute> Repository<E> {
         Ok(())
     }
 
-    pub(super) fn verify_inputs(&self, evidence: &ValidationEvidence, updated: bool) -> Result<()> {
+    pub(super) fn verify_inputs(
+        &self,
+        evidence: &ValidationEvidence,
+        state: LockState,
+    ) -> Result<()> {
         require(
             evidence.lock
                 == self
@@ -306,7 +227,10 @@ impl<E: Execute> Repository<E> {
         self.check_selection(&evidence.selection)?;
         let current = fs::read(self.root.join("Cargo.lock"))?;
         if current != evidence.lock {
-            require(updated, "selected lockfile differs from release validation")?;
+            require(
+                state == LockState::ReleaseProjection,
+                "selected lockfile differs from release validation",
+            )?;
             check_lock_update(
                 &evidence.lock,
                 std::str::from_utf8(&current)?,
@@ -324,7 +248,7 @@ impl<E: Execute> Repository<E> {
             evidence.selection == *selection,
             "validation identifies another release intent",
         )?;
-        self.verify_inputs(&evidence, true)?;
+        self.verify_inputs(&evidence, LockState::ReleaseProjection)?;
         Ok(evidence)
     }
 
@@ -377,7 +301,12 @@ impl<E: Execute> Repository<E> {
             "source changed before preparation",
         )?;
         let expected = self.surfaces(selection)?;
-        self.check_surfaces(selection, &expected, None, true)?;
+        self.check_surfaces(
+            selection,
+            &expected,
+            None,
+            SurfaceState::OriginalOrCandidate,
+        )?;
         let plan = ReleasePlan::capture(self, &expected)?;
         let result = (|| -> Result<()> {
             plan.publish(self)?;
@@ -403,7 +332,7 @@ impl<E: Execute> Repository<E> {
             evidence.validation.selection == *selection,
             "package evidence identifies another release intent",
         )?;
-        self.verify_inputs(&evidence.validation, true)?;
+        self.verify_inputs(&evidence.validation, LockState::ReleaseProjection)?;
         require(
             Self::sha256(&self.root.join("Cargo.lock"))? == evidence.lock_sha256,
             "selected lockfile differs from package qualification",
@@ -466,7 +395,7 @@ impl<E: Execute> Repository<E> {
         surfaces: &BTreeMap<String, ReleaseSurface>,
     ) -> Result<PackageEvidence> {
         let selection = &validation.selection;
-        self.check_surfaces(selection, surfaces, None, false)?;
+        self.check_surfaces(selection, surfaces, None, SurfaceState::Candidate)?;
         if self.receipt_path(&selection.version, Prepared)?.exists() {
             // Existing evidence is checked, never silently repaired or replaced.
             return self.verify_evidence(selection, &selection.source, Prepared, Working);
@@ -483,12 +412,12 @@ impl<E: Execute> Repository<E> {
         self.run_command(formatting)?;
         let lock_sha256 = Self::sha256(&self.root.join("Cargo.lock"))?;
         self.run_command(packaging)?;
-        self.check_surfaces(selection, surfaces, None, false)?;
+        self.check_surfaces(selection, surfaces, None, SurfaceState::Candidate)?;
         require(
             self.git(&["rev-parse", "HEAD"])? == selection.source,
             "source changed during preparation",
         )?;
-        self.verify_inputs(&validation, true)?;
+        self.verify_inputs(&validation, LockState::ReleaseProjection)?;
         require(
             Self::sha256(&self.root.join("Cargo.lock"))? == lock_sha256,
             "packaging changed selected dependencies",

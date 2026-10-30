@@ -82,9 +82,7 @@ fn validation_lock_cannot_be_rebound_to_an_uncommitted_graph() {
             .exec
             .state
             .borrow()
-            .calls
-            .iter()
-            .any(|call| { is_cargo_call(call, "update") || is_package_call(call) })
+            .has_call(|call| { is_cargo_call(call, "update") || is_package_call(call) })
     );
 }
 
@@ -206,15 +204,25 @@ fn release_admission_rejects_whitespace_only_paths() {
         ..fixture.selection.clone()
     };
     let surfaces = repo.surfaces(&selection).unwrap();
-    repo.check_surfaces(&selection, &repo.surfaces(&selection).unwrap(), None, true)
-        .unwrap();
+    repo.check_surfaces(
+        &selection,
+        &repo.surfaces(&selection).unwrap(),
+        None,
+        SurfaceState::OriginalOrCandidate,
+    )
+    .unwrap();
     repo.check_index(&selection, &surfaces).unwrap();
 
     fs::write(repo.root.join("  "), b"retained untracked bytes\n").unwrap();
     assert_eq!(
-        repo.check_surfaces(&selection, &repo.surfaces(&selection).unwrap(), None, true)
-            .unwrap_err()
-            .to_string(),
+        repo.check_surfaces(
+            &selection,
+            &repo.surfaces(&selection).unwrap(),
+            None,
+            SurfaceState::OriginalOrCandidate
+        )
+        .unwrap_err()
+        .to_string(),
         "release candidate has untracked files"
     );
     assert_eq!(repo.git(&["write-tree"]).unwrap(), selection.source);
@@ -226,9 +234,14 @@ fn release_admission_rejects_whitespace_only_paths() {
 
     fs::write(repo.root.join(" "), b"changed tracked bytes\n").unwrap();
     assert_eq!(
-        repo.check_surfaces(&selection, &repo.surfaces(&selection).unwrap(), None, true)
-            .unwrap_err()
-            .to_string(),
+        repo.check_surfaces(
+            &selection,
+            &repo.surfaces(&selection).unwrap(),
+            None,
+            SurfaceState::OriginalOrCandidate
+        )
+        .unwrap_err()
+        .to_string(),
         "release candidate contains changes outside its version surfaces"
     );
     assert_eq!(repo.git(&["write-tree"]).unwrap(), selection.source);
@@ -240,8 +253,13 @@ fn release_admission_rejects_whitespace_only_paths() {
     repo.git(&["add", "--", " "]).unwrap();
     let staged = repo.git(&["write-tree"]).unwrap();
     fs::write(repo.root.join(" "), b"original tracked bytes\n").unwrap();
-    repo.check_surfaces(&selection, &repo.surfaces(&selection).unwrap(), None, true)
-        .unwrap();
+    repo.check_surfaces(
+        &selection,
+        &repo.surfaces(&selection).unwrap(),
+        None,
+        SurfaceState::OriginalOrCandidate,
+    )
+    .unwrap();
     assert_eq!(
         repo.check_index(&selection, &surfaces)
             .unwrap_err()
@@ -309,9 +327,7 @@ fn lockfile_changes_during_post_validation_remote_inspection_stop_before_mutatio
             .exec
             .state
             .borrow()
-            .calls
-            .iter()
-            .any(|call| { is_cargo_call(call, "update") || is_package_call(call) })
+            .has_call(|call| { is_cargo_call(call, "update") || is_package_call(call) })
     );
 }
 
@@ -417,32 +433,16 @@ fn patch_preparation_keeps_head_and_rejects_unvalidated_source_or_staging() {
     let mut fixture = Fixture::new();
     let path = "CHANGELOG.md";
     let notes = fixture.repo.exec.state.borrow().git.source[path].replace("[0.13.0]", "[0.12.4]");
-    fs::write(fixture.repo.root.join(path), &notes).unwrap();
-    fixture
-        .repo
-        .exec
-        .state
-        .borrow_mut()
-        .git
-        .source
-        .insert(path.to_owned(), notes);
+    fixture.set_source(path, &notes);
     fixture.selection.kind = "patch".to_owned();
     fixture.selection.version = "0.12.4".to_owned();
     let detail = "docs/changelog/0.12.md";
     let notes = "# Detail\n\n## [0.12.4]\n\nFixture changes.\n";
-    fs::write(fixture.repo.root.join(detail), notes).unwrap();
-    fixture
-        .repo
-        .exec
-        .state
-        .borrow_mut()
-        .git
-        .source
-        .insert(detail.to_owned(), notes.to_owned());
+    fixture.set_source(detail, notes);
     fixture.prepare().unwrap();
     assert!(fixture.repo.exec.state.borrow().git.release.is_none());
     assert_eq!(fixture.repo.version(None).unwrap(), "0.12.4");
-    assert!(!fixture.repo.exec.state.borrow().calls.iter().any(|call| {
+    assert!(!fixture.repo.exec.state.borrow().has_call(|call| {
         call.get(1)
             .is_some_and(|arg| matches!(arg.as_str(), "commit" | "tag" | "push"))
     }));

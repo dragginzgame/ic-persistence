@@ -4,7 +4,7 @@ use std::num::NonZeroUsize;
 
 use ic_logging::{Entry, Level, Limits, Log, LogSnapshot};
 use ic_wire::{List, native};
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Serialize, Serializer};
 
 use crate::{LogIdentity, MAX_ENTRIES, MAX_RECORD_BYTES, StoreError};
 
@@ -19,14 +19,13 @@ const CODEC_LIMITS: ic_wire::Limits = ic_wire::Limits {
 };
 
 #[derive(Deserialize, Serialize)]
-struct Checkpoint<'a> {
+struct Checkpoint<E> {
     epoch: u64,
     #[serde(with = "StoredLimits")]
     limits: Limits,
     next_sequence: Option<u64>,
     last_created_at_secs: Option<u64>,
-    #[serde(borrow)]
-    entries: List<StoredEntry<'a>, MAX_ENTRIES>,
+    entries: E,
 }
 
 #[derive(Deserialize, Serialize)]
@@ -66,11 +65,13 @@ enum StoredLevel {
     Error,
 }
 
-pub fn encode(identity: LogIdentity, state: &LogSnapshot) -> Result<Vec<u8>, StoreError> {
-    let entries = state
-        .entries
-        .iter()
-        .map(|entry| StoredEntry {
+// Iterate borrowed entries without collecting another row buffer. Decoding
+// still uses the bounded List before any owned Logging restoration.
+struct StoredEntries<'a>(&'a [Entry]);
+
+impl Serialize for StoredEntries<'_> {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        serializer.collect_seq(self.0.iter().map(|entry| StoredEntry {
             sequence: entry.sequence,
             created_at_secs: entry.created_at_secs,
             level: entry.level,
@@ -78,14 +79,20 @@ pub fn encode(identity: LogIdentity, state: &LogSnapshot) -> Result<Vec<u8>, Sto
             source: &entry.source,
             topic: entry.topic.as_deref(),
             message: &entry.message,
-        })
-        .collect();
+        }))
+    }
+}
+
+pub fn encode(identity: LogIdentity, state: &LogSnapshot) -> Result<Vec<u8>, StoreError> {
+    if state.entries.len() > MAX_ENTRIES {
+        return Err(ic_wire::Error::Limit.into());
+    }
     let checkpoint = Checkpoint {
         epoch: identity.epoch,
         limits: state.limits,
         next_sequence: state.next_sequence,
         last_created_at_secs: state.last_created_at_secs,
-        entries: List::new(entries)?,
+        entries: StoredEntries(&state.entries),
     };
     let payload = native::encode(&checkpoint, CODEC_LIMITS).map_err(|error| match error {
         ic_wire::Error::Limit => StoreError::RecordTooLarge,
@@ -104,7 +111,7 @@ pub fn decode(bytes: &[u8], identity: LogIdentity, limits: Limits) -> Result<Log
     let payload = bytes
         .strip_prefix(MAGIC)
         .ok_or(StoreError::UnsupportedFormat)?;
-    let checkpoint: Checkpoint<'_> =
+    let checkpoint: Checkpoint<List<StoredEntry<'_>, MAX_ENTRIES>> =
         native::decode(payload, CODEC_LIMITS).map_err(|error| match error {
             ic_wire::Error::Malformed | ic_wire::Error::Trailing => StoreError::MalformedRecord,
             other => StoreError::Codec(other),

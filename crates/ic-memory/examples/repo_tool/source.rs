@@ -1,6 +1,13 @@
 //! Source responsibilities for the repository adapter.
 use super::*;
 
+/// Which source-derived metadata states may be observed during preparation.
+#[derive(Clone, Copy, Eq, PartialEq)]
+pub(super) enum SurfaceState {
+    Candidate,
+    OriginalOrCandidate,
+}
+
 impl<E: Execute> Repository<E> {
     pub(super) fn clean(&self) -> Result<()> {
         let status = self.output(
@@ -171,13 +178,14 @@ impl<E: Execute> Repository<E> {
         selection: &ReleaseSelection,
         surfaces: &BTreeMap<String, ReleaseSurface>,
         revision: Option<&str>,
-        partial: bool,
+        state: SurfaceState,
     ) -> Result<()> {
         let mut expected_changes = Vec::new();
         for (path, surface) in surfaces {
             let actual = self.text(path, revision)?;
             require(
-                actual == surface.expected || partial && actual == surface.original,
+                actual == surface.expected
+                    || state == SurfaceState::OriginalOrCandidate && actual == surface.original,
                 &format!(
                     "{path} does not match the admitted release bytes for source {}. \
                      For a new release, commit intended source edits first; git add alone is insufficient. \
