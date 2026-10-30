@@ -1,5 +1,27 @@
 # Changelog
 
+## [0.57.0] - Unreleased
+
+### ⚠️ Breaking
+
+- Adopt Logging 0.18 with an explicit retained-text budget and discriminator-3
+  checkpoints ([#141](https://github.com/dragginzgame/ic-persistence/issues/141)).
+  Old Logging rows require host-owned retirement or a fresh
+  allocation; no compatibility reader or automatic reset is included.
+  [Upgrade disposition](crates/ic-logging-stable/README.md#upgrade-disposition).
+
+### ⬆️ Dependencies
+
+- Adopt Platform 0.9.1, Logging/Metrics 0.18.1 and reviewed Shared Tooling 0.27.11.
+  Preserve Metrics durable bytes and the incoming Wire selection.
+  [Details](docs/changelog/0.57.md#0570---unreleased).
+
+### 🧹 Cleanup
+
+- Separate runtime construction and bootstrap, group stable-cell tests, and reuse
+  recovery snapshots without changing APIs, stored formats or refusal ordering.
+  [Details](docs/changelog/0.57.md#0570---unreleased).
+
 ## [0.56.4] - 2026-10-30
 
 ### 🧹 Cleanup

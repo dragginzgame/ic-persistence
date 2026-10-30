@@ -1,6 +1,6 @@
-#[path = "support/host.rs"]
-mod host;
+pub mod support;
 use host::RUNTIME;
+use support::host;
 
 const AUTHORITY: &str = "wasm_runtime_integration_size_probe";
 const KEY: &str = "wasm_runtime_integration_size_probe.rows.v1";

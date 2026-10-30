@@ -9,12 +9,28 @@ local baseline. Future policy changes require reviewed snapshot adoption.
 
 ## Current source selection
 
-IC Persistence selects committed Shared Tooling 0.27.6 at
-`5a72359b5be19d5221334cf2c9b3204621d3f3f6`, with 77 explicit roots and 123 payloads.
-The canonical impact preview and refresh retain the existing selection. Changes
-cover maintenance permission preflight, single-tool freshness and retained
-validation excerpts; no scheduled maintenance is activated. Exported bytes and
-modes are compared against this independently selected source commit.
+IC Persistence selects committed Shared Tooling 0.27.11 at
+`62edfbd43087a718bf0283e9040676a49211976d`, with 77 explicit roots and 127 payloads.
+The canonical impact preview and refresh retain the reviewed selection. Source
+verification compares every payload and mode with that independent commit.
+
+The adopted graph observer and captured validation-input checkpoint helper retain
+source-drift refusal and failure evidence. The new Cargo publication adapter is
+opt-in; this repository retains its coordinated four-package receipt/publication
+contract. Example support now uses ordinary module discovery. Source-level lint
+exceptions use scoped expectations; the existing Cargo-table style policy was
+reviewed and its configuration-dependent ownership/documentation/naming reasons
+are recorded beside the retained levels. No lint level, host/IC tool catalog,
+formatter pin or maintenance activation changed.
+
+Platform 0.9.1 is selected in both maintained graphs, with the same qualified
+stable-structures 0.7.2 and PocketIC 16.1.0 substrate/client identities. The
+host-only Testkit meter still selects a non-runtime Platform 0.8.3 transitively;
+production Wasm has one 0.9.1 provider and no external IC0/executor supplier.
+Metrics and Logging select published 0.18.1. Metrics durable bytes stay unchanged;
+Logging's explicit hard-cut disposition is documented in its package guide.
+The incoming root Wire 0.7.25 selection is preserved; the independent graph keeps
+its selected Wire 0.7.22. Executable Build/Testkit selections remain separate.
 
 The library [dependency catalog](../Cargo.toml) owns direct package requirements
 and feature selections; its [lockfile](../Cargo.lock) owns resolved identities.

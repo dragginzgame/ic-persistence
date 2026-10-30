@@ -1,5 +1,49 @@
 # Runtime IO and maintainer improvements qualification
 
+## Platform 0.9 and Logging 0.18 adoption — 2026-10-30
+
+The working tree based on 0.56.4 `08e815d`, retaining the preceding uncommitted
+module/recovery cleanup and incoming Wire 0.7.25 lock selection, is qualified in
+two focused Linux x86-64 phases. Both use Testkit CLI 0.70.0 and PocketIC
+client/server 16.1.0. Catalogs select registry Platform 0.9.0 in the library and
+independent host graph; the qualified stable-structures substrate remains 0.7.2.
+
+First, an original-Wasm run with Platform 0.9.0, Metrics 0.18.0 and the then-selected
+Logging 0.17.7 passed Memory malformed-frame/IO refusal, upgrade rollback, Storage
+reopen and update/upgrade rollback, manager faults, composed custody and Logging
+watermarks. Exact hashes, Wasm and server/runtime logs are retained in
+`target/qualification/runtime/attempt.co4GnJ/`. That phase is not relabelled as
+Logging 0.18 evidence.
+
+After the maintainer explicitly selected retirement of old Logging checkpoints,
+Logging 0.18.0 and its discriminator-3 fixture were rebuilt and qualified with
+the focused Logging-only runner. The run exited 0: query non-persistence,
+update/upgrade rollback, empty-history watermarks and normal reopen pass. A
+separate governed row proves eviction of two old rows, an individually over-budget
+append preserving the prior checkpoint, refusal of a forged retained text ceiling,
+explicit host repair, and upgrade reopen preserving the admitted row. The main
+log is unchanged by that probe. Exact hashes, original Logging Wasm, source
+observations and server/runtime logs are retained in
+`target/qualification/runtime/attempt.V1TC6O/`. Source checks matched immediately
+after each installed run; no runtime source fix followed the successful Logging run.
+No deployed data was reset. Old Logging rows require explicit host administration;
+there is no old decoder, inferred text ceiling or automatic reset.
+
+Native evidence is under `/tmp/ic-persistence-adopt7/`. Memory 187 (eight explicit
+ignores), Storage 17 and Metrics 29 library tests pass. Logging's 12 cases pass
+across the main run and the selected record-budget correction: the former fixture
+now evicts by text, so the record-size case fills the text ceiling exactly and
+proves metadata still exceeds the encoded ceiling. The new cases cover forged
+text usage, unchanged writes and explicit retirement of frozen discriminator-2
+bytes. Strict native/Wasm/host Clippy, Rust 1.91 Wasm library checking, Logging
+doctests, consumer release-adapter substitutes, graph/pin checks and source-bound
+Shared snapshot verification pass. The actual validation runner also dispatches
+the consumer graph gate with its captured checkpoint companion. Package file
+lists include ordinary example support modules. These are focused proofs, not
+release/package publication admission. Optimizer variants, macOS and full release
+gates were not rerun; no performance gain is inferred.
+
+
 ## Runtime bookkeeping cleanup qualification — 2026-10-30
 
 The working tree based on 0.56.3 `413cecc` passes Linux x86-64 original-Wasm

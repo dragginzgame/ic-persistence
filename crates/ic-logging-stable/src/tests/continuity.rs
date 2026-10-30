@@ -20,7 +20,11 @@ fn empty_and_exhausted_checkpoints_preserve_watermarks_across_reopen() {
             current: 19
         })
     );
-    assert_eq!(log.append(input(20, "next")), Ok(1));
+    assert_eq!(
+        log.append(input(20, "next"))
+            .map(|receipt| receipt.sequence),
+        Ok(1)
+    );
     let exhausted = Log::restore(LogSnapshot {
         limits: limits(),
         entries: vec![],

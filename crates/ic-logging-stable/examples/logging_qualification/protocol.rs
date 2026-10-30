@@ -29,6 +29,8 @@ pub struct Append {
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub enum Update {
     Append(Append),
+    TextBudgetProbe,
+    ReadTextBudget,
     Prune {
         now_secs: u64,
         max_age_secs: u64,
@@ -50,6 +52,8 @@ pub enum Outcome {
     TimestampRefused,
     LabelRefused,
     Exhausted,
+    TextRefused,
+    BudgetChecked,
 }
 
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]

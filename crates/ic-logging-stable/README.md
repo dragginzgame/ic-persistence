@@ -2,7 +2,7 @@
 
 Optional bounded checkpoints for IC Logging, following Metrics Stable's explicit
 load/save model. The package is prepared for its first publication and consumes Logging
-0.17.2's validated `LogSnapshot` restoration contract.
+0.18.1's validated `LogSnapshot` restoration contract.
 
 IC Observability owns the engine, snapshot admission, append, retention, UTF-8
 truncation and cursor scans. IC Persistence owns durable encoding and governed
@@ -36,7 +36,7 @@ let mut store = LoggingStore::new(StableBTreeMap::new(runtime.open_memory("app.l
 let key = LogKey::new("app", "worker")?;
 let identity = LogIdentity { epoch: 0 };
 let limits = Limits { max_entries: NonZeroUsize::new(128).unwrap(),
-    max_message_bytes: 192, max_label_bytes: 32 };
+    max_message_bytes: 192, max_label_bytes: 32, max_text_bytes: 32_768 };
 let mut log = store.load(&key, identity, limits)?.unwrap_or_else(|| Log::new(limits));
 log.append(EntryInput { created_at_secs: 10, level: Level::Info,
     source: "worker", topic: Some("delivery"), message: "intent recorded" })
@@ -61,15 +61,17 @@ identity; schema validity cannot establish authenticity or instance continuity.
 Namespaces/names contain 1..=64 / 1..=128 ASCII bytes from letters, digits,
 `._/-:`. Each key encodes namespace, NUL, name. The host bounds key cardinality
 and keeps authority outside these labels. Each log admits at most 1,024 configured
-entries, 4,096 message bytes and 128 bytes per source/topic label. The complete
+entries, 4,096 message bytes, 128 bytes per source/topic label and a configured
+combined retained-text ceiling of at most 65,536 UTF-8 bytes. This text ceiling
+counts source, optional topic and message bytes, excluding metadata and heap
+overhead; it is not a complete heap cap. The complete
 encoded record is at most 65,536 bytes; not every combination of maximum settings
-fits that byte ceiling. Oversized saves fail before map mutation. Saving copies
-the caller's borrowed log into a checkpoint; comparison with an existing row
-consumes its decoded temporary log without cloning its retained text again.
+fits that byte ceiling. Oversized saves fail before map mutation. Saving uses the caller's borrowed checkpoint without copying retained history
+or collecting encoded row views. Comparison borrows the decoded prior log.
 Checkpoint work still scales with retained history, unlike cursor scans.
 
-The format uses `ICL` plus discriminator `2`, followed by IC Wire's unframed
-Serde/Postcard payload. The private schema carries epoch, three fixed limits,
+The format uses `ICL` plus discriminator `3`, followed by IC Wire's unframed
+Serde/Postcard payload. The private schema carries epoch, four fixed limits (including combined retained text),
 optional next sequence and timestamp, then oldest-first entries. Each entry
 carries sequence, timestamp, severity, truncation flag, source, optional topic and
 message. The schema's severity order is Debug/Info/Ok/Warn/Error. IC Wire owns
@@ -80,13 +82,20 @@ IC Wire admits at most 1,024 decoded rows and applies explicit byte, node,
 depth and allocation-traversal allowances. The payload allowance excludes the
 four-byte format marker. The 4 MiB traversal allowance is conservative accounting,
 not measured heap use; node/depth allowances are 65,600 and 16. Decoded text
-borrows the input until configured label/message limits pass, before constructing
+borrows the input until configured label/message and combined-text limits pass, before constructing
 owned entries for canonical `Log::restore`. Codec resource failures are typed.
 Unknown formats never select another reader or a reset fallback.
 
-The previous unpublished experimental checkpoint bytes are incompatible. A host
-retaining them must use its original tooling for explicit export/rewrite or
-select a fresh allocation. This codec does not perform that migration or reset.
+## Upgrade disposition
+
+The maintainer selected a hard cut for this adoption. Published discriminator-2
+Logging checkpoints and earlier experimental formats are retired. Discriminator 3
+never infers a missing text budget or selects an old reader. Load, save and normal
+remove refuse old rows; none silently resets storage. Hosts must explicitly retire
+old Logging rows through their governed map administration (`into_map`) or supply
+a fresh allocation before saving current checkpoints. No deployed data is removed
+by adopting the source. Keep allocation governance intact during a component reset.
+
 Metrics Stable has its own IC Wire format and explicit
 [old-data reset requirement](../ic-metrics-stable/README.md#upgrade-disposition).
 
@@ -110,7 +119,7 @@ retrying uncertain paid effects or proves that a remote effect completed.
 
 The [installed qualification fixture](examples/logging_qualification/main.rs)
 and its [host runner](../../testing/runtime-qualification/README.md) exercise
-query non-persistence, update/upgrade rollback, successful reopen and watermarks
-after pruning all rows. Run `make test-runtime-logging` with prepared dependencies
+query non-persistence, update/upgrade rollback, successful reopen, watermarks after pruning all rows, combined-text eviction
+and refusal, and forged retained-text admission. Run `make test-runtime-logging` with prepared dependencies
 and server. This checks the supplied host's original Wasm, not application
 acceptance, optimized variants or cost measurements.

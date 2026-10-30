@@ -1,6 +1,6 @@
-#[path = "support/host.rs"]
-mod host;
+pub mod support;
 use host::RUNTIME;
+use support::host;
 
 const AUTHORITY: &str = "wasm_diagnostics_size_probe";
 

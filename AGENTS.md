@@ -17,8 +17,11 @@ The virtual repository-root workspace owns shared package metadata and the
 dependency catalog. The library packages are `crates/ic-memory/`,
 `crates/ic-storage/`, `crates/ic-metrics-stable/` and
 `crates/ic-logging-stable/` adapter. Logging Stable owns bounded IC Wire checkpoints
-over governed Storage maps; IC Observability's published Logging 0.17.5 owns
-logging semantics and validated restoration. Hosts own clocks, identity,
+over governed Storage maps; IC Observability's published Logging 0.18.1 owns
+logging semantics and validated restoration. Logging checkpoints use discriminator 3 and an explicit retained-text ceiling.
+The maintainer retired discriminator-2 rows by hard cut: hosts own explicit row
+retirement or fresh allocations; no legacy decoder or automatic reset is allowed.
+Hosts own clocks, identity,
 retention scheduling and checkpoint cadence. The maintainer selected Logging
 Stable publication integration on 2026-10-29: all four packages participate in
 archive qualification, receipts and dependency-ordered publication. Actual

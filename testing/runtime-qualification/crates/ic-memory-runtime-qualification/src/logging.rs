@@ -162,6 +162,35 @@ pub(super) fn qualify(pic: &PocketIc) {
             .is_err()
     );
     assert_eq!(read(pic, canister), resumed.snapshot);
+    let budget = update(pic, canister, &Update::TextBudgetProbe);
+    assert_eq!(budget.outcome, Outcome::BudgetChecked);
+    assert_eq!(
+        budget
+            .snapshot
+            .rows
+            .iter()
+            .map(|row| row.sequence)
+            .collect::<Vec<_>>(),
+        [2, 3]
+    );
+    assert_eq!(budget.snapshot.next_sequence, Some(4));
+    assert_eq!(read(pic, canister), resumed.snapshot);
+    pic.advance_time(Duration::from_secs(300));
+    pic.upgrade_canister(
+        canister,
+        fs::read(env::var("IC_LOGGING_QUALIFICATION_WASM").unwrap()).unwrap(),
+        frame(protocol::UPGRADE_ID, &Upgrade::Restore),
+        None,
+    )
+    .unwrap();
+    assert_eq!(
+        update(pic, canister, &Update::ReadTextBudget).snapshot,
+        budget.snapshot
+    );
+    assert_eq!(read(pic, canister), resumed.snapshot);
+    println!(
+        "installed logging text budget: multi-row eviction, append refusal, forged retained ceiling and upgrade reopen pass"
+    );
     println!(
         "installed logging: query non-persistence, update/upgrade rollback, reopen and empty-history watermarks pass"
     );

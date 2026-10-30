@@ -6,12 +6,14 @@ use ic_memory::{
 };
 
 use super::*;
+use ic_logging::LogSnapshot;
 
 fn limits() -> Limits {
     Limits {
         max_entries: NonZeroUsize::new(4).unwrap(),
         max_message_bytes: 64,
         max_label_bytes: 16,
+        max_text_bytes: MAX_TEXT_BYTES,
     }
 }
 fn key() -> LogKey {

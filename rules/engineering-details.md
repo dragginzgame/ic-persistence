@@ -20,9 +20,10 @@ product, release and recovery obligations remain binding when applicable.
   fleet reports here; their existence does not require every consumer to vendor
   them or add sibling scans/dashboard tests to its CI. Consumers still adopt
   shared tooling needed for their own development and validation.
-- Keep repository-fleet inventory and governance out of IC Metrics' product
-  scope. IC Metrics owns reusable measurement arithmetic; a repository count is
-  a Shared Tooling report, not a new IC Metrics API, dependency or application.
+- Keep repository-fleet inventory and governance out of IC Observability's product
+  scope. Its `ic-metrics` and `ic-logging` crates own reusable measurement and log
+  engines; a repository count is a Shared Tooling report, not a new Observability
+  API, dependency or application.
   Product libraries do not become fleet-management owners because a report
   contains counts or is called a metric.
 - Local overlays may strengthen the baseline or define product-specific choices
@@ -179,18 +180,59 @@ product, release and recovery obligations remain binding when applicable.
 
 ## CLI applications
 
-- **Use Clap for Rust CLI applications**, including developer tools and maintained
-  utility binaries. Use its derive or builder API rather than handwritten
-  `std::env::args` loops, custom flag/subcommand dispatch or a parallel parser.
-- Let Clap own argument/value parsing, typed values, defaults, required arguments,
-  allowed values, argument groups/conflicts/dependencies, help, version, usage and
-  parse-error diagnostics. Before adding custom CLI logic, check whether Clap
-  already provides the behavior and use that capability.
-- Prefer Clap's extension points when application-specific parsing is needed.
-  Keep custom validation limited to domain constraints Clap cannot express;
-  document that gap and keep domain semantics with their existing owner. Do not
-  reimplement generic CLI mechanics behind wrappers or duplicate manual checks
-  that Clap already enforces.
+- **Use Clap for as much Rust CLI behavior as its supported APIs can own.** This
+  includes developer tools, generators, benchmark runners and maintained example
+  or utility binaries. Use its derive or builder API; adding Clap only for flag
+  recognition does not justify a second parser or validation layer.
+- Declare typed values, paths, nonzero/ranged numbers, enumerated choices,
+  defaults and environment sources in Clap. Use its argument actions, arity,
+  groups, conflicts and requirements for supported argument relationships, and
+  its help, version, usage, styling and parse-error handling. Check the selected
+  version's capabilities before writing equivalent custom logic.
+- Compose owned subcommands into the Clap command tree and pass parsed values to
+  handlers. Reserve raw argument forwarding for actual external command
+  boundaries. Do not maintain argv scanners, hidden flag injection, repeated
+  parsing or separate help/option catalogs to connect our own commands when
+  Clap's composition and propagation can carry the same contract.
+- Integrate application-specific syntax through Clap's value parsers and typed
+  extension points, reusing the existing domain parser. Keep custom validation
+  for constraints Clap cannot express, runtime/configuration-dependent policy
+  and independent trust or effect boundaries; document the reason locally.
+  Merely using custom validation today is not evidence of a capability gap.
+- When adopting a Clap capability, remove the superseded CLI mechanics and
+  their duplicate declarations. Preserve intended syntax, defaults/precedence,
+  native path bytes, output/exit behavior and sensitive-value redaction. Keep
+  domain admission at its owner; do not weaken it or add a generic CLI framework
+  merely to replace a local parser.
+
+## Metrics and logging
+
+- **Use `ic-metrics` for metrics and `ic-logging` for logging in all our Rust
+  crates**, including libraries, canisters, native tools, tests and examples.
+  [IC Observability](https://github.com/dragginzgame/ic-observability) owns both
+  canonical crates. Select the capabilities a crate uses; this does not require
+  otherwise unused dependencies or instrumentation in every crate.
+- Outside those canonical owners, do not introduce or maintain custom measurement
+  arithmetic, accumulators, histograms, recording engines, log stores, retention or paging engines, or
+  competing metrics/logging frameworks for facilities we own. Reuse the canonical
+  crates rather than copying their implementations or hiding duplicates behind
+  wrappers. Existing bespoke implementations are migration work, not precedent
+  for new ones.
+- If a required capability is missing or unsuitable, search for an existing
+  issue or open one in
+  [IC Observability](https://github.com/dragginzgame/ic-observability/issues).
+  Describe the concrete consumer requirement and extend the canonical crate
+  there before adopting the improvement. Do not solve the gap with a private
+  fork, local copy or parallel fallback engine. Adopt a compatible, available
+  dependency through the normal dependency workflow; an issue alone does not
+  establish that the capability exists.
+- Consumers retain measurement attribution, units, labels, platform sampling,
+  clocks, budgets, authorization, lifecycle, endpoints and export formats.
+  Thin adapters may translate these application contracts or integrate governed
+  persistence; they must delegate shared arithmetic, recording, retention and
+  paging. IC Persistence continues to own `ic-metrics-stable` and its governed
+  Memory/Storage integration. Preserve supported consumer behavior and stored
+  formats when replacing an existing engine, then delete the replaced copy.
 
 ## IC application encoding
 

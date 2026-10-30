@@ -75,7 +75,10 @@ fn record(
     );
 }
 // Keep timed phases and their reset boundaries together for measurement review.
-#[allow(clippy::too_many_lines)]
+#[expect(
+    clippy::too_many_lines,
+    reason = "one measurement scenario retains setup, observations and assertions together"
+)]
 fn main() {
     let requests = (100..140)
         .map(|id| {

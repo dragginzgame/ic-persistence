@@ -36,7 +36,12 @@ fn governed_reopen_restores_the_same_engine_and_retains_the_lease() {
     ));
     let mut restored = store.load(&key(), identity(), limits()).unwrap().unwrap();
     assert_eq!(restored.snapshot(), log.snapshot());
-    assert_eq!(restored.append(input(17, "resumed")), Ok(7));
+    assert_eq!(
+        restored
+            .append(input(17, "resumed"))
+            .map(|receipt| receipt.sequence),
+        Ok(7)
+    );
     let page = restored.page(
         Filter::default(),
         PageRequest {
