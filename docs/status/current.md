@@ -1,43 +1,34 @@
 # Current handoff
 
-This work record covers adoption prepared from 0.56.4 `08e815d`, preserving the
-preceding cleanup edits and incoming root Wire 0.7.25 lock update. Git status and
-history own live checkout/release state. Platform 0.9.1, Logging/Metrics 0.18.1
-and reviewed Shared Tooling 0.27.11 are selected; Build/Testkit executable pins,
-common tool catalogs and the qualified substrate/client/server identities stay
-unchanged. Both maintained dependency caches were explicitly prepared; checks ran
-offline. No commit, own-version bump, release, publication, push or deployed reset
-ran. Pending notes are combined under 0.57.0 because Logging adoption is breaking.
+This batch, prepared from `b281a60`, adopts Platform 0.10.0 in both maintained
+catalogs and Metrics/Logging 0.19.0 in the library. Preceding Wire 0.8 and Tooling
+0.71 adoption remains. Registry review confirms Tooling libraries and the
+prepared Build/Testkit CLI pins are already at the latest published 0.71.0.
+Shared Tooling and common tool catalogs are unchanged. No commit, own-version
+bump, release, publication or push ran.
 
-The maintainer explicitly retired old Logging checkpoints. Current discriminator
-3 carries the text ceiling; normal load/save/remove refuse old rows. Hosts own
-[explicit retirement or fresh allocations](../../crates/ic-logging-stable/README.md#upgrade-disposition).
-Saving uses borrowed checkpoints, with prior-row continuity and unchanged-write
-checks intact. Metrics durable bytes remain unchanged. Fixture support uses
-ordinary module discovery; source lint exceptions use scoped expectations.
+Metrics now shares Wire 0.8 metadata, removing the old Wire 0.7.25 copy. The
+production graph has one Platform 0.10 runtime owner. Tooling's native test meter
+retains its required non-runtime Platform 0.9.1 provider outside production Wasm.
+Stable-structures remains 0.7.2 and PocketIC remains client/server 16.1.0.
+Public source APIs, stored bytes and allocation custody are unchanged.
 
-Evidence is retained under `/tmp/ic-persistence-adopt7/`: focused library tests,
-strict native/Wasm/host Clippy, Rust 1.91 Wasm checking, Logging doctests,
-consumer release-adapter substitutes, graph/pin checks and snapshot source/mode
-verification pass. Installed evidence has separate Platform and Logging phases,
-including text eviction/refusal, forged usage, rollback and reopen. See the
-[source-bound installed record](../runtime-io-qualification.md#platform-09-and-logging-018-adoption--2026-10-30).
-Formatting, package-support inventories and documentation links pass. Full release
-gates, optimizer variants and macOS were not rerun. No speedup is claimed.
+Evidence under `/tmp/ic-persistence-adoption11/` includes 187 Memory tests
+(eight explicit ignores), 12 Logging Stable tests, 29 Metrics Stable tests,
+strict affected Clippy, Rust 1.91 library checks, graph/pins and formatting.
+The three rebuilt original Wasm fixtures pass installed IO/frame refusals,
+upgrade rollback, Storage reopen, manager faults, custody and Logging budgets.
+Exact inputs, tools, binaries and logs remain under
+`target/qualification/runtime/attempt.4dqXS3/`; source checks match after the run.
+The first sandbox attempt could not bind loopback and is retained separately;
+the permitted retry passed. See [the installed record](../runtime-io-qualification.md#platform-010-and-observability-019-adoption--2026-10-30).
 
-The follow-on patch update is recorded under `/tmp/ic-persistence-adopt8/`.
-The incoming root lock already selected these patch identities and was preserved;
-minimum requirements and the independent Platform lock now agree. All 41
-Metrics/Logging adapter tests and a linked Logging Wasm build pass.
-Production storage-only and native PocketIC graphs omit the runtime guard; the
-CDK fixture selects it. Published Platform/macros and Observability source trees
-compare byte-identical to the previously qualified versions. Catalogs/lockfiles,
-formatting and documentation checks pass. Earlier installed evidence keeps its
-original package identities; installed runtime and full release suites were not
-rerun for this feature-guard/publication-only patch update.
+Previous release-helper and prepared Tooling evidence is retained under
+`/tmp/ic-persistence-tooling10/` and the earlier installed record. It is not
+relabelled as new Platform evidence. Full release gates, optimizer variants and
+native macOS were not rerun. The previous Logging hard-cut disposition remains.
 
-Canonical owners: [ledger](../current-ledger.md), [host support](../host-support.md),
-[release contract](../releases.md), [adoption boundaries](../shared-tooling-adoption.md)
-and [release notes](../../CHANGELOG.md). Implementation covers
-[#141](https://github.com/dragginzgame/ic-persistence/issues/141); remote closure and
-release delivery were not performed.
+Canonical owners: [ledger](../current-ledger.md),
+[Logging](../../crates/ic-logging-stable/README.md#upgrade-disposition),
+[host support](../host-support.md), [release contract](../releases.md),
+[adoption boundaries](../shared-tooling-adoption.md) and [notes](../../CHANGELOG.md).

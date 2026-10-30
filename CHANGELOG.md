@@ -12,8 +12,9 @@
 
 ### ⬆️ Dependencies
 
-- Adopt Platform 0.9.1, Logging/Metrics 0.18.1 and reviewed Shared Tooling 0.27.11.
-  Preserve Metrics durable bytes and the incoming Wire selection.
+- Adopt Platform 0.10.0, Logging/Metrics 0.19.0 and reviewed Shared Tooling 0.27.11.
+  Adopt IC Wire 0.8.0 in both maintained workspaces and IC Tooling 0.71.0
+  libraries/executable pins without changing stored bytes.
   [Details](docs/changelog/0.57.md#0570---unreleased).
 
 ### 🩹 Fixed

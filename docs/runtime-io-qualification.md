@@ -1,5 +1,68 @@
 # Runtime IO and maintainer improvements qualification
 
+## Platform 0.10 and Observability 0.19 adoption — 2026-10-30
+
+The working tree based on `b281a60`, preserving preceding Wire/Tooling adoption,
+selects registry Platform 0.10.0 in both maintained catalogs and Metrics/Logging
+0.19.0 in the library graph. IC Tooling libraries and prepared CLI pins remain
+at the latest published 0.71.0; Testkit admits the unchanged PocketIC 16.1.0
+server, paired with Platform's 16.1.0 client. Stable-structures remains 0.7.2.
+The production Wasm graph has one Platform runtime owner and one Wire provider.
+The native test meter retains its required non-runtime Platform 0.9.1 copy.
+Metrics now shares Wire 0.8 metadata, removing the previous 0.7.25 provider.
+
+The three original Wasm fixtures and independent host runner were rebuilt locked
+and offline. The original-Wasm run exited 0, covering malformed frames and IO
+refusals, upgrade recovery, Storage reopen/rollback, six manager faults, composed
+custody and Logging query/update/upgrade/text-budget/empty-watermark behavior.
+Exact source/tool/server/runner/Wasm hashes, retained runner, launchers and server
+logs are under `target/qualification/runtime/attempt.4dqXS3/`. Source checks
+matched after execution. The initial sandbox run could not bind loopback;
+its failure remains under `target/qualification/runtime/attempt.Rowi1N/`.
+The retry used the same prepared tools with local-server permission.
+
+Focused native evidence is retained under `/tmp/ic-persistence-adoption11/`:
+187 Memory tests (eight explicit ignores), 12 Logging Stable tests and 29 Metrics
+Stable tests pass, including corruption and checkpoint admission. Strict affected
+Clippy, Rust 1.91 library checks, production graph/pins and formatting pass.
+No owned Rust source, stored format, runtime custody, common catalog or server
+byte change was needed. Previous release-helper evidence remains applicable to
+the unchanged helper and native Tooling dependencies. No full release suite,
+optimizer matrix or native macOS qualification ran; no release/publication ran.
+
+
+## IC Tooling 0.71 installed adoption — 2026-10-30
+
+The working tree based on `b281a60`, including the preceding Wire 0.8 adoption,
+selects registry IC Tooling 0.71.0 for Build, Host Artifacts/FS/Process and the
+native test meter. The separate Build editor and Testkit server CLI pins also
+select 0.71.0. The canonical installer admitted the cached Build generation and
+built/admitted the new Testkit generation, retaining older tools and attempt logs.
+Both selected executables pass offline checks. No release or publication ran.
+
+Testkit CLI 0.71.0 admits the existing authenticated PocketIC 16.1.0 server;
+Platform 0.9.1 still supplies client 16.1.0. The original-Wasm run exited 0:
+malformed-frame and IO refusals, failed/clean upgrade recovery, Storage reopen
+and rollback, six manager faults, composed custody, Logging query/update/upgrade
+semantics, empty watermarks and text-budget/forged-checkpoint probes all pass.
+Exact source/tool/server/runner/Wasm hashes and server/runtime logs remain under
+`target/qualification/runtime/attempt.CNI1ob/`, with launchers and source checks.
+The host runner is retained there as well. Recorded source checks matched after
+the run. No runtime source change followed this qualification.
+
+Native evidence is under `/tmp/ic-persistence-tooling10/`: strict affected Clippy,
+187 Memory tests (eight explicit ignores) and all 69 release-helper tests pass.
+Consumer release-adapter groups passed until the bootstrap case correctly refused
+an unprepared newly pinned editor; its failed fixture is retained. After explicit
+setup, that unchanged bootstrap function passes in a selected scratch invocation
+with the prepared native editor and substituted Cargo effects. This is neither
+a live release nor a generic producer matrix. The dependency graph removes the
+old native-only Platform 0.8.3 copy and retains one 0.9.1 owner; stored formats,
+common catalogs and the server bytes remain unchanged. Formatting and local
+links pass. Full release gates, optimizer variants and native macOS were not
+rerun; no performance gain is inferred.
+
+
 ## Platform 0.9 and Logging 0.18 adoption — 2026-10-30
 
 The working tree based on 0.56.4 `08e815d`, retaining the preceding uncommitted

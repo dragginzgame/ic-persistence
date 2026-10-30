@@ -23,14 +23,18 @@ reviewed and its configuration-dependent ownership/documentation/naming reasons
 are recorded beside the retained levels. No lint level, host/IC tool catalog,
 formatter pin or maintenance activation changed.
 
-Platform 0.9.1 is selected in both maintained graphs, with the same qualified
-stable-structures 0.7.2 and PocketIC 16.1.0 substrate/client identities. The
-host-only Testkit meter still selects a non-runtime Platform 0.8.3 transitively;
-production Wasm has one 0.9.1 provider and no external IC0/executor supplier.
-Metrics and Logging select published 0.18.1. Metrics durable bytes stay unchanged;
+Platform 0.10.0 is selected directly in both maintained graphs, with the same
+qualified stable-structures 0.7.2 and PocketIC 16.1.0 substrate/client identities.
+Production Wasm has one Platform 0.10 runtime owner and no external IC0/executor
+supplier. Tooling's native-only meter retains its required non-runtime Platform
+0.9.1 provider; it does not enter production Wasm.
+Metrics and Logging select published 0.19.0. Metrics durable bytes stay unchanged;
 Logging's explicit hard-cut disposition is documented in its package guide.
-The incoming root Wire 0.7.25 selection is preserved; the independent graph keeps
-its selected Wire 0.7.22. Executable Build/Testkit selections remain separate.
+Both maintained catalogs select Wire 0.8.0; Metrics now shares that metadata
+identity, removing the former Wire 0.7.25 copy. Production Wasm has one core Wire
+provider and no Wire endpoint feature. IC Tooling library requirements and the
+separately prepared Build/Testkit executables remain at the latest published
+0.71.0; the reviewed server stays 16.1.0.
 
 The library [dependency catalog](../Cargo.toml) owns direct package requirements
 and feature selections; its [lockfile](../Cargo.lock) owns resolved identities.
