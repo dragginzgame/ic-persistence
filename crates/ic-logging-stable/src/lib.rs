@@ -184,7 +184,7 @@ impl<M: Memory> LoggingStore<M> {
         validate_limits(log.limits())?;
         let current = log.snapshot();
         if let Some(bytes) = self.map.get(&key.0) {
-            let previous = codec::decode(&bytes, identity, current.limits)?.snapshot();
+            let previous = codec::decode(&bytes, identity, current.limits)?.into_snapshot();
             if previous == current {
                 return Ok(());
             }

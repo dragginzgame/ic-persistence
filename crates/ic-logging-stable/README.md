@@ -63,8 +63,10 @@ Namespaces/names contain 1..=64 / 1..=128 ASCII bytes from letters, digits,
 and keeps authority outside these labels. Each log admits at most 1,024 configured
 entries, 4,096 message bytes and 128 bytes per source/topic label. The complete
 encoded record is at most 65,536 bytes; not every combination of maximum settings
-fits that byte ceiling. Oversized saves fail before map mutation. Snapshot copies
-and checkpoint comparisons scale with retained history, unlike cursor scans.
+fits that byte ceiling. Oversized saves fail before map mutation. Saving copies
+the caller's borrowed log into a checkpoint; comparison with an existing row
+consumes its decoded temporary log without cloning its retained text again.
+Checkpoint work still scales with retained history, unlike cursor scans.
 
 The format uses `ICL` plus discriminator `2`, followed by IC Wire's unframed
 Serde/Postcard payload. The private schema carries epoch, three fixed limits,
