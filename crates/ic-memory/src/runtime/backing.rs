@@ -17,6 +17,14 @@ pub(super) struct GrowthState<M: Memory> {
 }
 
 impl<M: Memory> GrowthState<M> {
+    pub fn lease_bit(&self, id: u8) -> (&Cell<u64>, u64) {
+        const WORD_BITS: u8 = 64;
+        (
+            &self.open_slots[usize::from(id / WORD_BITS)],
+            1_u64 << (id % WORD_BITS),
+        )
+    }
+
     pub fn verify(&self) -> Result<(), super::MemoryManagerLayoutError> {
         self.authority.borrow().verify(self.backing.as_ref())
     }
@@ -56,8 +64,8 @@ pub struct RuntimeMemory<M: Memory> {
 
 impl<M: Memory> Drop for RuntimeMemory<M> {
     fn drop(&mut self) {
-        let word = &self.growth.open_slots[usize::from(self.id / 64)];
-        word.set(word.get() & !(1_u64 << (self.id % 64)));
+        let (word, mask) = self.growth.lease_bit(self.id);
+        word.set(word.get() & !mask);
     }
 }
 

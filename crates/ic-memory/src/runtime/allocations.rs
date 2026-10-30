@@ -111,7 +111,7 @@ impl MemoryBindingSummary {
 
 impl MemoryAllocationSummary {
     /// Supported, validated manager layout identity.
-    pub const MANAGER_LAYOUT_VERSION: u8 = 1;
+    pub const MANAGER_LAYOUT_VERSION: u8 = layout::VERSION;
     /// Finite table capacity, excluding metadata and backing limits.
     pub const BUCKET_CAPACITY: u32 = layout::BUCKET_CAPACITY as u32;
     /// The complete metadata page, including header, table and padding.

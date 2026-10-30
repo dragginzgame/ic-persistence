@@ -1,5 +1,32 @@
 # Runtime IO and maintainer improvements qualification
 
+## Runtime bookkeeping cleanup qualification — 2026-10-30
+
+The working tree based on 0.56.3 `413cecc` passes Linux x86-64 original-Wasm
+qualification after the six priority cleanup items. Diagnostics moved byte-for-byte
+into its existing runtime namespace using normal module discovery. Named manager
+layout offsets retain the selected MGR V1 values; opening and dropping leases
+share bit-address calculation without moving admission or mutation boundaries.
+Public APIs, durable formats, dependency catalogs and lockfiles are unchanged.
+
+Rust 1.99.1 built the maintained Memory, Storage and Logging fixtures and the
+independent host runner with locked offline selections. Testkit CLI 0.70.0
+admitted and managed PocketIC client/server 16.1.0. The run exited 0: refused
+Wire frames, twelve invalid IO traps, failed/clean upgrade recovery, Storage
+reopen and update/upgrade rollback, six manager faults, composed-handle custody
+and Logging watermarks all pass. Recorded source hashes match after the run.
+
+Exact inputs, tools, server, runner and Wasm hashes plus server/runtime logs are
+retained under `target/qualification/runtime/attempt.aCDH9i/`. Its retained scratch
+launcher selects only the original variant from the maintained runner script and
+omits the unused optimizer input. The repository runner script is unchanged.
+Native evidence is retained under `/tmp/ic-persistence-cleanup5/`: strict affected
+Clippy, 187 Memory library tests (eight explicit ignores), all 69 release-helper
+tests, formatting and documentation checks pass. No runtime source fix followed
+the installed run. Optimizer variants, macOS and full release gates were not
+rerun. The recorded IO measurements do not establish a performance improvement.
+
+
 ## Borrowed Logging encoder qualification — 2026-10-30
 
 The working tree based on 0.56.2 `841d377` passes focused Linux x86-64 installed

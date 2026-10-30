@@ -404,8 +404,7 @@ impl<M: Memory> MemoryRuntime<M> {
     }
 
     fn memory(&self, id: u8) -> Result<RuntimeMemory<M>, RuntimeOpenError> {
-        let word = &self.growth.open_slots[usize::from(id / 64)];
-        let mask = 1_u64 << (id % 64);
+        let (word, mask) = self.growth.lease_bit(id);
         if word.get() & mask != 0 {
             return Err(RuntimeOpenError::AlreadyOpen { id });
         }

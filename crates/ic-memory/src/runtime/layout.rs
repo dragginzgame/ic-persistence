@@ -5,10 +5,17 @@ use super::RuntimeConstructionError;
 use crate::WASM_PAGE_SIZE_BYTES;
 use ic_platform::stable_structures::Memory;
 
-pub(super) const IDS: usize = 255;
+pub(super) const IDS: usize = crate::MEMORY_MANAGER_INVALID_ID as usize;
+pub(super) const VERSION: u8 = 1;
+const VERSION_OFFSET: usize = 3;
+const ALLOCATED_COUNT_OFFSET: usize = 4;
+const BUCKET_SIZE_OFFSET: usize = 6;
+const RESERVED_OFFSET: usize = 8;
+const MEMORY_SIZES_OFFSET: usize = 40;
+const MEMORY_SIZE_BYTES: usize = 8;
 pub(super) const BUCKET_CAPACITY: u16 = 32_768;
 pub(super) const BUCKETS: usize = BUCKET_CAPACITY as usize;
-pub(super) const HEADER_BYTES: usize = 40 + IDS * 8;
+pub(super) const HEADER_BYTES: usize = MEMORY_SIZES_OFFSET + IDS * MEMORY_SIZE_BYTES;
 pub(super) const METADATA_BYTES: usize = HEADER_BYTES + BUCKETS;
 
 ///
@@ -81,7 +88,10 @@ impl ManagerAuthority {
     }
 
     pub fn allocated_buckets(&self) -> u16 {
-        u16::from_le_bytes([self.expected[4], self.expected[5]])
+        u16::from_le_bytes([
+            self.expected[ALLOCATED_COUNT_OFFSET],
+            self.expected[ALLOCATED_COUNT_OFFSET + 1],
+        ])
     }
 
     pub fn verify(&self, memory: &impl Memory) -> Result<(), MemoryManagerLayoutError> {
@@ -92,7 +102,10 @@ impl ManagerAuthority {
         )]
         let mut actual = [0; METADATA_BYTES];
         let required_pages = 1 + u64::from(self.allocated_buckets())
-            * u64::from(u16::from_le_bytes([self.expected[6], self.expected[7]]));
+            * u64::from(u16::from_le_bytes([
+                self.expected[BUCKET_SIZE_OFFSET],
+                self.expected[BUCKET_SIZE_OFFSET + 1],
+            ]));
         if memory.size() < required_pages {
             self.poisoned.set(true);
             return Err(MemoryManagerLayoutError::RuntimeMismatch);
@@ -146,10 +159,16 @@ impl ManagerAuthority {
     pub fn record_growth(&mut self, id: u8, pages: u64, allocated: u16) {
         let old = usize::from(self.allocated_buckets());
         self.expected[HEADER_BYTES + old..HEADER_BYTES + usize::from(allocated)].fill(id);
-        self.expected[4..6].copy_from_slice(&allocated.to_le_bytes());
-        let offset = 40 + usize::from(id) * 8;
-        self.expected[offset..offset + 8].copy_from_slice(&pages.to_le_bytes());
+        self.expected[ALLOCATED_COUNT_OFFSET..BUCKET_SIZE_OFFSET]
+            .copy_from_slice(&allocated.to_le_bytes());
+        let offset = memory_size_offset(id);
+        self.expected[offset..offset + MEMORY_SIZE_BYTES].copy_from_slice(&pages.to_le_bytes());
     }
+}
+
+// Both validation and expected-growth projection address the same u64 table.
+const fn memory_size_offset(id: u8) -> usize {
+    MEMORY_SIZES_OFFSET + id as usize * MEMORY_SIZE_BYTES
 }
 
 pub(super) fn read<M: Memory>(memory: &M) -> Result<Layout, RuntimeConstructionError> {
@@ -179,17 +198,24 @@ pub(super) fn read<M: Memory>(memory: &M) -> Result<Layout, RuntimeConstructionE
     if observed_magic != *b"MGR" {
         return Err(RuntimeConstructionError::ForeignMemory { observed_magic });
     }
-    if header[3] != 1 {
+    if header[VERSION_OFFSET] != VERSION {
         return Err(RuntimeConstructionError::UnsupportedMemoryManagerVersion {
-            observed: header[3],
-            supported: 1,
+            observed: header[VERSION_OFFSET],
+            supported: VERSION,
         });
     }
-    if header[8..40].iter().any(|byte| *byte != 0) {
+    if header[RESERVED_OFFSET..MEMORY_SIZES_OFFSET]
+        .iter()
+        .any(|byte| *byte != 0)
+    {
         return Err(MemoryManagerLayoutError::ReservedHeader.into());
     }
-    let allocated_buckets = u16::from_le_bytes([header[4], header[5]]);
-    let bucket_pages = u16::from_le_bytes([header[6], header[7]]);
+    let allocated_buckets = u16::from_le_bytes([
+        header[ALLOCATED_COUNT_OFFSET],
+        header[ALLOCATED_COUNT_OFFSET + 1],
+    ]);
+    let bucket_pages =
+        u16::from_le_bytes([header[BUCKET_SIZE_OFFSET], header[BUCKET_SIZE_OFFSET + 1]]);
     if bucket_pages == 0 {
         return Err(MemoryManagerLayoutError::ZeroBucketSize.into());
     }
@@ -210,18 +236,22 @@ pub(super) fn read<M: Memory>(memory: &M) -> Result<Layout, RuntimeConstructionE
     // Fixed local buffer and read bound, independent of physical size/history.
     memory.read(HEADER_BYTES as u64, table);
     let mut buckets = [0_u16; IDS];
-    for (index, id) in (0_u16..32_768).zip(table.iter().copied()) {
-        if (index < allocated_buckets) != (id != 255) {
+    for (index, id) in (0..BUCKET_CAPACITY).zip(table.iter().copied()) {
+        if (index < allocated_buckets) != (id != crate::MEMORY_MANAGER_INVALID_ID) {
             return Err(MemoryManagerLayoutError::BucketTable { index }.into());
         }
-        if id != 255 {
+        if id != crate::MEMORY_MANAGER_INVALID_ID {
             buckets[usize::from(id)] += 1;
         }
     }
     let mut pages = [0; IDS];
-    for (id, value) in (0_u8..255).zip(&mut pages) {
-        let offset = 40 + usize::from(id) * 8;
-        *value = u64::from_le_bytes(header[offset..offset + 8].try_into().expect("eight bytes"));
+    for (id, value) in (0..crate::MEMORY_MANAGER_INVALID_ID).zip(&mut pages) {
+        let offset = memory_size_offset(id);
+        *value = u64::from_le_bytes(
+            header[offset..offset + MEMORY_SIZE_BYTES]
+                .try_into()
+                .expect("eight bytes"),
+        );
         if value.div_ceil(u64::from(bucket_pages)) != u64::from(buckets[usize::from(id)]) {
             return Err(MemoryManagerLayoutError::VirtualExtent { id }.into());
         }

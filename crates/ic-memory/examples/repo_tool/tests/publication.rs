@@ -34,9 +34,14 @@ fn tag_changes_during_shared_admission_stop_publication() {
         fixture.release();
         fixture.fail_git(failure.clone());
         assert!(fixture.repo.publish(true).is_err(), "{failure:?}");
-        assert!(!fixture.repo.exec.state.borrow().has_call(|call| {
-            call.first().is_some_and(|arg| arg == "cargo") && is_cargo_call(call, "publish")
-        }));
+        assert!(
+            !fixture
+                .repo
+                .exec
+                .state
+                .borrow()
+                .has_call(|call| { is_cargo_call(call, "publish") })
+        );
     }
 }
 
@@ -44,10 +49,7 @@ fn tag_changes_during_shared_admission_stop_publication() {
 fn preparation_stage_commit_qualification_and_publish_preserve_exact_evidence() {
     let fixture = Fixture::new();
     fixture.release();
-    let prepared: PackageEvidence = serde_json::from_slice(
-        &fs::read(fixture.repo.receipt_path("0.13.0", Prepared).unwrap()).unwrap(),
-    )
-    .unwrap();
+    let prepared: PackageEvidence = fixture.package_evidence(Prepared);
     let final_evidence = fixture
         .repo
         .verify_evidence(&fixture.selection, "release", Final, Working)

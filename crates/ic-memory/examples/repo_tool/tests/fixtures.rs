@@ -139,6 +139,19 @@ impl Fixture {
         }
     }
 
+    pub(super) fn package_evidence(&self, stage: ReceiptStage) -> PackageEvidence {
+        let path = self
+            .repo
+            .receipt_path(&self.selection.version, stage)
+            .unwrap();
+        serde_json::from_slice(&fs::read(path).unwrap()).unwrap()
+    }
+
+    pub(super) fn validation_evidence(&self) -> ValidationEvidence {
+        let path = self.repo.validation_path(&self.selection.version).unwrap();
+        serde_json::from_slice(&fs::read(path).unwrap()).unwrap()
+    }
+
     /// Set both the saved source projection and live bytes before qualification.
     /// Intentional source/worktree mismatches must keep their separate writes.
     pub(super) fn set_source(&self, path: &str, text: &str) {

@@ -37,10 +37,7 @@ impl<E: Execute> Repository<E> {
         suffix: &[&str],
     ) -> Result<String> {
         let digest = Sha256Digest::compute(text.as_bytes());
-        let input = self
-            .target()?
-            .join("release-validation/inputs")
-            .join(format!("{digest}.input"));
+        let input = self.artifact_paths()?.transform_input(digest);
         match fs::symlink_metadata(&input) {
             Ok(metadata) => require(metadata.is_file(), "transform input is not a regular file")?,
             Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
