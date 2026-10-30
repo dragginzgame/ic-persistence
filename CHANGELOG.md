@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.56.4]
+
+### 🧹 Cleanup
+
+- Use ordinary module discovery for qualification examples and runtime
+  diagnostic fixtures, preserving public module paths and qualification
+  protocols.
+
 ## [0.56.3] - 2026-10-30
 
 ### 🧹 Cleanup

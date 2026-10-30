@@ -1,6 +1,6 @@
-#[path = "support/host.rs"]
-mod host;
+mod support;
 use host::RUNTIME;
+use support::host;
 
 use ic_memory::{
     BootstrapAdmission, MemoryManagerSlot, PolicyIdentity, RuntimeBootstrapPolicy, StableKey,

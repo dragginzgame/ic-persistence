@@ -11,7 +11,6 @@ mod custody;
 mod diagnostics;
 mod error;
 #[cfg(any(test, feature = "test-support"))]
-#[path = "../testing/diagnostics.rs"]
 pub mod fixture_diagnostics;
 #[cfg(test)]
 mod fixtures;
