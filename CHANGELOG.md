@@ -16,6 +16,11 @@
   Preserve Metrics durable bytes and the incoming Wire selection.
   [Details](docs/changelog/0.57.md#0570---unreleased).
 
+### 🩹 Fixed
+
+- Supply Logging's retained-text budget in the standalone archive consumer so
+  package qualification compiles against Logging 0.18.
+
 ### 🧹 Cleanup
 
 - Separate runtime construction and bootstrap, group stable-cell tests, and reuse

@@ -62,6 +62,7 @@ fn main() {
         max_entries: NonZeroUsize::new(4).unwrap(),
         max_message_bytes: 64,
         max_label_bytes: 32,
+        max_text_bytes: 512,
     };
     let mut log = Log::new(limits);
     log.append(EntryInput {
