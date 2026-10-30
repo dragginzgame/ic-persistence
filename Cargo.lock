@@ -296,9 +296,9 @@ dependencies = [
 
 [[package]]
 name = "ic-logging"
-version = "0.17.2"
+version = "0.17.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8ead6c0fa5b61da08c5238e61ad57e9acf7c42a2af35c41657be5e60ea93e88f"
+checksum = "b5a6726304af97179ac164f411ef231d52606001d710bc83be6d719135cc5268"
 
 [[package]]
 name = "ic-logging-stable"
