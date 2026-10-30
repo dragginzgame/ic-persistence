@@ -10,6 +10,25 @@ impl ArtifactPaths {
         Self { target }
     }
 
+    pub(super) fn validation(&self, version: &str) -> PathBuf {
+        self.target
+            .join("release-validation")
+            .join(format!("{version}-validated.json"))
+    }
+
+    pub(super) fn receipt(&self, version: &str, stage: ReceiptStage) -> PathBuf {
+        let suffix = if stage == Prepared { "-prepared" } else { "" };
+        self.target
+            .join("release-validation")
+            .join(format!("{version}{suffix}.json"))
+    }
+
+    pub(super) fn transform_input(&self, digest: Sha256Digest) -> PathBuf {
+        self.target
+            .join("release-validation/inputs")
+            .join(format!("{digest}.input"))
+    }
+
     pub(super) fn package(&self, package: &str, version: &str) -> PathBuf {
         self.target
             .join("package")

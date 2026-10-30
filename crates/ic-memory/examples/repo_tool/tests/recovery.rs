@@ -301,7 +301,7 @@ fn committed_preparation_restart_retains_receipts_before_fresh_preparation() {
     fs::remove_file(&attempts).unwrap();
     fixture.repo.verify(&fixture.selection).unwrap();
     fixture.repo.prepare_selected(&fixture.selection).unwrap();
-    let current: PackageEvidence = serde_json::from_slice(&fs::read(&prepared).unwrap()).unwrap();
+    let current: PackageEvidence = fixture.package_evidence(Prepared);
     assert_eq!(current.validation.selection.source, "fix");
     let retained: Vec<_> = fs::read_dir(attempts)
         .unwrap()
@@ -352,8 +352,7 @@ fn preparation_restart_recovers_from_validation_receipt_publication_errors() {
             fixture.repo.verify(&fixture.selection).is_err(),
             "after_publication={after_publication}"
         );
-        let visible: ValidationEvidence =
-            serde_json::from_slice(&fs::read(&validation).unwrap()).unwrap();
+        let visible: ValidationEvidence = fixture.validation_evidence();
         assert_eq!(
             visible.selection.source,
             if after_publication { "fix" } else { "source" }
@@ -371,8 +370,7 @@ fn preparation_restart_recovers_from_validation_receipt_publication_errors() {
         // left the previous or replacement receipt visible.
         fixture.repo.verify(&fixture.selection).unwrap();
         fixture.repo.prepare_selected(&fixture.selection).unwrap();
-        let current: PackageEvidence =
-            serde_json::from_slice(&fs::read(&prepared).unwrap()).unwrap();
+        let current: PackageEvidence = fixture.package_evidence(Prepared);
         assert_eq!(current.validation.selection, fixture.selection);
         let retained: Vec<_> = fs::read_dir(validation.parent().unwrap().join("attempts"))
             .unwrap()
@@ -522,8 +520,7 @@ fn preparation_recovery_preserves_conflicting_inputs_and_corrupted_evidence() {
         let fixture = Fixture::new();
         fixture.prepare().unwrap();
         let receipt = fixture.repo.receipt_path("0.13.0", Prepared).unwrap();
-        let evidence: PackageEvidence =
-            serde_json::from_slice(&fs::read(&receipt).unwrap()).unwrap();
+        let evidence: PackageEvidence = fixture.package_evidence(Prepared);
         let path = match conflict {
             "metadata" => fixture.repo.root.join(PACKAGE_README),
             "lock" => fixture.repo.root.join("Cargo.lock"),

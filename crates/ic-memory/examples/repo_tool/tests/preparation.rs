@@ -39,10 +39,7 @@ fn coordinated_version_projection_and_receipts_include_all_four_packages() {
             .unwrap();
         assert_eq!(record["version"].as_str(), Some("0.13.0"));
     }
-    let prepared: PackageEvidence = serde_json::from_slice(
-        &fs::read(fixture.repo.receipt_path("0.13.0", Prepared).unwrap()).unwrap(),
-    )
-    .unwrap();
+    let prepared: PackageEvidence = fixture.package_evidence(Prepared);
     assert_eq!(
         prepared
             .archives()

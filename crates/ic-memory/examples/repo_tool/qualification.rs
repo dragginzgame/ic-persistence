@@ -13,10 +13,7 @@ use super::preparation::ReleasePlan;
 impl<E: Execute> Repository<E> {
     pub(super) fn validation_path(&self, version: &str) -> Result<PathBuf> {
         self.version_parts(version)?;
-        Ok(self
-            .target()?
-            .join("release-validation")
-            .join(format!("{version}-validated.json")))
+        Ok(self.artifact_paths()?.validation(version))
     }
 
     pub(super) fn validation_command(&self) -> Result<Vec<String>> {

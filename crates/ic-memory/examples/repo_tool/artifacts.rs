@@ -17,11 +17,7 @@ impl<E: Execute> Repository<E> {
 
     pub(super) fn receipt_path(&self, version: &str, stage: ReceiptStage) -> Result<PathBuf> {
         self.version_parts(version)?;
-        let suffix = if stage == Prepared { "-prepared" } else { "" };
-        Ok(self
-            .target()?
-            .join("release-validation")
-            .join(format!("{version}{suffix}.json")))
+        Ok(self.artifact_paths()?.receipt(version, stage))
     }
 
     #[cfg(test)]

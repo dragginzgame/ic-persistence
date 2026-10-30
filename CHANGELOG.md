@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.56.4] - Unreleased
+
+### 🧹 Cleanup
+
+- Consolidate runtime layout and lease bookkeeping, release artifact paths and
+  fixture receipt reads while preserving formats, custody and recovery behavior.
+  [Details](docs/changelog/0.56.md#0564---unreleased).
+
 ## [0.56.3] - 2026-10-30
 
 ### 🧹 Cleanup
