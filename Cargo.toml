@@ -41,10 +41,10 @@ categories = ["wasm", "data-structures"]
 [workspace.dependencies]
 # Production dependencies
 ic-logging = { version = "0.23.1", default-features = false }
-ic-memory = { path = "crates/ic-memory", version = "0.58.1" }
+ic-memory = { path = "crates/ic-memory", version = "0.59.0" }
 ic-metrics = "0.23.2"
 ic-platform = { version = "0.15.1", default-features = false }
-ic-storage = { path = "crates/ic-storage", version = "0.58.1" }
+ic-storage = { path = "crates/ic-storage", version = "0.59.0" }
 ic-wire = { version = "0.12.1", default-features = false }
 serde = { version = "1.0", default-features = false, features = [
     "alloc",

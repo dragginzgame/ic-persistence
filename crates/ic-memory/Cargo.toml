@@ -2,7 +2,7 @@
 name = "ic-memory"
 edition.workspace = true
 rust-version.workspace = true
-version = "0.58.1"
+version = "0.59.0"
 license.workspace = true
 authors.workspace = true
 description.workspace = true
