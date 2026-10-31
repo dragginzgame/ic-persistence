@@ -3,6 +3,19 @@
 Covers `ic-memory` and `ic-storage`. Independent group releases begin after the
 coordinated 0.58.1 cutoff; [earlier shared history](../history.md) is preserved once.
 
+## [0.60.0] - Unreleased
+
+### ⚠️ Breaking
+
+- Adopt IC Wire 0.13.0 for durable codecs. Consumers exchanging exposed Wire
+  errors must align that dependency identity. Encoded bytes, bounds and admission
+  remain unchanged; no retained-data reset or migration is required.
+
+### ⬆️ Dependencies
+
+- Adopt Build/Host 0.73.1 and Testkit Native/CLI 0.75.0. Preserve the qualified
+  stable-memory substrate and PocketIC 16.1.0 server selection.
+
 ## [0.59.0] - 2026-10-31
 
 ### ⚠️ Breaking

@@ -157,11 +157,17 @@ impl Fixture {
         }
         let policy_path =
             Path::new(env!("CARGO_MANIFEST_DIR")).join("../../ci/cargo-release-groups.json");
-        let policy = fs::read_to_string(policy_path).unwrap().replace(
-            "releases/persistence/0.59.md",
-            "releases/persistence/0.13.md",
+        let mut policy: serde_json::Value =
+            serde_json::from_str(&fs::read_to_string(policy_path).unwrap()).unwrap();
+        for group in policy["groups"].as_array_mut().unwrap() {
+            if group["name"] == "persistence" {
+                group["metadata_files"] = serde_json::json!(["releases/persistence/0.13.md"]);
+            }
+        }
+        source.insert(
+            GROUP_POLICY.to_owned(),
+            serde_json::to_string(&policy).unwrap(),
         );
-        source.insert(GROUP_POLICY.to_owned(), policy);
         for name in ["ic-metrics-stable", "ic-logging-stable"] {
             source.insert(
                 format!(

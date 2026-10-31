@@ -3,6 +3,14 @@
 Independent releases begin after the coordinated 0.58.1 release. Earlier history
 is retained once in the [shared historical ledger](../history.md#0581---2026-10-31).
 
+## [0.60.0] - Unreleased
+
+### ⚠️ Breaking
+
+- Adopt IC Wire 0.13.0 for durable codecs. Consumers exchanging exposed Wire
+  errors must align that dependency identity. Encoded bytes, bounds and admission
+  remain unchanged; no retained-data reset or migration is required.
+
 ## [0.59.0] - 2026-10-31
 
 ### ⚠️ Breaking

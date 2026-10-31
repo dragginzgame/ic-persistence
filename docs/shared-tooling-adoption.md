@@ -29,23 +29,23 @@ reviewed and its configuration-dependent ownership/documentation/naming reasons
 are recorded beside the retained levels. No lint level, host/IC tool catalog,
 formatter pin or maintenance activation changed.
 
-Platform 0.15.1 is selected directly in both maintained graphs, with the same qualified
-stable-structures 0.7.2 and PocketIC 16.1.0 substrate/client identities. Production
-Wasm has one Platform runtime owner and no external IC0/executor supplier. Tooling's
-native-only test meter retains its required non-runtime Platform 0.13.0 provider;
-it does not enter production Wasm. Platform no longer supplies a gzip facade;
-native artifact codecs remain owned by Host Artifacts. Platform now reexports
-owned identities from Types 0.15.0. Wire's optional Types 0.1 schema integration
-is unselected, so no second owned identity provider enters these graphs.
-Metrics selects published 0.23.2; Logging remains at 0.23.1. Metrics durable bytes stay unchanged;
-Logging's explicit hard-cut disposition is documented in its package guide.
-Both maintained catalogs select Wire 0.12.1. Metrics preserves default native
-metadata through its `native-wire` feature and shares that Wire identity; the
-older Wire provider is removed. Production Wasm has one core Wire 0.12 provider
-and no Wire endpoint or platform-types integration. IC Tooling libraries
-select Build/Host 0.73.0 for group-aware rendering. The prepared Build editor
-selects 0.73.0; Testkit library/CLI select 0.73.0, with server 16.1.0. Common
-tool catalogs and all local release-group version numbers remain unchanged.
+The library lock selects Platform 0.15.2 and Types 0.15.1, preserving the
+incoming selections. The independent runtime graph retains Platform 0.15.1.
+Stable-structures 0.7.2 and PocketIC 16.1.0 remain unchanged. Testkit Native 0.75.0
+now shares the current Platform family; the native-only Platform 0.13 copy leaves
+the library lock. Production Wasm retains one Platform runtime owner.
+
+Both maintained catalogs select Wire 0.13.0. Metrics 0.23.2's default native
+metadata retains Wire 0.12.1 on non-Wasm targets. Its optional metadata is not a
+Wire 0.13 schema implementation; this adoption preserves that feature rather than
+claiming host schema alignment. Production Wasm selects one core Wire 0.13 provider.
+Wire endpoint and platform-types integration remain unselected. Codec bytes,
+bounds and restoration contracts are unchanged. The library lock's incoming
+Logging 0.23.2 selection is preserved.
+
+Build/Host libraries and the selected Build editor use 0.73.1; Testkit Native/CLI
+use 0.75.0 with the unchanged server 16.1.0 selection. Common tool pins, local
+package versions and the reviewed Shared snapshot remain unchanged.
 
 The library [dependency catalog](../Cargo.toml) owns direct package requirements
 and feature selections; its [lockfile](../Cargo.lock) owns resolved identities.

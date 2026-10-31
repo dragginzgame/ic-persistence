@@ -22,7 +22,7 @@ root `Cargo.toml` comments give its member/version/ledger map.
 All members use literal `package.version` fields and group members match their
 primary. Root `Cargo.toml` remains a virtual dependency/shared-metadata catalog
 without `workspace.package.version`. There are no intermediate group manifests
-or relocated packages. Adoption retains all numeric 0.58.1 identities.
+or relocated packages. The initial layout adoption preserved all numeric versions.
 
 Root [CHANGELOG.md](CHANGELOG.md) is an index. Earlier coordinated history through
 0.58.1 is preserved once in [releases/history.md](releases/history.md), with the
@@ -50,14 +50,14 @@ make RELEASE_GROUP=metrics-stable publish
 
 These are maintainer commands, not adoption checks. `release-patch` and
 `release-major` keep their existing meanings. Pre-1.0 breaking public contracts
-require a minor; compatible work uses a patch. Current Wire/Metrics identity
-changes select 0.59.0 pending notes, without bumping package manifests here.
+require a minor; compatible work uses a patch. Current Wire identity
+changes select 0.60.0 pending notes, without bumping package manifests here.
 
 Groups are release identities, not independent dependency graphs. Bare core
 requirements retain a compatible minimum on core patch releases; a breaking core
 release updates their shared root declarations without changing adapter versions.
 The adapter then needs its own release to publish its changed requirement.
-Current Wire 0.12 adoption exposes new Memory errors and adapter codec errors:
+Current Wire 0.13 adoption exposes new Memory errors and adapter codec errors:
 release the compatible core supplier first and then its adapters. Do not publish
 an old consumer declaration under an existing version, broaden requirements to
 hide a type mismatch, or remove production singleton checks. New versions of
