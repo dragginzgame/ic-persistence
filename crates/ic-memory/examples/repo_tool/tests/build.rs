@@ -128,9 +128,12 @@ impl BuildEffects {
     }
 
     pub(super) fn version(root: &Path) -> Result<String> {
+        Self::package_version(root, "ic-memory")
+    }
+    pub(super) fn package_version(root: &Path, name: &str) -> Result<String> {
         toml_string(
-            &fs::read_to_string(root.join("Cargo.toml"))?,
-            "workspace.package",
+            &fs::read_to_string(root.join(package_manifest(name)))?,
+            "package",
             "version",
         )
     }
@@ -176,22 +179,24 @@ impl BuildEffects {
         } else {
             "prepared-archive"
         };
-        fs::write(
-            directory.join(format!("ic-memory-{}.crate", Self::version(root)?)),
-            bytes,
-        )?;
-        fs::write(
-            directory.join(format!("ic-storage-{}.crate", Self::version(root)?)),
-            format!("storage-{bytes}"),
-        )?;
-        fs::write(
-            directory.join(format!("ic-metrics-stable-{}.crate", Self::version(root)?)),
-            format!("metrics-{bytes}"),
-        )?;
-        fs::write(
-            directory.join(format!("ic-logging-stable-{}.crate", Self::version(root)?)),
-            format!("logging-{bytes}"),
-        )?;
+        for name in packages() {
+            let manifest = fs::read_to_string(root.join(package_manifest(name)))?;
+            let value: toml::Value = toml::from_str(&manifest)?;
+            let version = value["package"]["version"]
+                .as_str()
+                .map(str::to_owned)
+                .unwrap_or(Self::version(root)?);
+            let prefix = match name {
+                "ic-memory" => "",
+                "ic-storage" => "storage-",
+                "ic-metrics-stable" => "metrics-",
+                _ => "logging-",
+            };
+            fs::write(
+                directory.join(format!("{name}-{version}.crate")),
+                format!("{prefix}{bytes}"),
+            )?;
+        }
         if self.fail.as_ref() == Some(&BuildFault::Package) {
             return Err("fixture package failure".into());
         }

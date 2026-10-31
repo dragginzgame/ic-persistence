@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Exercise the real archive admission before any compilation, with bad observations.
 set -euo pipefail
-package_names="$(bash scripts/ci/read-persistence-packages.sh)"
+package_names="$(bash scripts/ci/read-persistence-packages.sh --all)"
 IFS=$'\t' read -r -a packages <<< "$package_names"
 source scripts/ci/fixture-lifecycle.sh
 fixture="$(fixture_create "${TMPDIR:-/tmp}/ic-persistence-package-admission.XXXXXX")"

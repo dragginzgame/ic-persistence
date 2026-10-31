@@ -59,7 +59,7 @@ impl ReleaseEdit<'_> {
         }
         let owned = if self.path == "Cargo.lock" {
             std::str::from_utf8(&current).is_ok_and(|text| {
-                check_lock_update(&self.before, text, &selection.previous, &selection.version)
+                repo.check_lock_update(&self.before, text, &selection.previous, &selection.version)
                     .is_ok()
             })
         } else {
@@ -97,12 +97,15 @@ impl<'a> ReleasePlan<'a> {
     }
 
     pub(super) fn publish<E: Execute>(&self, repo: &Repository<E>) -> Result<()> {
-        // The root version is the completion marker for the complete metadata projection.
+        // Publish the selected version owner last, including explicit-version
+        // groups with additional metadata after their member manifest.
+        let group = repo.release_group(None)?;
+        let marker = package_manifest(&group.primary);
         for edit in self
             .edits
             .iter()
-            .filter(|edit| edit.path != "Cargo.toml")
-            .chain(self.edits.iter().filter(|edit| edit.path == "Cargo.toml"))
+            .filter(|edit| edit.path != marker)
+            .chain(self.edits.iter().filter(|edit| edit.path == marker))
         {
             edit.publish(repo)?;
         }

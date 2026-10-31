@@ -270,10 +270,10 @@ fn streamed_receipts_preserve_json_and_reject_partial_serialization() {
             validation: serde_json::from_slice(&original).unwrap(),
             package_head: head.to_owned(),
             lock_sha256: "lock".to_owned(),
-            package_sha256: "memory".to_owned(),
-            storage_sha256: "storage".to_owned(),
-            metrics_sha256: "metrics".to_owned(),
-            logging_sha256: "logging".to_owned(),
+            archives: BTreeMap::from([
+                ("ic-memory".to_owned(), "memory".to_owned()),
+                ("ic-storage".to_owned(), "storage".to_owned()),
+            ]),
             commands: vec![vec!["package".to_owned()]],
         };
         assert_eq!(
@@ -282,27 +282,19 @@ fn streamed_receipts_preserve_json_and_reject_partial_serialization() {
                 "validation": serde_json::to_value(&validation).unwrap(),
                 "package_head": head,
                 "lock_sha256": "lock",
-                "package_sha256": "memory",
-                "storage_sha256": "storage",
-                "metrics_sha256": "metrics",
-                "logging_sha256": "logging",
+                "archives": {"ic-memory":"memory", "ic-storage":"storage"},
                 "commands": [["package"]],
             })
         );
         assert_eq!(
             evidence.archives().collect::<Vec<_>>(),
-            [
-                ("ic-memory", "memory"),
-                ("ic-storage", "storage"),
-                ("ic-metrics-stable", "metrics"),
-                ("ic-logging-stable", "logging")
-            ]
+            [("ic-memory", "memory"), ("ic-storage", "storage"),]
         );
         let mut unknown = serde_json::to_value(&evidence).unwrap();
         unknown["unknown"] = serde_json::json!(true);
         assert!(serde_json::from_value::<PackageEvidence>(unknown).is_err());
         let mut incomplete = serde_json::to_value(&evidence).unwrap();
-        incomplete.as_object_mut().unwrap().remove("logging_sha256");
+        incomplete.as_object_mut().unwrap().remove("archives");
         assert!(serde_json::from_value::<PackageEvidence>(incomplete).is_err());
         Processes.write_json(&path, &evidence).unwrap();
         let original = fs::read(&path).unwrap();

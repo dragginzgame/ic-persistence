@@ -59,7 +59,10 @@ impl<E: Execute> Repository<E> {
     }
 
     fn registry_contains(&self, name: &str, version: &str, digest: &str) -> Result<bool> {
-        require(packages().contains(&name), "unknown publication package")?;
+        require(
+            self.selected_packages()?.iter().any(|p| p == name),
+            "unknown publication package",
+        )?;
         self.version_parts(version)?;
         let response = self.output(
             "curl",
@@ -80,6 +83,7 @@ impl<E: Execute> Repository<E> {
     }
 
     pub(super) fn publish(&self, dry_run: bool) -> Result<()> {
+        self.release_group(None)?;
         let release = self.release_commit()?;
         let version = &release.selection.version;
         let head = &release.commit;

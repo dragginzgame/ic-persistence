@@ -17,14 +17,15 @@ The virtual repository-root workspace owns shared package metadata and the
 dependency catalog. The library packages are `crates/ic-memory/`,
 `crates/ic-storage/`, `crates/ic-metrics-stable/` and
 `crates/ic-logging-stable/` adapter. Logging Stable owns bounded IC Wire checkpoints
-over governed Storage maps; IC Observability's published Logging 0.21.0 owns
+over governed Storage maps; IC Observability's published Logging 0.23.1 owns
 logging semantics and validated restoration. Logging checkpoints use discriminator 3 and an explicit retained-text ceiling.
 The maintainer retired discriminator-2 rows by hard cut: hosts own explicit row
 retirement or fresh allocations; no legacy decoder or automatic reset is allowed.
 Hosts own clocks, identity,
 retention scheduling and checkpoint cadence. The maintainer selected Logging
-Stable publication integration on 2026-10-29: all four packages participate in
-archive qualification, receipts and dependency-ordered publication. Actual
+Stable publication integration on 2026-10-29. All four packages participate in
+workspace archive qualification; issue #144 selects independent release groups
+for core persistence and each stable adapter, with group-bound receipts/publication. Actual
 release and publication commands retain their separate authorization.
 Memory owns allocation governance, bootstrap and exclusive leases; Storage owns
 governed collections over those leases. Metrics Stable owns validated IC Wire metric
@@ -130,7 +131,9 @@ Follow the reviewed shared [contribution rules](rules/contributions.md),
 [changelog rules](rules/changelogs.md). Memory uses direct release delivery;
 an ordinary PR does not select PR release delivery.
 
-Keep root notes concise, with extended notes in `docs/changelog/<major>.<minor>.md`.
+Root `CHANGELOG.md` is an index. Each group owns `releases/<group>/CHANGELOG.md`
+and new detailed notes under that directory; shared coordinated history lives
+once in `releases/history.md`. Keep existing historical detail/evidence paths.
 Historical documents may describe retired formats; maintained code and fixtures
 use only the current contract. Do not add legacy decoders, Serde field aliases
 or tests whose sole purpose is prohibiting a retired name.
@@ -171,7 +174,7 @@ growth and installed IO/upgrade checks. Memory keeps its local layout/growth
 safeguards. Changes stop at the owned IC Platform boundary.
 
 The independent qualification workspace consumes PocketIC through IC Platform's
-optional native client boundary; its lockfile selects client 16.1.0. Testkit 0.72.1 owns the reviewed
+optional native client boundary; its lockfile selects client 16.1.0. Testkit 0.73.0 owns the reviewed
 16.1.0 server selection. Changing that pair requires repeating installed
 qualification; historical 16.0.0 client/server evidence cannot qualify the new
 pairing. Keep both lockfiles, sources, features and toolchains unchanged during
@@ -206,13 +209,26 @@ pub struct SchemaMetadata {
 Keep this shape for new or edited item-level docs unless local context clearly
 requires a different style.
 
-## Consolidated release identity
+## Independent release identities
 
-All four packages share the workspace version and advance together, including
-archive qualification and publication receipts.
-Keep the
-public APIs, collection formats and allocation custody unchanged during tooling
-cleanup. Storage retains its existing lint policy and declaration boundary.
-The completed import and preserved history are recorded in the
-[migration map](docs/migration/ic-persistence.md). The later stable-adapter
-import is recorded in [its migration guide](docs/migration/ic-metrics-stable.md).
+The maintainer approved issue #144's three groups in one development workspace.
+`ci/cargo-release-groups.json` owns membership and metadata plans. `persistence`
+coordinates Memory/Storage through literal package versions; `metrics-stable`
+and `logging-stable` likewise own literal member versions. There is no root
+workspace package version. Each primary package is its group's version authority
+and each canonical ledger is `releases/<group>/CHANGELOG.md`. Preserve existing numeric versions and
+coordinated history through 0.58.1; no historical decoder or release reset is
+introduced. Root manifest comments map every member and version/ledger owner.
+Dependencies remain in the root catalog. Adapter-only changes do not advance
+Memory/Storage or the other adapter. Core requirements change only when their
+bare compatible minimum no longer admits the selected supplier. Shared Cargo
+resolution and public type coupling remain real integration obligations.
+
+The existing runner requires explicit `RELEASE_GROUP` for release, resume and
+publication, with namespaced tags,
+receipts and resume paths. Whole-workspace validation/archive integration remains
+required; publication selects only the qualified group. Actual release/publication
+commands retain separate authority. See [group commands](RELEASING.md#release-groups).
+Keep public APIs, formats and custody unchanged during this tooling change.
+The preserved import histories remain in [the migration map](docs/migration/ic-persistence.md)
+and [the adapter migration guide](docs/migration/ic-metrics-stable.md).

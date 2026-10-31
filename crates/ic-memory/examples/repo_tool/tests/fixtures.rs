@@ -27,8 +27,8 @@ pub(super) fn is_package_call(call: &[String]) -> bool {
                 .is_some_and(|script| script == "scripts/ci/package-workspace.sh")
 }
 
-pub(super) const MANIFEST: &str = "[workspace]\nmembers = [\"crates/ic-memory\", \"crates/ic-storage\", \"crates/ic-metrics-stable\", \"crates/ic-logging-stable\"]\n[workspace.package]\nversion = \"0.12.3\"\nrust-version = \"1.88.0\"\n[workspace.dependencies]\nic-memory = { path = \"crates/ic-memory\", version = \"0.12.3\" }\nic-storage = { path = \"crates/ic-storage\", version = \"0.12.3\" }\nother = \"0.12.3\"\n";
-pub(super) const PACKAGE: &str = "[package]\nname = \"ic-memory\"\nversion.workspace = true\n";
+pub(super) const MANIFEST: &str = "[workspace]\nmembers = [\"crates/ic-memory\", \"crates/ic-storage\", \"crates/ic-metrics-stable\", \"crates/ic-logging-stable\"]\n[workspace.package]\nrust-version = \"1.88.0\"\n[workspace.dependencies]\nic-memory = { path = \"crates/ic-memory\", version = \"0.12.3\" }\nic-storage = { path = \"crates/ic-storage\", version = \"0.12.3\" }\nother = \"0.12.3\"\n";
+pub(super) const PACKAGE: &str = "[package]\nname = \"ic-memory\"\nversion = \"0.12.3\"\n";
 pub(super) const LOCK: &str = "version = 4\n[[package]]\nname = \"ic-logging-stable\"\nversion = \"0.12.3\"\n[[package]]\nname = \"ic-metrics-stable\"\nversion = \"0.12.3\"\ndependencies = [\"ic-memory\", \"ic-storage\"]\n[[package]]\nname = \"ic-storage\"\nversion = \"0.12.3\"\ndependencies = [\"ic-memory\"]\n[[package]]\nname = \"ic-memory\"\nversion = \"0.12.3\"\n[[package]]\nname = \"other\"\nversion = \"0.12.3\"\n";
 
 pub(super) struct Fixture {
@@ -39,6 +39,14 @@ pub(super) struct Fixture {
 impl Fixture {
     pub(super) fn new() -> Self {
         Self::new_in(&env::temp_dir())
+    }
+
+    pub(super) fn for_group(group: &str) -> Self {
+        let mut fixture = Self::new();
+        fixture.repo.group = group.to_owned();
+        fixture.selection.group = group.to_owned();
+        fixture.repo.exec.state.borrow_mut().git.group = group.to_owned();
+        fixture
     }
 
     pub(super) fn new_in(parent: &Path) -> Self {
@@ -70,27 +78,17 @@ impl Fixture {
                 "# Fixture\n\nic-memory = \"0.12.3\"\n".to_owned(),
             ),
             (
-                "CHANGELOG.md".to_owned(),
+                "releases/persistence/CHANGELOG.md".to_owned(),
                 "# Changelog\n\n## [0.13.0]\n\nFixture changes.\n\n## 0.12.3\n\nHistory.\n"
                     .to_owned(),
             ),
             ("source.rs".to_owned(), "// committed source\n".to_owned()),
             (
-                "docs/changelog/0.13.md".to_owned(),
+                "releases/persistence/0.13.md".to_owned(),
                 "# Detail\n\n## [0.13.0]\n\nFixture changes.\n".to_owned(),
             ),
         ]);
-        for (name, library) in packages().into_iter().skip(1).zip([
-            "// storage fixture\n",
-            "// metrics fixture\n",
-            "// logging fixture\n",
-        ]) {
-            source.insert(
-                package_manifest(name),
-                format!("[package]\nname = {name:?}\nversion.workspace = true\n"),
-            );
-            source.insert(format!("crates/{name}/src/lib.rs"), library.to_owned());
-        }
+        Self::group_sources(&mut source);
         for helper in [
             CHANGELOG_FINALIZER,
             RELEASE_INPUT_ADMISSION,
@@ -119,6 +117,7 @@ impl Fixture {
             files: RefCell::new(FileEffects::default()),
             state: RefCell::new(State {
                 git: GitState {
+                    group: "persistence".to_owned(),
                     source,
                     ..GitState::default()
                 },
@@ -126,8 +125,13 @@ impl Fixture {
             }),
         };
         Self {
-            repo: Repository { root, exec },
+            repo: Repository {
+                root,
+                exec,
+                group: "persistence".to_owned(),
+            },
             selection: ReleaseSelection {
+                group: "persistence".to_owned(),
                 kind: "minor".to_owned(),
                 previous: "0.12.3".to_owned(),
                 version: "0.13.0".to_owned(),
@@ -137,6 +141,47 @@ impl Fixture {
                 branch: "main".to_owned(),
             },
         }
+    }
+
+    fn group_sources(source: &mut BTreeMap<String, String>) {
+        for (name, library) in packages().into_iter().skip(1).zip([
+            "// storage fixture\n",
+            "// metrics fixture\n",
+            "// logging fixture\n",
+        ]) {
+            source.insert(
+                package_manifest(name),
+                format!("[package]\nname = {name:?}\nversion = \"0.12.3\"\n"),
+            );
+            source.insert(format!("crates/{name}/src/lib.rs"), library.to_owned());
+        }
+        let policy_path =
+            Path::new(env!("CARGO_MANIFEST_DIR")).join("../../ci/cargo-release-groups.json");
+        let policy = fs::read_to_string(policy_path).unwrap().replace(
+            "releases/persistence/0.59.md",
+            "releases/persistence/0.13.md",
+        );
+        source.insert(GROUP_POLICY.to_owned(), policy);
+        for name in ["ic-metrics-stable", "ic-logging-stable"] {
+            source.insert(
+                format!(
+                    "releases/{}/CHANGELOG.md",
+                    name.strip_prefix("ic-").unwrap()
+                ),
+                "# Adapter\n\n## [0.13.0]\n\nFixture changes.\n\n## [0.12.3] - 2026-10-04\n"
+                    .to_owned(),
+            );
+        }
+    }
+
+    pub(super) fn select_detail(&self, path: &str) {
+        let mut policy: serde_json::Value =
+            serde_json::from_str(&self.repo.text(GROUP_POLICY, Some("source")).unwrap()).unwrap();
+        policy["groups"][0]["metadata_files"] = serde_json::json!([path]);
+        self.set_source(
+            GROUP_POLICY,
+            &serde_json::to_string_pretty(&policy).unwrap(),
+        );
     }
 
     pub(super) fn package_evidence(&self, stage: ReceiptStage) -> PackageEvidence {
@@ -392,12 +437,7 @@ impl Substitute {
         )?;
         let (name, version) = args[8].split_once('@').ok_or("missing exact selector")?;
         require(
-            version
-                == toml_string(
-                    &fs::read_to_string(root.join("Cargo.toml"))?,
-                    "workspace.package",
-                    "version",
-                )?,
+            version == BuildEffects::package_version(root, name)?,
             "wrong publication version",
         )?;
         let mut forwarded = vec![

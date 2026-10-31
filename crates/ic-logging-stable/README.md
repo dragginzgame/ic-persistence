@@ -123,3 +123,9 @@ query non-persistence, update/upgrade rollback, successful reopen, watermarks af
 and refusal, and forged retained-text admission. Run `make test-runtime-logging` with prepared dependencies
 and server. This checks the supplied host's original Wasm, not application
 acceptance, optimized variants or cost measurements.
+
+Logging Stable owns the independent `logging-stable` release group. Its version
+and [release ledger](../../releases/logging-stable/CHANGELOG.md) are separate from Memory/Storage and Metrics
+Stable. Use the compatible core requirements in its package metadata; see
+[group commands](../../RELEASING.md#release-groups). Grouping changes no checkpoint
+format or host retirement obligation.

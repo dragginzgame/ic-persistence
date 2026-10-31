@@ -79,6 +79,14 @@ impl<E: Execute> Repository<E> {
     }
 
     pub(super) fn check_selection(&self, selection: &ReleaseSelection) -> Result<()> {
+        require(
+            selection.group == self.group,
+            "release group differs from saved intent",
+        )?;
+        require(
+            self.text(GROUP_POLICY, None)? == self.text(GROUP_POLICY, Some(&selection.source))?,
+            "release group policy changed",
+        )?;
         self.version_parts(&selection.previous)?;
         self.version_parts(&selection.version)?;
         self.validate_date(&selection.date)?;
@@ -115,13 +123,18 @@ impl<E: Execute> Repository<E> {
             package.get("name").and_then(toml::Value::as_str) == Some(name),
             "unexpected Persistence package",
         )?;
+        let owner = self
+            .release_groups(revision)?
+            .into_iter()
+            .find(|g| g.members.iter().any(|member| member == name))
+            .ok_or("package has no release group")?;
         require(
-            package
-                .get("version")
-                .and_then(|version| version.get("workspace"))
-                .and_then(toml::Value::as_bool)
-                == Some(true),
-            "expected inherited Persistence version",
+            owner.version == "package"
+                && package
+                    .get("version")
+                    .and_then(toml::Value::as_str)
+                    .is_some(),
+            "unexpected group version source",
         )?;
         Ok(text)
     }
@@ -134,41 +147,29 @@ impl<E: Execute> Repository<E> {
         let source = &selection.source;
         let previous = &selection.previous;
         let version = &selection.version;
-        let [major, minor, _] = self.version_parts(version)?;
-        let detail = format!("docs/changelog/{major}.{minor}.md");
+        let group = self.release_group(Some(source))?;
         let finalizer = self.root.join(CHANGELOG_FINALIZER);
+        let paths = self.release_files(Some(source))?;
         let mut surfaces = BTreeMap::new();
-        for path in [
-            "Cargo.lock",
-            "Cargo.toml",
-            PACKAGE_README,
-            "CHANGELOG.md",
-            &detail,
-        ] {
-            let original = self.text(path, Some(source))?;
-            let expected = match path {
-                "Cargo.lock" => Self::replace_lock_version(&original, previous, version)?,
-                "Cargo.toml" => self.replace_workspace_version(&original, previous, version)?,
-                PACKAGE_README => original.clone(),
-                _ => self.release_changelog(
-                    &finalizer,
-                    &original,
-                    previous,
-                    version,
-                    &selection.date,
-                )?,
+        for path in paths {
+            let original = self.text(&path, Some(source))?;
+            let expected = if path == "Cargo.lock" {
+                self.replace_lock_version(&original, previous, version)?
+            } else if path == "Cargo.toml" {
+                self.project_catalog(&original, previous, version)?
+            } else if path.ends_with("/Cargo.toml") {
+                render_group_manifest(&original, previous, version, ManifestVersion::Package, &[])?
+            } else if path == group.changelog
+                || (path.starts_with(&format!("releases/{}/", group.name))
+                    && Path::new(&path)
+                        .extension()
+                        .is_some_and(|extension| extension.eq_ignore_ascii_case("md")))
+            {
+                self.release_changelog(&finalizer, &original, previous, version, &selection.date)?
+            } else {
+                original.clone()
             };
-            surfaces.insert(path.to_owned(), ReleaseSurface { original, expected });
-        }
-        for name in packages().into_iter().skip(1) {
-            let original = self.member_release_manifest(Some(source), name)?;
-            surfaces.insert(
-                package_manifest(name),
-                ReleaseSurface {
-                    expected: original.clone(),
-                    original,
-                },
-            );
+            surfaces.insert(path, ReleaseSurface { original, expected });
         }
         Ok(surfaces)
     }

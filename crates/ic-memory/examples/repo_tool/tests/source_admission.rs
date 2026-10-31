@@ -107,6 +107,7 @@ fn source_admission_reports_actual_status_and_preserves_git_failures() {
         )
         .unwrap();
     let repo = Repository {
+        group: "persistence".to_owned(),
         root: checkout,
         exec: Processes,
     };
@@ -179,6 +180,7 @@ fn source_admission_reports_actual_status_and_preserves_git_failures() {
 fn release_admission_rejects_whitespace_only_paths() {
     let fixture = Fixture::new();
     let repo = Repository {
+        group: "persistence".to_owned(),
         root: fixture.repo.root.clone(),
         exec: Processes,
     };
@@ -353,6 +355,7 @@ fn real_index_rejects_hidden_staging_and_checks_exact_prepared_bytes() {
         )
         .unwrap();
     let repo = Repository {
+        group: "persistence".to_owned(),
         root: checkout,
         exec: Processes,
     };
@@ -367,7 +370,10 @@ fn real_index_rejects_hidden_staging_and_checks_exact_prepared_bytes() {
     repo.git(&["read-tree", &selection.source]).unwrap();
     let original = repo.text("README.md", Some("HEAD")).unwrap();
     let expected = format!("{original}\nPrepared release fixture.\n");
-    let locked = Repository::<Processes>::replace_lock_version(LOCK, "0.12.3", "0.13.0").unwrap();
+    let locked = fixture
+        .repo
+        .replace_lock_version(LOCK, "0.12.3", "0.13.0")
+        .unwrap();
     let surfaces = BTreeMap::from([
         (
             "README.md".to_owned(),
@@ -431,14 +437,15 @@ fn real_index_rejects_hidden_staging_and_checks_exact_prepared_bytes() {
 #[test]
 fn patch_preparation_keeps_head_and_rejects_unvalidated_source_or_staging() {
     let mut fixture = Fixture::new();
-    let path = "CHANGELOG.md";
+    let path = "releases/persistence/CHANGELOG.md";
     let notes = fixture.repo.exec.state.borrow().git.source[path].replace("[0.13.0]", "[0.12.4]");
     fixture.set_source(path, &notes);
     fixture.selection.kind = "patch".to_owned();
     fixture.selection.version = "0.12.4".to_owned();
-    let detail = "docs/changelog/0.12.md";
+    let detail = "releases/persistence/0.12.md";
     let notes = "# Detail\n\n## [0.12.4]\n\nFixture changes.\n";
     fixture.set_source(detail, notes);
+    fixture.select_detail(detail);
     fixture.prepare().unwrap();
     assert!(fixture.repo.exec.state.borrow().git.release.is_none());
     assert_eq!(fixture.repo.version(None).unwrap(), "0.12.4");

@@ -1,12 +1,6 @@
 #!/usr/bin/env bash
-# Actual offline Cargo and the selected editor; no fixture Git/release effects.
+# Real offline Cargo/editor, with interrupted metadata only in disposable copies.
 set -euo pipefail
-package_names="$(bash scripts/ci/read-persistence-packages.sh)"
-IFS=$'\t' read -r -a packages <<< "$package_names"
-manifests=()
-for package in "${packages[@]}"; do
-    manifests+=("crates/$package/Cargo.toml")
-done
 unset RELEASE_CACHE_PREPARE MAKEFLAGS MFLAGS MAKEOVERRIDES GNUMAKEFLAGS MAKEFILES
 root="$(pwd -P)"
 pin="$(sed -n 's/^channel = "\([^"]*\)"$/\1/p' rust-toolchain.toml)"
@@ -14,14 +8,17 @@ pin="$(sed -n 's/^channel = "\([^"]*\)"$/\1/p' rust-toolchain.toml)"
 source ci/release-tools.env
 editor="$(RUSTUP_TOOLCHAIN="$pin" bash scripts/dev/install-rust-tools.sh --consumer "$root" \
     --package ic-build --version "$IC_BUILD_RELEASE_METADATA_VERSION" --bin ic-build-release-metadata --profile debug --features cli --check)"
-fixture="$(mktemp -d "${TMPDIR:-/tmp}/ic-persistence-bootstrap.XXXXXX")"
-echo "Retained coordinated bootstrap fixture: $fixture"
-cp Cargo.toml Cargo.lock LICENSE rust-toolchain.toml "$fixture/"
+fixture="$(mktemp -d "${TMPDIR:-/tmp}/ic-persistence-group-bootstrap.XXXXXX")"
+echo "Retained group bootstrap fixture: $fixture"
+cp Cargo.toml Cargo.lock LICENSE rust-toolchain.toml CHANGELOG.md "$fixture/"
+mkdir -p "$fixture/docs"
+cp -R docs/changelog "$fixture/docs/"
+cp -R releases "$fixture/"
 cp -R crates "$fixture/"
 mkdir -p "$fixture/scripts/dev" "$fixture/scripts/ci" "$fixture/ci"
 cp scripts/dev/run-repo-tool.sh "$fixture/scripts/dev/"
 cp scripts/ci/read-persistence-packages.sh scripts/ci/read-cargo-workspace-version.sh scripts/ci/validate-release-inputs.pl scripts/ci/StableVersion.pm "$fixture/scripts/ci/"
-cp ci/release-tools.env "$fixture/ci/"
+cp ci/release-tools.env ci/cargo-release-groups.json "$fixture/ci/"
 cat > "$fixture/scripts/dev/install-rust-tools.sh" <<'STUB'
 #!/usr/bin/env bash
 set -euo pipefail
@@ -32,32 +29,50 @@ export BOOTSTRAP_QUALIFIED_EDITOR="$editor"
 export CARGO_NET_OFFLINE=true RUSTUP_AUTO_INSTALL=0
 export CARGO_TARGET_DIR="$fixture/target"
 cd "$fixture"
-previous="$(yq -p toml -o yaml -r '.workspace.package.version' Cargo.toml)"
-next="$(bash "$root/scripts/ci/next-release-version.sh" "$previous" minor)"
 cp Cargo.toml original.toml
 cp Cargo.lock original.lock
-cargo "+$pin" metadata --locked --offline --no-deps --format-version 1 > metadata.json
-yq -p toml -o json '.' Cargo.toml | jq --slurpfile metadata metadata.json '{manifest: ., members: ($metadata[0].packages | map({name, manifest_path}))}' > context.json
-"$editor" --max-input-bytes "$CARGO_RELEASE_METADATA_MAX_BYTES" manifest Cargo.toml "$previous" "$next" context.json > candidate.toml
-# Only these disposable fixture inputs are edited; production release metadata
-# remains unchanged. All members inherit the coordinated workspace version.
-cp Cargo.lock candidate.lock
-for package in "${packages[@]}"; do
-    package_previous="$(yq -p toml -o json '.' Cargo.lock | jq -er --arg package "$package" '.package[] | select(.name == $package and .source == null) | .version')"
-    "$editor" --max-input-bytes "$CARGO_RELEASE_METADATA_MAX_BYTES" lock candidate.lock "$package_previous" "$next" "$package" > candidate-next.lock
-    mv candidate-next.lock candidate.lock
-done
-for state in lock-first manifest-first; do
+cargo "+$pin" metadata --locked --offline --format-version 1 > baseline-metadata.json
+while IFS= read -r group; do
+    export RELEASE_GROUP="$group"
     cp original.toml Cargo.toml
     cp original.lock Cargo.lock
-    expected="$previous"
-    case "$state" in
-        lock-first) cp candidate.lock Cargo.lock ;;
-        manifest-first) cp candidate.toml Cargo.toml; expected="$next" ;;
-    esac
-    shasum -a 256 Cargo.toml Cargo.lock "${manifests[@]}" > "$state.inputs.sha256"
-    bash scripts/dev/run-repo-tool.sh "$pin" version > "$state.stdout" 2> "$state.stderr"
-    [[ "$(cat "$state.stdout")" == "$expected" ]] || exit 1
-    shasum -a 256 -c "$state.inputs.sha256"
-done
-echo 'Coordinated bootstrap admits both interrupted metadata states without modifying tracked inputs.'
+    previous="$(bash scripts/dev/run-repo-tool.sh "$pin" version)"
+    next="$(bash "$root/scripts/ci/next-release-version.sh" "$previous" minor)"
+    RELEASE_VERSION="$next" RUSTUP_TOOLCHAIN="$pin" bash "$root/scripts/ci/cargo-release-group.sh" plan "$group" > "$group.plan.json"
+    cp Cargo.lock "$group.lock"
+    while IFS= read -r package; do
+        "$editor" --max-input-bytes "$CARGO_RELEASE_METADATA_MAX_BYTES" lock "$group.lock" "$previous" "$next" "$package" > next.lock
+        mv next.lock "$group.lock"
+    done < <(jq -r '.members[]' "$group.plan.json")
+    while IFS= read -r path; do
+        cp "$path" "$path.original"
+        jq --arg path "$path" '.manifests[] | select(.path == $path) | {version,dependencies}' "$group.plan.json" > edit.json
+        "$editor" --max-input-bytes "$CARGO_RELEASE_METADATA_MAX_BYTES" group-manifest "$path.original" "$previous" "$next" edit.json > "$path.candidate"
+    done < <(jq -r '.manifests[].path' "$group.plan.json")
+    for state in lock-first manifest-first; do
+        cp original.lock Cargo.lock
+        while IFS= read -r path; do cp "$path.original" "$path"; done < <(jq -r '.manifests[].path' "$group.plan.json")
+        expected="$previous"
+        if [[ "$state" == lock-first ]]; then cp "$group.lock" Cargo.lock
+        else
+            while IFS= read -r path; do cp "$path.candidate" "$path"; done < <(jq -r '.manifests[].path' "$group.plan.json")
+            expected="$next"
+        fi
+        shasum -a 256 Cargo.toml Cargo.lock crates/*/Cargo.toml > "$group.$state.inputs.sha256"
+        bash scripts/dev/run-repo-tool.sh "$pin" version > "$group.$state.stdout" 2> "$group.$state.stderr"
+        [[ "$(cat "$group.$state.stdout")" == "$expected" ]]
+        shasum -a 256 -c "$group.$state.inputs.sha256"
+    done
+    # Actual coherent group projection: resolve every member, then compile the
+    # unaffected core consumer while retaining other groups' exact identities.
+    while IFS= read -r path; do cp "$path.candidate" "$path"; done < <(jq -r '.manifests[].path' "$group.plan.json")
+    cp "$group.lock" Cargo.lock
+    cargo "+$pin" metadata --locked --offline --format-version 1 > "$group.metadata.json"
+    jq -e --slurpfile before baseline-metadata.json --slurpfile plan "$group.plan.json" '
+      def unrelated($m): [$m.packages[] | select(.name as $n | $plan[0].members | index($n) | not) | {id,version}] | sort_by(.id);
+      unrelated(.) == unrelated($before[0])' "$group.metadata.json" > /dev/null
+    cargo "+$pin" check -p ic-storage --lib --locked --offline > "$group.consumer.log" 2>&1
+    while IFS= read -r path; do cp "$path.original" "$path"; done < <(jq -r '.manifests[].path' "$group.plan.json")
+    cp original.lock Cargo.lock
+ done < <(jq -r '.groups[].name' ci/cargo-release-groups.json)
+echo 'All three groups bootstrap both interrupted metadata states without modifying source inputs.'

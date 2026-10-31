@@ -1,39 +1,22 @@
 # Current handoff
 
-This batch, prepared on the released `b20098d` source tree (0.58.0), adopts
-published Platform 0.12.0 in both maintained catalogs and lockfiles, preserving
-the preceding uncommitted Tooling 0.72.1 adoption and CLI pins. No Git or release
-effects ran for this adoption. The pending changelog remains 0.58.1: the upstream
-minor breaks only an optional gzip type identity that Persistence neither
-selects nor exposes, so Persistence's public contract stays compatible.
+Delivery of the pending upstream refresh, issue #144 release groups and symmetric
+Cargo/changelog layout is authorized to crates.io and GitHub. Metrics now selects
+0.23.2; Logging remains 0.23.1. Shared selects committed 0.27.19 at
+`54fc49e12f439dbe18d232f622a6d78e61773353`. The canonical exporter preserves
+132 payloads and 78 selected roots. Latest evidence is retained under
+`/tmp/ic-persistence-delivery21/`.
 
-Platform implementation, macro and runtime-guard source trees are identical
-between upstream tags `v0.11.1` and `v0.12.0`. Its optional native gzip facade
-updates Host Artifacts identity. Production Wasm has one Platform 0.12 runtime
-owner; Tooling's native test meter retains a required non-runtime Platform 0.11.1
-provider outside production. No unrelated dependency identity changed.
-Stable-structures remains exactly 0.7.2 and PocketIC remains client/server 16.1.0.
-Wire 0.10, Metrics/Logging 0.21, Shared Tooling and common catalogs are unchanged.
-Stored bytes, bounds, arithmetic, logging semantics and allocation custody remain
-unchanged; no reset, retained-data migration or source adaptation is required.
+All three groups have 0.59.0 pending notes for the previously adopted Wire/Metrics
+identity changes. Delivery runs supplier-first: persistence (Memory/Storage),
+metrics-stable, logging-stable. Group version sources, ledgers, tags and receipts
+are explicit; each release runs the complete configured gate and publishes its
+qualified archive set. Root history remains preserved once.
 
-Evidence under `/tmp/ic-persistence-platform15/` includes registry/source review,
-locked full metadata for both graphs, production graph/pins, strict native
-Memory/Storage/Logging library/test Clippy, the Logging Wasm fixture Clippy, and
-independent-runner Clippy. Twelve stable-cell, thirteen ledger-encoding and one
-Storage allocation/reopen test pass (one explicit ledger-encoding ignore).
-Rust 1.91 checks the Logging Wasm fixture and its Memory/Storage dependencies.
-Formatting, documentation links and diff checks pass.
-
-The preceding Tooling evidence stays under `/tmp/ic-persistence-tooling14/`:
-prepared cached 0.72.1 Build/Testkit executables pass offline admission and the
-selected real-editor bootstrap function passes with substituted Cargo effects.
-Old tool generations and artifacts remain retained. Installed runtime and full
-release suites were not repeated for identical upstream runtime/substrate source;
-earlier installed records are historical and are not relabelled as Platform 0.12.
-
-Canonical owners: [ledger](../current-ledger.md),
-[Logging](../../crates/ic-logging-stable/README.md#upgrade-disposition),
-[host support](../host-support.md), [release contract](../releases.md),
-[adoption boundaries](../shared-tooling-adoption.md), [notes](../../CHANGELOG.md)
-and [installed history](../runtime-io-qualification.md).
+Earlier evidence remains under `/tmp/ic-persistence-refresh19/`,
+`/tmp/ic-persistence-groups144/` and `/tmp/ic-persistence-layout20/`. Installed
+Platform/Wire/Logging qualification remains at
+`target/qualification/runtime/attempt.6EwNrA/`; the Metrics patch changes only the
+Metrics package identity in the library lock and does not change that independent
+runtime graph. Metrics numeric and transport contracts are unchanged. Retain
+all prior logs, receipts, archives and failed attempts.

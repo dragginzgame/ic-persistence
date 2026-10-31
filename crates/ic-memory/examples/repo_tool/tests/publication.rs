@@ -54,18 +54,21 @@ fn preparation_stage_commit_qualification_and_publish_preserve_exact_evidence() 
         .repo
         .verify_evidence(&fixture.selection, "release", Final, Working)
         .unwrap();
-    assert_ne!(prepared.package_sha256, final_evidence.package_sha256);
+    assert_ne!(
+        prepared.archives["ic-memory"],
+        final_evidence.archives["ic-memory"]
+    );
     assert!(
         fixture
             .repo
-            .retained_package(&prepared.package_sha256)
+            .retained_package(&prepared.archives["ic-memory"])
             .unwrap()
             .is_file()
     );
     assert!(
         fixture
             .repo
-            .retained_package(&final_evidence.package_sha256)
+            .retained_package(&final_evidence.archives["ic-memory"])
             .unwrap()
             .is_file()
     );
@@ -78,7 +81,7 @@ fn preparation_stage_commit_qualification_and_publish_preserve_exact_evidence() 
         fixture
             .repo
             .root
-            .join("configured output/release-validation/0.13.0-prepared.json")
+            .join("configured output/release-validation/persistence-0.13.0-prepared.json")
             .is_file()
     );
     fixture
@@ -146,7 +149,7 @@ fn changed_missing_and_wrong_source_receipts_never_dispatch_publication() {
                 fs::remove_file(
                     fixture
                         .repo
-                        .retained_package(&evidence.package_sha256)
+                        .retained_package(&evidence.archives["ic-memory"])
                         .unwrap(),
                 )
                 .unwrap();
@@ -247,17 +250,11 @@ fn coordinated_publication_resumes_only_matching_packages_in_dependency_order() 
         .filter(|call| is_cargo_call(call, "publish"))
         .map(|call| call[call.iter().position(|arg| arg == "--package").unwrap() + 1].as_str())
         .collect();
+    assert_eq!(uploads, ["ic-memory", "ic-storage", "ic-storage"]);
     assert_eq!(
-        uploads,
-        [
-            "ic-memory",
-            "ic-storage",
-            "ic-storage",
-            "ic-metrics-stable",
-            "ic-logging-stable"
-        ]
+        state.registry.published.len(),
+        fixture.repo.selected_packages().unwrap().len()
     );
-    assert_eq!(state.registry.published.len(), packages().len());
     let requests: Vec<_> = state
         .calls
         .iter()
@@ -276,10 +273,10 @@ fn coordinated_publication_resumes_only_matching_packages_in_dependency_order() 
 #[test]
 fn logging_upload_rejection_and_lost_response_resume_without_replaying_dependencies() {
     for (fault, count_after_failure, logging_uploads) in [
-        (RegistryFault::LoggingUpload, 3, 2),
-        (RegistryFault::LoggingUploadResponseLost, 4, 1),
+        (RegistryFault::LoggingUpload, 0, 2),
+        (RegistryFault::LoggingUploadResponseLost, 1, 1),
     ] {
-        let fixture = Fixture::new();
+        let fixture = Fixture::for_group("logging-stable");
         fixture.release();
         fixture.fail_registry(fault);
         assert!(fixture.repo.publish(false).is_err());
@@ -291,32 +288,28 @@ fn logging_upload_rejection_and_lost_response_resume_without_replaying_dependenc
         fixture.repo.publish(false).unwrap();
         fixture.repo.publish(false).unwrap();
         let state = fixture.repo.exec.state.borrow();
-        assert_eq!(state.registry.published.len(), packages().len());
-        for name in packages() {
-            let uploads = state
-                .calls
-                .iter()
-                .filter(|call| {
-                    is_cargo_call(call, "publish")
-                        && call.windows(2).any(|pair| pair == ["--package", name])
-                })
-                .count();
-            assert_eq!(
-                uploads,
-                if name == "ic-logging-stable" {
-                    logging_uploads
-                } else {
-                    1
-                }
-            );
-        }
+        assert_eq!(
+            state.registry.published.len(),
+            fixture.repo.selected_packages().unwrap().len()
+        );
+        let uploads = state
+            .calls
+            .iter()
+            .filter(|call| {
+                is_cargo_call(call, "publish")
+                    && call
+                        .windows(2)
+                        .any(|pair| pair == ["--package", "ic-logging-stable"])
+            })
+            .count();
+        assert_eq!(uploads, logging_uploads);
     }
 }
 
 #[test]
 fn missing_or_changed_logging_archive_refuses_before_any_registry_observation() {
     for missing in [true, false] {
-        let fixture = Fixture::new();
+        let fixture = Fixture::for_group("logging-stable");
         fixture.release();
         let archive = fixture
             .repo
@@ -349,7 +342,7 @@ fn publication_reconciles_a_lost_upload_response_without_reuploading_memory() {
     fixture.repo.publish(false).unwrap();
     assert_eq!(
         fixture.repo.exec.state.borrow().registry.published.len(),
-        packages().len()
+        fixture.repo.selected_packages().unwrap().len()
     );
     assert_eq!(
         fixture
@@ -361,13 +354,13 @@ fn publication_reconciles_a_lost_upload_response_without_reuploading_memory() {
             .iter()
             .filter(|call| is_cargo_call(call, "publish"))
             .count(),
-        packages().len()
+        fixture.repo.selected_packages().unwrap().len()
     );
 }
 
 #[test]
 fn registry_conflicts_or_unknown_status_refuse_before_any_upload() {
-    for package in packages().into_iter().skip(1) {
+    for package in ["ic-storage"] {
         for failure in [
             RegistryFault::RegistryForbidden,
             RegistryFault::RegistryError,

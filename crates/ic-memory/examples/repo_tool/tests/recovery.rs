@@ -70,7 +70,10 @@ fn preparation_retains_primary_and_rollback_errors_and_restores_other_owned_file
             self.0.execute(root, program, args)?;
             if program == "bash" && args.first() == Some(&"scripts/ci/package-workspace.sh") {
                 // A missing surface models failed inspection during restoration.
-                fs::rename(root.join("CHANGELOG.md"), root.join("retained-changelog"))?;
+                fs::rename(
+                    root.join("releases/persistence/CHANGELOG.md"),
+                    root.join("retained-changelog"),
+                )?;
                 // A foreign replacement must never be overwritten by rollback.
                 fs::write(root.join(PACKAGE_README), b"concurrent edit")?;
                 return Err(std::io::Error::from(std::io::ErrorKind::UnexpectedEof).into());
@@ -91,6 +94,7 @@ fn preparation_retains_primary_and_rollback_errors_and_restores_other_owned_file
     let validation = fixture.repo.validation_path("0.13.0").unwrap();
     let saved = FileSnapshot::capture(&validation);
     let repo = Repository {
+        group: "persistence".to_owned(),
         root: fixture.repo.root.clone(),
         exec: RollbackFailures(&fixture.repo.exec),
     };
@@ -117,7 +121,10 @@ fn preparation_retains_primary_and_rollback_errors_and_restores_other_owned_file
     assert_eq!(
         failures,
         BTreeMap::from([
-            ("CHANGELOG.md", std::io::ErrorKind::NotFound),
+            (
+                "releases/persistence/CHANGELOG.md",
+                std::io::ErrorKind::NotFound
+            ),
             ("Cargo.lock", std::io::ErrorKind::PermissionDenied),
         ])
     );
@@ -127,8 +134,8 @@ fn preparation_retains_primary_and_rollback_errors_and_restores_other_owned_file
         b"concurrent edit"
     );
     assert_eq!(
-        fs::read_to_string(repo.root.join("docs/changelog/0.13.md")).unwrap(),
-        fixture.repo.exec.state.borrow().git.source["docs/changelog/0.13.md"]
+        fs::read_to_string(repo.root.join("releases/persistence/0.13.md")).unwrap(),
+        fixture.repo.exec.state.borrow().git.source["releases/persistence/0.13.md"]
     );
     saved.assert_unchanged();
     assert!(repo.package_path("ic-memory", "0.13.0").unwrap().exists());
@@ -160,7 +167,7 @@ fn failed_first_publication_preserves_untouched_metadata_identity_and_permission
             (path, (metadata.ino(), metadata.mode()))
         })
         .collect();
-    fixture.fail_files(FileFault::WriteBefore("CHANGELOG.md".into()));
+    fixture.fail_files(FileFault::WriteBefore("Cargo.lock".into()));
     let error = fixture
         .repo
         .prepare_selected(&fixture.selection)
@@ -186,8 +193,8 @@ fn metadata_publication_failures_reconcile_visible_bytes_and_retry_saved_intent(
     for after_publication in [false, true] {
         for path in [
             "Cargo.lock",
-            "CHANGELOG.md",
-            "docs/changelog/0.13.md",
+            "releases/persistence/CHANGELOG.md",
+            "releases/persistence/0.13.md",
             "Cargo.toml",
         ] {
             let fixture = Fixture::new();
@@ -252,7 +259,7 @@ fn committed_preparation_restart_retains_receipts_before_fresh_preparation() {
     let old_evidence: PackageEvidence = serde_json::from_slice(old_prepared.bytes()).unwrap();
     let archive = fixture
         .repo
-        .retained_package(&old_evidence.package_sha256)
+        .retained_package(&old_evidence.archives["ic-memory"])
         .unwrap();
     let old_archive = FileSnapshot::capture(&archive);
     // Substitute a clean descendant committing rollback to the original metadata.
@@ -332,7 +339,7 @@ fn preparation_restart_recovers_from_validation_receipt_publication_errors() {
         let evidence: PackageEvidence = serde_json::from_slice(old_prepared.bytes()).unwrap();
         let archive = fixture
             .repo
-            .retained_package(&evidence.package_sha256)
+            .retained_package(&evidence.archives["ic-memory"])
             .unwrap();
         let old_archive = FileSnapshot::capture(&archive);
         let mut descendant = fixture.repo.exec.state.borrow().git.source.clone();
@@ -344,9 +351,9 @@ fn preparation_restart_recovers_from_validation_receipt_publication_errors() {
         fixture.selection.source = "fix".to_owned();
         fixture.repo.exec.state.borrow_mut().calls.clear();
         fixture.fail_files(if after_publication {
-            FileFault::WriteAfter("0.13.0-validated.json".into())
+            FileFault::WriteAfter("persistence-0.13.0-validated.json".into())
         } else {
-            FileFault::WriteBefore("0.13.0-validated.json".into())
+            FileFault::WriteBefore("persistence-0.13.0-validated.json".into())
         });
         assert!(
             fixture.repo.verify(&fixture.selection).is_err(),
@@ -399,7 +406,7 @@ fn interrupted_preparation_finishes_saved_candidate_without_revalidating() {
         let expected = fixture.repo.surfaces(&fixture.selection).unwrap();
         for (path, text) in &expected {
             if match interruption {
-                "partial" => path == "CHANGELOG.md",
+                "partial" => path == "releases/persistence/CHANGELOG.md",
                 "partial-lock" => path.as_str() <= "Cargo.lock",
                 _ => true,
             } {
@@ -438,7 +445,7 @@ fn interrupted_preparation_finishes_saved_candidate_without_revalidating() {
             }
             // Already installed candidate bytes must survive a write refusal.
             let unchanged = if interruption == "partial" {
-                "CHANGELOG.md"
+                "releases/persistence/CHANGELOG.md"
             } else {
                 "Cargo.lock"
             };
@@ -532,7 +539,7 @@ fn preparation_recovery_preserves_conflicting_inputs_and_corrupted_evidence() {
             "receipt" => receipt,
             "archive" => fixture
                 .repo
-                .retained_package(&evidence.package_sha256)
+                .retained_package(&evidence.archives["ic-memory"])
                 .unwrap(),
             _ => unreachable!(),
         };
@@ -598,13 +605,15 @@ fn archive_publication_errors_preserve_validation_and_reconcile_visible_bytes() 
         fixture.repo.exec.files.borrow_mut().fault = None;
         fixture.repo.prepare_selected(&fixture.selection).unwrap();
         let evidence = fixture.repo.prepared(&fixture.selection).unwrap();
-        assert_eq!(evidence.package_sha256, digest);
+        assert_eq!(evidence.archives["ic-memory"], digest);
         assert_eq!(fs::read(&retained).unwrap(), b"prepared-archive");
         validation_bytes.assert_unchanged();
         assert_eq!(fs::read(&foreign).unwrap(), b"unrelated evidence");
         assert_eq!(
             transfers() - before_retry,
-            usize::from(phase == FileFault::ArchiveBefore) + packages().len() - 1
+            usize::from(phase == FileFault::ArchiveBefore)
+                + fixture.repo.selected_packages().unwrap().len()
+                - 1
         );
         fs::write(&retained, b"corrupted retained archive").unwrap();
         assert!(fixture.repo.record_package("ic-memory", "0.13.0").is_err());

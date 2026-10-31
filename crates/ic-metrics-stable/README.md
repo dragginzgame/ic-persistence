@@ -19,15 +19,12 @@ before opening the map. Follow the
 [IC Memory 0.50 allocation and bootstrap guide](https://github.com/dragginzgame/ic-persistence/blob/f452b5cf9b26a25ee2fb69f4941c079e9c85f4e7/crates/ic-memory/README.md#quick-start-for-developers)
 for the selected dependency's declaration and lifecycle APIs.
 
-Memory and Storage are published from IC Persistence with their existing crate
-names. Hosts select `ic-metrics-stable`, `ic-memory` and `ic-storage` from the same
-Persistence release line when supplying a map to this adapter. The adapter now
-inherits Persistence's version; `ic-metrics` retains its independent 0.17 line.
-Hosts passing arithmetic values to the adapter must also select
-`ic-metrics = "0.17"`; 0.16 values have a different Rust type identity.
-Earlier dependency generations have
-different Rust handle/map type identities; update them together. The 0.50
-alignment preserves the preceding library implementations and stored formats.
+Memory and Storage retain their coordinated core release identity. This adapter
+owns its independent `metrics-stable` release group; hosts select compatible core
+requirements declared by its package metadata. Hosts exchanging arithmetic values
+also select `ic-metrics = "0.23"` so Rust type identities agree. See the adapter's
+[release ledger](../../releases/metrics-stable/CHANGELOG.md) and [group commands](../../RELEASING.md#release-groups).
+Stored formats and governed handle requirements are unchanged by release grouping.
 
 After bootstrap, the host opens `ic_storage::adapter::StableBTreeMap` with one
 admitted memory handle and passes that public collection to `MetricsStore::new`.

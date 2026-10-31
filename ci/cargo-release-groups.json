@@ -1,0 +1,42 @@
+{
+  "schema": 1,
+  "groups": [
+    {
+      "name": "persistence",
+      "primary": "ic-memory",
+      "version": "package",
+      "members": [
+        "ic-memory",
+        "ic-storage"
+      ],
+      "changelog": "releases/persistence/CHANGELOG.md",
+      "dependencies": [
+        "ic-memory",
+        "ic-storage"
+      ],
+      "metadata_files": [
+        "releases/persistence/0.59.md"
+      ]
+    },
+    {
+      "name": "metrics-stable",
+      "primary": "ic-metrics-stable",
+      "version": "package",
+      "members": [
+        "ic-metrics-stable"
+      ],
+      "changelog": "releases/metrics-stable/CHANGELOG.md",
+      "dependencies": []
+    },
+    {
+      "name": "logging-stable",
+      "primary": "ic-logging-stable",
+      "version": "package",
+      "members": [
+        "ic-logging-stable"
+      ],
+      "changelog": "releases/logging-stable/CHANGELOG.md",
+      "dependencies": []
+    }
+  ]
+}

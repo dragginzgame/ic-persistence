@@ -36,7 +36,7 @@ impl RegistryEffects {
         Ok(format!(
             "{}\n200",
             serde_json::json!({"version": {
-                "crate": name, "num": BuildEffects::version(root)?, "checksum": digest,
+                "crate": name, "num": BuildEffects::package_version(root, name)?, "checksum": digest,
                 "yanked": self.fail.as_ref() == Some(&RegistryFault::RegistryYanked)
             }})
         ))
@@ -59,9 +59,10 @@ impl RegistryEffects {
             {
                 return Err("Logging upload refused".into());
             }
-            let archive = target
-                .join("package")
-                .join(format!("{name}-{}.crate", BuildEffects::version(root)?));
+            let archive = target.join("package").join(format!(
+                "{name}-{}.crate",
+                BuildEffects::package_version(root, name)?
+            ));
             let digest = Repository::<Substitute>::sha256(&archive)?;
             self.published.insert(name.to_owned(), digest);
             if self.fail.as_ref() == Some(&RegistryFault::UploadResponseLost)

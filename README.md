@@ -1,7 +1,7 @@
 # IC Persistence
 
 Allocation governance and governed stable collections for Internet Computer
-canisters, maintained in one repository with four coordinated packages.
+canisters, maintained in one repository with four packages in three release groups.
 
 | Crate | Responsibility | Guide |
 | --- | --- | --- |
@@ -33,3 +33,8 @@ testing, not coverage-guided fuzzing.
 [Setup](docs/host-support.md) · [Releasing](RELEASING.md) ·
 [Documentation](docs/README.md) · [Migration map](docs/migration/ic-persistence.md) ·
 [Current handoff](docs/status/current.md) · [Contributing](rules/contributions.md)
+
+Release ownership: Memory/Storage remain coordinated as `persistence`; Metrics
+Stable and Logging Stable release independently. See [group commands](RELEASING.md#release-groups),
+[Metrics Stable notes](releases/metrics-stable/CHANGELOG.md) and
+[Logging Stable notes](releases/logging-stable/CHANGELOG.md).

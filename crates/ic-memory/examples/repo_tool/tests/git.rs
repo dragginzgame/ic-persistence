@@ -22,6 +22,7 @@ pub(super) enum GitFault {
 
 #[derive(Default, Deserialize, Serialize)]
 pub(super) struct GitState {
+    pub group: String,
     pub source: BTreeMap<String, String>,
     pub release: Option<BTreeMap<String, String>>,
     pub staged: bool,
@@ -58,7 +59,7 @@ impl GitState {
 
     pub(super) fn check_tag(&mut self, args: &[&str]) -> Result<String> {
         require(
-            args == [TAG_CHECKER, "release", "0.13.0"],
+            args.len() == 4 && args[..3] == [TAG_CHECKER, "release", "0.13.0"],
             "unexpected fixture tag selection",
         )?;
         match self.fail.as_ref() {
@@ -134,16 +135,19 @@ impl GitState {
                         .ok_or_else(|| "missing fixture path".into()),
                 }
             }
-            ["for-each-ref", ..] => Ok(if self.tag
-                && self.fail.as_ref() == Some(&GitFault::TagObject)
-            {
-                "changed-tag-object refs/tags/v0.13.0"
-            } else if self.tag {
-                "tag-object refs/tags/v0.13.0"
+            ["for-each-ref", ..] => Ok(if self.tag {
+                format!(
+                    "{} refs/tags/{}-v0.13.0",
+                    if self.fail.as_ref() == Some(&GitFault::TagObject) {
+                        "changed-tag-object"
+                    } else {
+                        "tag-object"
+                    },
+                    self.group
+                )
             } else {
-                ""
-            }
-            .to_owned()),
+                String::new()
+            }),
             ["symbolic-ref", ..] => Ok("main".to_owned()),
             ["merge-base", ..] if self.fail.as_ref() == Some(&GitFault::RemoteAhead) => {
                 Err("fixture remote is ahead".into())
@@ -223,11 +227,10 @@ impl GitState {
             }
             ["log", "-1", "--format=%s", "fix"] => Ok("Fix callback".to_owned()),
             ["log", "-1", "--format=%s", "release"] => Ok(if self.release.is_some() {
-                "Release 0.13.0"
+                format!("Release {} 0.13.0", self.group)
             } else {
-                "Fixture source"
-            }
-            .to_owned()),
+                "Fixture source".to_owned()
+            }),
             _ => Err(format!("unexpected fixture git command: {args:?}").into()),
         }
     }

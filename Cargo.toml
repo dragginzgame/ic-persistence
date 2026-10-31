@@ -1,3 +1,14 @@
+# Release groups: ci/cargo-release-groups.json
+# persistence: ic-memory, ic-storage
+#   version: crates/ic-memory/Cargo.toml package.version
+#   changelog: releases/persistence/CHANGELOG.md
+# metrics-stable: ic-metrics-stable
+#   version: crates/ic-metrics-stable/Cargo.toml package.version
+#   changelog: releases/metrics-stable/CHANGELOG.md
+# logging-stable: ic-logging-stable
+#   version: crates/ic-logging-stable/Cargo.toml package.version
+#   changelog: releases/logging-stable/CHANGELOG.md
+# No private members. The unpublished runtime qualification workspace is independent.
 [workspace]
 resolver = "3"
 members = [
@@ -17,7 +28,6 @@ exclude = ["testing/runtime-qualification"]
 [workspace.package]
 edition = "2024"
 rust-version = "1.91.0"
-version = "0.58.1"
 license = "MIT"
 authors = ["borovan <84897664+borovan@users.noreply.github.com>"]
 description = "Durable stable-memory allocation governance for Internet Computer canisters"
@@ -30,12 +40,12 @@ categories = ["wasm", "data-structures"]
 
 [workspace.dependencies]
 # Production dependencies
-ic-logging = { version = "0.21.0", default-features = false }
+ic-logging = { version = "0.23.1", default-features = false }
 ic-memory = { path = "crates/ic-memory", version = "0.58.1" }
-ic-metrics = "0.21.0"
-ic-platform = { version = "0.12.0", default-features = false }
+ic-metrics = "0.23.2"
+ic-platform = { version = "0.15.1", default-features = false }
 ic-storage = { path = "crates/ic-storage", version = "0.58.1" }
-ic-wire = { version = "0.10.0", default-features = false }
+ic-wire = { version = "0.12.1", default-features = false }
 serde = { version = "1.0", default-features = false, features = [
     "alloc",
     "derive",
@@ -44,11 +54,11 @@ thiserror = "2.0"
 
 # Tests and tooling only
 clap = { version = "4.6", default-features = false, features = ["derive", "std", "help", "usage", "error-context"] }
-ic-build = { version = "0.72.1", default-features = false }
-ic-host-artifacts = { version = "0.72.1", default-features = false }
-ic-host-fs = { version = "0.72.1", default-features = false }
-ic-host-process = { version = "0.72.1", default-features = false }
-ic-testkit-native = { version = "0.72.1", default-features = false }
+ic-build = { version = "0.73.0", default-features = false }
+ic-host-artifacts = { version = "0.73.0", default-features = false }
+ic-host-fs = { version = "0.73.0", default-features = false }
+ic-host-process = { version = "0.73.0", default-features = false }
+ic-testkit-native = { version = "0.73.0", default-features = false }
 serde_json = "1.0"
 toml = "1.1.6"
 trybuild = "1.0.121"

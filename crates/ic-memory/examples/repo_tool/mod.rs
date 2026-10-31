@@ -12,7 +12,7 @@ use ic_build::cargo::{
     },
     lock_projection::{WorkspaceVersionProjection, verify_workspace_release_projection},
     release_metadata::{
-        DependencyVersionProjection, render_workspace_lock, render_workspace_manifest,
+        DependencyVersionProjection, ManifestVersion, render_group_manifest, render_workspace_lock,
     },
 };
 use ic_host_artifacts::artifact::Sha256Digest;
@@ -28,6 +28,8 @@ use std::{
     time::{SystemTime, UNIX_EPOCH},
 };
 
+mod groups;
+use groups::GROUP_POLICY;
 mod artifact_paths;
 use artifact_paths::ArtifactPaths;
 mod artifacts;
@@ -37,7 +39,9 @@ mod release;
 mod source;
 use source::SurfaceState;
 mod wasm;
-use packages::{package_manifest, packages};
+use packages::package_manifest;
+#[cfg(test)]
+use packages::packages;
 mod processes;
 use processes::{Execute, Processes};
 mod publication;
@@ -126,6 +130,7 @@ enum ToolCommand {
     },
 }
 
+#[cfg(test)]
 const PACKAGE_README: &str = "crates/ic-memory/README.md";
 const CHANGELOG_FINALIZER: &str = "scripts/ci/finalize-release-changelog.awk";
 const RELEASE_INPUT_ADMISSION: &str = "scripts/ci/validate-release-inputs.pl";
@@ -146,6 +151,7 @@ const REPLACE_FILE_OPTIONS: WriteOptions = WriteOptions {
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(deny_unknown_fields)]
 struct ReleaseSelection {
+    group: String,
     kind: String,
     previous: String,
     source: String,
@@ -179,6 +185,7 @@ struct ReleaseSurface {
 
 struct Repository<E> {
     root: PathBuf,
+    group: String,
     exec: E,
 }
 
@@ -192,7 +199,9 @@ fn require(condition: bool, message: &str) -> Result<()> {
 
 impl ReleaseSelection {
     fn from_env<E: Execute>(repo: &Repository<E>) -> Result<Self> {
+        repo.release_group(None)?;
         let selection = Self {
+            group: repo.group.clone(),
             kind: env::var("RELEASE_KIND")?,
             previous: env::var("RELEASE_PREVIOUS")?,
             version: env::var("RELEASE_VERSION")?,
@@ -256,20 +265,6 @@ fn toml_string(text: &str, section: &str, field: &str) -> Result<String> {
         .ok_or_else(|| format!("missing {section}.{field}").into())
 }
 
-fn check_lock_update(before: &[u8], after: &str, previous: &str, version: &str) -> Result<()> {
-    let before = std::str::from_utf8(before)?;
-    verify_workspace_release_projection(
-        before,
-        after,
-        &packages().map(|package| WorkspaceVersionProjection {
-            package,
-            previous,
-            next: version,
-        }),
-    )?;
-    Ok(())
-}
-
 impl<E: Execute> Repository<E> {
     fn run(&self, program: &str, args: &[&str]) -> Result<()> {
         self.exec.execute(&self.root, program, args)
@@ -284,9 +279,9 @@ impl<E: Execute> Repository<E> {
     }
 
     fn version(&self, revision: Option<&str>) -> Result<String> {
-        let text = self.text("Cargo.toml", revision)?;
-        self.member_release_manifest(revision, "ic-memory")?;
-        let version = toml_string(&text, "workspace.package", "version")?;
+        let group = self.release_group(revision)?;
+        let text = self.member_release_manifest(revision, &group.primary)?;
+        let version = toml_string(&text, "package", "version")?;
         self.version_parts(&version)?;
         Ok(version)
     }
@@ -324,6 +319,7 @@ pub(super) fn main() -> Result<()> {
     let arguments = Arguments::parse();
     let repo = Repository {
         root: env::current_dir()?,
+        group: env::var("RELEASE_GROUP").unwrap_or_default(),
         exec: Processes,
     };
     match arguments.command {
@@ -342,7 +338,8 @@ pub(super) fn main() -> Result<()> {
             repo.prepared(&ReleaseSelection::from_env(&repo)?)?;
         }
         ToolCommand::ReleaseFiles => {
-            for path in repo.surfaces(&ReleaseSelection::from_env(&repo)?)?.keys() {
+            repo.surfaces(&ReleaseSelection::from_env(&repo)?)?;
+            for path in repo.release_files(None)? {
                 print!("{path}\0");
             }
         }

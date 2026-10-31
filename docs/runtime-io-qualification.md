@@ -1,5 +1,73 @@
 # Runtime IO and maintainer improvements qualification
 
+## Platform 0.15, Wire 0.12 and Observability 0.23 refresh — 2026-10-31
+
+The working tree based on released `150bf6a`, including the uncommitted #144
+release-group implementation, selects registry Platform 0.15.1 and Wire 0.12.1
+in both maintained graphs, Logging/Metrics 0.23.1 and Testkit Native 0.73.0.
+The separately prepared Testkit CLI is 0.73.0; Build/editor/Host stay 0.73.0.
+The canonical installer admitted its cached generation and existing PocketIC
+16.1.0 server without retiring older tools. Client/server remain 16.1.0 and the
+stable-structures substrate remains the exact 0.7.2 identity.
+
+Platform's canonical owned identities now come from Types 0.15.0. Wire core's
+optional Types 0.1 schemas and the separate endpoint crate are unselected;
+there is one owned Types provider in the selected graphs. The native meter
+retains its non-runtime Platform 0.13 provider; production has one runtime owner.
+Metrics preserves default native-wire metadata on the selected Wire 0.12 identity.
+No application source or stored format changed. Local package versions remain
+0.58.1 in their three release groups, with independent 0.59.0 pending notes.
+
+Locked offline builds produced three original Wasm fixtures and the independent
+runner. The installed run exited 0: malformed frames, 12 invalid IO traps,
+upgrade failure/clean retry, Storage reopen/rollback, six manager faults,
+composed custody and Logging query/update/upgrade/text-budget/watermark checks
+pass. Exact source/tool/server/runner/Wasm hashes, runner binary, launchers and
+server/runtime logs remain under `target/qualification/runtime/attempt.6EwNrA/`.
+Source checks match after execution. Only original Wasm was run, without the
+optimizer/performance matrix or a live canister deployment.
+
+Evidence under `/tmp/ic-persistence-refresh19/` includes both full locked metadata
+observations, graph/pins, strict affected library/test/helper and independent
+runner Clippy, 187 Memory tests (eight explicit ignores), 12 Logging Stable tests
+and 29 Metrics Stable tests. Rust 1.91 native checks, formatting, and real native
+versus Shared exact group-file plans pass. Existing group recovery evidence from
+`/tmp/ic-persistence-groups144/` applies to the unchanged Build/Host renderer and
+native release adapter. Full release gates and hosted macOS were not rerun;
+no commit, package-version bump, tag, publication or reset ran.
+
+
+## Observability 0.22 and Wire 0.11 Logging qualification — 2026-10-31
+
+The working tree based on released `150bf6a` (0.58.1), retaining the preceding
+Wire 0.11 adoption, selects registry Logging/Metrics 0.22.0. Metrics retains its
+default native metadata support via `native-wire` and now shares Wire 0.11,
+removing the older Wire 0.10 provider/derive. Its Wasm normal/build graph contains
+Serde without Wire. Platform 0.12, Tooling/Testkit 0.72.1, stable-structures 0.7.2
+and PocketIC client/server 16.1.0 remain unchanged. The independent host lockfile
+is byte-identical to the incoming selected lockfile.
+
+`CARGO_NET_OFFLINE=true make test-runtime-logging` passed after rebuilding the
+original Logging Wasm fixture and independent runner with locked offline inputs.
+The focused installed run covers query non-persistence, update/upgrade rollback,
+reopen, empty-history watermarks, multi-row text-budget eviction, individually
+oversized append refusal, forged retained-ceiling rejection and upgrade reopen.
+Exact tool/server/runner/Wasm hashes, original Logging artifact, retained runner
+and server/runtime logs are under `target/qualification/runtime/attempt.ENwqsq/`.
+Source checks match immediately after the run. Other runtime suites and optimizer
+variants were not run or relabelled as this focused Logging proof.
+
+Native evidence under `/tmp/ic-persistence-observability17/` includes both locked
+metadata observations, graph/pins, strict adapter library/test Clippy, 12 Logging
+Stable tests and 29 Metrics Stable tests. Rust 1.91 checks the adapter libraries
+and Logging Wasm fixture. Selected feature inspection confirms `default` plus
+`native-wire`; Wasm Metrics remains metadata-free. Formatting/local links pass.
+No owned Rust source, durable format, text ceiling, custody or release policy
+changed; Logging's construction cleanup preserves admitted message parts.
+The pending 0.59.0 notes retain the exposed Wire/Metrics identity alignment.
+No full release gate, commit, package-version bump, publication or reset ran.
+
+
 ## Platform 0.11 and Tooling 0.72 adoption — 2026-10-30
 
 The working tree based on released `c2ee327`, including the preceding unpublished

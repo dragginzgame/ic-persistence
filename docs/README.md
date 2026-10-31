@@ -73,7 +73,7 @@ measurements. Use the current guides above for present-day API instructions.
 - [Opaque ledger payload encoding](opaque-ledger-payloads.md)
 - [Logical bootstrap cleanup](logical-bootstrap-cleanup.md)
 - [Wasm codec size audit](audits/wasm-codec-size-2026-07-14.md)
-- [Recurring audit records](audits/recurring/)
+- [Recurring audit records](audits/recurring)
 
 Current maintenance reviews use the [shared methods and ic-memory overlay](audits/README.md).
 Historical reports retain their original methods and measurements.

@@ -8,7 +8,7 @@ impl<E: Execute> Repository<E> {
             "--format=%(objectname) %(refname)",
             "refs/tags",
         ])?;
-        let name = format!("refs/tags/v{version}");
+        let name = format!("refs/tags/{}-v{version}", self.group);
         Ok(refs
             .lines()
             .filter_map(|line| line.split_once(' '))
@@ -64,7 +64,8 @@ impl<E: Execute> Repository<E> {
             "release parent differs from validated source",
         )?;
         require(
-            self.git(&["log", "-1", "--format=%s", commit])? == format!("Release {version}"),
+            self.git(&["log", "-1", "--format=%s", commit])?
+                == format!("Release {} {version}", self.group),
             "selected commit is not the release commit",
         )?;
         self.git(&["merge-base", "--is-ancestor", commit, "HEAD"])?;
@@ -87,6 +88,7 @@ impl<E: Execute> Repository<E> {
     }
 
     pub(super) fn qualify_release(&self) -> Result<()> {
+        self.release_group(None)?;
         self.qualify_release_at(&self.git(&["rev-parse", "HEAD"])?)
     }
 
@@ -184,7 +186,7 @@ impl<E: Execute> Repository<E> {
 
     pub(super) fn check_tag(&self, version: &str, head: &str) -> Result<String> {
         let tag = self.local_tag(version)?.ok_or("release tag is missing")?;
-        self.output("bash", &[TAG_CHECKER, head, version])?;
+        self.output("bash", &[TAG_CHECKER, head, version, &self.group])?;
         require(
             self.local_tag(version)?.as_deref() == Some(tag.as_str()),
             "release tag changed during admission",

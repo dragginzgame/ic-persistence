@@ -8,15 +8,18 @@ fn helper_output_cannot_change_locked_dependency_selection() {
     let same_name_registry = format!(
         "{LOCK}[[package]]\nname = \"ic-memory\"\nversion = \"0.12.3\"\nsource = \"registry+https://github.com/rust-lang/crates.io-index\"\nchecksum = \"unchanged\"\n"
     );
-    let rendered =
-        Repository::<Processes>::replace_lock_version(&same_name_registry, "0.12.3", "0.13.0")
-            .unwrap();
-    assert_eq!(
-        rendered,
-        same_name_registry.replacen("version = \"0.12.3\"", "version = \"0.13.0\"", 4)
-    );
+    let rendered = fixture
+        .repo
+        .replace_lock_version(&same_name_registry, "0.12.3", "0.13.0")
+        .unwrap();
+    assert!(rendered.contains("name = \"ic-memory\"\nversion = \"0.13.0\""));
+    assert!(rendered.contains("name = \"ic-storage\"\nversion = \"0.13.0\""));
+    assert!(rendered.contains("name = \"ic-metrics-stable\"\nversion = \"0.12.3\""));
     let changed = LOCK.replace("0.12.3", "0.13.0");
-    let error = check_lock_update(LOCK.as_bytes(), &changed, "0.12.3", "0.13.0").unwrap_err();
+    let error = fixture
+        .repo
+        .check_lock_update(LOCK.as_bytes(), &changed, "0.12.3", "0.13.0")
+        .unwrap_err();
     assert!(matches!(
         error.downcast_ref::<ic_build::cargo::lock_projection::LockProjectionError>(),
         Some(ic_build::cargo::lock_projection::LockProjectionError::ChangedInputs)
@@ -25,7 +28,7 @@ fn helper_output_cannot_change_locked_dependency_selection() {
 }
 
 #[test]
-fn coordinated_version_projection_and_receipts_include_all_four_packages() {
+fn core_projection_and_receipts_preserve_both_adapter_identities() {
     let fixture = Fixture::new();
     fixture.prepare().unwrap();
     let lock: toml::Value =
@@ -37,7 +40,14 @@ fn coordinated_version_projection_and_receipts_include_all_four_packages() {
             .iter()
             .find(|record| record["name"].as_str() == Some(name))
             .unwrap();
-        assert_eq!(record["version"].as_str(), Some("0.13.0"));
+        assert_eq!(
+            record["version"].as_str(),
+            Some(if ["ic-memory", "ic-storage"].contains(&name) {
+                "0.13.0"
+            } else {
+                "0.12.3"
+            })
+        );
     }
     let prepared: PackageEvidence = fixture.package_evidence(Prepared);
     assert_eq!(
@@ -45,15 +55,15 @@ fn coordinated_version_projection_and_receipts_include_all_four_packages() {
             .archives()
             .map(|(name, _)| name)
             .collect::<Vec<_>>(),
-        packages()
+        ["ic-memory", "ic-storage"]
     );
-    assert!(packages().contains(&"ic-logging-stable"));
 }
 
 #[test]
 fn changed_transform_input_is_retained_and_refused_on_retry() {
     let fixture = Fixture::new();
     let repo = Repository {
+        group: "persistence".to_owned(),
         root: fixture.repo.root.clone(),
         exec: Processes,
     };
@@ -214,7 +224,7 @@ fn release_versions_and_pending_notes_preserve_dependency_versions_and_history()
     );
     let updated = fixture
         .repo
-        .replace_workspace_version(MANIFEST, "0.12.3", "0.13.0")
+        .project_catalog(MANIFEST, "0.12.3", "0.13.0")
         .unwrap();
     assert!(updated.contains("other = \"0.12.3\""));
     let current = "# Changelog\n\n## [0.13.0]\n\nChanges.\n\n## 0.12.3\n\nHistory.\n";
@@ -252,7 +262,10 @@ fn release_versions_and_pending_notes_preserve_dependency_versions_and_history()
 #[test]
 fn empty_numbered_notes_prepare_without_weakening_release_identity() {
     let fixture = Fixture::new();
-    for path in ["CHANGELOG.md", "docs/changelog/0.13.md"] {
+    for path in [
+        "releases/persistence/CHANGELOG.md",
+        "releases/persistence/0.13.md",
+    ] {
         let text =
             "# Notes\n\n## [0.13.0]\n\n## [0.12.3] - 2026-10-04\n\nHistory without a final newline";
         fixture.set_source(path, text);
@@ -261,7 +274,10 @@ fn empty_numbered_notes_prepare_without_weakening_release_identity() {
     fixture.stage().unwrap();
     fixture.commit().unwrap();
     fixture.repo.publish(true).unwrap();
-    for path in ["CHANGELOG.md", "docs/changelog/0.13.md"] {
+    for path in [
+        "releases/persistence/CHANGELOG.md",
+        "releases/persistence/0.13.md",
+    ] {
         assert_eq!(
             fs::read_to_string(fixture.repo.root.join(path)).unwrap(),
             "# Notes\n\n## [0.13.0] - 2026-10-05\n\n## [0.12.3] - 2026-10-04\n\nHistory without a final newline"
@@ -271,7 +287,10 @@ fn empty_numbered_notes_prepare_without_weakening_release_identity() {
 
 #[test]
 fn shared_note_finalization_preserves_history_and_refuses_conflicting_targets() {
-    for path in ["CHANGELOG.md", "docs/changelog/0.13.md"] {
+    for path in [
+        "releases/persistence/CHANGELOG.md",
+        "releases/persistence/0.13.md",
+    ] {
         let fixture = Fixture::new();
         let edited = format!(
             "{}\nAdditional reviewed notes.\n",
@@ -320,13 +339,19 @@ fn shared_note_finalization_preserves_history_and_refuses_conflicting_targets() 
         "## [0.12.3]\n\nUndated published history",
     ] {
         let fixture = Fixture::new();
-        for path in ["CHANGELOG.md", "docs/changelog/0.13.md"] {
+        for path in [
+            "releases/persistence/CHANGELOG.md",
+            "releases/persistence/0.13.md",
+        ] {
             fixture.set_source(path, notes);
         }
         fixture.repo.preflight(&fixture.selection).unwrap();
         fixture.release();
         fixture.repo.publish(true).unwrap();
-        for path in ["CHANGELOG.md", "docs/changelog/0.13.md"] {
+        for path in [
+            "releases/persistence/CHANGELOG.md",
+            "releases/persistence/0.13.md",
+        ] {
             let finalized = fs::read_to_string(fixture.repo.root.join(path)).unwrap();
             assert!(finalized.starts_with("## [0.13.0] - 2026-10-05\n"));
             if let Some(history) = notes.find("## [0.12.3]") {
@@ -340,7 +365,7 @@ fn shared_note_finalization_preserves_history_and_refuses_conflicting_targets() 
         "## [0.13.0]\n\n##\t[0.13.0]\t-\t2026-10-04  \nAlready released\n",
     ] {
         let fixture = Fixture::new();
-        fixture.set_source("CHANGELOG.md", conflict);
+        fixture.set_source("releases/persistence/CHANGELOG.md", conflict);
         assert!(fixture.repo.preflight(&fixture.selection).is_err());
         assert!(fixture.prepare().is_err());
         fixture.assert_original();
@@ -367,14 +392,15 @@ fn failed_shared_note_finalization_never_installs_partial_output() {
 #[test]
 fn all_release_kinds_finalize_root_and_detail_notes_at_saved_date() {
     for (kind, version, detail) in [
-        ("patch", "0.12.4", "docs/changelog/0.12.md"),
-        ("minor", "0.13.0", "docs/changelog/0.13.md"),
-        ("major", "1.0.0", "docs/changelog/1.0.md"),
+        ("patch", "0.12.4", "releases/persistence/0.12.md"),
+        ("minor", "0.13.0", "releases/persistence/0.13.md"),
+        ("major", "1.0.0", "releases/persistence/1.0.md"),
     ] {
         let mut fixture = Fixture::new();
         fixture.selection.kind = kind.to_owned();
         fixture.selection.version = version.to_owned();
-        for path in ["CHANGELOG.md", detail] {
+        fixture.select_detail(detail);
+        for path in ["releases/persistence/CHANGELOG.md", detail] {
             let text = format!("# Notes\n\n## [{version}]\n\nChanges.\n\n## 0.12.3\n\nHistory.\n");
             fixture.set_source(path, &text);
         }
@@ -384,17 +410,15 @@ fn all_release_kinds_finalize_root_and_detail_notes_at_saved_date() {
         assert_eq!(
             files.keys().map(String::as_str).collect::<Vec<_>>(),
             [
-                "CHANGELOG.md",
                 "Cargo.lock",
                 "Cargo.toml",
-                &package_manifest("ic-logging-stable"),
-                PACKAGE_README,
-                &package_manifest("ic-metrics-stable"),
-                &package_manifest("ic-storage"),
-                detail
+                "crates/ic-memory/Cargo.toml",
+                "crates/ic-storage/Cargo.toml",
+                detail,
+                "releases/persistence/CHANGELOG.md"
             ],
         );
-        for path in ["CHANGELOG.md", detail] {
+        for path in ["releases/persistence/CHANGELOG.md", detail] {
             let text = fs::read_to_string(fixture.repo.root.join(path)).unwrap();
             assert!(text.contains(&format!("## [{version}] - 2026-10-05")));
             assert!(text.ends_with("## 0.12.3\n\nHistory.\n"));
@@ -417,7 +441,7 @@ fn invalid_prepared_artifacts_stop_final_qualification_without_replacing_evidenc
             serde_json::from_slice(&fs::read(&prepared_path).unwrap()).unwrap();
         let retained = fixture
             .repo
-            .retained_package(&prepared.package_sha256)
+            .retained_package(&prepared.archives["ic-memory"])
             .unwrap();
         match changed {
             "head" => {
@@ -433,7 +457,7 @@ fn invalid_prepared_artifacts_stop_final_qualification_without_replacing_evidenc
         let final_evidence: PackageEvidence = serde_json::from_slice(&final_bytes).unwrap();
         let final_archive = fixture
             .repo
-            .retained_package(&final_evidence.package_sha256)
+            .retained_package(&final_evidence.archives["ic-memory"])
             .unwrap();
         let archive_bytes = fs::read(&final_archive).unwrap();
         let working_archive = fixture.repo.package_path("ic-memory", "0.13.0").unwrap();
@@ -464,7 +488,7 @@ fn head_change_during_final_packaging_preserves_prepared_evidence() {
     let prepared: PackageEvidence = serde_json::from_slice(&prepared_bytes).unwrap();
     let archive = fixture
         .repo
-        .retained_package(&prepared.package_sha256)
+        .retained_package(&prepared.archives["ic-memory"])
         .unwrap();
     let archive_bytes = fs::read(&archive).unwrap();
     fixture.fail_build(BuildFault::PackageHead);
@@ -487,7 +511,7 @@ fn selected_older_release_reuses_exact_receipts_and_archives_after_a_fix() {
     let evidence: PackageEvidence = serde_json::from_slice(&final_bytes).unwrap();
     let archive = fixture
         .repo
-        .retained_package(&evidence.package_sha256)
+        .retained_package(&evidence.archives["ic-memory"])
         .unwrap();
     let archive_bytes = fs::read(&archive).unwrap();
     let mut descendant = {

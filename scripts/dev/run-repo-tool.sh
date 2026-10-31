@@ -28,38 +28,35 @@ check_dependency_cache() {
     echo 'Dependency preparation failed. Run make fetch-dependencies to populate the selected cache; resolve any reported lockfile or network errors first. Explicit offline settings remain in effect.' >&2
     exit "$status"
 }
-manifest_version="$(RUSTUP_TOOLCHAIN="$toolchain" \
-    bash scripts/ci/read-cargo-workspace-version.sh --stable Cargo.toml)"
-package_names="$(bash scripts/ci/read-persistence-packages.sh)"
+case "$1" in
+    version|release-*|qualify-release|publish)
+        [[ -n "${RELEASE_GROUP:-}" ]] || { echo 'Select RELEASE_GROUP explicitly.' >&2; exit 2; }
+        jq -e --arg group "$RELEASE_GROUP" 'any(.groups[]; .name == $group)' ci/cargo-release-groups.json > /dev/null || exit 2
+        ;;
+esac
+# Cargo admits TOML syntax (including duplicate keys) without resolving locks.
+RUSTUP_TOOLCHAIN="$toolchain" CARGO_NET_OFFLINE=true cargo locate-project --workspace --message-format plain --manifest-path Cargo.toml > /dev/null
+# Admit the virtual catalog before cache/helper effects, without a master version.
+"${YQ:-yq}" -p toml -o json '.' Cargo.toml | jq -e '
+  if has("package") or (.workspace | type) != "object" or .workspace.package.version != null
+  then error("independent groups require a virtual catalog without workspace.package.version") else true end' > /dev/null
+package_names="$(bash scripts/ci/read-persistence-packages.sh --all)"
 IFS=$'\t' read -r -a packages <<< "$package_names"
-# All workspace members inherit the one release identity, including unpublished ones.
+"${YQ:-yq}" -p toml -o json '.' Cargo.lock | jq -e --slurpfile policy ci/cargo-release-groups.json '
+  . as $lock | all($policy[0].groups[]; .members as $names |
+    [$names[] as $name | [$lock.package[] | select(.name == $name and .source == null)] |
+     if length == 1 and (.[0].version | type) == "string" and (.[0].version | explode | all(. >= 32)) and
+       (.[0].version | test("^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$"))
+     then .[0].version else error("invalid local lock identity") end] | unique | length == 1)
+  | if . then true else error("release group lock versions differ") end' > /dev/null || exit 1
+coherent=true
 for package in "${packages[@]}"; do
-    "${YQ:-yq}" -p toml -o json '.' "crates/$package/Cargo.toml" | jq -e --arg name "$package" '
-        .package | if .name == $name and .version == {workspace: true}
-        then true else error("expected inherited version for " + $name) end
-    ' > /dev/null
+    locked="$("${YQ:-yq}" -p toml -o json '.' Cargo.lock | jq -er --arg name "$package" '[.package[] | select(.name == $name and .source == null)] | if length == 1 then .[0].version else error("invalid local lock identity") end')"
+    style="$(jq -er --arg name "$package" '.groups[] | select(.members | index($name)) | .version' ci/cargo-release-groups.json)"
+    declared="$("${YQ:-yq}" -p toml -o json '.' "crates/$package/Cargo.toml" | jq -er --arg style "$style" '.package.version | if $style == "package" and type == "string" then . else error("invalid group version source") end')"
+    [[ "$locked" == "$declared" ]] || coherent=false
 done
-# Admit all local lock identities in one observation before shell capture.
-lock_versions="$("${YQ:-yq}" -p toml -o json -I 0 '.' Cargo.lock | jq -ers --arg roster "$package_names" '
-    if length != 1 then error("expected one lock document") else .[0] end
-    | .package as $packages
-    | ($roster | split("\t")) | map(. as $name |
-        [$packages[] | select(.name == $name and .source == null)]
-        | if length != 1 then error("expected one local " + $name + " package") else .[0].version end
-        | if type != "string" then error("locked version must be a string")
-          elif contains("\n") or contains("\r") or contains("\u0000") then
-            error("locked version contains control bytes")
-          else . end)
-    | @tsv
-')"
-IFS=$'\t' read -r -a locked_versions <<< "$lock_versions"
-lock_version="${locked_versions[0]}"
-perl scripts/ci/validate-release-inputs.pl version "$lock_version" > /dev/null
-# The release adapter atomically publishes one lock containing all versions.
-for version in "${locked_versions[@]}"; do
-    [[ "$version" == "$lock_version" ]] || { echo 'Persistence lock versions differ' >&2; exit 1; }
-done
-if [[ "$manifest_version" == "$lock_version" ]]; then
+if [[ "$coherent" == true ]]; then
     check_dependency_cache
     exec cargo "+$toolchain" run --locked --offline --quiet --example repo-tool -- "$@"
 fi
@@ -74,28 +71,38 @@ target="${target%$'\n.'}"
 mkdir -p "$target/repo-tool-bootstrap"
 scratch="$(mktemp -d "$target/repo-tool-bootstrap/attempt.XXXXXX")"
 echo "Retained repo-tool bootstrap metadata: $scratch" >&2
-cp Cargo.lock LICENSE "$scratch/"
-mkdir -p "$scratch/crates/ic-memory"
-cp crates/ic-memory/Cargo.toml crates/ic-memory/README.md "$scratch/crates/ic-memory/"
+cp Cargo.lock LICENSE Cargo.toml "$scratch/"
+cp -R crates "$scratch/"
 # shellcheck source=ci/release-tools.env
 source ci/release-tools.env
 editor_admission=(--check)
-# Standard releases authorize preparation of this selected tool as well as caches.
-# Ordinary helper calls stay check-only; installation is otherwise explicit.
 if [[ "${RELEASE_CACHE_PREPARE:-0}" == 1 ]]; then editor_admission=(); fi
 editor="$(RUSTUP_TOOLCHAIN="$toolchain" bash scripts/dev/install-rust-tools.sh \
     --consumer "$PWD" --package ic-build --version "$IC_BUILD_RELEASE_METADATA_VERSION" \
     --bin ic-build-release-metadata --profile debug --features cli ${editor_admission[@]+"${editor_admission[@]}"})"
-for package in "${packages[@]:1}"; do
-    mkdir -p "$scratch/crates/$package"
-    cp -R "crates/$package/src" "crates/$package/README.md" "crates/$package/Cargo.toml" "$scratch/crates/$package/"
+"${YQ:-yq}" -p toml -o json '.' Cargo.lock > "$scratch/lock.json"
+"${YQ:-yq}" -p toml -o json '.' Cargo.toml | jq --slurpfile lock "$scratch/lock.json" '
+    {version:"unchanged", dependencies:[.workspace.dependencies | to_entries[] |
+      select((.value|type) == "object" and .value.path != null and .value.version != null) |
+      . as $d | ($d.value.package // $d.key) as $package |
+      $lock[0].package[] | select(.name == $package and .source == null) |
+      {alias:$d.key, previous:$d.value.version, next:.version}]}' > "$scratch/root-edit.json"
+# The root is a virtual dependency catalog, with no version literal.
+# Unchanged mode still validates the edit versions; the values select no root version.
+"$editor" --max-input-bytes "$CARGO_RELEASE_METADATA_MAX_BYTES" group-manifest Cargo.toml \
+    0.0.0 0.0.0 "$scratch/root-edit.json" > "$scratch/Cargo.toml"
+printf '{"version":"package","dependencies":[]}\n' > "$scratch/member-edit.json"
+for package in "${packages[@]}"; do
+    manifest="crates/$package/Cargo.toml"
+    literal="$("${YQ:-yq}" -p toml -o json '.' "$manifest" | jq -r '.package.version | if type == "string" then . else empty end')"
+    if [[ -n "$literal" ]]; then
+        locked="$(jq -er --arg name "$package" '.package[] | select(.name == $name and .source == null) | .version' "$scratch/lock.json")"
+        "$editor" --max-input-bytes "$CARGO_RELEASE_METADATA_MAX_BYTES" group-manifest "$manifest" \
+            "$literal" "$locked" "$scratch/member-edit.json" > "$scratch/$manifest"
+    fi
 done
-"${YQ:-yq}" -p toml -o json '.' Cargo.toml | jq --arg root "$PWD" --arg roster "$package_names" '{manifest: ., members: ($roster | split("\t") | map({name: ., manifest_path: ($root + "/crates/" + . + "/Cargo.toml")}))}' > "$scratch/workspace-input.json"
-"$editor" --max-input-bytes "$CARGO_RELEASE_METADATA_MAX_BYTES" manifest Cargo.toml \
-    "$manifest_version" "$lock_version" "$scratch/workspace-input.json" > "$scratch/Cargo.toml"
-cp -R crates/ic-memory/src crates/ic-memory/examples "$scratch/crates/ic-memory/"
-# This only makes compilation metadata coherent; it grants no release authority.
-# The adapter runs in the real checkout and checks source, intent and evidence.
+# Compilation metadata is coherent only in scratch. The adapter still observes
+# the real checkout and must admit its saved source, group and receipts.
 check_dependency_cache --manifest-path "$scratch/Cargo.toml"
 exec cargo "+$toolchain" run --locked --offline --quiet \
     --manifest-path "$scratch/Cargo.toml" --target-dir "$target/repo-tool-bootstrap/build" \

@@ -132,7 +132,7 @@ already tracked by Git. Adopt new locks through an explicitly authorized commit
 or PR before the real-checkout declaration/release gate can pass; qualification
 alone does not authorize staging them.
 
-Installed runtime qualification uses the published `ic-testkit` 0.72.1 server CLI
+Installed runtime qualification uses the published `ic-testkit` 0.73.0 server CLI
 selected in the root Makefile, installed through Shared Tooling's exact Cargo
 binary installer. It has a separate locked registry tool graph, outside both
 Memory lockfiles. Prepare it and Testkit's authenticated server selection explicitly:
@@ -154,7 +154,7 @@ Wasm, input hashes and all optimizer/server/runtime logs remain under
 `target/qualification/runtime/`, including failures. Normal library builds and
 their Wasm budgets remain unoptimized. The runner consumes
 `IC_TESTKIT_POCKET_IC_URL`; it never downloads or
-spawns a server. IC Platform 0.12.0's native PocketIC boundary supplies the locked
+spawns a server. IC Platform 0.15.1's native PocketIC boundary supplies the locked
 16.1.0 client; Testkit selects server 16.1.0. This pairing requires installed
 IO/upgrade qualification on Linux and both macOS hosts, supplied by the separate
 runtime CI jobs. Historical 16.0.0 client/server results remain scoped to their
@@ -171,7 +171,7 @@ replaying Memory's IO suite or the release optimizer matrix:
 cargo +1.91.0 build -p ic-storage --locked --offline --profile wasm-size \
   --target wasm32-unknown-unknown --example wasm-storage-qualification
 testkit_cli="$(RUSTUP_TOOLCHAIN=1.99.1 bash scripts/dev/install-rust-tools.sh \
-  --consumer "$PWD" --package ic-testkit --version 0.72.1 \
+  --consumer "$PWD" --package ic-testkit --version 0.73.0 \
   --bin ic-testkit-server --profile release --features cli --check)"
 IC_STORAGE_QUALIFICATION_WASM="$PWD/target/wasm32-unknown-unknown/wasm-size/examples/wasm_storage_qualification.wasm" \
   "$testkit_cli" run --directory "$PWD/.tools/ic-testkit-server" --ttl 900 -- \

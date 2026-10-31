@@ -13,7 +13,9 @@ use super::preparation::ReleasePlan;
 impl<E: Execute> Repository<E> {
     pub(super) fn validation_path(&self, version: &str) -> Result<PathBuf> {
         self.version_parts(version)?;
-        Ok(self.artifact_paths()?.validation(version))
+        Ok(self
+            .artifact_paths()?
+            .validation(&format!("{}-{version}", self.group)))
     }
 
     pub(super) fn validation_command(&self) -> Result<Vec<String>> {
@@ -59,7 +61,7 @@ impl<E: Execute> Repository<E> {
             // locked Cargo fetching cannot reconcile that temporary mismatch.
             self.validated(selection)?;
         } else {
-            check_lock_update(
+            self.check_lock_update(
                 &lock,
                 std::str::from_utf8(&lock)?,
                 &selection.previous,
@@ -115,7 +117,7 @@ impl<E: Execute> Repository<E> {
             "validation requires the saved source and base version",
         )?;
         let lock = fs::read(self.root.join("Cargo.lock"))?;
-        check_lock_update(
+        self.check_lock_update(
             &lock,
             std::str::from_utf8(&lock)?,
             &selection.previous,
@@ -161,7 +163,8 @@ impl<E: Execute> Repository<E> {
             return Ok(None);
         }
         require(
-            previous.kind == selection.kind
+            previous.group == selection.group
+                && previous.kind == selection.kind
                 && previous.previous == selection.previous
                 && previous.version == selection.version
                 && previous.remote == selection.remote
@@ -228,7 +231,7 @@ impl<E: Execute> Repository<E> {
                 state == LockState::ReleaseProjection,
                 "selected lockfile differs from release validation",
             )?;
-            check_lock_update(
+            self.check_lock_update(
                 &evidence.lock,
                 std::str::from_utf8(&current)?,
                 &evidence.selection.previous,
@@ -339,6 +342,14 @@ impl<E: Execute> Repository<E> {
             "package evidence identifies another Git HEAD",
         )?;
         let mut paths = None;
+        let members = self.selected_packages()?;
+        require(
+            evidence.archives.len() == members.len()
+                && members
+                    .iter()
+                    .all(|name| evidence.archives.contains_key(name)),
+            "receipt package selection differs from release group",
+        )?;
         for (package, digest) in evidence.archives() {
             // Preserve per-archive refusal order; discover paths only after the
             // first digest is admitted, then reuse them within this phase.
@@ -400,7 +411,7 @@ impl<E: Execute> Repository<E> {
         let commands = self.preparation_commands()?;
         let [refresh, formatting, packaging] = &commands;
         self.run_command(refresh)?;
-        check_lock_update(
+        self.check_lock_update(
             &validation.lock,
             &fs::read_to_string(self.root.join("Cargo.lock"))?,
             &selection.previous,

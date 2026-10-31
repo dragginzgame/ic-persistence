@@ -9,32 +9,43 @@ local baseline. Future policy changes require reviewed snapshot adoption.
 
 ## Current source selection
 
-IC Persistence selects committed Shared Tooling 0.27.11 at
-`62edfbd43087a718bf0283e9040676a49211976d`, with 77 explicit roots and 127 payloads.
+IC Persistence selects committed Shared Tooling VERSION 0.27.19 at
+`54fc49e12f439dbe18d232f622a6d78e61773353`, with 78 explicit roots and 132 payloads.
+This commit includes the symmetric-layout and delegated-delivery rules.
+The canonical exporter used the clean committed Shared checkout.
 The canonical impact preview and refresh retain the reviewed selection. Source
 verification compares every payload and mode with that independent commit.
 
 The adopted graph observer and captured validation-input checkpoint helper retain
-source-drift refusal and failure evidence. The new Cargo publication adapter is
-opt-in; this repository retains its coordinated four-package receipt/publication
-contract. Example support now uses ordinary module discovery. Source-level lint
+source-drift refusal and failure evidence. The Cargo publication adapter remains opt-in. The native consumer retains its
+qualified checksum/retry checks and selects only its declared release group.
+The approved policy is `ci/cargo-release-groups.json`: Memory/Storage coordinate,
+and each stable adapter owns an independent version. All member versions are
+literal; each primary owns only its group. Canonical ledgers live under
+`releases/<group>/`, with a root index and `releases/history.md`. Release/resume
+and publication require explicit group selection. Example support now uses ordinary module discovery. Source-level lint
 exceptions use scoped expectations; the existing Cargo-table style policy was
 reviewed and its configuration-dependent ownership/documentation/naming reasons
 are recorded beside the retained levels. No lint level, host/IC tool catalog,
 formatter pin or maintenance activation changed.
 
-Platform 0.12.0 is selected directly in both maintained graphs, with the same qualified
+Platform 0.15.1 is selected directly in both maintained graphs, with the same qualified
 stable-structures 0.7.2 and PocketIC 16.1.0 substrate/client identities. Production
 Wasm has one Platform runtime owner and no external IC0/executor supplier. Tooling's
-native-only test meter retains its required non-runtime Platform 0.11.1 provider;
-it does not enter production Wasm. The optional Platform gzip facade is disabled.
-Metrics and Logging select published 0.21.0. Metrics durable bytes stay unchanged;
+native-only test meter retains its required non-runtime Platform 0.13.0 provider;
+it does not enter production Wasm. Platform no longer supplies a gzip facade;
+native artifact codecs remain owned by Host Artifacts. Platform now reexports
+owned identities from Types 0.15.0. Wire's optional Types 0.1 schema integration
+is unselected, so no second owned identity provider enters these graphs.
+Metrics selects published 0.23.2; Logging remains at 0.23.1. Metrics durable bytes stay unchanged;
 Logging's explicit hard-cut disposition is documented in its package guide.
-Both maintained catalogs select Wire 0.10.0; Metrics now shares its native metadata
-identity. The older Wire copies are removed. Production Wasm has one core Wire
-provider and no Wire endpoint or platform-types integration. IC Tooling libraries
-and separately prepared Build/Testkit executables select 0.72.1; the reviewed
-server stays 16.1.0. Shared Tooling and common tool catalogs are unchanged.
+Both maintained catalogs select Wire 0.12.1. Metrics preserves default native
+metadata through its `native-wire` feature and shares that Wire identity; the
+older Wire provider is removed. Production Wasm has one core Wire 0.12 provider
+and no Wire endpoint or platform-types integration. IC Tooling libraries
+select Build/Host 0.73.0 for group-aware rendering. The prepared Build editor
+selects 0.73.0; Testkit library/CLI select 0.73.0, with server 16.1.0. Common
+tool catalogs and all local release-group version numbers remain unchanged.
 
 The library [dependency catalog](../Cargo.toml) owns direct package requirements
 and feature selections; its [lockfile](../Cargo.lock) owns resolved identities.
@@ -333,8 +344,10 @@ The shared runner owns ordering, locks, saved intent and Git effects.
 Memory selects direct delivery and owns its Rust source/package receipts,
 metadata transaction and proof admission; IC Build supplies the available Cargo
 observers and projection checks through explicit native development dependencies.
-The unused alternate release delivery and validation checkpoint paths are not
-selected as Memory workflows. See [RELEASING.md](../RELEASING.md).
+The unused alternate release delivery and validation checkpoint paths remain
+unselected. Group selection uses the existing runner, with exact file plans
+checked against Shared. Bare core dependency minima are preserved while compatible;
+breaking supplier changes update requirements without advancing adapter versions. See [RELEASING.md](../RELEASING.md).
 
 Normal checks remain offline. Authorized release entry points separately allow
 locked cache preparation before helper compilation; an explicitly offline caller

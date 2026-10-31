@@ -31,6 +31,7 @@ fn compiler_environment_overrides_refuse_preparation_and_release_effects() {
         }));
 
         let repo = Repository {
+            group: "persistence".to_owned(),
             root: PathBuf::from(env::var_os(ROOT).unwrap()),
             exec: Substitute {
                 files: RefCell::new(FileEffects::default()),
@@ -67,7 +68,7 @@ fn compiler_environment_overrides_refuse_preparation_and_release_effects() {
         fixture.repo.package_path("ic-memory", "0.13.0").unwrap(),
         fixture
             .repo
-            .retained_package(&evidence.package_sha256)
+            .retained_package(&evidence.archives["ic-memory"])
             .unwrap(),
     ];
     let before: Vec<_> = paths.iter().map(|path| fs::read(path).unwrap()).collect();
@@ -312,6 +313,7 @@ fn inherited_compiler_configuration_refuses_preparation() {
         fs::copy(fixture.repo.root.join(path), root.join(path)).unwrap();
     }
     let repo = Repository {
+        group: "persistence".to_owned(),
         root,
         exec: Substitute {
             files: RefCell::new(FileEffects::default()),

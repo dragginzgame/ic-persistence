@@ -17,7 +17,9 @@ impl<E: Execute> Repository<E> {
 
     pub(super) fn receipt_path(&self, version: &str, stage: ReceiptStage) -> Result<PathBuf> {
         self.version_parts(version)?;
-        Ok(self.artifact_paths()?.receipt(version, stage))
+        Ok(self
+            .artifact_paths()?
+            .receipt(&format!("{}-{version}", self.group), stage))
     }
 
     #[cfg(test)]

@@ -9,6 +9,12 @@
         release-prepared-check release-files release-commit-check release-committed-check \
         release-tagged-check release-push-check qualify-release package publish publish-dry-run
 
+export RELEASE_GROUP
+ifneq ($(filter release-patch release-minor release-major release-resume qualify-release publish publish-dry-run,$(MAKECMDGOALS)),)
+ifeq ($(strip $(RELEASE_GROUP)),)
+$(error Select RELEASE_GROUP explicitly for release, resume or publication)
+endif
+endif
 export RELEASE_DELIVERY ?= direct
 ifneq ($(filter release-%,$(MAKECMDGOALS)),)
 ifneq ($(RELEASE_DELIVERY),direct)
@@ -126,6 +132,7 @@ test-tooling:
 	+cargo +$(VALIDATION_TOOLCHAIN) test --locked --offline --example repo-tool
 
 test-release-adapters:
+	bash scripts/ci/test-release-group-plans.sh
 	bash scripts/ci/test-release-adapters.sh
 	bash scripts/ci/test-consolidated-bootstrap.sh
 

@@ -7,7 +7,7 @@ shift
 [[ $# -eq 0 || "$1" == --allow-dirty ]] || exit 2
 export RUSTUP_AUTO_INSTALL=0
 msrv="$(bash scripts/ci/check-validation-compilers.sh "$pin")"
-package_names="$(bash scripts/ci/read-persistence-packages.sh)"
+package_names="$(bash scripts/ci/read-persistence-packages.sh --all)"
 IFS=$'\t' read -r -a packages <<< "$package_names"
 source_root="$(pwd -P)"
 cargo "+$pin" package --workspace --registry crates-io --locked --offline --no-verify "$@"

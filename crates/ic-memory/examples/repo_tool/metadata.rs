@@ -73,7 +73,7 @@ impl<E: Execute> Repository<E> {
         Ok(output)
     }
 
-    pub(super) fn replace_workspace_version(
+    pub(super) fn project_catalog(
         &self,
         text: &str,
         previous: &str,
@@ -81,59 +81,56 @@ impl<E: Execute> Repository<E> {
     ) -> Result<String> {
         self.version_parts(previous)?;
         self.version_parts(version)?;
-        let mut expected: toml::Value = toml::from_str(text)?;
-        require(
-            expected
-                .get("workspace")
-                .and_then(|value| value.get("package"))
-                .and_then(|value| value.get("version"))
-                .and_then(toml::Value::as_str)
-                == Some(previous),
-            "unexpected package version",
-        )?;
-        expected["workspace"]["package"]["version"] = toml::Value::String(version.to_owned());
-        let aliases: Vec<_> = packages()
-            .into_iter()
-            .filter(|name| expected["workspace"]["dependencies"].get(*name).is_some())
-            .collect();
-        for alias in &aliases {
-            expected["workspace"]["dependencies"][alias]["version"] =
-                toml::Value::String(version.to_owned());
-        }
-        let updated = render_workspace_manifest(
+        let group = self.release_group(None)?;
+        let manifest: toml::Value = toml::from_str(text)?;
+        let aliases = group
+            .dependencies
+            .iter()
+            .map(|alias| {
+                let requirement = manifest["workspace"]["dependencies"][alias]["version"]
+                    .as_str()
+                    .ok_or("missing local requirement")?;
+                let next = if self.compatible_requirement(requirement, version)? {
+                    requirement
+                } else {
+                    version
+                };
+                Ok(DependencyVersionProjection {
+                    alias,
+                    previous: requirement,
+                    next,
+                })
+            })
+            .collect::<Result<Vec<_>>>()?;
+        Ok(render_group_manifest(
             text,
             previous,
             version,
-            &aliases
+            ManifestVersion::Unchanged,
+            &aliases,
+        )?)
+    }
+
+    pub(super) fn replace_lock_version(
+        &self,
+        text: &str,
+        previous: &str,
+        version: &str,
+    ) -> Result<String> {
+        let group = self.release_group(None)?;
+        let updated = render_workspace_lock(
+            text,
+            &group
+                .members
                 .iter()
-                .map(|alias| DependencyVersionProjection {
-                    alias,
+                .map(|package| WorkspaceVersionProjection {
+                    package,
                     previous,
                     next: version,
                 })
                 .collect::<Vec<_>>(),
         )?;
-        require(
-            expected == toml::from_str::<toml::Value>(&updated)?,
-            "workspace version rendering changed other metadata",
-        )?;
-        Ok(updated)
-    }
-
-    pub(super) fn replace_lock_version(
-        text: &str,
-        previous: &str,
-        version: &str,
-    ) -> Result<String> {
-        let updated = render_workspace_lock(
-            text,
-            &packages().map(|package| WorkspaceVersionProjection {
-                package,
-                previous,
-                next: version,
-            }),
-        )?;
-        check_lock_update(text.as_bytes(), &updated, previous, version)?;
+        self.check_lock_update(text.as_bytes(), &updated, previous, version)?;
         Ok(updated)
     }
 

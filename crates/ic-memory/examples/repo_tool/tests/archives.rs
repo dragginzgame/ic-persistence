@@ -4,7 +4,7 @@ use super::*;
 use crate::repo_tool::wasm::{PROBES, check_wasm_artifacts};
 
 #[test]
-fn release_version_requires_the_named_package_to_inherit_the_workspace_identity() {
+fn release_version_requires_explicit_group_member_identity() {
     let fixture = Fixture::new();
     assert_eq!(fixture.repo.version(None).unwrap(), "0.12.3");
     for name in packages() {
@@ -13,7 +13,7 @@ fn release_version_requires_the_named_package_to_inherit_the_workspace_identity(
             "[workspace]\n".to_owned(),
             format!("[package]\nname = {name:?}\n"),
             "[package]\nname = \"another-package\"\nversion.workspace = true\n".to_owned(),
-            format!("[package]\nname = {name:?}\nversion = \"0.12.3\"\n"),
+            format!("[package]\nname = {name:?}\nversion.workspace = true\n"),
         ] {
             fs::write(fixture.repo.root.join(package_manifest(name)), manifest).unwrap();
             assert!(fixture.repo.member_release_manifest(None, name).is_err());
@@ -120,11 +120,7 @@ fn changed_archive_source_stops_before_publication_or_receipt() {
     );
     fixture.repo.prepare_selected(&fixture.selection).unwrap();
     assert_eq!(
-        fixture
-            .repo
-            .prepared(&fixture.selection)
-            .unwrap()
-            .package_sha256,
+        fixture.repo.prepared(&fixture.selection).unwrap().archives["ic-memory"],
         digest
     );
 }
@@ -192,39 +188,31 @@ fn wasm_metadata_and_budgets_use_only_the_selected_artifact_directory() {
 
 #[test]
 fn storage_archive_and_manifest_are_bound_to_the_coordinated_release() {
-    for (package, path) in [
-        ("ic-storage", package_manifest("ic-storage")),
-        ("ic-metrics-stable", package_manifest("ic-metrics-stable")),
-        ("ic-logging-stable", package_manifest("ic-logging-stable")),
-    ] {
-        let fixture = Fixture::new();
-        fixture.release();
-        assert_eq!(
-            toml::from_str::<toml::Value>(
-                &fs::read_to_string(fixture.repo.root.join(path)).unwrap()
-            )
-            .unwrap()["package"]["version"]["workspace"]
-                .as_bool(),
-            Some(true)
-        );
-        let manifest: toml::Value =
-            toml::from_str(&fs::read_to_string(fixture.repo.root.join("Cargo.toml")).unwrap())
-                .unwrap();
-        assert_eq!(
-            manifest["workspace"]["dependencies"]["ic-memory"]["version"].as_str(),
-            Some("0.13.0")
-        );
-        assert_eq!(
-            manifest["workspace"]["dependencies"]["ic-storage"]["version"].as_str(),
-            Some("0.13.0")
-        );
-        fs::write(
-            fixture.repo.package_path(package, "0.13.0").unwrap(),
-            b"foreign archive",
-        )
-        .unwrap();
-        assert!(fixture.repo.publish(true).is_err());
-    }
+    let (package, path) = ("ic-storage", package_manifest("ic-storage"));
+    let fixture = Fixture::new();
+    fixture.release();
+    assert_eq!(
+        toml::from_str::<toml::Value>(&fs::read_to_string(fixture.repo.root.join(path)).unwrap())
+            .unwrap()["package"]["version"]
+            .as_str(),
+        Some("0.13.0")
+    );
+    let manifest: toml::Value =
+        toml::from_str(&fs::read_to_string(fixture.repo.root.join("Cargo.toml")).unwrap()).unwrap();
+    assert_eq!(
+        manifest["workspace"]["dependencies"]["ic-memory"]["version"].as_str(),
+        Some("0.13.0")
+    );
+    assert_eq!(
+        manifest["workspace"]["dependencies"]["ic-storage"]["version"].as_str(),
+        Some("0.13.0")
+    );
+    fs::write(
+        fixture.repo.package_path(package, "0.13.0").unwrap(),
+        b"foreign archive",
+    )
+    .unwrap();
+    assert!(fixture.repo.publish(true).is_err());
 }
 
 #[test]
