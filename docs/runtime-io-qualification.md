@@ -1,5 +1,147 @@
 # Runtime IO and maintainer improvements qualification
 
+## Platform 0.11 and Tooling 0.72 adoption — 2026-10-30
+
+The working tree based on released `c2ee327`, including the preceding unpublished
+Wire adoption, selects registry Platform 0.11.1 and Wire 0.10.0 in both maintained
+catalogs. The library selects Metrics/Logging 0.21.0 and Tooling 0.72.0. Older
+native Platform/Wire identities are removed without unrelated package changes.
+The canonical installer prepared and admitted Build editor and Testkit CLI
+0.72.0, retaining earlier generations and logs. The first offline server check
+refused a concurrently held tool-store lock (75); its unchanged retry passed
+after that owner finished. Build editor admission also passes. PocketIC remains
+client/server 16.1.0 and stable-structures remains the exact 0.7.2 substrate.
+
+The three original Wasm fixtures and independent runner were rebuilt locked and
+offline. The Testkit 0.72 run exited 0: malformed-frame/IO refusals, upgrade
+recovery, Storage reopen/rollback, six manager faults, composed custody and
+Logging query/update/upgrade/text-budget/empty-watermark behavior pass. Source
+checks match after execution. Exact source/tool/server/runner/Wasm hashes,
+retained runner, launchers and server/runtime logs remain under
+`target/qualification/runtime/attempt.atoCde/`.
+
+Focused native evidence is under `/tmp/ic-persistence-deps13/`: full locked
+metadata for both graphs, production graph/pins, affected library/test/helper
+Clippy and independent-runner Clippy pass. There are 187 passing Memory tests
+(eight explicit ignores), 12 Logging Stable tests, 29 Metrics Stable tests and
+69 release-helper tests. Rust 1.91 checks cover the affected libraries/tests and
+native release helper. The selected bootstrap recovery function passes with the
+actual prepared 0.72 editor and substituted Cargo effects; no generic runner
+matrix or live release is inferred. Formatting and local links pass.
+
+No owned Rust source, stored format, runtime custody, common catalog or server
+byte change was needed. Optional Wire endpoint/platform-types integration stays
+disabled. Full release gates, optimizer variants and native macOS were not
+rerun. No commit, package-version bump, release, publication or push ran.
+
+
+## Platform 0.10 and Observability 0.19 adoption — 2026-10-30
+
+The working tree based on `b281a60`, preserving preceding Wire/Tooling adoption,
+selects registry Platform 0.10.0 in both maintained catalogs and Metrics/Logging
+0.19.0 in the library graph. IC Tooling libraries and prepared CLI pins remain
+at the latest published 0.71.0; Testkit admits the unchanged PocketIC 16.1.0
+server, paired with Platform's 16.1.0 client. Stable-structures remains 0.7.2.
+The production Wasm graph has one Platform runtime owner and one Wire provider.
+The native test meter retains its required non-runtime Platform 0.9.1 copy.
+Metrics now shares Wire 0.8 metadata, removing the previous 0.7.25 provider.
+
+The three original Wasm fixtures and independent host runner were rebuilt locked
+and offline. The original-Wasm run exited 0, covering malformed frames and IO
+refusals, upgrade recovery, Storage reopen/rollback, six manager faults, composed
+custody and Logging query/update/upgrade/text-budget/empty-watermark behavior.
+Exact source/tool/server/runner/Wasm hashes, retained runner, launchers and server
+logs are under `target/qualification/runtime/attempt.4dqXS3/`. Source checks
+matched after execution. The initial sandbox run could not bind loopback;
+its failure remains under `target/qualification/runtime/attempt.Rowi1N/`.
+The retry used the same prepared tools with local-server permission.
+
+Focused native evidence is retained under `/tmp/ic-persistence-adoption11/`:
+187 Memory tests (eight explicit ignores), 12 Logging Stable tests and 29 Metrics
+Stable tests pass, including corruption and checkpoint admission. Strict affected
+Clippy, Rust 1.91 library checks, production graph/pins and formatting pass.
+No owned Rust source, stored format, runtime custody, common catalog or server
+byte change was needed. Previous release-helper evidence remains applicable to
+the unchanged helper and native Tooling dependencies. No full release suite,
+optimizer matrix or native macOS qualification ran; no release/publication ran.
+
+
+## IC Tooling 0.71 installed adoption — 2026-10-30
+
+The working tree based on `b281a60`, including the preceding Wire 0.8 adoption,
+selects registry IC Tooling 0.71.0 for Build, Host Artifacts/FS/Process and the
+native test meter. The separate Build editor and Testkit server CLI pins also
+select 0.71.0. The canonical installer admitted the cached Build generation and
+built/admitted the new Testkit generation, retaining older tools and attempt logs.
+Both selected executables pass offline checks. No release or publication ran.
+
+Testkit CLI 0.71.0 admits the existing authenticated PocketIC 16.1.0 server;
+Platform 0.9.1 still supplies client 16.1.0. The original-Wasm run exited 0:
+malformed-frame and IO refusals, failed/clean upgrade recovery, Storage reopen
+and rollback, six manager faults, composed custody, Logging query/update/upgrade
+semantics, empty watermarks and text-budget/forged-checkpoint probes all pass.
+Exact source/tool/server/runner/Wasm hashes and server/runtime logs remain under
+`target/qualification/runtime/attempt.CNI1ob/`, with launchers and source checks.
+The host runner is retained there as well. Recorded source checks matched after
+the run. No runtime source change followed this qualification.
+
+Native evidence is under `/tmp/ic-persistence-tooling10/`: strict affected Clippy,
+187 Memory tests (eight explicit ignores) and all 69 release-helper tests pass.
+Consumer release-adapter groups passed until the bootstrap case correctly refused
+an unprepared newly pinned editor; its failed fixture is retained. After explicit
+setup, that unchanged bootstrap function passes in a selected scratch invocation
+with the prepared native editor and substituted Cargo effects. This is neither
+a live release nor a generic producer matrix. The dependency graph removes the
+old native-only Platform 0.8.3 copy and retains one 0.9.1 owner; stored formats,
+common catalogs and the server bytes remain unchanged. Formatting and local
+links pass. Full release gates, optimizer variants and native macOS were not
+rerun; no performance gain is inferred.
+
+
+## Platform 0.9 and Logging 0.18 adoption — 2026-10-30
+
+The working tree based on 0.56.4 `08e815d`, retaining the preceding uncommitted
+module/recovery cleanup and incoming Wire 0.7.25 lock selection, is qualified in
+two focused Linux x86-64 phases. Both use Testkit CLI 0.70.0 and PocketIC
+client/server 16.1.0. Catalogs select registry Platform 0.9.0 in the library and
+independent host graph; the qualified stable-structures substrate remains 0.7.2.
+
+First, an original-Wasm run with Platform 0.9.0, Metrics 0.18.0 and the then-selected
+Logging 0.17.7 passed Memory malformed-frame/IO refusal, upgrade rollback, Storage
+reopen and update/upgrade rollback, manager faults, composed custody and Logging
+watermarks. Exact hashes, Wasm and server/runtime logs are retained in
+`target/qualification/runtime/attempt.co4GnJ/`. That phase is not relabelled as
+Logging 0.18 evidence.
+
+After the maintainer explicitly selected retirement of old Logging checkpoints,
+Logging 0.18.0 and its discriminator-3 fixture were rebuilt and qualified with
+the focused Logging-only runner. The run exited 0: query non-persistence,
+update/upgrade rollback, empty-history watermarks and normal reopen pass. A
+separate governed row proves eviction of two old rows, an individually over-budget
+append preserving the prior checkpoint, refusal of a forged retained text ceiling,
+explicit host repair, and upgrade reopen preserving the admitted row. The main
+log is unchanged by that probe. Exact hashes, original Logging Wasm, source
+observations and server/runtime logs are retained in
+`target/qualification/runtime/attempt.V1TC6O/`. Source checks matched immediately
+after each installed run; no runtime source fix followed the successful Logging run.
+No deployed data was reset. Old Logging rows require explicit host administration;
+there is no old decoder, inferred text ceiling or automatic reset.
+
+Native evidence is under `/tmp/ic-persistence-adopt7/`. Memory 187 (eight explicit
+ignores), Storage 17 and Metrics 29 library tests pass. Logging's 12 cases pass
+across the main run and the selected record-budget correction: the former fixture
+now evicts by text, so the record-size case fills the text ceiling exactly and
+proves metadata still exceeds the encoded ceiling. The new cases cover forged
+text usage, unchanged writes and explicit retirement of frozen discriminator-2
+bytes. Strict native/Wasm/host Clippy, Rust 1.91 Wasm library checking, Logging
+doctests, consumer release-adapter substitutes, graph/pin checks and source-bound
+Shared snapshot verification pass. The actual validation runner also dispatches
+the consumer graph gate with its captured checkpoint companion. Package file
+lists include ordinary example support modules. These are focused proofs, not
+release/package publication admission. Optimizer variants, macOS and full release
+gates were not rerun; no performance gain is inferred.
+
+
 ## Runtime bookkeeping cleanup qualification — 2026-10-30
 
 The working tree based on 0.56.3 `413cecc` passes Linux x86-64 original-Wasm

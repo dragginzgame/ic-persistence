@@ -2,9 +2,10 @@ use super::fixtures::{app_pool as pool, snapshot};
 use super::*;
 use crate::{
     BootstrapAdmissionError as AdmissionError, MemoryDeclarationError as DeclarationError,
-    MemoryManagerSlot, RuntimeBootstrapPolicy, StableKey,
+    MemoryManagerSlot, RuntimeBootstrapPolicy, STABLE_CELL_VALUE_OFFSET, StableKey,
+    stable_cell::EncodedLedgerRecord,
 };
-use ic_platform::stable_structures::VectorMemory;
+use ic_platform::stable_structures::{Cell, VectorMemory};
 use std::cell::Cell as Counter;
 
 #[derive(Default)]

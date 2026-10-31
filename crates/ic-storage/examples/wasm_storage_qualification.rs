@@ -1,7 +1,7 @@
 //! Installed collection/lease qualification; no application codec or recovery policy.
 
 #[cfg(target_arch = "wasm32")]
-mod support;
+pub mod support;
 #[cfg(target_arch = "wasm32")]
 use support::qualification_protocol as protocol;
 

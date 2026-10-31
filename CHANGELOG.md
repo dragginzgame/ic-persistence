@@ -1,11 +1,46 @@
 # Changelog
 
-## [0.56.5]
+## [0.58.0] - 2026-10-30
+
+### ⚠️ Breaking
+
+- Adopt Platform 0.11.1, Wire 0.10.0, Metrics/Logging 0.21.0 and Tooling 0.72.0.
+  Callers exchanging exposed Wire errors or Metrics values must align dependency
+  identities. Stored bytes and codec admission are unchanged.
+  [Details](docs/changelog/0.58.md#0580---unreleased).
+
+### ⬆️ Dependencies
+
+- Align both maintained graphs and the separately prepared Build/Testkit CLI pins,
+  removing older native Platform and Wire copies.
+
+## [0.57.0] - 2026-10-30
+
+### ⚠️ Breaking
+
+- Adopt Logging 0.18 with an explicit retained-text budget and discriminator-3
+  checkpoints ([#141](https://github.com/dragginzgame/ic-persistence/issues/141)).
+  Old Logging rows require host-owned retirement or a fresh
+  allocation; no compatibility reader or automatic reset is included.
+  [Upgrade disposition](crates/ic-logging-stable/README.md#upgrade-disposition).
+
+### ⬆️ Dependencies
+
+- Adopt Platform 0.10.0, Logging/Metrics 0.19.0 and reviewed Shared Tooling 0.27.11.
+  Adopt IC Wire 0.8.0 in both maintained workspaces and IC Tooling 0.71.0
+  libraries/executable pins without changing stored bytes.
+  [Details](docs/changelog/0.57.md#0570---unreleased).
+
+### 🩹 Fixed
+
+- Supply Logging's retained-text budget in the standalone archive consumer so
+  package qualification compiles against Logging 0.18.
 
 ### 🧹 Cleanup
 
-- Use ordinary module discovery for Memory and Storage qualification examples,
-  preserving qualification protocols and helper bodies.
+- Separate runtime construction and bootstrap, group stable-cell tests, and reuse
+  recovery snapshots without changing APIs, stored formats or refusal ordering.
+  [Details](docs/changelog/0.57.md#0570---unreleased).
 
 ## [0.56.4] - 2026-10-30
 

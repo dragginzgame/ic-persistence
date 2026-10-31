@@ -17,7 +17,7 @@ exclude = ["testing/runtime-qualification"]
 [workspace.package]
 edition = "2024"
 rust-version = "1.91.0"
-version = "0.56.4"
+version = "0.58.0"
 license = "MIT"
 authors = ["borovan <84897664+borovan@users.noreply.github.com>"]
 description = "Durable stable-memory allocation governance for Internet Computer canisters"
@@ -30,12 +30,12 @@ categories = ["wasm", "data-structures"]
 
 [workspace.dependencies]
 # Production dependencies
-ic-logging = { version = "0.17.5", default-features = false }
-ic-memory = { path = "crates/ic-memory", version = "0.56.4" }
-ic-metrics = "0.17"
-ic-platform = { version = "0.8.1", default-features = false }
-ic-storage = { path = "crates/ic-storage", version = "0.56.4" }
-ic-wire = { version = "0.7.22", default-features = false }
+ic-logging = { version = "0.21.0", default-features = false }
+ic-memory = { path = "crates/ic-memory", version = "0.58.0" }
+ic-metrics = "0.21.0"
+ic-platform = { version = "0.11.1", default-features = false }
+ic-storage = { path = "crates/ic-storage", version = "0.58.0" }
+ic-wire = { version = "0.10.0", default-features = false }
 serde = { version = "1.0", default-features = false, features = [
     "alloc",
     "derive",
@@ -44,11 +44,11 @@ thiserror = "2.0"
 
 # Tests and tooling only
 clap = { version = "4.6", default-features = false, features = ["derive", "std", "help", "usage", "error-context"] }
-ic-build = { version = "0.70.0", default-features = false }
-ic-host-artifacts = { version = "0.70.0", default-features = false }
-ic-host-fs = { version = "0.70.0", default-features = false }
-ic-host-process = { version = "0.70.0", default-features = false }
-ic-testkit-native = { version = "0.70.0", default-features = false }
+ic-build = { version = "0.72.0", default-features = false }
+ic-host-artifacts = { version = "0.72.0", default-features = false }
+ic-host-fs = { version = "0.72.0", default-features = false }
+ic-host-process = { version = "0.72.0", default-features = false }
+ic-testkit-native = { version = "0.72.0", default-features = false }
 serde_json = "1.0"
 toml = "1.1.6"
 trybuild = "1.0.121"
@@ -66,17 +66,37 @@ semicolon_if_nothing_returned = "warn"
 uninlined_format_args = "warn"
 use_self = "warn"
 
+# Configuration-level documentation style: prose and the maintainer-selected
+# wrapped item blocks apply across native, Wasm and fixture builds. Cargo has no
+# conditional expect level; item-specific exceptions use scoped expectations.
 doc_markdown = "allow"
 empty_line_after_doc_comments = "allow"
+# Public domain vocabulary is preserved across feature-dependent error/type sets;
+# this is the workspace naming policy, rather than a single warning suppression.
 enum_variant_names = "allow"
+# Delegating/fixture APIs document their owned contract without mechanically
+# repeating upstream Errors sections; generated/test APIs vary by configuration.
 missing_errors_doc = "allow"
+# Ordinary owner-local module names remain permitted across library/example
+# roots, including builds in which a particular module is absent.
 module_inception = "allow"
 module_name_repetitions = "allow"
+# Callback and fixture ownership is part of their selected signatures. Diagnostic
+# populations vary with generated/native/Wasm callers; isolated cases use expect.
 needless_pass_by_value = "allow"
+# Explicit branches preserve boundary-specific error/effect ordering; the style
+# diagnostic depends on each target's instantiated code and compiler analysis.
 option_if_let_else = "allow"
+# Lease/backing/receipt guards retain deliberate lexical lifetimes; do not let a
+# configuration-wide style rewrite move destruction across effects.
 significant_drop_tightening = "allow"
+# Public diagnostic vocabulary mirrors the domain across enabled type families.
 struct_field_names = "allow"
+# Retained fixture custody guards and their probes share native/Wasm ownership.
 used_underscore_binding = "allow"
+# Owner-local test/example modules intentionally inherit their parent fixture
+# vocabulary. They disappear from production-only targets, where a crate-wide
+# expectation would be unfulfilled; this remains a configuration-level policy.
 wildcard_imports = "allow"
 
 [profile.wasm-size]

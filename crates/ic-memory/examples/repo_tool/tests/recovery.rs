@@ -89,7 +89,7 @@ fn preparation_retains_primary_and_rollback_errors_and_restores_other_owned_file
     let fixture = Fixture::new();
     fixture.repo.verify(&fixture.selection).unwrap();
     let validation = fixture.repo.validation_path("0.13.0").unwrap();
-    let saved = fs::read(&validation).unwrap();
+    let saved = FileSnapshot::capture(&validation);
     let repo = Repository {
         root: fixture.repo.root.clone(),
         exec: RollbackFailures(&fixture.repo.exec),
@@ -130,7 +130,7 @@ fn preparation_retains_primary_and_rollback_errors_and_restores_other_owned_file
         fs::read_to_string(repo.root.join("docs/changelog/0.13.md")).unwrap(),
         fixture.repo.exec.state.borrow().git.source["docs/changelog/0.13.md"]
     );
-    assert_eq!(fs::read(validation).unwrap(), saved);
+    saved.assert_unchanged();
     assert!(repo.package_path("ic-memory", "0.13.0").unwrap().exists());
     assert!(!repo.receipt_path("0.13.0", Prepared).unwrap().exists());
     assert!(failure.source().unwrap().is::<std::io::Error>());
@@ -147,7 +147,7 @@ fn failed_first_publication_preserves_untouched_metadata_identity_and_permission
     let fixture = Fixture::new();
     fixture.repo.verify(&fixture.selection).unwrap();
     let validation = fixture.repo.validation_path("0.13.0").unwrap();
-    let saved = fs::read(&validation).unwrap();
+    let saved = FileSnapshot::capture(&validation);
     let metadata: BTreeMap<_, _> = fixture
         .repo
         .surfaces(&fixture.selection)
@@ -171,7 +171,7 @@ fn failed_first_publication_preserves_untouched_metadata_identity_and_permission
         let actual = fs::metadata(fixture.repo.root.join(path)).unwrap();
         assert_eq!((actual.ino(), actual.mode()), identity);
     }
-    assert_eq!(fs::read(validation).unwrap(), saved);
+    saved.assert_unchanged();
     assert!(
         !fixture
             .repo
@@ -193,7 +193,7 @@ fn metadata_publication_failures_reconcile_visible_bytes_and_retry_saved_intent(
             let fixture = Fixture::new();
             fixture.repo.verify(&fixture.selection).unwrap();
             let receipt = fixture.repo.validation_path("0.13.0").unwrap();
-            let saved = fs::read(&receipt).unwrap();
+            let saved = FileSnapshot::capture(&receipt);
             let sentinel = fixture.repo.target().unwrap().join("consumer-evidence");
             fs::write(&sentinel, "keep").unwrap();
             fixture.fail_files(if after_publication {
@@ -208,7 +208,7 @@ fn metadata_publication_failures_reconcile_visible_bytes_and_retry_saved_intent(
                     text.as_bytes()
                 );
             }
-            assert_eq!(fs::read(&receipt).unwrap(), saved);
+            saved.assert_unchanged();
             assert_eq!(fs::read_to_string(&sentinel).unwrap(), "keep");
             let published_errors = fixture
                 .repo
@@ -223,7 +223,7 @@ fn metadata_publication_failures_reconcile_visible_bytes_and_retry_saved_intent(
             fixture.repo.prepare_selected(&fixture.selection).unwrap();
             fixture.repo.prepared(&fixture.selection).unwrap();
             assert_eq!(fixture.repo.version(None).unwrap(), "0.13.0");
-            assert_eq!(fs::read(receipt).unwrap(), saved);
+            saved.assert_unchanged();
             assert_eq!(fs::read_to_string(sentinel).unwrap(), "keep");
             assert_eq!(
                 fixture
@@ -327,14 +327,14 @@ fn preparation_restart_recovers_from_validation_receipt_publication_errors() {
         fixture.prepare().unwrap();
         let validation = fixture.repo.validation_path("0.13.0").unwrap();
         let prepared = fixture.repo.receipt_path("0.13.0", Prepared).unwrap();
-        let old_validation = fs::read(&validation).unwrap();
-        let old_prepared = fs::read(&prepared).unwrap();
-        let evidence: PackageEvidence = serde_json::from_slice(&old_prepared).unwrap();
+        let old_validation = FileSnapshot::capture(&validation);
+        let old_prepared = FileSnapshot::capture(&prepared);
+        let evidence: PackageEvidence = serde_json::from_slice(old_prepared.bytes()).unwrap();
         let archive = fixture
             .repo
             .retained_package(&evidence.package_sha256)
             .unwrap();
-        let old_archive = fs::read(&archive).unwrap();
+        let old_archive = FileSnapshot::capture(&archive);
         let mut descendant = fixture.repo.exec.state.borrow().git.source.clone();
         descendant.insert("source.rs".to_owned(), "// committed fix\n".to_owned());
         for (path, text) in &descendant {
@@ -376,9 +376,17 @@ fn preparation_restart_recovers_from_validation_receipt_publication_errors() {
             .unwrap()
             .map(|entry| fs::read(entry.unwrap().path()).unwrap())
             .collect();
-        assert!(retained.contains(&old_validation));
-        assert!(retained.contains(&old_prepared));
-        assert_eq!(fs::read(&archive).unwrap(), old_archive);
+        assert!(
+            retained
+                .iter()
+                .any(|bytes| bytes.as_slice() == old_validation.bytes())
+        );
+        assert!(
+            retained
+                .iter()
+                .any(|bytes| bytes.as_slice() == old_prepared.bytes())
+        );
+        old_archive.assert_unchanged();
     }
 }
 
@@ -387,7 +395,7 @@ fn interrupted_preparation_finishes_saved_candidate_without_revalidating() {
     for interruption in ["partial", "partial-lock", "manifest", "lock", "package"] {
         let fixture = Fixture::new();
         fixture.repo.verify(&fixture.selection).unwrap();
-        let evidence = fs::read(fixture.repo.validation_path("0.13.0").unwrap()).unwrap();
+        let evidence = FileSnapshot::capture(&fixture.repo.validation_path("0.13.0").unwrap());
         let expected = fixture.repo.surfaces(&fixture.selection).unwrap();
         for (path, text) in &expected {
             if match interruption {
@@ -445,10 +453,7 @@ fn interrupted_preparation_finishes_saved_candidate_without_revalidating() {
                 text.expected
             );
         }
-        assert_eq!(
-            fs::read(fixture.repo.validation_path("0.13.0").unwrap()).unwrap(),
-            evidence
-        );
+        evidence.assert_unchanged();
         let calls = fixture.repo.exec.state.borrow().calls.clone();
         assert_eq!(
             calls
@@ -552,7 +557,7 @@ fn archive_publication_errors_preserve_validation_and_reconcile_visible_bytes() 
         let fixture = Fixture::new();
         fixture.repo.verify(&fixture.selection).unwrap();
         let validation = fixture.repo.validation_path("0.13.0").unwrap();
-        let validation_bytes = fs::read(&validation).unwrap();
+        let validation_bytes = FileSnapshot::capture(&validation);
         let digest = Sha256Digest::compute(b"prepared-archive").to_string();
         let retained = fixture.repo.retained_package(&digest).unwrap();
         fs::create_dir_all(retained.parent().unwrap()).unwrap();
@@ -561,7 +566,7 @@ fn archive_publication_errors_preserve_validation_and_reconcile_visible_bytes() 
         fixture.fail_files(phase.clone());
         assert!(fixture.repo.prepare_selected(&fixture.selection).is_err());
         fixture.assert_original();
-        assert_eq!(fs::read(&validation).unwrap(), validation_bytes);
+        validation_bytes.assert_unchanged();
         assert!(
             !fixture
                 .repo
@@ -595,7 +600,7 @@ fn archive_publication_errors_preserve_validation_and_reconcile_visible_bytes() 
         let evidence = fixture.repo.prepared(&fixture.selection).unwrap();
         assert_eq!(evidence.package_sha256, digest);
         assert_eq!(fs::read(&retained).unwrap(), b"prepared-archive");
-        assert_eq!(fs::read(&validation).unwrap(), validation_bytes);
+        validation_bytes.assert_unchanged();
         assert_eq!(fs::read(&foreign).unwrap(), b"unrelated evidence");
         assert_eq!(
             transfers() - before_retry,

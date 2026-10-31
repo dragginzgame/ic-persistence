@@ -2,8 +2,7 @@
 //! Shared bounded Wire messages avoid local packet encoding.
 
 #[cfg(target_arch = "wasm32")]
-mod support;
-
+pub mod support;
 #[cfg(target_arch = "wasm32")]
 use support::{host, io_protocol as protocol};
 

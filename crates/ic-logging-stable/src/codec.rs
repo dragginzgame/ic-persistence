@@ -2,13 +2,13 @@
 
 use std::num::NonZeroUsize;
 
-use ic_logging::{Entry, Level, Limits, Log, LogSnapshot};
+use ic_logging::{Entry, Level, Limits, Log, LogCheckpoint, LogSnapshot};
 use ic_wire::{List, native};
 use serde::{Deserialize, Serialize, Serializer};
 
 use crate::{LogIdentity, MAX_ENTRIES, MAX_RECORD_BYTES, StoreError};
 
-const MAGIC: &[u8] = b"ICL\x02";
+const MAGIC: &[u8] = b"ICL\x03";
 // These are conservative Serde traversal allowances, not measured heap sizes.
 // Static row bounds and borrowed text keep decoding bounded before restoration.
 const CODEC_LIMITS: ic_wire::Limits = ic_wire::Limits {
@@ -53,6 +53,7 @@ struct StoredLimits {
     max_entries: NonZeroUsize,
     max_message_bytes: usize,
     max_label_bytes: usize,
+    max_text_bytes: usize,
 }
 
 #[derive(Deserialize, Serialize)]
@@ -67,34 +68,44 @@ enum StoredLevel {
 
 // Iterate borrowed entries without collecting another row buffer. Decoding
 // still uses the bounded List before any owned Logging restoration.
-struct StoredEntries<'a>(&'a [Entry]);
+struct StoredEntries<'a>(LogCheckpoint<'a>);
+
+fn serialize_entries<'a, S: Serializer>(
+    entries: impl IntoIterator<Item = &'a Entry>,
+    serializer: S,
+) -> Result<S::Ok, S::Error> {
+    serializer.collect_seq(entries.into_iter().map(|entry| StoredEntry {
+        sequence: entry.sequence,
+        created_at_secs: entry.created_at_secs,
+        level: entry.level,
+        truncated: entry.truncated,
+        source: &entry.source,
+        topic: entry.topic.as_deref(),
+        message: &entry.message,
+    }))
+}
 
 impl Serialize for StoredEntries<'_> {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        serializer.collect_seq(self.0.iter().map(|entry| StoredEntry {
-            sequence: entry.sequence,
-            created_at_secs: entry.created_at_secs,
-            level: entry.level,
-            truncated: entry.truncated,
-            source: &entry.source,
-            topic: entry.topic.as_deref(),
-            message: &entry.message,
-        }))
+        serialize_entries(self.0.entries(), serializer)
     }
 }
 
-pub fn encode(identity: LogIdentity, state: &LogSnapshot) -> Result<Vec<u8>, StoreError> {
-    if state.entries.len() > MAX_ENTRIES {
+pub fn encode(identity: LogIdentity, state: LogCheckpoint<'_>) -> Result<Vec<u8>, StoreError> {
+    if state.entries().len() > MAX_ENTRIES {
         return Err(ic_wire::Error::Limit.into());
     }
-    let checkpoint = Checkpoint {
+    encode_checkpoint(&Checkpoint {
         epoch: identity.epoch,
-        limits: state.limits,
-        next_sequence: state.next_sequence,
-        last_created_at_secs: state.last_created_at_secs,
-        entries: StoredEntries(&state.entries),
-    };
-    let payload = native::encode(&checkpoint, CODEC_LIMITS).map_err(|error| match error {
+        limits: state.limits(),
+        next_sequence: state.next_sequence(),
+        last_created_at_secs: state.last_created_at_secs(),
+        entries: StoredEntries(state),
+    })
+}
+
+fn encode_checkpoint(checkpoint: &Checkpoint<impl Serialize>) -> Result<Vec<u8>, StoreError> {
+    let payload = native::encode(checkpoint, CODEC_LIMITS).map_err(|error| match error {
         ic_wire::Error::Limit => StoreError::RecordTooLarge,
         other => StoreError::Codec(other),
     })?;
@@ -102,6 +113,30 @@ pub fn encode(identity: LogIdentity, state: &LogSnapshot) -> Result<Vec<u8>, Sto
     bytes.extend_from_slice(MAGIC);
     bytes.extend_from_slice(&payload);
     Ok(bytes)
+}
+
+// Tests forge retained records independently of canonical engine admission.
+#[cfg(test)]
+pub fn encode_snapshot(
+    identity: LogIdentity,
+    state: &ic_logging::LogSnapshot,
+) -> Result<Vec<u8>, StoreError> {
+    struct Rows<'a>(&'a [Entry]);
+    impl Serialize for Rows<'_> {
+        fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+            serialize_entries(self.0, serializer)
+        }
+    }
+    if state.entries.len() > MAX_ENTRIES {
+        return Err(ic_wire::Error::Limit.into());
+    }
+    encode_checkpoint(&Checkpoint {
+        epoch: identity.epoch,
+        limits: state.limits,
+        next_sequence: state.next_sequence,
+        last_created_at_secs: state.last_created_at_secs,
+        entries: Rows(&state.entries),
+    })
 }
 
 pub fn decode(bytes: &[u8], identity: LogIdentity, limits: Limits) -> Result<Log, StoreError> {
@@ -138,6 +173,20 @@ pub fn decode(bytes: &[u8], identity: LogIdentity, limits: Limits) -> Result<Log
         {
             return Err(StoreError::MalformedRecord);
         }
+    }
+    let text_bytes = checkpoint
+        .entries
+        .as_slice()
+        .iter()
+        .try_fold(0_usize, |total, entry| {
+            total.checked_add(
+                entry.source.len() + entry.topic.map_or(0, str::len) + entry.message.len(),
+            )
+        });
+    if text_bytes.is_none_or(|bytes| bytes > limits.max_text_bytes) {
+        return Err(StoreError::InvalidState(
+            ic_logging::RestoreError::TextBudgetExceeded,
+        ));
     }
     let entries = checkpoint
         .entries

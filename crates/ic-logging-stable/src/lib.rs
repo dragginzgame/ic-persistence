@@ -7,7 +7,7 @@
 
 #![doc = include_str!("../README.md")]
 
-use ic_logging::{Limits, Log, LogSnapshot, RestoreError};
+use ic_logging::{Limits, Log, LogCheckpoint, RestoreError};
 use ic_memory::Memory;
 use ic_storage::adapter::StableBTreeMap;
 
@@ -23,6 +23,8 @@ pub const MAX_ENTRIES: usize = 1_024;
 pub const MAX_MESSAGE_BYTES: usize = 4_096;
 /// Maximum configured source/topic-byte limit accepted by this adapter.
 pub const MAX_LABEL_BYTES: usize = 128;
+/// Maximum configured combined retained source/topic/message UTF-8 bytes.
+pub const MAX_TEXT_BYTES: usize = MAX_RECORD_BYTES;
 
 ///
 /// `StoreError`
@@ -167,7 +169,7 @@ impl<M: Memory> LoggingStore<M> {
 
     /// Checkpoint an admitted log, rejecting regression before any map write.
     /// Identical snapshots validate retained bytes and perform no stable write.
-    /// Snapshot copying and comparison scale with retained history, not page size.
+    /// Borrowed checkpoint encoding and comparison scale with retained history, not page size.
     ///
     /// # Errors
     /// Rejects unsupported limits, retained-record admission failures, regressing
@@ -182,15 +184,19 @@ impl<M: Memory> LoggingStore<M> {
         log: &Log,
     ) -> Result<(), StoreError> {
         validate_limits(log.limits())?;
-        let current = log.snapshot();
+        let current = log.checkpoint();
         if let Some(bytes) = self.map.get(&key.0) {
-            let previous = codec::decode(&bytes, identity, current.limits)?.into_snapshot();
-            if previous == current {
+            let previous = codec::decode(&bytes, identity, current.limits())?;
+            let previous = previous.checkpoint();
+            if previous.next_sequence() == current.next_sequence()
+                && previous.last_created_at_secs() == current.last_created_at_secs()
+                && previous.entries().eq(current.entries())
+            {
                 return Ok(());
             }
-            validate_checkpoint(&previous, &current)?;
+            validate_checkpoint(previous, current)?;
         }
-        let bytes = codec::encode(identity, &current)?;
+        let bytes = codec::encode(identity, current)?;
         self.map.insert(key.0.clone(), bytes);
         Ok(())
     }
@@ -223,45 +229,53 @@ const fn validate_limits(limits: Limits) -> Result<(), StoreError> {
     if limits.max_entries.get() > MAX_ENTRIES
         || limits.max_message_bytes > MAX_MESSAGE_BYTES
         || limits.max_label_bytes > MAX_LABEL_BYTES
+        || limits.max_text_bytes > MAX_TEXT_BYTES
     {
         return Err(StoreError::UnsupportedLimits);
     }
     Ok(())
 }
 
-fn validate_checkpoint(previous: &LogSnapshot, current: &LogSnapshot) -> Result<(), StoreError> {
-    let advanced = match (previous.next_sequence, current.next_sequence) {
+fn validate_checkpoint(
+    previous: LogCheckpoint<'_>,
+    current: LogCheckpoint<'_>,
+) -> Result<(), StoreError> {
+    let advanced = match (previous.next_sequence(), current.next_sequence()) {
         (Some(old), Some(new)) if new >= old => new != old,
         (Some(_), None) => true,
         (None, None) => false,
         _ => return Err(StoreError::StateRegression),
     };
-    match (previous.last_created_at_secs, current.last_created_at_secs) {
+    match (
+        previous.last_created_at_secs(),
+        current.last_created_at_secs(),
+    ) {
         (Some(old), Some(new)) if new >= old && (advanced || new == old) => {}
         (None, _) => {}
         _ => return Err(StoreError::StateRegression),
     }
     let issued = current
-        .entries
-        .iter()
+        .entries()
         .take_while(|entry| {
             previous
-                .next_sequence
+                .next_sequence()
                 .is_none_or(|next| entry.sequence < next)
         })
         .count();
     if issued != 0 {
+        let first = current.entries().next().expect("issued prefix is nonempty");
         let start = previous
-            .entries
-            .first()
-            .and_then(|first| current.entries[0].sequence.checked_sub(first.sequence))
+            .entries()
+            .next()
+            .and_then(|oldest| first.sequence.checked_sub(oldest.sequence))
             .and_then(|index| usize::try_from(index).ok())
             .ok_or(StoreError::StateRegression)?;
-        let retained = previous
-            .entries
-            .get(start..)
-            .and_then(|tail| tail.get(..issued));
-        if retained != Some(&current.entries[..issued]) {
+        let mut retained = previous.entries().skip(start);
+        if !current
+            .entries()
+            .take(issued)
+            .all(|entry| retained.next() == Some(entry))
+        {
             return Err(StoreError::StateRegression);
         }
     }

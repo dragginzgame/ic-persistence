@@ -1,6 +1,5 @@
-//! Shared state and protocol for the qualification examples.
-
+//! Binary-owned runtime support and passive qualification protocol.
+/// Runtime instance owned independently by each fixture binary.
 pub mod host;
-#[cfg(target_arch = "wasm32")]
-#[allow(dead_code)] // Only the IO qualification target consumes this protocol.
+/// Bounded Wire identities and passive IO fixture DTOs.
 pub mod io_protocol;

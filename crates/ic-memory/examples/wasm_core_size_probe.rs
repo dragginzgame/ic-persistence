@@ -1,4 +1,4 @@
-mod support;
+pub mod support;
 use host::RUNTIME;
 use support::host;
 
