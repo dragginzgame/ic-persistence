@@ -3,7 +3,7 @@
 Covers `ic-memory` and `ic-storage`. Independent group releases begin after the
 coordinated 0.58.1 cutoff; [earlier shared history](../history.md) is preserved once.
 
-## [0.60.2] - Unreleased
+## [0.60.2] - 2026-10-31
 
 ### 🔧 Changed
 
