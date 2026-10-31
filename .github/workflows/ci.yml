@@ -15,6 +15,46 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  change-scope:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      scope: ${{ steps.classify.outputs.scope }}
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Classify the exact tested change
+        id: classify
+        shell: bash
+        env:
+          CHANGE_EVENT: ${{ github.event_name }}
+          CHANGE_REF: ${{ github.event_name == 'pull_request' && format('refs/heads/{0}', github.base_ref) || github.ref }}
+          CHANGE_BASE: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
+          CHANGE_HEAD: ${{ github.sha }}
+        run: |
+          if ! scope="$(perl scripts/ci/classify-ci-change.pl --event "$CHANGE_EVENT" --ref "$CHANGE_REF" \
+            --base "$CHANGE_BASE" --head "$CHANGE_HEAD" --policy ci/docs-only-paths.txt)"; then
+            scope=full
+          fi
+          case "$scope" in docs|full) ;; *) scope=full ;; esac
+          if [[ "$scope" == docs ]]; then
+            git diff --check "$CHANGE_BASE...$CHANGE_HEAD" --
+          fi
+          printf 'scope=%s\n' "$scope" >> "$GITHUB_OUTPUT"
+
+  docs:
+    needs: change-scope
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10
+        with:
+          persist-credentials: false
+      - name: Check documentation and snapshot integrity
+        run: make shared-tooling-check check-doc-links
+
   tooling-lint:
     runs-on: ubuntu-24.04
     timeout-minutes: 10
@@ -39,6 +79,7 @@ jobs:
     permissions:
       contents: read
       actions: read
+    needs: [change-scope, docs]
     strategy:
       fail-fast: false
       matrix:
@@ -48,9 +89,11 @@ jobs:
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # reviewed Shared Tooling pin
+        if: ${{ needs.change-scope.outputs.scope != 'docs' }}
         with:
           persist-credentials: false
       - name: Read pinned Rust toolchain
+        if: ${{ needs.change-scope.outputs.scope != 'docs' }}
         id: pin
         shell: bash
         run: |
@@ -58,17 +101,21 @@ jobs:
           [[ "$channel" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || exit 1
           echo "channel=$channel" >> "$GITHUB_OUTPUT"
       - name: Prepare retained fixture directory
+        if: ${{ needs.change-scope.outputs.scope != 'docs' }}
         shell: bash
         run: |
           mkdir -p "$RUNNER_TEMP/ic-memory-fixtures"
           echo "TMPDIR=$RUNNER_TEMP/ic-memory-fixtures" >> "$GITHUB_ENV"
       - uses: dtolnay/rust-toolchain@e97e2d8cc328f1b50210efc529dca0028893a2d9 # reviewed master-history commit
+        if: ${{ needs.change-scope.outputs.scope != 'docs' }}
         with:
           toolchain: ${{ steps.pin.outputs.channel }}
           components: clippy, rustfmt
           targets: wasm32-unknown-unknown
       - run: make shared-tooling-check
+        if: ${{ needs.change-scope.outputs.scope != 'docs' }}
       - name: Prepare declared compiler for archive consumers
+        if: ${{ needs.change-scope.outputs.scope != 'docs' }}
         shell: bash
         run: |
           msrv="$(sed -n 's/^rust-version = "\([^"]*\)"$/\1/p' Cargo.toml)"
@@ -76,6 +123,7 @@ jobs:
           rustup toolchain install "$msrv" --profile minimal --no-self-update
           rustup run "$msrv" rustc -Vv
       - name: Prepare host tools and identify common Cargo tool cache
+        if: ${{ needs.change-scope.outputs.scope != 'docs' }}
         id: common-tool-cache-key
         shell: bash
         run: |
@@ -84,6 +132,7 @@ jobs:
           export PATH="$GITHUB_WORKSPACE/.tools/host/bin:$PATH"
           bash scripts/ci/cargo-tool-cache-key.sh ci/tool-versions.env >> "$GITHUB_OUTPUT"
       - name: Restore common Cargo tool builds
+        if: ${{ needs.change-scope.outputs.scope != 'docs' }}
         id: common-tool-cache
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         timeout-minutes: 3
@@ -96,6 +145,7 @@ jobs:
             ${{ steps.common-tool-cache-key.outputs.root }}/rust-*
           key: common-tools-${{ runner.os }}-${{ runner.arch }}-${{ steps.common-tool-cache-key.outputs.key }}-${{ hashFiles('ci/release-tools.env') }}
       - name: Install and verify selected common tools
+        if: ${{ needs.change-scope.outputs.scope != 'docs' }}
         shell: bash
         run: |
           make install-tools 2>&1 | tee "$RUNNER_TEMP/tools-setup.log"
@@ -106,7 +156,7 @@ jobs:
             echo "$PWD/.tools/rust/common/bin"
           } >> "$GITHUB_PATH"
       - name: Save admitted common Cargo tools
-        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && steps.common-tool-cache.outputs.cache-hit != 'true' }}
+        if: ${{ needs.change-scope.outputs.scope != 'docs' && (github.event_name == 'push' && github.ref == 'refs/heads/main' && steps.common-tool-cache.outputs.cache-hit != 'true') }}
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         timeout-minutes: 3
         continue-on-error: true
@@ -116,9 +166,11 @@ jobs:
             ${{ steps.common-tool-cache-key.outputs.root }}/rust-*
           key: common-tools-${{ runner.os }}-${{ runner.arch }}-${{ steps.common-tool-cache-key.outputs.key }}-${{ hashFiles('ci/release-tools.env') }}
       - name: Qualify native shared host, IC and Cargo reuse offline
+        if: ${{ needs.change-scope.outputs.scope != 'docs' }}
         shell: bash
         run: make test-offline-tool-reuse
       - name: Prepare tracked dependency inputs
+        if: ${{ needs.change-scope.outputs.scope != 'docs' }}
         shell: bash
         run: |
           make fetch-dependencies 2>&1 | tee "$RUNNER_TEMP/dependencies.log"
@@ -126,12 +178,14 @@ jobs:
           rustc -Vv
           uname -sm
       - name: Qualify pinned toolchain and retain native failure-evidence archive
+        if: ${{ needs.change-scope.outputs.scope != 'docs' }}
         id: evidence
         shell: bash
         env:
           FAILURE_EVIDENCE_DIRECTORY: ${{ runner.temp }}/ic-memory-fixtures/native-upload
         run: make validate-toolchain 2>&1 | tee "$RUNNER_TEMP/validation.log"
       - name: Upload native failure-evidence archive
+        if: ${{ needs.change-scope.outputs.scope != 'docs' }}
         id: evidence-upload
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # reviewed Shared Tooling pin, v7.0.2
         with:
@@ -140,7 +194,7 @@ jobs:
           retention-days: 14
           if-no-files-found: error
       - name: Download verified native failure-evidence archive
-        if: ${{ !cancelled() && steps.evidence-upload.outputs.artifact-id != '' }}
+        if: ${{ needs.change-scope.outputs.scope != 'docs' && (!cancelled() && steps.evidence-upload.outputs.artifact-id != '') }}
         id: evidence-download
         timeout-minutes: 3
         shell: bash
@@ -152,13 +206,14 @@ jobs:
           EVIDENCE_DIGEST: ${{ steps.evidence-upload.outputs.artifact-digest }}
         run: bash scripts/ci/download-evidence.sh "$EVIDENCE_REPOSITORY" "$EVIDENCE_RUN" "$EVIDENCE_ARTIFACT" "$EVIDENCE_DIGEST" "$RUNNER_TEMP/ic-memory-evidence-downloaded"
       - name: Verify downloaded native failure evidence
+        if: ${{ needs.change-scope.outputs.scope != 'docs' }}
         shell: bash
         run: |
           bash scripts/ci/verify-failure-evidence.sh \
             "$RUNNER_TEMP/ic-memory-fixtures/native-upload" \
             "$RUNNER_TEMP/ic-memory-evidence-downloaded/evidence.tar.gz"
       - name: Archive failed validation and installer evidence
-        if: failure()
+        if: ${{ needs.change-scope.outputs.scope != 'docs' && (failure()) }}
         id: failure-evidence
         shell: bash
         env:
@@ -170,7 +225,7 @@ jobs:
             printf 'path=%s\n' "$archive" >> "$GITHUB_OUTPUT"
           fi
       - name: Retain failed validation and installer evidence
-        if: ${{ failure() && steps.failure-evidence.outputs.path != '' }}
+        if: ${{ needs.change-scope.outputs.scope != 'docs' && (failure() && steps.failure-evidence.outputs.path != '') }}
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # reviewed Shared Tooling pin, v7.0.2
         with:
           name: validation-failure-${{ matrix.os }}
@@ -178,13 +233,18 @@ jobs:
           retention-days: 14
           if-no-files-found: error
       - name: Report incomplete evidence after retention
-        if: ${{ failure() && steps.failure-evidence.outputs.collection-complete == 'false' }}
+        if: ${{ needs.change-scope.outputs.scope != 'docs' && (failure() && steps.failure-evidence.outputs.collection-complete == 'false') }}
         shell: bash
         run: |
           echo 'Evidence collection was incomplete; inspect retained selection diagnostics.' >&2
           exit 1
 
+      - name: Documentation-only result (native suites not run)
+        if: ${{ needs.change-scope.outputs.scope == 'docs' }}
+        run: echo 'Documentation checks passed; native qualification was not run.'
+
   runtime:
+    needs: [change-scope, docs]
     strategy:
       fail-fast: false
       matrix:
@@ -193,9 +253,11 @@ jobs:
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # reviewed Shared Tooling pin
+        if: ${{ needs.change-scope.outputs.scope != 'docs' }}
         with:
           persist-credentials: false
       - name: Read pinned Rust toolchain
+        if: ${{ needs.change-scope.outputs.scope != 'docs' }}
         id: pin
         shell: bash
         run: |
@@ -203,11 +265,14 @@ jobs:
           [[ "$channel" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || exit 1
           echo "channel=$channel" >> "$GITHUB_OUTPUT"
       - uses: dtolnay/rust-toolchain@e97e2d8cc328f1b50210efc529dca0028893a2d9 # reviewed master-history commit
+        if: ${{ needs.change-scope.outputs.scope != 'docs' }}
         with:
           toolchain: ${{ steps.pin.outputs.channel }}
           targets: wasm32-unknown-unknown
       - run: make shared-tooling-check
+        if: ${{ needs.change-scope.outputs.scope != 'docs' }}
       - name: Prepare host tools and identify runtime tool cache
+        if: ${{ needs.change-scope.outputs.scope != 'docs' }}
         id: runtime-tool-cache-key
         shell: bash
         run: |
@@ -216,6 +281,7 @@ jobs:
           export PATH="$GITHUB_WORKSPACE/.tools/host/bin:$PATH"
           bash scripts/ci/cargo-tool-cache-key.sh ci/tool-versions.env >> "$GITHUB_OUTPUT"
       - name: Restore runtime tool builds
+        if: ${{ needs.change-scope.outputs.scope != 'docs' }}
         id: runtime-tool-cache
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         timeout-minutes: 3
@@ -230,6 +296,7 @@ jobs:
           # Consumer pins select the CLI; shared installer identity owns build admission.
           key: runtime-tools-${{ runner.os }}-${{ runner.arch }}-${{ steps.runtime-tool-cache-key.outputs.key }}-${{ hashFiles('ci/runtime-tools.env', 'ci/ic-tools.tsv') }}
       - name: Prepare and verify selected CLI and Testkit server
+        if: ${{ needs.change-scope.outputs.scope != 'docs' }}
         shell: bash
         run: |
           make install-ic-tools 2>&1 | tee "$RUNNER_TEMP/runtime-ic-setup.log"
@@ -237,7 +304,7 @@ jobs:
           make install-runtime-server 2>&1 | tee "$RUNNER_TEMP/runtime-setup.log"
           make runtime-server-check 2>&1 | tee "$RUNNER_TEMP/runtime-tools-check.log"
       - name: Save admitted runtime tools
-        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && steps.runtime-tool-cache.outputs.cache-hit != 'true' }}
+        if: ${{ needs.change-scope.outputs.scope != 'docs' && (github.event_name == 'push' && github.ref == 'refs/heads/main' && steps.runtime-tool-cache.outputs.cache-hit != 'true') }}
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         timeout-minutes: 3
         continue-on-error: true
@@ -248,6 +315,7 @@ jobs:
             .tools/ic-testkit-server
           key: runtime-tools-${{ runner.os }}-${{ runner.arch }}-${{ steps.runtime-tool-cache-key.outputs.key }}-${{ hashFiles('ci/runtime-tools.env', 'ci/ic-tools.tsv') }}
       - name: Prepare both tracked dependency graphs
+        if: ${{ needs.change-scope.outputs.scope != 'docs' }}
         shell: bash
         run: |
           make fetch-dependencies
@@ -256,10 +324,11 @@ jobs:
           rustc -Vv
           uname -sm
       - name: Qualify original and optimized Wasm, installed IO and upgrade rollback
+        if: ${{ needs.change-scope.outputs.scope != 'docs' }}
         shell: bash
         run: make test-runtime 2>&1 | tee "$RUNNER_TEMP/runtime.log"
       - name: Archive failed runtime qualification
-        if: failure()
+        if: ${{ needs.change-scope.outputs.scope != 'docs' && (failure()) }}
         id: failure-evidence
         shell: bash
         run: |
@@ -268,7 +337,7 @@ jobs:
             printf 'path=%s\n' "$archive" >> "$GITHUB_OUTPUT"
           fi
       - name: Retain failed runtime qualification
-        if: ${{ failure() && steps.failure-evidence.outputs.path != '' }}
+        if: ${{ needs.change-scope.outputs.scope != 'docs' && (failure() && steps.failure-evidence.outputs.path != '') }}
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # reviewed Shared Tooling pin, v7.0.2
         with:
           name: runtime-failure-${{ matrix.os }}
@@ -276,13 +345,18 @@ jobs:
           retention-days: 14
           if-no-files-found: error
       - name: Report incomplete evidence after retention
-        if: ${{ failure() && steps.failure-evidence.outputs.collection-complete == 'false' }}
+        if: ${{ needs.change-scope.outputs.scope != 'docs' && (failure() && steps.failure-evidence.outputs.collection-complete == 'false') }}
         shell: bash
         run: |
           echo 'Evidence collection was incomplete; inspect retained selection diagnostics.' >&2
           exit 1
 
+      - name: Documentation-only result (native suites not run)
+        if: ${{ needs.change-scope.outputs.scope == 'docs' }}
+        run: echo 'Documentation checks passed; native qualification was not run.'
+
   msrv:
+    needs: [change-scope, docs]
     strategy:
       fail-fast: false
       matrix:
@@ -291,9 +365,11 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # reviewed Shared Tooling pin
+        if: ${{ needs.change-scope.outputs.scope != 'docs' }}
         with:
           persist-credentials: false
       - name: Read declared MSRV
+        if: ${{ needs.change-scope.outputs.scope != 'docs' }}
         id: pin
         shell: bash
         run: |
@@ -301,9 +377,11 @@ jobs:
           [[ "$channel" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || exit 1
           echo "channel=$channel" >> "$GITHUB_OUTPUT"
       - uses: dtolnay/rust-toolchain@e97e2d8cc328f1b50210efc529dca0028893a2d9 # reviewed master-history commit
+        if: ${{ needs.change-scope.outputs.scope != 'docs' }}
         with:
           toolchain: ${{ steps.pin.outputs.channel }}
       - name: Prepare tracked dependency inputs
+        if: ${{ needs.change-scope.outputs.scope != 'docs' }}
         env:
           RUSTUP_TOOLCHAIN: ${{ steps.pin.outputs.channel }}
         run: |
@@ -312,15 +390,19 @@ jobs:
           rustc -Vv
           uname -sm
       - name: Check all targets with the declared MSRV
+        if: ${{ needs.change-scope.outputs.scope != 'docs' }}
         shell: bash
         env:
           RUSTUP_TOOLCHAIN: ${{ steps.pin.outputs.channel }}
         run: cargo check --workspace --locked --offline --all-targets --features test-support 2>&1 | tee "$RUNNER_TEMP/msrv.log"
       - name: Retain failed MSRV diagnostics
-        if: failure()
+        if: ${{ needs.change-scope.outputs.scope != 'docs' && (failure()) }}
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # reviewed Shared Tooling pin, v7.0.2
         with:
           name: msrv-failure-${{ matrix.os }}
           path: ${{ runner.temp }}/msrv.log
           retention-days: 14
           if-no-files-found: ignore
+      - name: Documentation-only result (native suites not run)
+        if: ${{ needs.change-scope.outputs.scope == 'docs' }}
+        run: echo 'Documentation checks passed; native qualification was not run.'

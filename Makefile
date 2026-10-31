@@ -96,8 +96,13 @@ test-failure-evidence:
 
 # Memory owns its archive bindings and fixture retention. Generic installer,
 # runner, Make/LOC and parser matrices qualify at Shared Tooling's owner.
-test-tools: test-failure-evidence
+test-tools: test-failure-evidence test-ci-selection
 	bash scripts/ci/test-consumer-fixture-retention.sh
+
+# Actual workflow selection and real documentation checks, with Git substitutes.
+.PHONY: test-ci-selection
+test-ci-selection:
+	bash scripts/ci/test-ci-selection.sh
 
 # Uses only explicitly prepared tool generations; never prepares missing selections.
 test-offline-tool-reuse:

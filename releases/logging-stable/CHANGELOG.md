@@ -3,6 +3,13 @@
 Independent releases begin after the coordinated 0.58.1 release. Earlier history
 is retained once in the [shared historical ledger](../history.md#0581---2026-10-31).
 
+## [0.60.1] - Unreleased
+
+### ⬆️ Dependencies
+
+- Adopt Logging 0.23.3 and the compatible Platform 0.15.3 core supplier.
+  Logging semantics, checkpoint bytes and restoration remain unchanged.
+
 ## [0.60.0] - 2026-10-31
 
 ### ⚠️ Breaking

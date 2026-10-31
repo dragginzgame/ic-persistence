@@ -10,11 +10,12 @@ local baseline. Future policy changes require reviewed snapshot adoption.
 ## Current source selection
 
 IC Persistence selects committed Shared Tooling VERSION 0.27.21 at
-`143a9abb9ae81feae9400ff3844b03b1ddfdd75a`, with 78 explicit roots and 132 payloads.
+`143a9abb9ae81feae9400ff3844b03b1ddfdd75a`, with 79 explicit roots and 133 payloads.
 This commit carries the 0.27.22 catalog/comment rules while its committed VERSION
 remains 0.27.21. Groups appear once as contiguous dependency blocks with separate
 changelog comments. Lint choices retain their levels with shared-scope explanations.
-The canonical exporter used the clean committed Shared checkout.
+The classifier entrypoint was added from a clean isolated checkout of the same
+committed revision. Dirty sibling source is excluded.
 The canonical impact preview and refresh retain the reviewed selection. Source
 verification compares every payload and mode with that independent commit.
 
@@ -31,21 +32,21 @@ reviewed and its configuration-dependent ownership/documentation/naming reasons
 are recorded at their shared configuration scope. No lint level, host/IC tool catalog,
 formatter pin or maintenance activation changed.
 
-The library lock selects Platform 0.15.2 and Types 0.15.1, preserving the
-incoming selections. The independent runtime graph retains Platform 0.15.1.
+The library lock selects Platform 0.15.3 and Types 0.15.1, preserving the
+incoming selections. The independent runtime graph selects Platform 0.15.3.
 Stable-structures 0.7.2 and PocketIC 16.1.0 remain unchanged. Testkit Native 0.75.0
 now shares the current Platform family; the native-only Platform 0.13 copy leaves
 the library lock. Production Wasm retains one Platform runtime owner.
 
-Both maintained catalogs select Wire 0.13.0. Metrics 0.24.0 preserves default
+Both maintained catalogs select Wire 0.13.0. Metrics 0.24.1 preserves default
 native metadata and now shares that Wire identity, removing the older Wire/Derive
 0.12 providers. Native schemas and the durable codec use one Wire provider;
 production Wasm likewise retains one core Wire 0.13 provider. Wire endpoint and
 platform-types integration remain unselected. Arithmetic, codec bytes, bounds
 and restoration contracts are unchanged. The library lock's incoming Logging
-0.23.2 selection is preserved.
+0.23.3 selection is adopted.
 
-Build/Host libraries and the selected Build editor use 0.73.1; Testkit Native/CLI
+Build/Host libraries and the selected Build editor use 0.73.2; Testkit Native/CLI
 use 0.75.0 with the unchanged server 16.1.0 selection. Common tool pins, local
 package versions and the reviewed Shared snapshot remain unchanged.
 
@@ -384,3 +385,10 @@ release receipts and runtime evidence beneath it. Retention does not override an
 explicit clean. Copy evidence outside target before cleanup when it must survive.
 The separately managed `.tools/` stores and user Cargo caches are outside that
 cleanup boundary. No cleanup was performed to qualify this adoption.
+
+## Documentation-only CI
+
+The consumer opts into the selected revision’s classifier through the exporter.
+[The consumer contract](ci-selection.md) and exact prose allowlist own CI dispatch;
+unknown and code changes keep full native qualification. Documentation checks
+remain separate from native evidence, and release gates are unchanged.

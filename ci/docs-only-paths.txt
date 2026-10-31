@@ -1,0 +1,6 @@
+# Reviewed prose only. Member READMEs are embedded Rustdoc and stay on full CI.
+# These root/navigation/handoff documents are not packaged or generated inputs
+# and contain no Shared companion declarations. Unknown paths select full CI.
+README.md
+docs/README.md
+docs/status/current.md

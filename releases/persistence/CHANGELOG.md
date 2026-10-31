@@ -3,6 +3,27 @@
 Covers `ic-memory` and `ic-storage`. Independent group releases begin after the
 coordinated 0.58.1 cutoff; [earlier shared history](../history.md) is preserved once.
 
+## [0.60.2] - Unreleased
+
+### 🔧 Changed
+
+- Add conservative documentation-only CI selection for three reviewed prose
+  paths, with real documentation/snapshot checks and stable required check names.
+  Code, policy, ambiguous history and failures retain full checks
+  ([#145](https://github.com/dragginzgame/ic-persistence/issues/145)).
+
+### ⬆️ Dependencies
+
+- Adopt Platform 0.15.3 and Build/Host/editor 0.73.2. Preserve Wire 0.13,
+  Testkit 0.75, stable-structures 0.7.2 and PocketIC 16.1.0.
+
+### 🩹 Fixed
+
+- Invoke the selected Rust toolchain explicitly in isolated hook fixtures,
+  avoiding reliance on Rustup proxy-name dispatch. Local qualification passes;
+  macOS acceptance remains pending
+  ([#146](https://github.com/dragginzgame/ic-persistence/issues/146)).
+
 ## [0.60.1] - 2026-10-31
 
 ### 🔧 Changed

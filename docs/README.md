@@ -105,3 +105,5 @@ or workflow:
   shape; and
 - keep historical measurements and qualification claims labeled with their
   original version and scope.
+
+- [CI change selection](ci-selection.md): conservative prose checks and full native gates.

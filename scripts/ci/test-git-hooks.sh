@@ -277,7 +277,13 @@ rustup="$(command -v rustup)"
 for admission in prepared missing wrong-version; do
     new_fixture "local-tools-$admission"
     mkdir -p .tools/rust/common/bin .tools/cargo-home
-    for tool in cargo cargo-fmt rustc rustfmt rustup; do ln -s "$rustup" ".tools/rust/common/bin/$tool"; done
+    toolchain="$(sed -n 's/^channel = "\([^"]*\)"$/\1/p' "$root/rust-toolchain.toml")"
+    for tool in cargo cargo-fmt rustc rustfmt; do
+        printf '#!/bin/bash\nexec %q run %q %q "$@"\n' "$rustup" "$toolchain" "$tool" > ".tools/rust/common/bin/$tool"
+        chmod +x ".tools/rust/common/bin/$tool"
+    done
+    printf '#!/bin/bash\nexec %q "$@"\n' "$rustup" > .tools/rust/common/bin/rustup
+    chmod +x .tools/rust/common/bin/rustup
     case "$admission" in
         prepared) cp "$cargo_sort" .tools/rust/common/bin/cargo-sort ;;
         wrong-version)
