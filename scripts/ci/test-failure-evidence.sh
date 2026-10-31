@@ -42,7 +42,7 @@ jq -e '
         and .env.FAILURE_EVIDENCE_DIRECTORY == "${{ runner.temp }}/ic-memory-fixtures/native-upload")
     and ([.steps[] | select((.run // "") | contains("bash scripts/ci/test-failure-evidence.sh"))] | length) == 0
     and ($downloads | length) == 1 and ($downloads[0] |
-        .if == "${{ !cancelled() && steps.evidence-upload.outputs.artifact-id != '\'''\'' }}"
+        .if == "${{ needs.change-scope.outputs.scope != '\''docs'\'' && (!cancelled() && steps.evidence-upload.outputs.artifact-id != '\'''\'') }}"
         and .run == "bash scripts/ci/download-evidence.sh \"$EVIDENCE_REPOSITORY\" \"$EVIDENCE_RUN\" \"$EVIDENCE_ARTIFACT\" \"$EVIDENCE_DIGEST\" \"$RUNNER_TEMP/ic-memory-evidence-downloaded\""
         and .["timeout-minutes"] == 3 and (."continue-on-error" // false) == false
         and .env.GH_TOKEN == "${{ github.token }}"
