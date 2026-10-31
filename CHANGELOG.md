@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.58.1] - Unreleased
+
+### ⬆️ Dependencies
+
+- Adopt Platform 0.12.0 in both maintained workspaces and IC Tooling 0.72.1
+  libraries/CLI pins, preserving storage, runtime and release behavior. [Details](docs/changelog/0.58.md#0581---unreleased).
+
 ## [0.58.0] - 2026-10-30
 
 ### ⚠️ Breaking
