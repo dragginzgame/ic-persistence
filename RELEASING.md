@@ -85,7 +85,10 @@ does not narrow Clippy, compiler-floor, Wasm, runtime prerequisites or whole-wor
 archive integration. Development validation may qualify dirty source; release
 admission and `make package` retain clean-source checks. `package-workspace.sh`
 qualifies all four current archives as one integration graph with each package's
-own version; selected release receipts retain only the group's publishable archives.
+own version. The selected group is then packaged alone: published suppliers use
+their registry checksums, while coordinated members package together. The full
+extracted integration graph is qualified using that final archive set; selected
+receipts retain only the group's publishable archives.
 This integration proof is not registry publication or isolation of incompatible stacks.
 
 The native adapter admits saved source, group policy, compiler identities,

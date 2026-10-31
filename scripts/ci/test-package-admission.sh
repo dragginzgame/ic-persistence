@@ -19,6 +19,16 @@ bash scripts/ci/test-package-graph.sh
 # Packaging is setup, not the behavior under fault injection. Prepare it once;
 # One rejection still runs the real extraction and pre-compilation admission path.
 "$REAL_CARGO" "+$pin" package --workspace --registry crates-io --locked --offline --no-verify --allow-dirty > "$fixture/package.log" 2>&1
+PACKAGE_SELECTED_COMMAND=""
+if [[ -n "${RELEASE_GROUP:-}" ]]; then
+    selected_names="$(bash scripts/ci/read-persistence-packages.sh)"
+    IFS=$'\t' read -r -a selected_packages <<< "$selected_names"
+    selection=()
+    for package in "${selected_packages[@]}"; do selection+=(--package "$package"); done
+    "$REAL_CARGO" "+$pin" package "${selection[@]}" --registry crates-io --locked --offline --no-verify --allow-dirty >> "$fixture/package.log" 2>&1
+    PACKAGE_SELECTED_COMMAND="+$pin package ${selection[*]} --registry crates-io --locked --offline --no-verify --allow-dirty"
+fi
+export PACKAGE_SELECTED_COMMAND
 metadata="$("$REAL_CARGO" "+$pin" metadata --no-deps --locked --offline --format-version 1)"
 target="$(printf '%s' "$metadata" | jq -er '.target_directory')"
 PREPARED_ARCHIVES="$fixture/archives.sha256"
@@ -43,7 +53,7 @@ cat > "$fixture/bin/cargo" <<'STUB'
 #!/usr/bin/env bash
 set -euo pipefail
 if [[ "$*" == *' package '* ]]; then
-    [[ "$*" == "+$PACKAGE_TOOLCHAIN package --workspace --registry crates-io --locked --offline --no-verify --allow-dirty" ]] || exit 98
+    [[ "$*" == "+$PACKAGE_TOOLCHAIN package --workspace --registry crates-io --locked --offline --no-verify --allow-dirty" || ( -n "$PACKAGE_SELECTED_COMMAND" && "$*" == "$PACKAGE_SELECTED_COMMAND" ) ]] || exit 98
     shasum -a 256 -c "$PREPARED_ARCHIVES" > /dev/null
     exit 0
 fi

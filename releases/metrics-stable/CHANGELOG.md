@@ -3,6 +3,17 @@
 Independent releases begin after the coordinated 0.58.1 release. Earlier history
 is retained once in the [shared historical ledger](../history.md#0581---2026-10-31).
 
+## [0.59.1] - Unreleased
+
+### 🐛 Fixed
+
+- Qualify the selected group's exact publication archive after workspace-wide
+  integration packaging. Published core dependencies retain their registry
+  checksums in the adapter's packaged lockfile. Metrics 0.59.0's post-upload
+  refusal exposed regenerated local supplier checksums; source and manifests
+  matched, but its archive differed from the retained qualification. Preserve
+  that release and evidence; this patch binds qualification to publication bytes.
+
 ## [0.59.0] - 2026-10-31
 
 ### ⚠️ Breaking

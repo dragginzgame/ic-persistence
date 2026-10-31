@@ -11,6 +11,16 @@ package_names="$(bash scripts/ci/read-persistence-packages.sh --all)"
 IFS=$'\t' read -r -a packages <<< "$package_names"
 source_root="$(pwd -P)"
 cargo "+$pin" package --workspace --registry crates-io --locked --offline --no-verify "$@"
+# The integration bundle may synthesize local supplier checksums. Repackage the
+# release group alone so already-published suppliers use their registry identity;
+# coordinated unpublished members still share one Cargo packaging invocation.
+if [[ -n "${RELEASE_GROUP:-}" ]]; then
+    selected_names="$(bash scripts/ci/read-persistence-packages.sh)"
+    IFS=$'\t' read -r -a selected_packages <<< "$selected_names"
+    selection=()
+    for package in "${selected_packages[@]}"; do selection+=(--package "$package"); done
+    cargo "+$pin" package "${selection[@]}" --registry crates-io --locked --offline --no-verify "$@"
+fi
 metadata="$(cargo "+$pin" metadata --no-deps --locked --offline --format-version 1)"
 target="$(printf '%s' "$metadata" | jq -er '.target_directory')"
 mkdir -p "$target/package-qualification"
