@@ -31,8 +31,8 @@ categories = ["wasm", "data-structures"]
 [workspace.dependencies]
 # persistence
 # Changelog : releases/persistence/CHANGELOG.md
-ic-memory = { path = "crates/ic-memory", version = "0.60.2" }
-ic-storage = { path = "crates/ic-storage", version = "0.60.2" }
+ic-memory = { path = "crates/ic-memory", version = "0.60.3" }
+ic-storage = { path = "crates/ic-storage", version = "0.60.3" }
 
 # metrics-stable
 # Changelog : releases/metrics-stable/CHANGELOG.md
