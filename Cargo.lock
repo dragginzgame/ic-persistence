@@ -291,7 +291,7 @@ checksum = "89f2229a31214695a261691d9bcc1e84d9ccb79fda4d3631c758cb046f7bceb2"
 
 [[package]]
 name = "ic-logging-stable"
-version = "0.58.0"
+version = "0.58.1"
 dependencies = [
  "ic-logging",
  "ic-memory",
@@ -304,7 +304,7 @@ dependencies = [
 
 [[package]]
 name = "ic-memory"
-version = "0.58.0"
+version = "0.58.1"
 dependencies = [
  "clap",
  "ic-build",
@@ -333,7 +333,7 @@ dependencies = [
 
 [[package]]
 name = "ic-metrics-stable"
-version = "0.58.0"
+version = "0.58.1"
 dependencies = [
  "ic-memory",
  "ic-metrics",
@@ -397,7 +397,7 @@ dependencies = [
 
 [[package]]
 name = "ic-storage"
-version = "0.58.0"
+version = "0.58.1"
 dependencies = [
  "ic-memory",
  "ic-platform 0.12.0",
