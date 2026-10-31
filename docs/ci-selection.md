@@ -16,7 +16,7 @@ The classification checkout fetches complete history. Pull requests compare the
 exact tested merge commit against their base using the merge base; pushes use
 before/after identities and require ancestry. Policies must match in both
 commits. Missing history, malformed observations, tags and classifier errors
-select full qualification. A failed checkout/job fails CI through dependencies;
+select full qualification. Required matrix jobs explicitly fail admission when a prerequisite fails;
 failed prose whitespace or documentation checks never become a successful result.
 The first adoption run is full because its policy is new.
 
@@ -33,7 +33,7 @@ configured gates, independently of this optimization.
 read-only Git observations substituted, then runs the real docs job command.
 It covers docs/code/mixed/policy/workflow/packaged/unknown paths, missing history,
 classifier errors, invalid output, executable/symlink changes, tags, PRs and
-whitespace failure. It checks required matrix names and full-suite dispatch.
+whitespace failure, plus failed/skipped/cancelled prerequisite admission. It checks required matrix names and full-suite dispatch.
 Fixtures create no commits or tags. The test participates in `make test-tools`.
 Linux fixture passes are not hosted native/macOS qualification and no timing or
 cost reduction is claimed from these checks.

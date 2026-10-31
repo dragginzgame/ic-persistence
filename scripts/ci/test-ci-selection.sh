@@ -22,13 +22,30 @@ jq -e '
   (.jobs.msrv.steps | any((.run // "") | contains("cargo check --workspace --locked --offline --all-targets"))) and
   all(.jobs | to_entries[] | select(.key == "test" or .key == "runtime" or .key == "msrv");
     .value.needs == ["change-scope","docs"] and
+    .value.if == "${{ !cancelled() }}" and
+    .value.steps[0].env.CHANGE_RESULT == "${{ needs.change-scope.result }}" and
+    .value.steps[0].env.DOCS_RESULT == "${{ needs.docs.result }}" and
     .value.strategy.matrix.os == ["ubuntu-24.04","macos-15","macos-15-intel"] and
     .value["runs-on"] == "${{ matrix.os }}" and
     (.value.steps | length) > 3 and
-    all(.value.steps[:-1][];
+    all(.value.steps[1:-1][];
       .if | startswith("${{ needs.change-scope.outputs.scope != '\''docs'\''")) and
     .value.steps[-1].if == "${{ needs.change-scope.outputs.scope == '\''docs'\'' }}")
 ' "$fixture/workflow.json" > /dev/null
+# Required matrix checks must fail, not disappear as successful skips, when a
+# prerequisite job fails. Execute each actual admission script for both outcomes.
+for job in test runtime msrv; do
+    jq -r --arg job "$job" '.jobs[$job].steps[0].run' "$fixture/workflow.json" > "$fixture/$job-admission.sh"
+    CHANGE_RESULT=success DOCS_RESULT=success bash -e -o pipefail "$fixture/$job-admission.sh"
+    for outcome in failure skipped cancelled; do
+        if CHANGE_RESULT="$outcome" DOCS_RESULT=skipped bash -e -o pipefail "$fixture/$job-admission.sh"; then
+            echo 'required check admitted failed classification' >&2; exit 1
+        fi
+        if CHANGE_RESULT=success DOCS_RESULT="$outcome" bash -e -o pipefail "$fixture/$job-admission.sh"; then
+            echo 'required check admitted failed docs' >&2; exit 1
+        fi
+    done
+done
 # Read-only observations replace Git effects; no fixture commits/tags are created.
 mkdir "$fixture/bin"
 cat > "$fixture/bin/git" <<'GIT'

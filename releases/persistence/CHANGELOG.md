@@ -3,6 +3,15 @@
 Covers `ic-memory` and `ic-storage`. Independent group releases begin after the
 coordinated 0.58.1 cutoff; [earlier shared history](../history.md) is preserved once.
 
+## [0.60.3] - Unreleased
+
+### 🩹 Fixed
+
+- Fail every required native matrix check explicitly when classification or
+  documentation admission fails. Preserve full-suite dispatch and docs-only
+  reporting without relying on skipped dependency checks for refusal
+  ([#145](https://github.com/dragginzgame/ic-persistence/issues/145)).
+
 ## [0.60.2] - 2026-10-31
 
 ### 🔧 Changed
