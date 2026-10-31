@@ -107,20 +107,4 @@ impl<E: Execute> Repository<E> {
         )?;
         Ok(())
     }
-
-    // The consumer catalog uses bare compatible stable requirements. Preserve a
-    // compatible minimum; a breaking supplier release must advance its consumers'
-    // shared requirement, without advancing their independently owned versions.
-    pub(super) fn compatible_requirement(&self, requirement: &str, version: &str) -> Result<bool> {
-        let required = self.version_parts(requirement)?;
-        let next = self.version_parts(version)?;
-        Ok(next >= required
-            && if required[0] != 0 {
-                required[0] == next[0]
-            } else if required[1] != 0 {
-                required[..2] == next[..2]
-            } else {
-                required == next
-            })
-    }
 }

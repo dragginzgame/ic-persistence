@@ -34,14 +34,21 @@ fn every_group_preserves_unselected_metadata_and_recovers_preparation_and_upload
             .collect::<Vec<_>>();
         assert!(changed.iter().all(|path| files.contains(path)));
         assert_eq!(fixture.repo.version(None).unwrap(), "0.13.0");
+        let catalog: toml::Value =
+            toml::from_str(&fixture.repo.text("Cargo.toml", None).unwrap()).unwrap();
         for package in packages() {
+            let expected = if group.members.iter().any(|p| p == package) {
+                "0.13.0"
+            } else {
+                "0.12.3"
+            };
             assert_eq!(
                 BuildEffects::package_version(&fixture.repo.root, package).unwrap(),
-                if group.members.iter().any(|p| p == package) {
-                    "0.13.0"
-                } else {
-                    "0.12.3"
-                }
+                expected
+            );
+            assert_eq!(
+                catalog["workspace"]["dependencies"][package]["version"].as_str(),
+                Some(expected)
             );
             let owner = fixture
                 .repo
@@ -60,9 +67,6 @@ fn every_group_preserves_unselected_metadata_and_recovers_preparation_and_upload
                     source[&package_manifest(package)]
                 );
             }
-        }
-        if name != "persistence" {
-            assert_eq!(fixture.repo.text("Cargo.toml", None).unwrap(), MANIFEST);
         }
         let receipt = fixture.package_evidence(Prepared);
         assert_eq!(receipt.validation.selection.group, name);
@@ -99,7 +103,7 @@ fn every_group_preserves_unselected_metadata_and_recovers_preparation_and_upload
 }
 
 #[test]
-fn compatible_core_release_preserves_adapter_requirements_and_identity() {
+fn core_releases_align_local_requirements_and_preserve_adapter_identity() {
     let fixture = Fixture::new();
     let result = fixture
         .repo
@@ -109,7 +113,7 @@ fn compatible_core_release_preserves_adapter_requirements_and_identity() {
     assert!(after["workspace"]["package"].get("version").is_none());
     assert_eq!(
         after["workspace"]["dependencies"]["ic-memory"]["version"].as_str(),
-        Some("0.12.3")
+        Some("0.12.4")
     );
     let breaking = fixture
         .repo
@@ -120,15 +124,61 @@ fn compatible_core_release_preserves_adapter_requirements_and_identity() {
         after["workspace"]["dependencies"]["ic-memory"]["version"].as_str(),
         Some("0.13.0")
     );
+    for prefix in ["", "^", "~", "=", "^  "] {
+        let source = MANIFEST.replace(
+            "version = \"0.12.3\"",
+            &format!("version = \"{prefix}0.12.3\""),
+        );
+        for version in ["0.12.4", "0.13.0"] {
+            let result = fixture
+                .repo
+                .project_catalog(&source, "0.12.3", version)
+                .unwrap();
+            let result: toml::Value = toml::from_str(&result).unwrap();
+            for name in ["ic-memory", "ic-storage"] {
+                assert_eq!(
+                    result["workspace"]["dependencies"][name]["version"].as_str(),
+                    Some(format!("{prefix}{version}").as_str())
+                );
+            }
+            assert_eq!(
+                result["workspace"]["dependencies"]["other"].as_str(),
+                Some("0.12.3")
+            );
+        }
+    }
+    for stale in ["0.12", "0.12.2"] {
+        let source = MANIFEST.replace("version = \"0.12.3\"", &format!("version = \"{stale}\""));
+        assert!(
+            fixture
+                .repo
+                .project_catalog(&source, "0.12.3", "0.12.4")
+                .is_err()
+        );
+    }
     for group in ["metrics-stable", "logging-stable"] {
         let adapter = Fixture::for_group(group);
-        assert_eq!(
-            adapter
-                .repo
-                .project_catalog(MANIFEST, "0.12.3", "0.13.0")
-                .unwrap(),
-            MANIFEST
-        );
+        let projected = adapter
+            .repo
+            .project_catalog(MANIFEST, "0.12.3", "0.13.0")
+            .unwrap();
+        let projected: toml::Value = toml::from_str(&projected).unwrap();
+        for name in [
+            "ic-memory",
+            "ic-storage",
+            "ic-metrics-stable",
+            "ic-logging-stable",
+        ] {
+            let expected = if name == format!("ic-{group}") {
+                "0.13.0"
+            } else {
+                "0.12.3"
+            };
+            assert_eq!(
+                projected["workspace"]["dependencies"][name]["version"].as_str(),
+                Some(expected)
+            );
+        }
     }
 }
 

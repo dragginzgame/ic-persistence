@@ -27,7 +27,7 @@ pub(super) fn is_package_call(call: &[String]) -> bool {
                 .is_some_and(|script| script == "scripts/ci/package-workspace.sh")
 }
 
-pub(super) const MANIFEST: &str = "[workspace]\nmembers = [\"crates/ic-memory\", \"crates/ic-storage\", \"crates/ic-metrics-stable\", \"crates/ic-logging-stable\"]\n[workspace.package]\nrust-version = \"1.88.0\"\n[workspace.dependencies]\nic-memory = { path = \"crates/ic-memory\", version = \"0.12.3\" }\nic-storage = { path = \"crates/ic-storage\", version = \"0.12.3\" }\nother = \"0.12.3\"\n";
+pub(super) const MANIFEST: &str = "[workspace]\nmembers = [\"crates/ic-memory\", \"crates/ic-storage\", \"crates/ic-metrics-stable\", \"crates/ic-logging-stable\"]\n[workspace.package]\nrust-version = \"1.88.0\"\n[workspace.dependencies]\nic-memory = { path = \"crates/ic-memory\", version = \"0.12.3\" }\nic-storage = { path = \"crates/ic-storage\", version = \"0.12.3\" }\nic-metrics-stable = { path = \"crates/ic-metrics-stable\", version = \"0.12.3\" }\nic-logging-stable = { path = \"crates/ic-logging-stable\", version = \"0.12.3\" }\nother = \"0.12.3\"\n";
 pub(super) const PACKAGE: &str = "[package]\nname = \"ic-memory\"\nversion = \"0.12.3\"\n";
 pub(super) const LOCK: &str = "version = 4\n[[package]]\nname = \"ic-logging-stable\"\nversion = \"0.12.3\"\n[[package]]\nname = \"ic-metrics-stable\"\nversion = \"0.12.3\"\ndependencies = [\"ic-memory\", \"ic-storage\"]\n[[package]]\nname = \"ic-storage\"\nversion = \"0.12.3\"\ndependencies = [\"ic-memory\"]\n[[package]]\nname = \"ic-memory\"\nversion = \"0.12.3\"\n[[package]]\nname = \"other\"\nversion = \"0.12.3\"\n";
 

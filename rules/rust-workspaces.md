@@ -147,40 +147,82 @@ still governs demonstrated integration blockers.
 
 ### Visible release-group map in Cargo.toml
 
-For a workspace with independent release groups, keep a concise comment map next
-to the root `[workspace]` table. List every group's name, member package names,
-canonical version source and changelog path. Include private members; identify
-them as qualification/tooling where helpful. For example:
+For a workspace with independent release groups, include every workspace member
+in root `[workspace.dependencies]` with its local path and full current version.
+This is a complete crate catalog, including private qualification/tooling members
+and crates that no other member currently depends on.
+List release groups once in this manifest, as contiguous blocks in
+`[workspace.dependencies]`. Give each block a short title identifying the policy
+group and a separate `# Changelog : releases/<group>/CHANGELOG.md` line.
+Separate blocks with a blank line. Sort entries within each block using the
+formatter's grouped mode; do not interleave groups to impose a global alphabetic
+order. The declarations already show package names, paths and current versions;
+do not repeat them in a header above `[workspace]` or add a second comment map.
+Include private members and annotate their role only where it adds useful context.
+For example:
 
 ```toml
-# Release groups: ci/cargo-release-groups.json
-# codec: ic-wire, ic-wire-derive, ic-wire-benchmarks (private qualification)
-#   version: crates/ic-wire/Cargo.toml package.version
-#   changelog: releases/codec/CHANGELOG.md
-# endpoint: ic-wire-endpoint
-#   version: crates/ic-wire-endpoint/Cargo.toml package.version
-#   changelog: releases/endpoint/CHANGELOG.md
 [workspace]
 members = [
-    "crates/ic-wire",
-    "crates/ic-wire-benchmarks",
-    "crates/ic-wire-derive",
-    "crates/ic-wire-endpoint",
+    "crates/ic-logging-stable",
+    "crates/ic-memory",
+    "crates/ic-metrics-stable",
+    "crates/ic-storage",
 ]
 resolver = "3"
+
+[workspace.dependencies]
+# Persistence
+# Changelog : releases/persistence/CHANGELOG.md
+ic-memory = { path = "crates/ic-memory", version = "0.60.0" }
+ic-storage = { path = "crates/ic-storage", version = "0.60.0" }
+
+# Metrics-stable
+# Changelog : releases/metrics-stable/CHANGELOG.md
+ic-metrics-stable = { path = "crates/ic-metrics-stable", version = "0.60.0" }
+
+# Logging-stable
+# Changelog : releases/logging-stable/CHANGELOG.md
+ic-logging-stable = { path = "crates/ic-logging-stable", version = "0.60.0" }
 ```
 
 The example illustrates the convention, not an instruction to create or rename
-packages. Use version-source references rather than copying numeric versions into
-comments. The existing `ci/cargo-release-groups.json` is the executable policy;
-Cargo manifests supply actual versions and dependencies. Comments are a readable
-map, never parsed release authority or a separate configuration format.
+packages. An unused workspace dependency declaration adds no dependency edge;
+members inherit only what they use with `workspace = true`. Do not add member
+dependencies just to consume catalog entries. The existing `ci/cargo-release-groups.json`
+is the executable policy; member manifests supply package versions. Root dependency
+values remain actual Cargo requirements, not package-version inheritance. Do not
+copy numeric versions into comments or add a generated summary or shadow catalog.
 
-Review the map against the policy and actual Cargo members when membership,
+List each catalog alias in its owning release group's `dependencies` roster so
+release preparation updates it, including unused and renamed aliases. For every
+root path dependency naming a workspace member, spell the full
+current member version. Preserve its existing bare, `^`, `~` or `=` operator; do
+not add exact pins merely for display. Group admission checks this equality for
+all groups, including through the normal dependency checker. It also checks
+complete member coverage, alias ownership and each path's actual member manifest,
+including unused aliases that Cargo does not resolve. It rejects both
+abbreviated versions and compatible but stale lower bounds that Cargo itself
+would accept. Release preparation updates the selected group's local requirements
+inside its existing transaction; other groups and external dependency requirements
+remain unchanged. Manual member-version edits must update the corresponding real
+requirements too. Before adopting the check, align root declarations with current
+members without changing package versions.
+
+Use comment headings to distinguish local group catalogs from external production,
+build and test/tooling dependencies. Classify by actual member usage: mark shared
+production/test dependencies as mixed, and describe target/feature restrictions
+where they change the graph (for example, native-only schema support). The root
+table itself does not assign a dependency kind; member tables and features do.
+Keep group and ledger labels near their catalog entries. The root view reports
+declared versions, not proof of registry publication.
+
+Review the catalog against the policy and actual Cargo members when membership,
 version ownership or changelog paths change. Keep it readable after the normal
-formatter runs; do not bypass formatting to preserve a visual grouping. The map
-can sit above the table without reordering the `members` array or replacing the
-[member-role comments](#workspace-member-roles). A single-group workspace needs
+group-aware formatter runs; update formatting callers consistently during adoption
+rather than bypassing them. The `members` array need not repeat release groups;
+optional [member-role comments](#workspace-member-roles) describe development roles.
+A single-group workspace needs
 no JSON policy solely for documentation; an optional comment may name its shared
 version source and root changelog.
 

@@ -179,6 +179,8 @@ Use IcyDB-style emoji category sections in root release notes; read the
 [changelog rules](rules/changelogs.md) when updating them. Preserve build and
 recovery evidence on success, failure and retry; no implicit cleanup. See
 [artifact preservation](rules/engineering-details.md#changelogs-and-artifact-preservation).
+Keep plain `cargo clean` able to remove the owning workspace's entire `target/`
+directory. Artifact retention must not narrow explicit cleanup.
 
 ## IC stable-memory governance
 
@@ -203,8 +205,8 @@ within explicit release groups where unrelated contracts need independent
 releases. Independent groups all use explicit package versions and
 `releases/<group>/CHANGELOG.md`; the root has no shared version and its changelog
 is an index. Require explicit group selection for releases and publication.
-Make membership, version sources and changelog locations visible in root
-`Cargo.toml` comments under the
+Show every member's version and path in root `Cargo.toml` dependency declarations.
+Group them once, with short titles and separate changelog comments, under the
 [workspace versioning rules](rules/rust-workspaces.md#coordinated-versions-and-workspace-boundaries).
 Use root-owned dependency selections, reviewed shared tooling, explicit setup
 and the product's declared compiler/host requirements. External

@@ -501,6 +501,25 @@ contracts; ordinary development does not require rereading these mechanics.
   on success, failure and retry. Never append cargo clean or equivalent cleanup.
   Cleanup requires explicit scope and authority. Tools may clean temporary files
   they own; they must not erase consumer artifacts or the only retained evidence.
+- Explicit workspace cleanup is the disk-reclamation boundary. With no operator
+  overrides or package/profile/target selection, `cargo clean` must remove the
+  owning workspace's entire `target/`, including nested compiler outputs, generated
+  build inputs, Wasm caches and retained evidence. Do not redirect the repository's
+  default Cargo target to a child such as `target/cargo`, to a shared sibling
+  directory, or outside the workspace. Prefer Cargo's built-in default over a
+  `build.target-dir` setting that changes inherited nested-workspace behavior.
+- Build commands may select isolated outputs beneath `target/` where required,
+  but a repository's general `make clean` must still clean the whole workspace
+  `target/`; inherited build settings must not silently narrow it. Use Cargo's
+  existing target selection, not a wrapper or replacement for `cargo clean`.
+  Clearly named selective cleanup commands may keep their documented scope.
+  Operator-selected Cargo environment variables and CLI filters retain their
+  normal meanings; do not override the user's Cargo installation or global config.
+- Retention prohibits automatic cleanup, not user-requested cleanup. Do not run
+  cleanup concurrently with builds. Evidence that must survive an explicit clean
+  belongs outside `target/`; document any separate tool stores or caches rather
+  than implying Cargo cleans them. Qualify cleanup changes with disposable
+  fixtures, never by deleting a working checkout's artifacts as a test.
 
 ## IC stable-memory governance
 

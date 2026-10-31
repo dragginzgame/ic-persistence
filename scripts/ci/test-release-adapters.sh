@@ -651,6 +651,8 @@ rust-version = "1.91.0"
 [workspace.dependencies]
 ic-memory = { path = "crates/ic-memory", version = "0.12.3" }
 ic-storage = { path = "crates/ic-storage", version = "0.12.3" }
+ic-metrics-stable = { path = "crates/ic-metrics-stable", version = "0.12.3" }
+ic-logging-stable = { path = "crates/ic-logging-stable", version = "0.12.3" }
 other = "0.12.3"
 MANIFEST
 cat > Cargo.lock <<'LOCK'
@@ -871,6 +873,8 @@ rust-version = "1.91.0"
 [workspace.dependencies]
 ic-memory = { path = "crates/ic-memory", version = "0.13.0" }
 ic-storage = { path = "crates/ic-storage", version = "0.13.0" }
+ic-metrics-stable = { path = "crates/ic-metrics-stable", version = "0.13.0" }
+ic-logging-stable = { path = "crates/ic-logging-stable", version = "0.13.0" }
 other = "0.12.3"
 MANIFEST
 "$FIXTURE_RELEASE_EDITOR" --max-input-bytes "$CARGO_RELEASE_METADATA_MAX_BYTES" lock Cargo.lock 0.12.3 0.13.0 ic-memory > split-lock
@@ -958,6 +962,8 @@ members = ["crates/ic-memory", "crates/ic-storage", "crates/ic-metrics-stable", 
 [workspace.dependencies]
 ic-memory = { path = "crates/ic-memory", version = "0.12.3" }
 ic-storage = { path = "crates/ic-storage", version = "0.12.3" }
+ic-metrics-stable = { path = "crates/ic-metrics-stable", version = "0.12.3" }
+ic-logging-stable = { path = "crates/ic-logging-stable", version = "0.12.3" }
 other = "0.12.3"
 MANIFEST
 cp Cargo.toml formatted-manifest
@@ -969,6 +975,8 @@ members = ["crates/ic-memory", "crates/ic-storage", "crates/ic-metrics-stable", 
 [workspace.dependencies]
 ic-memory = { path = "crates/ic-memory", version = "0.13.0" }
 ic-storage = { path = "crates/ic-storage", version = "0.13.0" }
+ic-metrics-stable = { path = "crates/ic-metrics-stable", version = "0.13.0" }
+ic-logging-stable = { path = "crates/ic-logging-stable", version = "0.13.0" }
 other = "0.12.3"
 MANIFEST
 [[ "$(make --no-print-directory -s release-version 2> formatted.log)" == 0.12.3 ]] || exit 1

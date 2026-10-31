@@ -26,7 +26,9 @@
         "ic-metrics-stable"
       ],
       "changelog": "releases/metrics-stable/CHANGELOG.md",
-      "dependencies": []
+      "dependencies": [
+        "ic-metrics-stable"
+      ]
     },
     {
       "name": "logging-stable",
@@ -36,7 +38,9 @@
         "ic-logging-stable"
       ],
       "changelog": "releases/logging-stable/CHANGELOG.md",
-      "dependencies": []
+      "dependencies": [
+        "ic-logging-stable"
+      ]
     }
   ]
 }

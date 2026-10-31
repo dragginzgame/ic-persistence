@@ -11,7 +11,7 @@ supplies consumer policy to the existing Shared runner; it is not canister code.
 
 All four crates remain in one development workspace and one dependency catalog.
 The approved [group policy](ci/cargo-release-groups.json) is the executable owner;
-root `Cargo.toml` comments give its member/version/ledger map.
+root `Cargo.toml` lists each group once beside its member declarations and ledger.
 
 | Group | Packages | Version source | Canonical ledger |
 | --- | --- | --- | --- |
@@ -53,9 +53,11 @@ These are maintainer commands, not adoption checks. `release-patch` and
 require a minor; compatible work uses a patch. Current Wire identity
 changes select 0.60.0 pending notes, without bumping package manifests here.
 
-Groups are release identities, not independent dependency graphs. Bare core
-requirements retain a compatible minimum on core patch releases; a breaking core
-release updates their shared root declarations without changing adapter versions.
+Groups are release identities, not independent dependency graphs. Versioned
+root path requirements display each member’s full current version. Every member
+and unused catalog alias belongs to its owning group’s dependency roster. Every core
+release updates those shared declarations, preserving their existing operators
+without changing adapter versions.
 The adapter then needs its own release to publish its changed requirement.
 Current Wire 0.13 adoption exposes new Memory errors and adapter codec errors:
 release the compatible core supplier first and then its adapters. Do not publish

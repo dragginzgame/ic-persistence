@@ -75,13 +75,17 @@ admit() {
         $metadata[0] as $m | group_plan($group[0];$root[0];
           [$m.packages[] | select(.id as $id | $m.workspace_members | index($id))];$directory;$next)' \
         > "$evidence/plan.json" || return
-    # Cargo resolves each selected alias to the admitted member, including renamed
-    # dependencies. Never rewrite an external path merely sharing a package name.
-    jq -r '.dependencies[] | [.package,.path] | @tsv' "$evidence/plan.json" > "$evidence/dependencies" || return
+    # Check every catalog path, including unused aliases and unselected groups:
+    # Cargo does not resolve unused workspace dependency declarations itself.
+    jq -L "$script_dir" -r --slurpfile root "$evidence/root.json" '
+        include "cargo-release-groups";
+        . as $m | member_catalog($root[0];
+          [.packages[] | select(.id as $id | $m.workspace_members | index($id))])[] |
+        [.package,.value.path] | @tsv' "$evidence/metadata.json" > "$evidence/dependencies" || return
     while IFS=$'\t' read -r package path; do
         canonical="$(cd "$root/$path" && pwd -P)/Cargo.toml" || return
         manifest="$(jq -er --arg name "$package" '.packages[] | select(.name == $name and .source == null) | .manifest_path' "$evidence/metadata.json")" || return
-        [[ "$canonical" == "$manifest" ]] || { echo 'selected requirement is not an owned member' >&2; return 1; }
+        [[ "$canonical" == "$manifest" ]] || { echo "root dependency path for $package is not its owned member" >&2; return 1; }
     done < "$evidence/dependencies"
     jq -r '(.shared_metadata_files // [])[], (.groups[] | .changelog, (.metadata_files // [])[])' "$root/$policy" > "$evidence/ledgers" || return
     while IFS= read -r path; do release_metadata_regular "$root" "$path" || return 1; done < "$evidence/ledgers"

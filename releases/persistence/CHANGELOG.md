@@ -3,6 +3,17 @@
 Covers `ic-memory` and `ic-storage`. Independent group releases begin after the
 coordinated 0.58.1 cutoff; [earlier shared history](../history.md) is preserved once.
 
+## [0.60.1] - Unreleased
+
+### 🔧 Changed
+
+- Adopt Shared Tooling’s 0.27.22 rules (commit `143a9ab`, recorded VERSION
+  0.27.21). Release preparation keeps the root’s versioned
+  local dependencies aligned with their current packages, including patch
+  releases, while preserving requirement operators and independent adapter versions.
+  The root catalog includes every member and its owning release-policy alias;
+  unused declarations add no dependency edges.
+
 ## [0.60.0] - 2026-10-31
 
 ### ⚠️ Breaking

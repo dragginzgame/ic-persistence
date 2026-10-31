@@ -9,9 +9,11 @@ local baseline. Future policy changes require reviewed snapshot adoption.
 
 ## Current source selection
 
-IC Persistence selects committed Shared Tooling VERSION 0.27.19 at
-`54fc49e12f439dbe18d232f622a6d78e61773353`, with 78 explicit roots and 132 payloads.
-This commit includes the symmetric-layout and delegated-delivery rules.
+IC Persistence selects committed Shared Tooling VERSION 0.27.21 at
+`143a9abb9ae81feae9400ff3844b03b1ddfdd75a`, with 78 explicit roots and 132 payloads.
+This commit carries the 0.27.22 catalog/comment rules while its committed VERSION
+remains 0.27.21. Groups appear once as contiguous dependency blocks with separate
+changelog comments. Lint choices retain their levels with shared-scope explanations.
 The canonical exporter used the clean committed Shared checkout.
 The canonical impact preview and refresh retain the reviewed selection. Source
 verification compares every payload and mode with that independent commit.
@@ -26,7 +28,7 @@ literal; each primary owns only its group. Canonical ledgers live under
 and publication require explicit group selection. Example support now uses ordinary module discovery. Source-level lint
 exceptions use scoped expectations; the existing Cargo-table style policy was
 reviewed and its configuration-dependent ownership/documentation/naming reasons
-are recorded beside the retained levels. No lint level, host/IC tool catalog,
+are recorded at their shared configuration scope. No lint level, host/IC tool catalog,
 formatter pin or maintenance activation changed.
 
 The library lock selects Platform 0.15.2 and Types 0.15.1, preserving the
@@ -35,13 +37,13 @@ Stable-structures 0.7.2 and PocketIC 16.1.0 remain unchanged. Testkit Native 0.7
 now shares the current Platform family; the native-only Platform 0.13 copy leaves
 the library lock. Production Wasm retains one Platform runtime owner.
 
-Both maintained catalogs select Wire 0.13.0. Metrics 0.23.2's default native
-metadata retains Wire 0.12.1 on non-Wasm targets. Its optional metadata is not a
-Wire 0.13 schema implementation; this adoption preserves that feature rather than
-claiming host schema alignment. Production Wasm selects one core Wire 0.13 provider.
-Wire endpoint and platform-types integration remain unselected. Codec bytes,
-bounds and restoration contracts are unchanged. The library lock's incoming
-Logging 0.23.2 selection is preserved.
+Both maintained catalogs select Wire 0.13.0. Metrics 0.24.0 preserves default
+native metadata and now shares that Wire identity, removing the older Wire/Derive
+0.12 providers. Native schemas and the durable codec use one Wire provider;
+production Wasm likewise retains one core Wire 0.13 provider. Wire endpoint and
+platform-types integration remain unselected. Arithmetic, codec bytes, bounds
+and restoration contracts are unchanged. The library lock's incoming Logging
+0.23.2 selection is preserved.
 
 Build/Host libraries and the selected Build editor use 0.73.1; Testkit Native/CLI
 use 0.75.0 with the unchanged server 16.1.0 selection. Common tool pins, local
@@ -346,8 +348,8 @@ metadata transaction and proof admission; IC Build supplies the available Cargo
 observers and projection checks through explicit native development dependencies.
 The unused alternate release delivery and validation checkpoint paths remain
 unselected. Group selection uses the existing runner, with exact file plans
-checked against Shared. Bare core dependency minima are preserved while compatible;
-breaking supplier changes update requirements without advancing adapter versions. See [RELEASING.md](../RELEASING.md).
+checked against Shared. Every core release aligns versioned root path requirements
+with member versions while preserving operators and adapter versions. See [RELEASING.md](../RELEASING.md).
 
 Normal checks remain offline. Authorized release entry points separately allow
 locked cache preparation before helper compilation; an explicitly offline caller
@@ -372,3 +374,13 @@ IC Storage owns governed collections consuming `RuntimeMemory`; its generic
 substrate stays private. Memory's exclusive leases and narrow backing exports do
 not require a dependency on Storage. Hosts still own exclusive backing custody;
 Rust import visibility cannot detect aliases or enforce application policy.
+
+## Explicit cleanup boundary
+
+Cargo retains its default workspace `target/` location; the independent runtime
+workspace keeps its own default for commands without an explicit target selection.
+Plain `cargo clean` removes the owning workspace target, including retained logs,
+release receipts and runtime evidence beneath it. Retention does not override an
+explicit clean. Copy evidence outside target before cleanup when it must survive.
+The separately managed `.tools/` stores and user Cargo caches are outside that
+cleanup boundary. No cleanup was performed to qualify this adoption.

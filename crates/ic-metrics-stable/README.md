@@ -22,7 +22,7 @@ for the selected dependency's declaration and lifecycle APIs.
 Memory and Storage retain their coordinated core release identity. This adapter
 owns its independent `metrics-stable` release group; hosts select compatible core
 requirements declared by its package metadata. Hosts exchanging arithmetic values
-also select `ic-metrics = "0.23"` so Rust type identities agree. See the adapter's
+also select `ic-metrics = "0.24"` so Rust type identities agree. See the adapter's
 [release ledger](../../releases/metrics-stable/CHANGELOG.md) and [group commands](../../RELEASING.md#release-groups).
 Stored formats and governed handle requirements are unchanged by release grouping.
 
@@ -36,9 +36,14 @@ hooks.
 
 ## Upgrade disposition
 
-The IC Wire storage cut requires the next Persistence minor release. The
-maintainer has explicitly retired all old Metrics rows: clear the host-owned
-metrics map before adopting this format, or supply a known fresh governed map.
+Metrics 0.24 aligns native metadata with Wire 0.13 and changes Rust type identity.
+Current `ICMW` rows retain their bytes and restoration rules; this dependency
+adoption needs no reset. The historical format retirement below applies only
+when upgrading from the older storage layout.
+
+The earlier IC Wire storage cut retired all old Metrics rows. When upgrading
+from that older layout, clear the host-owned metrics map before adopting the
+current format, or supply a known fresh governed map.
 Use the old release's host administration before upgrading when a reset is needed.
 No old-format decoder, automatic reset or migration is provided. Unknown retained
 rows fail closed on load/save/remove and are never replaced as a fallback.

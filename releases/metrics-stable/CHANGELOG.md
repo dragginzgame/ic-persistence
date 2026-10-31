@@ -3,6 +3,15 @@
 Independent releases begin after the coordinated 0.58.1 release. Earlier history
 is retained once in the [shared historical ledger](../history.md#0581---2026-10-31).
 
+## [0.61.0] - Unreleased
+
+### ⚠️ Breaking
+
+- Adopt Metrics 0.24.0 so native metadata shares Wire 0.13 with the durable
+  codec. Hosts exchanging arithmetic values must align their Metrics dependency.
+  Arithmetic, encoded rows and restoration rules are unchanged; existing current
+  rows need no reset or migration. The older native Wire provider is removed.
+
 ## [0.60.0] - 2026-10-31
 
 ### ⚠️ Breaking

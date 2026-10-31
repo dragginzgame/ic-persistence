@@ -218,10 +218,14 @@ and `logging-stable` likewise own literal member versions. There is no root
 workspace package version. Each primary package is its group's version authority
 and each canonical ledger is `releases/<group>/CHANGELOG.md`. Preserve existing numeric versions and
 coordinated history through 0.58.1; no historical decoder or release reset is
-introduced. Root manifest comments map every member and version/ledger owner.
+introduced. Root dependency blocks show each group once with its member paths, versions and
+separate changelog comment; no duplicate header map is maintained.
 Dependencies remain in the root catalog. Adapter-only changes do not advance
-Memory/Storage or the other adapter. Core requirements change only when their
-bare compatible minimum no longer admits the selected supplier. Shared Cargo
+Memory/Storage or the other adapter. Every member has a root catalog path/version entry and an alias in its owning
+group’s dependencies roster, including unused entries. These entries add no
+dependency edges. Versioned root path requirements show the full current member version, preserving
+the existing requirement operator. Release preparation keeps them aligned even
+for core patches; registry-only requirements retain their compatibility policy. Shared Cargo
 resolution and public type coupling remain real integration obligations.
 
 The existing runner requires explicit `RELEASE_GROUP` for release, resume and

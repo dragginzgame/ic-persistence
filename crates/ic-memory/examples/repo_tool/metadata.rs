@@ -90,24 +90,30 @@ impl<E: Execute> Repository<E> {
                 let requirement = manifest["workspace"]["dependencies"][alias]["version"]
                     .as_str()
                     .ok_or("missing local requirement")?;
-                let next = if self.compatible_requirement(requirement, version)? {
-                    requirement
-                } else {
-                    version
-                };
-                Ok(DependencyVersionProjection {
-                    alias,
-                    previous: requirement,
-                    next,
-                })
+                let operator = usize::from(requirement.starts_with(['=', '^', '~']));
+                let literal = requirement[operator..].trim_start_matches([' ', '\t']);
+                require(
+                    literal == previous,
+                    "local requirement differs from its group version",
+                )?;
+                let prefix = &requirement[..requirement.len() - literal.len()];
+                Ok((alias, requirement, format!("{prefix}{version}")))
             })
             .collect::<Result<Vec<_>>>()?;
+        let dependencies = aliases
+            .iter()
+            .map(|(alias, requirement, next)| DependencyVersionProjection {
+                alias,
+                previous: requirement,
+                next,
+            })
+            .collect::<Vec<_>>();
         Ok(render_group_manifest(
             text,
             previous,
             version,
             ManifestVersion::Unchanged,
-            &aliases,
+            &dependencies,
         )?)
     }
 
