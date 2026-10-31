@@ -40,7 +40,7 @@ ic-metrics-stable = { path = "crates/ic-metrics-stable", version = "0.61.1" }
 
 # logging-stable
 # Changelog : releases/logging-stable/CHANGELOG.md
-ic-logging-stable = { path = "crates/ic-logging-stable", version = "0.60.0" }
+ic-logging-stable = { path = "crates/ic-logging-stable", version = "0.60.1" }
 
 # External production dependencies.
 ic-logging = { version = "0.23.3", default-features = false }
