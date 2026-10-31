@@ -291,7 +291,7 @@ checksum = "ec5654ee9bca6faa5e850d6a32ed36cc9f4d14378e4801bdd4d127dd45b1b1eb"
 
 [[package]]
 name = "ic-logging-stable"
-version = "0.59.0"
+version = "0.60.0"
 dependencies = [
  "ic-logging",
  "ic-memory",

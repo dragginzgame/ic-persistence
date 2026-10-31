@@ -3,7 +3,7 @@
 Independent releases begin after the coordinated 0.58.1 release. Earlier history
 is retained once in the [shared historical ledger](../history.md#0581---2026-10-31).
 
-## [0.60.0] - Unreleased
+## [0.60.0] - 2026-10-31
 
 ### ⚠️ Breaking
 
