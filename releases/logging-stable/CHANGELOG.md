@@ -3,6 +3,13 @@
 Independent releases begin after the coordinated 0.58.1 release. Earlier history
 is retained once in the [shared historical ledger](../history.md#0581---2026-10-31).
 
+## [0.62.1] - Unreleased
+
+### ⬆️ Dependencies
+
+- Qualify checkpoints with locked Wire 0.14.1 and the Testkit 0.78.0 qualification
+  CLI. Checkpoint bytes, limits, retention and the server 16.1.0 pin are unchanged.
+
 ## [0.62.0] - 2026-11-01
 
 ### ⚠️ Breaking

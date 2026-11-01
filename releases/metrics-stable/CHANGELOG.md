@@ -3,6 +3,21 @@
 Independent releases begin after the coordinated 0.58.1 release. Earlier history
 is retained once in the [shared historical ledger](../history.md#0581---2026-10-31).
 
+## [0.64.0] - Unreleased
+
+### ⚠️ Breaking
+
+- Adopt Metrics 0.25.0 for public measurement and restoration-error types.
+  Hosts exchanging these values with Metrics Stable must align their Metrics
+  dependency. Native schemas now share Wire 0.14 with the adapter, removing the
+  former Wire 0.13 dependency. Snapshot bytes, bounds, arithmetic and checkpoint
+  continuity remain unchanged; no reset is needed. [Details](0.64.md).
+
+### ⬆️ Dependencies
+
+- Qualify snapshot encoding with locked Wire 0.14.1, preserving its Wire 0.14
+  identity, stored rows and admission budgets.
+
 ## [0.63.0] - 2026-11-01
 
 ### ⚠️ Breaking

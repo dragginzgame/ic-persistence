@@ -3,6 +3,13 @@
 Covers `ic-memory` and `ic-storage`. Independent group releases begin after the
 coordinated 0.58.1 cutoff; [earlier shared history](../history.md) is preserved once.
 
+## [0.62.1] - Unreleased
+
+### ⬆️ Dependencies
+
+- Qualify locked Wire 0.14.1 and adopt Testkit Native/qualification CLI 0.78.0.
+  Preserve encoded bytes, limits, Platform 0.17 and server 16.1.0. [Details](0.62.md).
+
 ## [0.62.0] - 2026-11-01
 
 ### ⚠️ Breaking

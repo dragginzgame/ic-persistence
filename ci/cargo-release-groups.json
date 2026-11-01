@@ -28,6 +28,9 @@
       "changelog": "releases/metrics-stable/CHANGELOG.md",
       "dependencies": [
         "ic-metrics-stable"
+      ],
+      "metadata_files": [
+        "releases/metrics-stable/0.64.md"
       ]
     },
     {

@@ -175,7 +175,7 @@ safeguards. Changes stop at the owned IC Platform boundary.
 
 The independent qualification workspace consumes PocketIC through IC Platform's
 optional native client boundary; its lockfile selects owned client
-`ic-platform-pocket-ic` 0.17.0 with the 16.1 protocol. Testkit 0.76.0 owns the reviewed
+`ic-platform-pocket-ic` 0.17.0 with the 16.1 protocol. Testkit 0.78.0 owns the reviewed
 16.1.0 server selection. Changing that pair requires repeating installed
 qualification; historical 16.0.0 client/server evidence cannot qualify the new
 pairing. Keep both lockfiles, sources, features and toolchains unchanged during
