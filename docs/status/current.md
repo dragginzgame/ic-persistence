@@ -81,10 +81,13 @@ Platform 0.16 delivery evidence remains under
 `target/delivery/platform-0.16-2026-11-01/`; earlier cleanup and dependency
 proof remains in its original `target/delivery/` and audit directories.
 
-Validation reuse remains a separate investigation in
-[Shared #334](https://github.com/dragginzgame/shared-tooling/issues/334) and
-[the audit](../audits/2026-11-01-release-validation-reuse.md); no gate is skipped.
+The opt-in exact-input ShellCheck stage and maintained three-group qualification
+are prepared for [Shared #334](https://github.com/dragginzgame/shared-tooling/issues/334).
+The actual caller executed once and reused twice locally around canonical group
+metadata projections. Native CI remains acceptance; complete gates and native
+receipts retain their existing behavior. See [adoption](../shared-tooling-adoption.md#exact-input-shellcheck-reuse)
+and [the original investigation](../audits/2026-11-01-release-validation-reuse.md).
 The selected Shared snapshot is
-`fba200f649d6f1e09c0cb52f04b8c1493c5b0060` (VERSION 0.27.24),
-with 80 roots and 134 payloads. Snapshot files change only through the exporter;
+`830649f4cc8bc5736d258b29ce8c16a707f0f103` (VERSION 0.27.24),
+with 81 roots and 136 payloads. Snapshot files change only through the exporter;
 no dirty sibling rules are adopted.

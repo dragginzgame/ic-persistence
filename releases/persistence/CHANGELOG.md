@@ -7,6 +7,11 @@ coordinated 0.58.1 cutoff; [earlier shared history](../history.md) is preserved 
 
 ### 🔧 Changed
 
+- Offer exact-input reuse for the real ShellCheck tooling stage with fresh group
+  metadata and source/index admission. Retain the original execution proof and
+  separate current admissions; existing complete release gates remain unchanged.
+  [Shared #334](https://github.com/dragginzgame/shared-tooling/issues/334).
+
 - Use Shared's source-only grouped Cargo observer for interrupted launcher
   startup. Recheck metadata after tool/cache helpers and verify copied inputs
   before scratch rendering, preserving native source/receipt authorization.

@@ -185,6 +185,13 @@ jobs:
           shasum -a 256 Cargo.lock
           rustc -Vv
           uname -sm
+      - name: Qualify exact-input ShellCheck reuse across release groups
+        if: ${{ needs.change-scope.outputs.scope != 'docs' }}
+        shell: bash
+        run: |
+          SHELLCHECK_BIN="$(bash scripts/ci/install-ci-tool.sh shellcheck --install-dir "$RUNNER_TEMP/ic-persistence-tools")"
+          export SHELLCHECK_BIN
+          make test-validation-stage-reuse 2>&1 | tee "$RUNNER_TEMP/stage-reuse.log"
       - name: Qualify pinned toolchain and retain native failure-evidence archive
         if: ${{ needs.change-scope.outputs.scope != 'docs' }}
         id: evidence

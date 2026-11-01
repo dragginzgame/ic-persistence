@@ -1,5 +1,5 @@
 # Common release commands
-<!-- Shared companions: docs/cargo-publication.md -->
+<!-- Shared companions: docs/cargo-publication.md docs/release-validation-reuse.md -->
 
 Every `dragginzgame` repository, including Shared Tooling and repositories without
 a publishable package, must provide these Make targets:
@@ -51,6 +51,11 @@ The default `released` mode and Cargo release-group adapters retain their existi
 version selection; pending-file mode cannot be used with a Cargo release group.
 
 ## Required workflow
+
+Content-bound reuse across independent groups has an
+[opt-in exact-input stage interface](release-validation-reuse.md). Consumers must
+qualify their selected stages and fresh group admission before integrating it.
+Existing complete gates and retained receipts keep their current meaning.
 
 The default `RELEASE_DELIVERY=direct` workflow is:
 

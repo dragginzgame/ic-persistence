@@ -1,0 +1,33 @@
+#!/usr/bin/env bash
+# Opt-in exact-input reuse of the existing shell tooling check only.
+set -euo pipefail
+if [[ -z "${VALIDATION_STAGE_STATE:-}" ]]; then
+    exec bash scripts/ci/qualify-shellcheck-stage.sh
+fi
+[[ $# == 1 && -n "${RELEASE_GROUP:-}" ]] || { echo 'stage reuse requires the selected compiler and RELEASE_GROUP' >&2; exit 2; }
+export RUSTUP_TOOLCHAIN="$1" RUSTUP_AUTO_INSTALL=0 CARGO_NET_OFFLINE=true
+root="$(pwd -P)"
+record="$(mktemp -d "${TMPDIR:-/tmp}/persistence-shellcheck-admission.XXXXXX")"
+printf 'Retained ShellCheck admission: %s\n' "$record"
+# Fresh policy/metadata and source/index identity are consumer admission, not an
+# assertion that a prior whole gate or different source passed.
+base="$(git rev-parse HEAD)"
+git diff --cached --quiet
+git ls-files --stage -z | shasum -a 256 > "$record/index.before"
+bash scripts/ci/cargo-release-group.sh plan "$RELEASE_GROUP" > "$record/group.json"
+inputs=(Cargo.toml Cargo.lock ci/cargo-release-groups.json crates/*/Cargo.toml)
+perl scripts/ci/validation-input-checkpoint.pl "$root" '' "$record/inputs.json" scripts/ci/verify-file-checksum.sh "${inputs[@]}"
+source_id="$(printf '%s\n' "$base"; cat "$record/index.before" "$record/inputs.json")"
+source_id="$(printf '%s' "$source_id" | shasum -a 256)"
+source_id="${source_id%% *}"
+shellcheck_bin="${SHELLCHECK_BIN:-$(command -v shellcheck)}"
+jq -cnS --arg path "$PATH" --arg home "$HOME" --arg shellcheck "$shellcheck_bin" \
+    '{PATH:$path,HOME:$home,LC_ALL:"C",SHELLCHECK_BIN:$shellcheck}' > "$record/environment.json"
+perl scripts/ci/run-validation-stage.pl --state "$VALIDATION_STAGE_STATE" --stage shellcheck \
+    --contract persistence-shellcheck/1 --source "$source_id" --group "$RELEASE_GROUP" \
+    --observe scripts/ci/observe-shellcheck-stage.sh --environment "$record/environment.json" --max-bytes 33554432 \
+    -- bash scripts/ci/qualify-shellcheck-stage.sh
+perl scripts/ci/validation-input-checkpoint.pl "$root" "$record/inputs.json" "$record/after.json" scripts/ci/verify-file-checksum.sh
+git ls-files --stage -z | shasum -a 256 > "$record/index.after"
+cmp "$record/index.before" "$record/index.after"
+[[ "$(git rev-parse HEAD)" == "$base" ]]

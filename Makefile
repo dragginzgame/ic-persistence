@@ -129,9 +129,15 @@ check-production-graph:
 		--require ic-stable-structures=1 --require ic-memory=1 --require ic-storage=1 --require ic-platform=1 --require ic-metrics=1 --require ic-logging=1 --require ic-wire=1
 
 # Install exact, checksum-verified tools separately; these checks are offline.
-lint-tooling:
+lint-tooling: check-shellcheck-stage
 	$${ACTIONLINT_BIN:-actionlint} .github/workflows/*.yml
-	$${SHELLCHECK_BIN:-shellcheck} --shell=bash ci/release-tools.env ci/runtime-tools.env ci/tool-versions.env scripts/ci/*.sh scripts/dev/*.sh .githooks/pre-commit
+
+.PHONY: check-shellcheck-stage test-validation-stage-reuse
+check-shellcheck-stage:
+	+bash scripts/ci/check-shellcheck-stage.sh $(VALIDATION_TOOLCHAIN)
+
+test-validation-stage-reuse:
+	bash scripts/ci/test-validation-stage-reuse.sh
 
 test-tooling:
 	+cargo +$(VALIDATION_TOOLCHAIN) test --locked --offline --example repo-tool
