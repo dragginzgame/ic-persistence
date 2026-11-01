@@ -41,13 +41,13 @@ the library lock. Production Wasm retains one Platform runtime owner.
 Both maintained catalogs select Wire 0.13.2 and the library graph selects
 Testkit Native 0.75.2; installed qualification selects Testkit CLI 0.75.2.
 These compatible patches preserve codec bytes, stable-memory helpers and the
-PocketIC 16.1.0 pairing. Metrics 0.24.1 preserves default
+PocketIC 16.1.0 pairing. Metrics 0.24.3 preserves default
 native metadata and now shares that Wire identity, removing the older Wire/Derive
 0.12 providers. Native schemas and the durable codec use one Wire provider;
 production Wasm likewise retains one core Wire 0.13 provider. Wire endpoint and
 platform-types integration remain unselected. Arithmetic, codec bytes, bounds
 and restoration contracts are unchanged. The library lock's incoming Logging
-0.23.3 selection is adopted.
+0.23.4 selection is retained.
 
 Build/Host libraries and the selected Build editor use 0.73.3; Testkit Native/CLI
 use 0.75.2 with the unchanged server 16.1.0 selection. Common tool pins, local

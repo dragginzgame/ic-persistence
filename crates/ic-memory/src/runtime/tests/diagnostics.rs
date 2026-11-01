@@ -319,7 +319,7 @@ fn validation_diagnostic_preserves_unsupported_format_code() {
         crate::CommitRecoveryError::UnsupportedFormat { marker: u64::MAX },
     ));
 
-    let failure = diagnostic_validation_ledger(Some(&recovered))
+    let failure = diagnostic_validation_ledger(&recovered)
         .expect_err("unsupported format must block validation");
 
     assert_eq!(failure.code, DiagnosticCode::UnsupportedFormat);

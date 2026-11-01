@@ -3,6 +3,18 @@
 Independent releases begin after the coordinated 0.58.1 release. Earlier history
 is retained once in the [shared historical ledger](../history.md#0581---2026-10-31).
 
+## [0.61.3] - Unreleased
+
+### 🧹 Cleanup
+
+- Iterate finite and overflow histogram buckets together for continuity checks,
+  preserving exact-addition and sticky-overflow admission without sentinel indexing.
+
+### ⬆️ Dependencies
+
+- Retain the selected Metrics 0.24.3 patch and consume the compatible core
+  0.60.5 supplier; existing public behavior and durable formats are unchanged.
+
 ## [0.61.2] - 2026-11-01
 
 ### ⬆️ Dependencies

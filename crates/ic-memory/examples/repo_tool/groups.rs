@@ -69,15 +69,7 @@ impl<E: Execute> Repository<E> {
     }
 
     pub(super) fn release_files(&self, revision: Option<&str>) -> Result<Vec<String>> {
-        let group = self.release_group(revision)?;
-        let mut paths = vec![
-            "Cargo.toml".to_owned(),
-            "Cargo.lock".to_owned(),
-            group.changelog,
-        ];
-        paths.extend(group.members.iter().map(|name| package_manifest(name)));
-        paths.extend(group.metadata_files);
-        Ok(paths)
+        Ok(self.release_group(revision)?.files())
     }
 
     pub(super) fn selected_packages(&self) -> Result<Vec<String>> {
@@ -92,10 +84,33 @@ impl<E: Execute> Repository<E> {
         version: &str,
     ) -> Result<()> {
         let group = self.release_group(None)?;
+        group.check_lock_update(before, after, previous, version)
+    }
+}
+
+impl ReleaseGroup {
+    pub(super) fn files(&self) -> Vec<String> {
+        let mut paths = vec![
+            "Cargo.toml".to_owned(),
+            "Cargo.lock".to_owned(),
+            self.changelog.clone(),
+        ];
+        paths.extend(self.members.iter().map(|name| package_manifest(name)));
+        paths.extend(self.metadata_files.iter().cloned());
+        paths
+    }
+
+    pub(super) fn check_lock_update(
+        &self,
+        before: &[u8],
+        after: &str,
+        previous: &str,
+        version: &str,
+    ) -> Result<()> {
         verify_workspace_release_projection(
             std::str::from_utf8(before)?,
             after,
-            &group
+            &self
                 .members
                 .iter()
                 .map(|package| WorkspaceVersionProjection {

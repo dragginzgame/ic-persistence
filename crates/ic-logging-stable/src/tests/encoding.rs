@@ -281,3 +281,18 @@ fn retired_checkpoint_requires_explicit_host_row_administration() {
             .is_empty()
     );
 }
+
+#[test]
+fn later_field_refusal_precedes_an_earlier_total_text_excess() {
+    let mut log = Log::new(limits());
+    log.append(input(1, "a")).unwrap();
+    log.append(input(2, "b")).unwrap();
+    let mut forged = log.snapshot();
+    forged.limits.max_text_bytes = 0;
+    forged.entries[1].message = "x".repeat(forged.limits.max_message_bytes + 1);
+    let bytes = codec::encode_snapshot(identity(), &forged).unwrap();
+    assert!(matches!(
+        codec::decode(&bytes, identity(), forged.limits),
+        Err(StoreError::MalformedRecord)
+    ));
+}

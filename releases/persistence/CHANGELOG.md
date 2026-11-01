@@ -3,6 +3,16 @@
 Covers `ic-memory` and `ic-storage`. Independent group releases begin after the
 coordinated 0.58.1 cutoff; [earlier shared history](../history.md) is preserved once.
 
+## [0.60.5] - Unreleased
+
+### 🧹 Cleanup
+
+- Simplify release evidence flow, phase-local group projection, command plans
+  and interrupted-bootstrap observation. Separate pure growth calculations from
+  mutation, derive diagnostic status from one recovery observation and initialize
+  release fixture groups together. Public contracts and receipt bytes are unchanged.
+  [Details](0.60.md).
+
 ## [0.60.4] - 2026-11-01
 
 ### ⬆️ Dependencies

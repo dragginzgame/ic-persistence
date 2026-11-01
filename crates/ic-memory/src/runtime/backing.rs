@@ -117,12 +117,59 @@ impl<M: Memory> RuntimeMemory<M> {
         if pages == 0 {
             return Ok(old_pages);
         }
+        let plan = GrowthPlan::new(
+            old_pages,
+            pages,
+            self.growth.bucket_size_pages,
+            authority.allocated_buckets(),
+        )?;
+        let physical_pages = self.growth.backing.size();
+        if plan.required_pages > physical_pages
+            && self
+                .growth
+                .backing
+                .grow(plan.required_pages - physical_pages)
+                < 0
+        {
+            return Err(RuntimeGrowError::BackingRefused {
+                additional_pages: plan.required_pages - physical_pages,
+            });
+        }
+        // The pinned manager's only refusal is bucket exhaustion, already
+        // checked above while all handles share this exclusive reservation.
+        // Physical capacity is reserved before it assigns any buckets.
+        assert_eq!(
+            self.memory.grow(pages),
+            old_pages.cast_signed(),
+            "preflighted manager growth returns the previous virtual extent"
+        );
+        authority.record_growth(self.id, plan.new_pages, plan.total_buckets);
+        authority.verify(self.growth.backing.as_ref())?;
+        Ok(old_pages)
+    }
+}
+
+// Pure capacity admission; reservation and manager mutation remain in grow().
+struct GrowthPlan {
+    new_pages: u64,
+    total_buckets: u16,
+    required_pages: u64,
+}
+
+impl GrowthPlan {
+    fn new(
+        old_pages: u64,
+        pages: u64,
+        bucket_size_pages: u16,
+        allocated_buckets: u16,
+    ) -> Result<Self, super::RuntimeGrowError> {
+        use super::RuntimeGrowError;
         let new_pages = old_pages
             .checked_add(pages)
             .ok_or(RuntimeGrowError::ArithmeticOverflow)?;
-        let bucket_pages = u64::from(self.growth.bucket_size_pages);
+        let bucket_pages = u64::from(bucket_size_pages);
         let extra = new_pages.div_ceil(bucket_pages) - old_pages.div_ceil(bucket_pages);
-        let total = u64::from(authority.allocated_buckets())
+        let total = u64::from(allocated_buckets)
             .checked_add(extra)
             .ok_or(RuntimeGrowError::ArithmeticOverflow)?;
         if total > u64::from(super::layout::BUCKET_CAPACITY) {
@@ -137,25 +184,11 @@ impl<M: Memory> RuntimeMemory<M> {
         )]
         let total_buckets = total as u16;
         let required_pages = 1 + total * bucket_pages;
-        let physical_pages = self.growth.backing.size();
-        if required_pages > physical_pages
-            && self.growth.backing.grow(required_pages - physical_pages) < 0
-        {
-            return Err(RuntimeGrowError::BackingRefused {
-                additional_pages: required_pages - physical_pages,
-            });
-        }
-        // The pinned manager's only refusal is bucket exhaustion, already
-        // checked above while all handles share this exclusive reservation.
-        // Physical capacity is reserved before it assigns any buckets.
-        assert_eq!(
-            self.memory.grow(pages),
-            old_pages.cast_signed(),
-            "preflighted manager growth returns the previous virtual extent"
-        );
-        authority.record_growth(self.id, new_pages, total_buckets);
-        authority.verify(self.growth.backing.as_ref())?;
-        Ok(old_pages)
+        Ok(Self {
+            new_pages,
+            total_buckets,
+            required_pages,
+        })
     }
 }
 

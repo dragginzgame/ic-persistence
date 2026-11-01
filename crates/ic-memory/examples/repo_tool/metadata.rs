@@ -73,15 +73,25 @@ impl<E: Execute> Repository<E> {
         Ok(output)
     }
 
+    #[cfg(test)]
     pub(super) fn project_catalog(
         &self,
         text: &str,
         previous: &str,
         version: &str,
     ) -> Result<String> {
+        self.project_group_catalog(&self.release_group(None)?, text, previous, version)
+    }
+
+    pub(super) fn project_group_catalog(
+        &self,
+        group: &groups::ReleaseGroup,
+        text: &str,
+        previous: &str,
+        version: &str,
+    ) -> Result<String> {
         self.version_parts(previous)?;
         self.version_parts(version)?;
-        let group = self.release_group(None)?;
         let manifest: toml::Value = toml::from_str(text)?;
         let aliases = group
             .dependencies
@@ -117,13 +127,22 @@ impl<E: Execute> Repository<E> {
         )?)
     }
 
+    #[cfg(test)]
     pub(super) fn replace_lock_version(
         &self,
         text: &str,
         previous: &str,
         version: &str,
     ) -> Result<String> {
-        let group = self.release_group(None)?;
+        Self::replace_group_lock_version(&self.release_group(None)?, text, previous, version)
+    }
+
+    pub(super) fn replace_group_lock_version(
+        group: &groups::ReleaseGroup,
+        text: &str,
+        previous: &str,
+        version: &str,
+    ) -> Result<String> {
         let updated = render_workspace_lock(
             text,
             &group
@@ -136,7 +155,7 @@ impl<E: Execute> Repository<E> {
                 })
                 .collect::<Vec<_>>(),
         )?;
-        self.check_lock_update(text.as_bytes(), &updated, previous, version)?;
+        group.check_lock_update(text.as_bytes(), &updated, previous, version)?;
         Ok(updated)
     }
 

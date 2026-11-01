@@ -600,3 +600,30 @@ fn selected_older_release_reuses_exact_receipts_and_archives_after_a_fix() {
             .any(|call| is_package_call(call))
     );
 }
+
+#[test]
+fn policy_drift_during_projection_refuses_before_metadata_publication() {
+    let fixture = Fixture::new();
+    let finalizer = fixture
+        .repo
+        .text(CHANGELOG_FINALIZER, Some("source"))
+        .unwrap();
+    fixture.set_source(
+        CHANGELOG_FINALIZER,
+        &format!("BEGIN {{ print \"\" >> \"ci/cargo-release-groups.json\" }}\n{finalizer}"),
+    );
+    let policy = fixture.repo.text(GROUP_POLICY, None).unwrap();
+    assert_eq!(
+        fixture
+            .repo
+            .surfaces(&fixture.selection)
+            .err()
+            .expect("policy drift must refuse")
+            .to_string(),
+        "release group policy changed",
+    );
+    fixture.assert_original();
+    let changed = fixture.repo.text(GROUP_POLICY, None).unwrap();
+    assert_ne!(changed, policy);
+    assert!(changed.starts_with(&policy));
+}

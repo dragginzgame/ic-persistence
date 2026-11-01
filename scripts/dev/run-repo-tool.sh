@@ -37,25 +37,32 @@ esac
 # Cargo admits TOML syntax (including duplicate keys) without resolving locks.
 RUSTUP_TOOLCHAIN="$toolchain" CARGO_NET_OFFLINE=true cargo locate-project --workspace --message-format plain --manifest-path Cargo.toml > /dev/null
 # Admit the virtual catalog before cache/helper effects, without a master version.
-"${YQ:-yq}" -p toml -o json '.' Cargo.toml | jq -e '
+catalog_json="$("${YQ:-yq}" -p toml -o json '.' Cargo.toml)"
+printf '%s\n' "$catalog_json" | jq -e '
   if has("package") or (.workspace | type) != "object" or .workspace.package.version != null
   then error("independent groups require a virtual catalog without workspace.package.version") else true end' > /dev/null
-package_names="$(bash scripts/ci/read-persistence-packages.sh --all)"
-IFS=$'\t' read -r -a packages <<< "$package_names"
-"${YQ:-yq}" -p toml -o json '.' Cargo.lock | jq -e --slurpfile policy ci/cargo-release-groups.json '
-  . as $lock | all($policy[0].groups[]; .members as $names |
-    [$names[] as $name | [$lock.package[] | select(.name == $name and .source == null)] |
+bash scripts/ci/read-persistence-packages.sh --all > /dev/null
+lock_json="$("${YQ:-yq}" -p toml -o json '.' Cargo.lock)" || exit 1
+# One complete observation drives coherence and any scratch projection.
+package_versions="$(printf '%s\n' "$lock_json" | jq -er --slurpfile policy ci/cargo-release-groups.json '
+  . as $lock | [$policy[0].groups[] | . as $group |
+    [.members[] as $name | [$lock.package[] | select(.name == $name and .source == null)] |
      if length == 1 and (.[0].version | type) == "string" and (.[0].version | explode | all(. >= 32)) and
        (.[0].version | test("^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$"))
-     then .[0].version else error("invalid local lock identity") end] | unique | length == 1)
-  | if . then true else error("release group lock versions differ") end' > /dev/null || exit 1
+     then {name:$name, version:.[0].version, style:$group.version}
+     else error("invalid local lock identity") end] |
+    if ([.[].version] | unique | length) == 1 then .[]
+    else error("release group lock versions differ") end] |
+    .[] | [.name,.version,.style] | @tsv')" || exit 1
 coherent=true
-for package in "${packages[@]}"; do
-    locked="$("${YQ:-yq}" -p toml -o json '.' Cargo.lock | jq -er --arg name "$package" '[.package[] | select(.name == $name and .source == null)] | if length == 1 then .[0].version else error("invalid local lock identity") end')"
-    style="$(jq -er --arg name "$package" '.groups[] | select(.members | index($name)) | .version' ci/cargo-release-groups.json)"
+declared_versions=()
+locked_versions=()
+while IFS=$'\t' read -r package locked style; do
     declared="$("${YQ:-yq}" -p toml -o json '.' "crates/$package/Cargo.toml" | jq -er --arg style "$style" '.package.version | if $style == "package" and type == "string" then . else error("invalid group version source") end')"
+    declared_versions+=("$declared")
+    locked_versions+=("$locked")
     [[ "$locked" == "$declared" ]] || coherent=false
-done
+done <<< "$package_versions"
 if [[ "$coherent" == true ]]; then
     check_dependency_cache
     exec cargo "+$toolchain" run --locked --offline --quiet --example repo-tool -- "$@"
@@ -80,8 +87,8 @@ if [[ "${RELEASE_CACHE_PREPARE:-0}" == 1 ]]; then editor_admission=(); fi
 editor="$(RUSTUP_TOOLCHAIN="$toolchain" bash scripts/dev/install-rust-tools.sh \
     --consumer "$PWD" --package ic-build --version "$IC_BUILD_RELEASE_METADATA_VERSION" \
     --bin ic-build-release-metadata --profile debug --features cli ${editor_admission[@]+"${editor_admission[@]}"})"
-"${YQ:-yq}" -p toml -o json '.' Cargo.lock > "$scratch/lock.json"
-"${YQ:-yq}" -p toml -o json '.' Cargo.toml | jq --slurpfile lock "$scratch/lock.json" '
+printf '%s\n' "$lock_json" > "$scratch/lock.json"
+printf '%s\n' "$catalog_json" | jq --slurpfile lock "$scratch/lock.json" '
     {version:"unchanged", dependencies:[.workspace.dependencies | to_entries[] |
       select((.value|type) == "object" and .value.path != null and .value.version != null) |
       . as $d | ($d.value.package // $d.key) as $package |
@@ -92,15 +99,13 @@ editor="$(RUSTUP_TOOLCHAIN="$toolchain" bash scripts/dev/install-rust-tools.sh \
 "$editor" --max-input-bytes "$CARGO_RELEASE_METADATA_MAX_BYTES" group-manifest Cargo.toml \
     0.0.0 0.0.0 "$scratch/root-edit.json" > "$scratch/Cargo.toml"
 printf '{"version":"package","dependencies":[]}\n' > "$scratch/member-edit.json"
-for package in "${packages[@]}"; do
+index=0
+while IFS=$'\t' read -r package locked style; do
     manifest="crates/$package/Cargo.toml"
-    literal="$("${YQ:-yq}" -p toml -o json '.' "$manifest" | jq -r '.package.version | if type == "string" then . else empty end')"
-    if [[ -n "$literal" ]]; then
-        locked="$(jq -er --arg name "$package" '.package[] | select(.name == $name and .source == null) | .version' "$scratch/lock.json")"
-        "$editor" --max-input-bytes "$CARGO_RELEASE_METADATA_MAX_BYTES" group-manifest "$manifest" \
-            "$literal" "$locked" "$scratch/member-edit.json" > "$scratch/$manifest"
-    fi
-done
+    "$editor" --max-input-bytes "$CARGO_RELEASE_METADATA_MAX_BYTES" group-manifest "$manifest" \
+        "${declared_versions[$index]}" "${locked_versions[$index]}" "$scratch/member-edit.json" > "$scratch/$manifest"
+    index=$((index + 1))
+done <<< "$package_versions"
 # Compilation metadata is coherent only in scratch. The adapter still observes
 # the real checkout and must admit its saved source, group and receipts.
 check_dependency_cache --manifest-path "$scratch/Cargo.toml"

@@ -1,12 +1,34 @@
 # Current handoff
 
-The current delivery batch selects Persistence 0.60.4, Metrics Stable 0.61.2 and
+The cleanup delivery batch selects Persistence 0.60.5, Metrics Stable 0.61.3 and
+Logging Stable 0.60.3 in supplier-first order. It addresses all ten audit items:
+release evidence flow, phase-local group projection, canonical command plans,
+bootstrap observation, pure growth arithmetic, histogram iteration, logging text
+validation, diagnostic state, fixture selection and ownership guidance. Public
+contracts, stored formats, receipt bytes and allocation custody remain unchanged.
+
+Focused qualification passed 73 release-helper tests, 72 runtime tests, 11 Metrics
+continuity tests and seven Logging encoding tests. Native bootstrap qualifies both
+interruption orders for all three groups without changing source. Rust 1.91 Wasm
+libraries and the native helper compile; selected Clippy, graph, pin, formatting,
+ShellCheck and documentation checks pass. Focused evidence and earlier failed
+attempts remain in `target/complexity-2026-11-01/`. The deployment retains the
+incoming Metrics 0.24.3 and Logging 0.23.4 lock selections with compatible catalog
+requirements. Standard delivery runs the complete release gate for each group;
+final receipts, retained archives and registry readback establish publication.
+Delivery logs live under `target/delivery/cleanup-2026-11-01/`.
+
+The cross-repository proposal is
+[Shared Tooling #333](https://github.com/dragginzgame/shared-tooling/issues/333);
+no sibling source or vendored files were edited.
+
+The previous delivery batch selected Persistence 0.60.4, Metrics Stable 0.61.2 and
 Logging Stable 0.60.2 in supplier-first order. Canonical group ledgers record
-release dates; final receipts and registry checks establish publication. Current
+release dates; final receipts and registry checks establish publication. Previous
 delivery evidence is retained under `target/delivery/2026-11-01/`.
 
 The catalogs select Wire 0.13.2, Build/Host/editor 0.73.3 and Testkit Native/CLI
-0.75.2. Platform 0.15.3, Types 0.15.1, Metrics 0.24.1 and Logging 0.23.3 remain
+0.75.2. Platform 0.15.3, Types 0.15.1, Metrics 0.24.3 and Logging 0.23.4 are
 selected. Both maintained Wire graphs and separate tool pins are aligned.
 Stable-structures 0.7.2, PocketIC 16.1.0, stored formats and allocation custody
 are unchanged; no data reset or migration is needed.

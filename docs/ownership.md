@@ -1,6 +1,6 @@
 # Implementation ownership
 
-IC Persistence maintains four coordinated packages. IC Memory owns durable allocation governance for one backing memory: permanent
+IC Persistence maintains four packages in three independent release groups. IC Memory owns durable allocation governance for one backing memory: permanent
 key-to-ID bindings, host-wide placement, admission before commitment, protected
 ledger recovery and exclusive checked handles. It does not own application data,
 collection semantics, component lifecycle or deployment policy.
@@ -8,7 +8,7 @@ collection semantics, component lifecycle or deployment policy.
 The fourth workspace member, `ic-logging-stable`, is a checkpoint
 adapter. Its [guide](../crates/ic-logging-stable/README.md) records bounded IC Wire
 encoding and governed Storage integration owned by Persistence. IC Observability's
-published Logging 0.17.2 owns logging semantics and validated restoration. Hosts
+published Logging crate owns logging semantics and validated restoration. Hosts
 own checkpoint identity and cadence; no second logging engine is introduced.
 
 ## Public entry points
@@ -95,18 +95,23 @@ consumer qualification. Historical reports under `docs/changelog`, `docs/audits`
 and the qualification guides retain their original source/version scope; use the
 current API and safety contract for present integration.
 
-The consumer release package roster lives in
-`crates/ic-memory/examples/repo_tool/packages.json`, embedded by the Rust adapter
-and admitted by `scripts/ci/read-persistence-packages.sh` for shell callers.
-The receipt owner collects and projects the four named digest fields through
-the existing coordinated-order mapping. Workflow callers carry complete receipts
-rather than parallel digest arrays. Changing package membership or order requires
-explicit receipt compatibility review. This is release policy, not another
-dependency or version catalog.
-Workspace version projection, bootstrap, archives and publication use that same
-four-package roster. Receipts require `logging_sha256` alongside the three
-existing digest fields. Saved releases from before this selection must resume
-with their original source/tooling; receipts are never converted or defaulted.
+The canonical release roster is [ci/cargo-release-groups.json](../ci/cargo-release-groups.json).
+Memory/Storage coordinate in `persistence`; Metrics Stable and Logging Stable own
+independent groups. The Rust adapter validates this policy; shell callers use
+`scripts/ci/read-persistence-packages.sh`. Each receipt carries an archive map
+containing exactly the selected group's members and their digests. Package order,
+source identity and publication reconciliation remain consumer-owned. Saved
+releases must resume with their original source/tooling; receipts are never
+converted or defaulted.
+
+Metadata projection uses one group observation within a phase and rechecks policy
+bytes after helper execution. One command plan supplies both execution and receipt
+expectations. Publication carries admitted release identity and package evidence
+together; registry and upload effects still require fresh admission afterward.
+The bootstrap launcher observes each manifest and lock once before deriving its
+coherence table and scratch projection; the compiled adapter still admits the
+real checkout before any release effect.
+
 The Makefile's `FORMAT_RUST_ARGS` owns the consumer formatter roster, including
 the independent workspace and edition-2024 package consumer; the shared driver
 owns ordering, visible passes and uncached standalone execution. `qualify-runtime.sh`
@@ -132,7 +137,7 @@ evidence. Archive graph predicates live in `scripts/ci/package-graph.jq`, used b
 both real admission and pure fixtures. Cargo observation and compiler dispatch
 remain in the archive qualification script.
 
-## Release tooling review — 0.62.1
+## Release tooling ownership
 
 The release adapter already delegates manifest rendering and lock projection to
 IC Build, durable receipt/archive writes to Host FS, digests to Host Artifacts,

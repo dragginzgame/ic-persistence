@@ -10,21 +10,63 @@ pub(super) enum LockState {
 
 use super::preparation::ReleasePlan;
 
+// Reconstructed from the current admitted toolchain at each phase boundary.
+// Receipt JSON remains the exact argv arrays used before this internal refactor.
+pub(super) struct ReleaseCommands {
+    validation: Vec<String>,
+    pub(super) preparation: [Vec<String>; 3],
+    pub(super) final_package: Vec<String>,
+}
+
+impl ReleaseCommands {
+    fn new(toolchain: &str) -> Self {
+        let final_package = vec![
+            "bash".to_owned(),
+            "scripts/ci/package-workspace.sh".to_owned(),
+            toolchain.to_owned(),
+        ];
+        let mut packaging = final_package.clone();
+        packaging.push("--allow-dirty".to_owned());
+        let make = |target: &str| {
+            vec![
+                "make".to_owned(),
+                "--no-print-directory".to_owned(),
+                target.to_owned(),
+                format!("VALIDATION_TOOLCHAIN={toolchain}"),
+            ]
+        };
+        Self {
+            validation: make("validate"),
+            preparation: [
+                vec![
+                    "cargo".to_owned(),
+                    format!("+{toolchain}"),
+                    "update".to_owned(),
+                    "--workspace".to_owned(),
+                    "--offline".to_owned(),
+                ],
+                make("fmt-check"),
+                packaging,
+            ],
+            final_package,
+        }
+    }
+
+    fn receipt(self, stage: ReceiptStage) -> Vec<Vec<String>> {
+        let mut commands = self.preparation.to_vec();
+        if stage == Final {
+            commands.push(self.final_package);
+        }
+        commands
+    }
+}
+
 impl<E: Execute> Repository<E> {
     pub(super) fn validation_path(&self, version: &str) -> Result<PathBuf> {
         self.version_parts(version)?;
         Ok(self
             .artifact_paths()?
             .validation(&format!("{}-{version}", self.group)))
-    }
-
-    pub(super) fn validation_command(&self) -> Result<Vec<String>> {
-        Ok(vec![
-            "make".to_owned(),
-            "--no-print-directory".to_owned(),
-            "validate".to_owned(),
-            format!("VALIDATION_TOOLCHAIN={}", self.toolchain()?),
-        ])
     }
 
     pub(super) fn run_command(&self, command: &[String]) -> Result<()> {
@@ -128,7 +170,7 @@ impl<E: Execute> Repository<E> {
             lock,
             identities: self.identities()?,
             configuration,
-            command: self.validation_command()?,
+            command: self.command_plan()?.validation,
         };
         self.run_command(&evidence.command)?;
         self.clean()?;
@@ -221,7 +263,7 @@ impl<E: Execute> Repository<E> {
             "compiler identities differ from release validation",
         )?;
         require(
-            evidence.command == self.validation_command()?,
+            evidence.command == self.command_plan()?.validation,
             "validation evidence has unexpected commands",
         )?;
         self.check_selection(&evidence.selection)?;
@@ -252,35 +294,8 @@ impl<E: Execute> Repository<E> {
         Ok(evidence)
     }
 
-    pub(super) fn preparation_commands(&self) -> Result<[Vec<String>; 3]> {
-        let toolchain = self.toolchain()?;
-        let pin = format!("+{toolchain}");
-        let mut packaging = self.final_package_command()?;
-        packaging.push("--allow-dirty".to_owned());
-        Ok([
-            vec![
-                "cargo".to_owned(),
-                pin,
-                "update".to_owned(),
-                "--workspace".to_owned(),
-                "--offline".to_owned(),
-            ],
-            vec![
-                "make".to_owned(),
-                "--no-print-directory".to_owned(),
-                "fmt-check".to_owned(),
-                format!("VALIDATION_TOOLCHAIN={toolchain}"),
-            ],
-            packaging,
-        ])
-    }
-
-    pub(super) fn final_package_command(&self) -> Result<Vec<String>> {
-        Ok(vec![
-            "bash".to_owned(),
-            "scripts/ci/package-workspace.sh".to_owned(),
-            self.toolchain()?,
-        ])
+    pub(super) fn command_plan(&self) -> Result<ReleaseCommands> {
+        Ok(ReleaseCommands::new(&self.toolchain()?))
     }
 
     pub(super) fn write_evidence(
@@ -369,10 +384,7 @@ impl<E: Execute> Repository<E> {
                 )?;
             }
         }
-        let mut commands = self.preparation_commands()?.to_vec();
-        if stage == Final {
-            commands.push(self.final_package_command()?);
-        }
+        let commands = self.command_plan()?.receipt(stage);
         require(
             evidence.commands == commands,
             "package evidence has unexpected commands",
@@ -408,7 +420,7 @@ impl<E: Execute> Repository<E> {
             // Existing evidence is checked, never silently repaired or replaced.
             return self.verify_evidence(selection, &selection.source, Prepared, Working);
         }
-        let commands = self.preparation_commands()?;
+        let commands = self.command_plan()?.preparation;
         let [refresh, formatting, packaging] = &commands;
         self.run_command(refresh)?;
         self.check_lock_update(

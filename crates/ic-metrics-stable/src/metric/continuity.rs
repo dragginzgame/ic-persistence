@@ -86,14 +86,24 @@ pub(super) fn histogram<const N: usize>(
     let mut maximum_added = !change.maximum_changed;
     let mut minimum_total = 0_u128;
     let mut maximum_total = 0_u128;
-    for index in 0..=N {
-        let Some(added) = histogram_bucket_additions(current, previous, index) else {
+    let counts = histogram_counts(current).zip(histogram_counts(previous));
+    let bounds = current
+        .upper_bounds()
+        .iter()
+        .copied()
+        .chain(std::iter::once(change.maximum));
+    let mut lower = 0;
+    for (((now, overflowed), (prior, prior_overflowed)), bound) in counts.zip(bounds) {
+        if now < prior || (prior_overflowed && !overflowed) {
             return false;
-        };
+        }
+        let added = now - prior;
+        let interval_lower = lower;
+        lower = bound.saturating_add(1);
         if !change.exact || added == 0 {
             continue;
         }
-        let (lower, upper) = histogram_interval(current, index, change.maximum);
+        let (lower, upper) = (interval_lower, bound.min(change.maximum));
         let added = u128::from(added);
         // Exact aggregate counts bound the sum of additions by u64::MAX,
         // so both range totals, including attainment, fit in u128.
@@ -107,49 +117,17 @@ pub(super) fn histogram<const N: usize>(
     !change.exact || (maximum_added && (minimum_total..=maximum_total).contains(&change.total))
 }
 
-// Project the finite buckets and the overflow bucket under the same sticky-count rule.
-fn histogram_bucket_additions<const N: usize>(
-    current: &MeasurementHistogram<N>,
-    previous: &MeasurementHistogram<N>,
-    index: usize,
-) -> Option<u64> {
-    let (now, prior, overflowed, prior_overflowed) = if index < N {
-        (
-            current.bucket_counts()[index],
-            previous.bucket_counts()[index],
-            current.bucket_overflowed()[index],
-            previous.bucket_overflowed()[index],
-        )
-    } else {
-        (
-            current.overflow(),
-            previous.overflow(),
-            current.overflow_count_overflowed(),
-            previous.overflow_count_overflowed(),
-        )
-    };
-    if now < prior || (prior_overflowed && !overflowed) {
-        None
-    } else {
-        Some(now - prior)
-    }
-}
-
-// Called only for exact, changed counts; unchanged/saturated buckets stay cheap.
-fn histogram_interval<const N: usize>(
-    current: &MeasurementHistogram<N>,
-    index: usize,
-    maximum: u64,
-) -> (u64, u64) {
-    let lower = if index == 0 {
-        0
-    } else {
-        current.upper_bounds()[index - 1].saturating_add(1)
-    };
-    let upper = if index < N {
-        current.upper_bounds()[index].min(maximum)
-    } else {
-        maximum
-    };
-    (lower, upper)
+// Finite and overflow counts follow the same monotonic/sticky rule.
+fn histogram_counts<const N: usize>(
+    value: &MeasurementHistogram<N>,
+) -> impl Iterator<Item = (u64, bool)> + '_ {
+    value
+        .bucket_counts()
+        .iter()
+        .copied()
+        .zip(value.bucket_overflowed().iter().copied())
+        .chain(std::iter::once((
+            value.overflow(),
+            value.overflow_count_overflowed(),
+        )))
 }

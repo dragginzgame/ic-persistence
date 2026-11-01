@@ -164,6 +164,7 @@ pub fn decode(bytes: &[u8], identity: LogIdentity, limits: Limits) -> Result<Log
     }
     // Text borrows admitted input bytes. Apply the caller's field limits before
     // constructing owned Logging entries; canonical restoration follows once.
+    let mut text_bytes = Some(0_usize);
     for entry in checkpoint.entries.as_slice() {
         if entry.source.len() > limits.max_label_bytes
             || entry
@@ -173,16 +174,12 @@ pub fn decode(bytes: &[u8], identity: LogIdentity, limits: Limits) -> Result<Log
         {
             return Err(StoreError::MalformedRecord);
         }
-    }
-    let text_bytes = checkpoint
-        .entries
-        .as_slice()
-        .iter()
-        .try_fold(0_usize, |total, entry| {
+        text_bytes = text_bytes.and_then(|total| {
             total.checked_add(
                 entry.source.len() + entry.topic.map_or(0, str::len) + entry.message.len(),
             )
         });
+    }
     if text_bytes.is_none_or(|bytes| bytes > limits.max_text_bytes) {
         return Err(StoreError::InvalidState(
             ic_logging::RestoreError::TextBudgetExceeded,

@@ -49,7 +49,7 @@ impl<E: Execute> Repository<E> {
         timing: &str,
     ) -> Result<()> {
         require(
-            self.release_commit()? == *release,
+            self.release_commit()?.0 == *release,
             &format!("release changed {timing} publication"),
         )?;
         require(
@@ -84,11 +84,10 @@ impl<E: Execute> Repository<E> {
 
     pub(super) fn publish(&self, dry_run: bool) -> Result<()> {
         self.release_group(None)?;
-        let release = self.release_commit()?;
+        let (release, evidence) = self.release_commit()?;
         let version = &release.selection.version;
         let head = &release.commit;
         let tag = self.check_tag(version, head)?;
-        let evidence = self.verify_evidence(&release.selection, head, Final, Working)?;
         // Observe every package before any effect. A conflict in a later package
         // must not permit an earlier upload; dependencies publish first.
         let packages = evidence

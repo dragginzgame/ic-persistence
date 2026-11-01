@@ -256,7 +256,7 @@ where
         declarations,
         pool,
         policy,
-        observation.recovery.recovered(),
+        observation.validation_ledger(),
     );
     let LedgerReportFields {
         stable_cell,
@@ -281,26 +281,17 @@ where
 // One read-only observation owns storage/recovery status and memory readings
 // taken before policy callbacks. It never carries open or allocation authority.
 struct LedgerObservation {
-    stable_cell: DiagnosticStableCell,
+    memory_size: DiagnosticMemorySize,
     recovery: LedgerRecoveryObservation,
     observed_pages: [u64; crate::constants::MAX_ALLOCATIONS],
 }
 
 enum LedgerRecoveryObservation {
-    Unreadable,
+    Unreadable(DiagnosticFailure),
     Readable {
         recovered: Result<RecoveredLedger, LedgerCommitError>,
         diagnostic: CommitSnapshotDiagnostic,
     },
-}
-
-impl LedgerRecoveryObservation {
-    const fn recovered(&self) -> Option<&Result<RecoveredLedger, LedgerCommitError>> {
-        match self {
-            Self::Unreadable => None,
-            Self::Readable { recovered, .. } => Some(recovered),
-        }
-    }
 }
 
 struct LedgerReportFields {
@@ -311,8 +302,10 @@ struct LedgerReportFields {
 
 impl LedgerObservation {
     fn into_fields(self) -> LedgerReportFields {
-        let (commit_recovery, ledger) = match self.recovery {
-            LedgerRecoveryObservation::Unreadable => (None, None),
+        let (status, commit_recovery, ledger) = match self.recovery {
+            LedgerRecoveryObservation::Unreadable(failure) => {
+                (DiagnosticStableCellStatus::Corrupt { failure }, None, None)
+            }
             LedgerRecoveryObservation::Readable {
                 recovered,
                 diagnostic,
@@ -322,13 +315,30 @@ impl LedgerObservation {
                         |record| self.observed_pages[usize::from(record.slot().id())],
                     )
                 });
-                (Some(diagnostic), ledger)
+                let status = if self.memory_size.wasm_pages == 0 {
+                    DiagnosticStableCellStatus::Empty
+                } else {
+                    DiagnosticStableCellStatus::Readable
+                };
+                (status, Some(diagnostic), ledger)
             }
         };
         LedgerReportFields {
-            stable_cell: self.stable_cell,
+            stable_cell: DiagnosticStableCell::new(status, self.memory_size),
             commit_recovery,
             ledger,
+        }
+    }
+
+    fn validation_ledger(&self) -> Result<Cow<'_, RecoveredLedger>, DiagnosticFailure> {
+        match &self.recovery {
+            LedgerRecoveryObservation::Unreadable(failure) => Err(DiagnosticFailure::new(
+                failure.code,
+                "stable-cell ledger record is not readable",
+            )),
+            LedgerRecoveryObservation::Readable { recovered, .. } => {
+                diagnostic_validation_ledger(recovered)
+            }
         }
     }
 }
@@ -350,13 +360,6 @@ impl<M: Memory> MemoryRuntime<M> {
         let memory_size = DiagnosticMemorySize::from_wasm_pages(memory.size());
         let record = decode_stable_cell_commit_store_from_memory(&memory);
         drop(memory);
-        let status = match &record {
-            Ok(_) if memory_size.wasm_pages == 0 => DiagnosticStableCellStatus::Empty,
-            Ok(_) => DiagnosticStableCellStatus::Readable,
-            Err(error) => DiagnosticStableCellStatus::Corrupt {
-                failure: DiagnosticFailure::new(DiagnosticCode::StableCell, error.to_string()),
-            },
-        };
         // Release decoded physical bytes before measuring slots or invoking policy.
         let recovery = match record {
             Ok(record) => {
@@ -366,17 +369,24 @@ impl<M: Memory> MemoryRuntime<M> {
                     diagnostic,
                 }
             }
-            Err(_) => LedgerRecoveryObservation::Unreadable,
+            Err(error) => LedgerRecoveryObservation::Unreadable(DiagnosticFailure::new(
+                DiagnosticCode::StableCell,
+                error.to_string(),
+            )),
         };
         let mut observed_pages = [0; crate::constants::MAX_ALLOCATIONS];
-        if let Some(Ok(recovered)) = recovery.recovered() {
+        if let LedgerRecoveryObservation::Readable {
+            recovered: Ok(recovered),
+            ..
+        } = &recovery
+        {
             for record in recovered.ledger().records() {
                 let id = record.slot().id();
                 observed_pages[usize::from(id)] = self.memory_size_pages(id);
             }
         }
         LedgerObservation {
-            stable_cell: DiagnosticStableCell::new(status, memory_size),
+            memory_size,
             recovery,
             observed_pages,
         }
@@ -388,12 +398,12 @@ fn diagnostic_validation<M: Memory, P: RuntimeBootstrapPolicy>(
     declarations: &SealedDeclarationSnapshot,
     pool: &crate::MemoryAllocationPool,
     custom_policy: &P,
-    recovered: Option<&Result<crate::RecoveredLedger, LedgerCommitError>>,
+    recovered: Result<Cow<'_, RecoveredLedger>, DiagnosticFailure>,
 ) -> DiagnosticCheck
 where
     P::Error: Display,
 {
-    let recovered = match diagnostic_validation_ledger(recovered) {
+    let recovered = match recovered {
         Ok(recovered) => recovered,
         Err(failure) => return DiagnosticCheck::not_run(failure.code, failure.message),
     };
@@ -439,31 +449,26 @@ fn diagnostic_bootstrap_binding(
 }
 
 pub(super) fn diagnostic_validation_ledger(
-    recovered: Option<&Result<crate::RecoveredLedger, LedgerCommitError>>,
-) -> Result<Cow<'_, crate::RecoveredLedger>, DiagnosticFailure> {
-    if let Some(Ok(recovered)) = recovered {
-        return Ok(Cow::Borrowed(recovered));
+    recovered: &Result<RecoveredLedger, LedgerCommitError>,
+) -> Result<Cow<'_, RecoveredLedger>, DiagnosticFailure> {
+    let error = match recovered {
+        Ok(recovered) => return Ok(Cow::Borrowed(recovered)),
+        Err(error) => error,
+    };
+    if let Some(genesis) = RecoveredLedger::genesis_for_absent_snapshot(error) {
+        return Ok(Cow::Owned(genesis));
     }
-    if let Some(Err(err)) = recovered {
-        if let Some(genesis) = RecoveredLedger::genesis_for_absent_snapshot(err) {
-            return Ok(Cow::Owned(genesis));
-        }
-        let code = if matches!(
-            err,
-            LedgerCommitError::Recovery(crate::CommitRecoveryError::UnsupportedFormat { .. })
-        ) {
-            DiagnosticCode::UnsupportedFormat
-        } else {
-            DiagnosticCode::LedgerRecovery
-        };
-        return Err(DiagnosticFailure::new(
-            code,
-            format!("protected ledger recovery: {err}"),
-        ));
-    }
+    let code = if matches!(
+        error,
+        LedgerCommitError::Recovery(crate::CommitRecoveryError::UnsupportedFormat { .. })
+    ) {
+        DiagnosticCode::UnsupportedFormat
+    } else {
+        DiagnosticCode::LedgerRecovery
+    };
     Err(DiagnosticFailure::new(
-        DiagnosticCode::StableCell,
-        "stable-cell ledger record is not readable",
+        code,
+        format!("protected ledger recovery: {error}"),
     ))
 }
 

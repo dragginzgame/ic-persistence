@@ -81,10 +81,10 @@ impl<E: Execute> Repository<E> {
         })
     }
 
-    pub(super) fn release_commit(&self) -> Result<InspectedRelease> {
+    pub(super) fn release_commit(&self) -> Result<(InspectedRelease, PackageEvidence)> {
         let release = self.inspect_release_commit(&self.git(&["rev-parse", "HEAD"])?)?;
-        self.verify_evidence(&release.selection, &release.commit, Final, Working)?;
-        Ok(release)
+        let evidence = self.verify_evidence(&release.selection, &release.commit, Final, Working)?;
+        Ok((release, evidence))
     }
 
     pub(super) fn qualify_release(&self) -> Result<()> {
@@ -115,7 +115,7 @@ impl<E: Execute> Repository<E> {
             current,
             "selected older release has no final qualification receipt; qualify that exact commit before recovery",
         )?;
-        let command = self.final_package_command()?;
+        let command = self.command_plan()?.final_package;
         self.run_command(&command)?;
         require(
             self.git(&["rev-parse", "HEAD"])? == commit

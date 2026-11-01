@@ -3,6 +3,18 @@
 Independent releases begin after the coordinated 0.58.1 release. Earlier history
 is retained once in the [shared historical ledger](../history.md#0581---2026-10-31).
 
+## [0.60.3] - Unreleased
+
+### 🧹 Cleanup
+
+- Validate checkpoint field limits and accumulate retained text in one traversal,
+  preserving error precedence, encoded bytes and canonical restoration.
+
+### ⬆️ Dependencies
+
+- Retain the selected Logging 0.23.4 patch and consume the compatible core
+  0.60.5 supplier; existing public behavior and durable formats are unchanged.
+
 ## [0.60.2] - 2026-11-01
 
 ### ⬆️ Dependencies

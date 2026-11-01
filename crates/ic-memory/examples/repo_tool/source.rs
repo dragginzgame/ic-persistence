@@ -149,14 +149,14 @@ impl<E: Execute> Repository<E> {
         let version = &selection.version;
         let group = self.release_group(Some(source))?;
         let finalizer = self.root.join(CHANGELOG_FINALIZER);
-        let paths = self.release_files(Some(source))?;
+        let paths = group.files();
         let mut surfaces = BTreeMap::new();
         for path in paths {
             let original = self.text(&path, Some(source))?;
             let expected = if path == "Cargo.lock" {
-                self.replace_lock_version(&original, previous, version)?
+                Self::replace_group_lock_version(&group, &original, previous, version)?
             } else if path == "Cargo.toml" {
-                self.project_catalog(&original, previous, version)?
+                self.project_group_catalog(&group, &original, previous, version)?
             } else if path.ends_with("/Cargo.toml") {
                 render_group_manifest(&original, previous, version, ManifestVersion::Package, &[])?
             } else if path == group.changelog
@@ -171,6 +171,11 @@ impl<E: Execute> Repository<E> {
             };
             surfaces.insert(path, ReleaseSurface { original, expected });
         }
+        // Do not retain this phase-local observation across helper execution.
+        require(
+            self.text(GROUP_POLICY, None)? == self.text(GROUP_POLICY, Some(source))?,
+            "release group policy changed",
+        )?;
         Ok(surfaces)
     }
 

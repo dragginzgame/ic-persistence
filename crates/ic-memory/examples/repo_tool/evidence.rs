@@ -50,8 +50,8 @@ pub(super) enum ArchiveLocation {
 }
 
 impl PackageEvidence {
-    // Keep the fixed receipt-field mapping beside its read projection. Callers
-    // carry complete evidence rather than positional arrays of package digests.
+    // Record the exact selected members as one archive map. Callers carry
+    // complete evidence rather than positional arrays of package digests.
     pub(super) fn record<E: Execute>(
         repo: &Repository<E>,
         validation: ValidationEvidence,

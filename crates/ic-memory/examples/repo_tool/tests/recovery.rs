@@ -416,7 +416,7 @@ fn interrupted_preparation_finishes_saved_candidate_without_revalidating() {
         if matches!(interruption, "lock" | "package") {
             fixture
                 .repo
-                .run_command(&fixture.repo.preparation_commands().unwrap()[0])
+                .run_command(&fixture.repo.command_plan().unwrap().preparation[0])
                 .unwrap();
         }
         if interruption == "package" {

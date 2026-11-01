@@ -42,14 +42,14 @@ impl Fixture {
     }
 
     pub(super) fn for_group(group: &str) -> Self {
-        let mut fixture = Self::new();
-        fixture.repo.group = group.to_owned();
-        fixture.selection.group = group.to_owned();
-        fixture.repo.exec.state.borrow_mut().git.group = group.to_owned();
-        fixture
+        Self::new_in_group(&env::temp_dir(), group)
     }
 
     pub(super) fn new_in(parent: &Path) -> Self {
+        Self::new_in_group(parent, "persistence")
+    }
+
+    fn new_in_group(parent: &Path, group: &str) -> Self {
         // Exclusive creation owns uniqueness, including across PID reuse.
         // Never reuse or remove an occupied path: it may hold failed evidence.
         let mut sequence = 0_u64;
@@ -117,7 +117,7 @@ impl Fixture {
             files: RefCell::new(FileEffects::default()),
             state: RefCell::new(State {
                 git: GitState {
-                    group: "persistence".to_owned(),
+                    group: group.to_owned(),
                     source,
                     ..GitState::default()
                 },
@@ -128,10 +128,10 @@ impl Fixture {
             repo: Repository {
                 root,
                 exec,
-                group: "persistence".to_owned(),
+                group: group.to_owned(),
             },
             selection: ReleaseSelection {
-                group: "persistence".to_owned(),
+                group: group.to_owned(),
                 kind: "minor".to_owned(),
                 previous: "0.12.3".to_owned(),
                 version: "0.13.0".to_owned(),
