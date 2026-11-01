@@ -28,8 +28,10 @@ same approach: mandatory local constraints first, task-specific references after
   sibling inspection needs no additional permission. Never edit another
   contributor's sibling working checkout in place.
 - Ordinary fixes authorize local implementation and focused checks. Leave staging,
-  commits, own release versions, tags and release execution to the user unless
-  delegated. A PR request includes its branch, scoped commits, branch push and PR.
+  commits, package release versions, tags and release execution to the user unless
+  delegated. Shared Tooling alone automatically prepares its local `VERSION`
+  with pending notes under the [next-version rules](rules/changelogs.md#automatic-next-version-selection).
+  A PR request includes its branch, scoped commits, branch push and PR.
   A release/ship/deploy request delegates the corresponding delivery workflow,
   including routine group/version/order choices under
   [delegated delivery](rules/contributions.md#delegated-delivery). Do not ask again
@@ -150,6 +152,18 @@ Owned application types must not derive or implement `CandidType`. Use `ic-wire`
 for owned RPC; keep unavoidable Candid in dedicated external-protocol boundary
 types, not our domain, state or RPC models. Read the [encoding contract](rules/engineering-details.md#ic-application-encoding)
 and [RPC budgets](rules/rpc-budgets.md) for codecs, bindings or protocol changes.
+
+## Wasm optimization
+
+Shared Tooling owns optimization selection and evidence rules; IC Tooling's
+`ic-build` owns reusable build/optimizer mechanics, recommended recipes and their
+qualification evidence. Consumers select qualified recipes against their product
+budgets. Wasm size comparisons report both the complete uncompressed module and
+its code-section size. Gzip/compressed size is not a Wasm size metric and must not
+appear in those summaries unless transport/compression measurement is explicitly
+requested. Read the [Wasm optimization contract](rules/engineering-details.md#wasm-optimization)
+before comparing Wasm sizes or changing deployment profiles, optimizer settings
+or performance matrices.
 
 ## Gzip encoding
 

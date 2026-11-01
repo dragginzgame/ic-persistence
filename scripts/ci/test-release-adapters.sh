@@ -624,6 +624,7 @@ mkdir -p "$FIXTURE/scripts/dev" "$FIXTURE/bin" \
 cp "$ROOT/scripts/ci/read-cargo-workspace-version.sh" \
     "$ROOT/scripts/ci/validate-release-inputs.pl" "$ROOT/scripts/ci/StableVersion.pm" "$FIXTURE/scripts/ci/"
 cp "$ROOT/scripts/dev/run-repo-tool.sh" "$FIXTURE/scripts/dev/"
+bash "$ROOT/scripts/ci/prepare-script-fixture.sh" "$ROOT" "$FIXTURE" scripts/ci/observe-cargo-release-bootstrap.sh
 cp "$ROOT/scripts/ci/read-persistence-packages.sh" "$FIXTURE/scripts/ci/"
 mkdir -p "$FIXTURE/crates/ic-memory/examples/repo_tool"
 cp "$ROOT/ci/cargo-release-groups.json" "$FIXTURE/ci/"
@@ -640,6 +641,7 @@ set -euo pipefail
 [[ "${CARGO_NET_OFFLINE-unset}" == "$CALLER_OFFLINE" ]] || exit 1
 exit_status="${EDITOR_STATUS:-0}"
 [[ "$exit_status" == 0 ]] || exit "$exit_status"
+[[ "${EDITOR_MUTATE_INPUT:-0}" != 1 ]] || printf '\n# changed during editor admission\n' >> Cargo.toml
 printf '%s\n' "$FIXTURE_RELEASE_EDITOR"
 STUB
 cd "$FIXTURE"
@@ -669,9 +671,6 @@ version = "0.12.3"
 [[package]]
 name = "ic-logging-stable"
 version = "0.12.3"
-[[package]]
-name = "other"
-version = "0.12.3"
 LOCK
 echo fixture > crates/ic-memory/README.md
 touch crates/ic-memory/src/lib.rs
@@ -697,10 +696,14 @@ cp Cargo.toml original-manifest
 cat > bin/cargo <<'STUB'
 #!/usr/bin/env bash
 set -euo pipefail
-if [[ "$1" == locate-project ]]; then
-    [[ "$RUSTUP_TOOLCHAIN" == "$FIXTURE_TOOLCHAIN" && "$CARGO_NET_OFFLINE" == true ]] || exit 1
-    [[ "$*" == 'locate-project --workspace --message-format plain --manifest-path Cargo.toml' ]] || exit 1
-    exec "$FIXTURE_REAL_CARGO" "$@"
+if [[ "$1" == metadata ]]; then
+    [[ "$RUSTUP_TOOLCHAIN" == "$FIXTURE_TOOLCHAIN" && "$CARGO_NET_OFFLINE" == true && "$RUSTUP_AUTO_INSTALL" == 0 ]] || exit 1
+    [[ "$*" == 'metadata --locked --no-deps --offline --format-version 1' ]] || exit 1
+    "$FIXTURE_REAL_CARGO" "$@" > metadata-output.json
+    # Keep the real workspace discovery, with a controlled target observation
+    # for the launcher's malformed-target refusal cases.
+    jq --arg target "$BOOTSTRAP_TARGET" '.target_directory=$target' metadata-output.json
+    exit 0
 fi
 [[ "$1" == +"$FIXTURE_TOOLCHAIN" ]] || exit 1
 [[ "$RUSTUP_AUTO_INSTALL" == 0 && "${CARGO_NET_OFFLINE-unset}" == "$CALLER_OFFLINE" ]] || exit 1
@@ -733,11 +736,7 @@ case "$2" in
             fi
             echo prepared >> preparation-events
         fi
-        ;;
-    metadata)
-        [[ "$*" == "+$FIXTURE_TOOLCHAIN metadata --locked --offline --no-deps --format-version 1" ]] || exit 1
-        echo metadata >> calls
-        echo '{"target_directory":"fixture"}'
+        [[ "${CACHE_MUTATE_INPUT:-0}" != 1 ]] || printf '\n# changed during cache preparation\n' >> Cargo.lock
         ;;
     run)
         [[ "${RELEASE_CACHE_PREPARE:-0}" == 0 ]] || exit 1
@@ -778,13 +777,8 @@ STUB
 cat > bin/yq <<'STUB'
 #!/usr/bin/env bash
 set -euo pipefail
-if [[ "$*" == '-p=json -r .target_directory' ]]; then
-    [[ "$(cat)" == '{"target_directory":"fixture"}' ]] || exit 1
-    printf '%s\n' "$BOOTSTRAP_TARGET"
-else
-    "$FIXTURE_TOML_YQ" "$@"
-    if [[ "${TOML_PARSER_FAILURE:-}" == "${!#}" ]]; then exit 23; fi
-fi
+"$FIXTURE_TOML_YQ" "$@"
+case "${!#}" in */"${TOML_PARSER_FAILURE:-no-failure}") exit 23 ;; esac
 STUB
 chmod +x bin/cargo bin/yq
 FIXTURE_REAL_CARGO="$(command -v cargo)"
@@ -885,8 +879,8 @@ for manifest in original-manifest expected-manifest; do
     cp split-lock Cargo.lock
     status=0
     bash scripts/dev/run-repo-tool.sh "$FIXTURE_TOOLCHAIN" version > split-lock.log 2>&1 || status=$?
-    [[ "$status" == 1 && ! -e "$BOOTSTRAP_TARGET/repo-tool-bootstrap" ]] || exit 1
-    grep -F 'release group lock versions differ' split-lock.log
+    [[ "$status" != 0 && ! -e "$BOOTSTRAP_TARGET/repo-tool-bootstrap" ]] || exit 1
+    grep -F 'group lock versions differ' split-lock.log
     cmp split-calls calls
     cmp "$manifest" Cargo.toml
     cmp split-lock Cargo.lock
@@ -897,7 +891,7 @@ cp original-manifest Cargo.toml
 "$FIXTURE_RELEASE_EDITOR" --max-input-bytes "$CARGO_RELEASE_METADATA_MAX_BYTES" lock metrics-lock 0.12.3 0.13.0 ic-logging-stable > prepared-lock
 cp prepared-lock Cargo.lock
 [[ "$(make --no-print-directory -s release-version 2> bootstrap.log)" == 0.12.3 ]] || exit 1
-printf '%s\n' metadata bootstrap-cache bootstrap >> saved-calls
+printf '%s\n' bootstrap-cache bootstrap >> saved-calls
 cmp saved-calls calls
 check_publication_environment
 check_release_cache_preparation
@@ -909,7 +903,7 @@ CACHE_STATUS=101 bash scripts/dev/run-repo-tool.sh "$FIXTURE_TOOLCHAIN" version 
 [[ "$status" == 101 ]] || exit 1
 grep -F 'simulated offline cache failure' bootstrap-cache-refusal.log
 grep -F 'Run make fetch-dependencies' bootstrap-cache-refusal.log
-printf '%s\n' metadata bootstrap-cache >> successful-calls
+printf '%s\n' bootstrap-cache >> successful-calls
 cmp successful-calls calls
 cmp original-manifest Cargo.toml
 cmp prepared-lock Cargo.lock
@@ -936,15 +930,13 @@ cp calls saved-editor-calls
 status=0
 EDITOR_STATUS=19 bash scripts/dev/run-repo-tool.sh "$FIXTURE_TOOLCHAIN" version > editor-refusal.log 2>&1 || status=$?
 [[ "$status" == 19 ]] || exit 1
-printf '%s\n' metadata >> saved-editor-calls
 cmp saved-editor-calls calls
 cmp original-manifest Cargo.toml
 cmp prepared-lock Cargo.lock
 # Plausible parser output never overrides its failed observation status.
 cp bin/yq bin/failed-yq
-printf '%s\n' 'if [[ "$*" == "-p=json -r .target_directory" ]]; then exit 23; fi' >> bin/failed-yq
+printf '%s\n' 'exit 23' >> bin/failed-yq
 cp calls failed-parser-calls
-printf '%s\n' metadata >> failed-parser-calls
 status=0
 YQ="$PWD/bin/failed-yq" bash scripts/dev/run-repo-tool.sh "$FIXTURE_TOOLCHAIN" version > failed-parser.log 2>&1 || status=$?
 [[ "$status" == 23 ]] || exit 1
@@ -982,6 +974,23 @@ MANIFEST
 [[ "$(make --no-print-directory -s release-version 2> formatted.log)" == 0.12.3 ]] || exit 1
 cmp formatted-manifest Cargo.toml
 cmp prepared-lock Cargo.lock
+# Derived versions alone cannot authenticate an observation after helpers.
+cp calls before-mutation-calls
+status=0
+EDITOR_MUTATE_INPUT=1 bash scripts/dev/run-repo-tool.sh "$FIXTURE_TOOLCHAIN" version > mutation-editor.log 2>&1 || status=$?
+[[ "$status" != 0 ]] || exit 1
+grep -F 'bootstrap inputs changed during helper dispatch' mutation-editor.log
+cmp before-mutation-calls calls
+cp Cargo.toml mutated-manifest.retained
+cp formatted-manifest Cargo.toml
+status=0
+CACHE_MUTATE_INPUT=1 bash scripts/dev/run-repo-tool.sh "$FIXTURE_TOOLCHAIN" version > mutation-cache.log 2>&1 || status=$?
+[[ "$status" != 0 ]] || exit 1
+grep -F 'bootstrap inputs changed during helper dispatch' mutation-cache.log
+printf '%s\n' bootstrap-cache >> before-mutation-calls
+cmp before-mutation-calls calls
+cp Cargo.lock mutated-lock.retained
+cp prepared-lock Cargo.lock
 # A parser emitting plausible facts before failing cannot start Cargo preparation.
 for input in Cargo.toml Cargo.lock crates/ic-memory/Cargo.toml crates/ic-storage/Cargo.toml crates/ic-metrics-stable/Cargo.toml crates/ic-logging-stable/Cargo.toml; do
     cp calls saved-parser-calls

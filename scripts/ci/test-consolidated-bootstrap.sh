@@ -17,6 +17,7 @@ cp -R releases "$fixture/"
 cp -R crates "$fixture/"
 mkdir -p "$fixture/scripts/dev" "$fixture/scripts/ci" "$fixture/ci"
 cp scripts/dev/run-repo-tool.sh "$fixture/scripts/dev/"
+bash scripts/ci/prepare-script-fixture.sh "$root" "$fixture" scripts/ci/observe-cargo-release-bootstrap.sh
 cp scripts/ci/read-persistence-packages.sh scripts/ci/read-cargo-workspace-version.sh scripts/ci/validate-release-inputs.pl scripts/ci/StableVersion.pm "$fixture/scripts/ci/"
 cp ci/release-tools.env ci/cargo-release-groups.json "$fixture/ci/"
 cat > "$fixture/scripts/dev/install-rust-tools.sh" <<'STUB'

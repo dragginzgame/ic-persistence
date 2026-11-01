@@ -9,13 +9,16 @@ local baseline. Future policy changes require reviewed snapshot adoption.
 
 ## Current source selection
 
-IC Persistence selects committed Shared Tooling VERSION 0.27.21 at
-`143a9abb9ae81feae9400ff3844b03b1ddfdd75a`, with 79 explicit roots and 133 payloads.
-This commit carries the 0.27.22 catalog/comment rules while its committed VERSION
-remains 0.27.21. Groups appear once as contiguous dependency blocks with separate
-changelog comments. Lint choices retain their levels with shared-scope explanations.
-The classifier entrypoint was added from a clean isolated checkout of the same
-committed revision. Dirty sibling source is excluded.
+IC Persistence selects committed Shared Tooling VERSION 0.27.24 at
+`fba200f649d6f1e09c0cb52f04b8c1493c5b0060`, with 80 explicit roots and 134 payloads.
+The source-only grouped bootstrap observer replaces the launcher's parallel
+manifest/lock parser. The launcher compares complete metadata byte identities
+again after tool admission and cache preparation, and verifies copied originals
+before using the managed editor in retained scratch. Its original source and
+receipt admission, compiler selection and explicit offline behavior remain owned
+by the native adapter. Normal release planning still requires a coherent graph.
+The snapshot was exported from the reviewed committed producer branch; dirty
+sibling source is excluded. Native acceptance is distinct from source selection.
 The canonical impact preview and refresh retain the reviewed selection. Source
 verification compares every payload and mode with that independent commit.
 
@@ -56,7 +59,8 @@ The library lock retains Build/Host 0.73.5 while the selected Build editor remai
 0.73.3. The direct Build requirement is 0.73.5 for composable archive qualification.
 The library lock selects Testkit Native 0.76.1; the CLI remains 0.76.0 with the
 unchanged server 16.1.0 selection. Common tool pins, local
-package versions and the reviewed Shared snapshot remain unchanged.
+package versions remain unchanged. The Shared source selection above separately
+owns the bootstrap observer adoption.
 
 The library [dependency catalog](../Cargo.toml) owns direct package requirements
 and feature selections; its [lockfile](../Cargo.lock) owns resolved identities.

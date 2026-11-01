@@ -26,11 +26,11 @@ gates, optimizer variants and native macOS were not replayed for this API batch.
 Incoming dependency lock edits remain outside the API change; no dependency
 resolution or own-package release was performed.
 
-The ten-item complexity follow-up is implemented locally for eight items; the
-shared bootstrap observer and native group-policy projection are delivered for
-review in [Shared Tooling PR #336](https://github.com/dragginzgame/shared-tooling/pull/336).
-Their local removal awaits reviewed export/adoption; vendored files and normal
-sibling checkouts remain unchanged.
+The shared grouped bootstrap observer is adopted from
+[Shared Tooling PR #336](https://github.com/dragginzgame/shared-tooling/pull/336).
+The launcher uses its source-only observations and rechecks metadata after tool
+admission and cache preparation; native source/receipt authority and retained
+scratch recovery remain consumer-owned.
 
 Build 0.73.5 now owns archive extraction, frozen external selection, exact
 extracted graph admission and final source/archive byte/mode custody. The native
@@ -70,12 +70,8 @@ other installed suites, full release gates and native macOS were not replayed.
 Local evidence, including earlier failed attempts, is retained under
 `target/complexity-followup-2026-11-01/`.
 
-The Shared contribution passed its focused policy and six interrupted-state
-fixture, actual Cargo resolved admission for all three groups, selected ShellCheck,
-links and version consistency. An isolated launcher prototype passed Persistence's
-real six-state scratch bootstrap fixture with its prepared editor and unchanged
-source hashes. The maintained launcher is unchanged. Hosted upstream CI remains
-separate evidence; no optional matrix is awaited or implied to have passed.
+The real six-state bootstrap fixture and caller cache/error/drift checks passed
+locally on Linux. Hosted native qualification remains separate acceptance.
 
 The preceding Testkit/Wire delivery is published on GitHub and crates.io:
 Persistence 0.60.7, Metrics Stable 0.61.5 and Logging Stable 0.60.5. Each group
@@ -88,6 +84,7 @@ proof remains in its original `target/delivery/` and audit directories.
 Validation reuse remains a separate investigation in
 [Shared #334](https://github.com/dragginzgame/shared-tooling/issues/334) and
 [the audit](../audits/2026-11-01-release-validation-reuse.md); no gate is skipped.
-The reviewed Shared snapshot remains
-`143a9abb9ae81feae9400ff3844b03b1ddfdd75a` (recorded VERSION 0.27.21),
-with 79 roots and 133 payloads. No dirty sibling rules are adopted.
+The selected Shared snapshot is
+`fba200f649d6f1e09c0cb52f04b8c1493c5b0060` (VERSION 0.27.24),
+with 80 roots and 134 payloads. Snapshot files change only through the exporter;
+no dirty sibling rules are adopted.
