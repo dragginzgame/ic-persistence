@@ -304,6 +304,12 @@ product, release and recovery obligations remain binding when applicable.
   Improve that owner when shared support is missing; do not establish competing
   general-purpose optimizer policies in consumers. Existing local adapters stay
   explicit until a qualified shared replacement is available.
+- A dependency owner's required target/backend flags must be explicit inputs to
+  the consuming build recipe, not assumed to propagate from that dependency's
+  Cargo configuration. The build owner must compose existing flags, resolve
+  environment/config precedence, reject contradictory selections and record the
+  effective command. Qualify actual caller wiring and bind those settings to
+  artifact provenance/cache identity; recommendation text alone is not adoption.
 - Consumers own deployment limits, representative workloads, required Wasm
   features, interface/upgrade compatibility and release admission. They select
   a qualified recipe and record product-specific deviations with their reason

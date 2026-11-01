@@ -10,7 +10,7 @@ local baseline. Future policy changes require reviewed snapshot adoption.
 ## Current source selection
 
 IC Persistence selects committed Shared Tooling VERSION 0.27.24 at
-`fba200f649d6f1e09c0cb52f04b8c1493c5b0060`, with 80 explicit roots and 134 payloads.
+`23d29abf3182abe480bd2b57635272c1339ad770`, with 80 explicit roots and 134 payloads.
 The source-only grouped bootstrap observer replaces the launcher's parallel
 manifest/lock parser. The launcher compares complete metadata byte identities
 again after tool admission and cache preparation, and verifies copied originals
@@ -404,3 +404,29 @@ The consumer opts into the selected revision’s classifier through the exporter
 [The consumer contract](ci-selection.md) and exact prose allowlist own CI dispatch;
 unknown and code changes keep full native qualification. Documentation checks
 remain separate from native evidence, and release gates are unchanged.
+
+## Destination dependency adoption
+
+`make check-dependency-adoption` is a focused, read-only candidate check before
+planning downstream versions or building release artifacts. Prepare proposed
+supplier selections in an isolated checkout with both existing lockfiles, using
+source/archive qualification for unpublished suppliers. Record the required
+runtime/public-type/security/minimum-capability alignment and its introducing
+path; classify other refreshes as optional with a reason. An available compatible
+patch does not require raising every consumer minimum or republishing a group.
+
+The caller explicitly selects the Storage/Metrics Stable/Logging Stable Wasm
+normal graph, with no extra features, and the independent native runtime qualifier
+normal graph at the selected compiler's host target. It admits both locked metadata
+graphs and singleton/boundary policy before either selected Clippy command. Host,
+build and dev identities outside these runtime/public-type contracts are not a
+whole-lock duplicate ban. Evidence is retained on failure, and lock bytes are
+checked before compilation and at completion. The independent qualifier exchanges
+Platform/Wire types and Wasm bytes; it has no normal local Memory dependency.
+
+Conflicts must be repaired supplier-first in the proposed graph, preserving the
+singleton and exact member catalog versions. The check prints representative
+introducing paths for every distinct conflicting identity. These are candidate
+graph and public API compilation results, separate from native/Wasm installed
+qualification, final archives and actual registry availability before publication.
+The existing full gates and release-group decisions remain authoritative.
