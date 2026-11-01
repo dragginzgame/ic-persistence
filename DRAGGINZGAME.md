@@ -222,6 +222,10 @@ is an index. Require explicit group selection for releases and publication.
 Show every member's version and path in root `Cargo.toml` dependency declarations.
 Group them once, with short titles and separate changelog comments, under the
 [workspace versioning rules](rules/rust-workspaces.md#coordinated-versions-and-workspace-boundaries).
+Dependency adoption must distinguish required compatibility/security changes from
+optional refreshes and check the destination graph before planning downstream
+releases. A newer external patch alone does not require republishing consumers.
+Follow the [adoption planning contract](docs/cargo-graph-checks.md#dependency-adoption-planning).
 Use root-owned dependency selections, reviewed shared tooling, explicit setup
 and the product's declared compiler/host requirements. External
 IC dependencies go through `ic-platform`; its canonical `ic-platform-types`

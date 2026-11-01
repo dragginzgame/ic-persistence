@@ -7,6 +7,11 @@ coordinated 0.58.1 cutoff; [earlier shared history](../history.md) is preserved 
 
 ### 🔧 Changed
 
+- Add an explicit destination-adoption check for the Wasm library and independent
+  native qualifier. Admit both locked graphs before selected API compilation;
+  preserve source locks, artifact work and independent release decisions.
+  [Shared #335](https://github.com/dragginzgame/shared-tooling/issues/335).
+
 - Use Shared's source-only grouped Cargo observer for interrupted launcher
   startup. Recheck metadata after tool/cache helpers and verify copied inputs
   before scratch rendering, preserving native source/receipt authorization.

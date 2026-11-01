@@ -339,6 +339,9 @@ jobs:
           shasum -a 256 Cargo.lock testing/runtime-qualification/Cargo.lock
           rustc -Vv
           uname -sm
+      - name: Admit both destination graphs before artifact qualification
+        if: ${{ needs.change-scope.outputs.scope != 'docs' }}
+        run: make check-dependency-adoption
       - name: Qualify original and optimized Wasm, installed IO and upgrade rollback
         if: ${{ needs.change-scope.outputs.scope != 'docs' }}
         shell: bash

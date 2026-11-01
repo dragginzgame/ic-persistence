@@ -85,6 +85,6 @@ Validation reuse remains a separate investigation in
 [Shared #334](https://github.com/dragginzgame/shared-tooling/issues/334) and
 [the audit](../audits/2026-11-01-release-validation-reuse.md); no gate is skipped.
 The selected Shared snapshot is
-`fba200f649d6f1e09c0cb52f04b8c1493c5b0060` (VERSION 0.27.24),
+`23d29abf3182abe480bd2b57635272c1339ad770` (VERSION 0.27.24),
 with 80 roots and 134 payloads. Snapshot files change only through the exporter;
 no dirty sibling rules are adopted.
