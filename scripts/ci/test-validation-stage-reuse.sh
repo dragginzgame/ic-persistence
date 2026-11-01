@@ -27,8 +27,13 @@ for group in persistence metrics-stable logging-stable; do
     bash scripts/ci/cargo-release-group.sh plan "$group" > "$fixture/$group.plan.json"
     perl scripts/ci/validation-input-checkpoint.pl "$PWD" '' "$fixture/$group.inputs.json" \
         scripts/ci/verify-file-checksum.sh "${inputs[@]}"
+    status=0
     SHELLCHECK_BIN="$shellcheck_bin" VALIDATION_STAGE_STATE="$fixture/state" RELEASE_GROUP="$group" \
-        make -j4 --no-print-directory check-shellcheck-stage > "$fixture/$group.log" 2>&1
+        make -j4 --no-print-directory check-shellcheck-stage > "$fixture/$group.log" 2>&1 || status=$?
+    if [[ "$status" != 0 ]]; then
+        cat "$fixture/$group.log" >&2 || :
+        exit "$status"
+    fi
     perl scripts/ci/validation-input-checkpoint.pl "$PWD" "$fixture/$group.inputs.json" "$fixture/$group.after.json" \
         scripts/ci/verify-file-checksum.sh
     if [[ "$group" == logging-stable ]]; then continue; fi

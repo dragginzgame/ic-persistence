@@ -421,6 +421,9 @@ The caller freshly admits the selected group policy and locked metadata, records
 the current Git HEAD/index and metadata-byte projection identity, and rechecks
 them after the stage. The stage inventory includes the actual shell scripts,
 environment files, hook, Makefile and selected ShellCheck/jq executable bytes.
+The fixed per-input/log allowance is 64 MiB, covering the pinned ShellCheck
+0.11.0 macOS binaries (61,551,911 bytes on ARM64 and 35,176,792 on Intel).
+Larger inputs still refuse; tools are hashed in full rather than truncated.
 Shared also binds its runner, interpreter/modules, command, observer, host and
 bounded environment. ShellCheck explicitly uses `--norc --shell=bash`; home
 configuration cannot silently change the selected contract. Actionlint always

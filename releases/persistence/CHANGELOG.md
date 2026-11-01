@@ -5,6 +5,13 @@ coordinated 0.58.1 cutoff; [earlier shared history](../history.md) is preserved 
 
 ## [0.61.1] - Unreleased
 
+### 🩹 Fixed
+
+- Admit the full native macOS ShellCheck binaries within a fixed 64 MiB
+  validation-input allowance, retaining byte-bound proof reuse. Surface failed
+  group qualification logs without hiding the primary exit status.
+  [Shared #334 — Validation proof reuse](https://github.com/dragginzgame/shared-tooling/issues/334).
+
 ### 🔧 Changed
 
 - Offer exact-input reuse for the real ShellCheck tooling stage with fresh group
