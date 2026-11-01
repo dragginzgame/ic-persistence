@@ -23,9 +23,11 @@ source_id="${source_id%% *}"
 shellcheck_bin="${SHELLCHECK_BIN:-$(command -v shellcheck)}"
 jq -cnS --arg path "$PATH" --arg home "$HOME" --arg shellcheck "$shellcheck_bin" \
     '{PATH:$path,HOME:$home,LC_ALL:"C",SHELLCHECK_BIN:$shellcheck}' > "$record/environment.json"
+# ShellCheck 0.11.0's native macOS payloads exceed 32 MiB (ARM64: 61,551,911
+# bytes; Intel: 35,176,792). Admit their complete bytes within a fixed 64 MiB cap.
 perl scripts/ci/run-validation-stage.pl --state "$VALIDATION_STAGE_STATE" --stage shellcheck \
     --contract persistence-shellcheck/1 --source "$source_id" --group "$RELEASE_GROUP" \
-    --observe scripts/ci/observe-shellcheck-stage.sh --environment "$record/environment.json" --max-bytes 33554432 \
+    --observe scripts/ci/observe-shellcheck-stage.sh --environment "$record/environment.json" --max-bytes 67108864 \
     -- bash scripts/ci/qualify-shellcheck-stage.sh
 perl scripts/ci/validation-input-checkpoint.pl "$root" "$record/inputs.json" "$record/after.json" scripts/ci/verify-file-checksum.sh
 git ls-files --stage -z | shasum -a 256 > "$record/index.after"

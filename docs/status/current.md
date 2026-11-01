@@ -83,6 +83,12 @@ proof remains in its original `target/delivery/` and audit directories.
 
 The opt-in exact-input ShellCheck stage and maintained three-group qualification
 are prepared for [Shared #334](https://github.com/dragginzgame/shared-tooling/issues/334).
+The merged macOS qualification exposed a caller allowance smaller than both
+native ShellCheck payloads. The repair admits complete tool bytes within 64 MiB
+and prints failed group logs while preserving the primary status. Retained
+failure evidence: GitHub run 41314835837; local repair evidence:
+`/tmp/persistence-334-large-tool/` and `/tmp/persistence-334-three-groups.log`.
+Corrected native macOS acceptance remains pending; do not close #334 yet.
 The actual caller executed once and reused twice locally around canonical group
 metadata projections. Native CI remains acceptance; complete gates and native
 receipts retain their existing behavior. See [adoption](../shared-tooling-adoption.md#exact-input-shellcheck-reuse)
