@@ -3,6 +3,15 @@
 Covers `ic-memory` and `ic-storage`. Independent group releases begin after the
 coordinated 0.58.1 cutoff; [earlier shared history](../history.md) is preserved once.
 
+## [0.60.4] - Unreleased
+
+### ⬆️ Dependencies
+
+- Adopt Wire 0.13.2 in both maintained graphs, Build/Host/editor 0.73.3 and
+  Testkit Native/CLI 0.75.2. Preserve codec bytes, stable-memory helpers and the
+  PocketIC 16.1.0 pairing; no retained-data migration is needed.
+  [Details](0.60.md).
+
 ## [0.60.3] - 2026-10-31
 
 ### 🩹 Fixed

@@ -34,11 +34,14 @@ formatter pin or maintenance activation changed.
 
 The library lock selects Platform 0.15.3 and Types 0.15.1, preserving the
 incoming selections. The independent runtime graph selects Platform 0.15.3.
-Stable-structures 0.7.2 and PocketIC 16.1.0 remain unchanged. Testkit Native 0.75.0
+Stable-structures 0.7.2 and PocketIC 16.1.0 remain unchanged. Testkit Native 0.75.2
 now shares the current Platform family; the native-only Platform 0.13 copy leaves
 the library lock. Production Wasm retains one Platform runtime owner.
 
-Both maintained catalogs select Wire 0.13.0. Metrics 0.24.1 preserves default
+Both maintained catalogs select Wire 0.13.2 and the library graph selects
+Testkit Native 0.75.2; installed qualification selects Testkit CLI 0.75.2.
+These compatible patches preserve codec bytes, stable-memory helpers and the
+PocketIC 16.1.0 pairing. Metrics 0.24.1 preserves default
 native metadata and now shares that Wire identity, removing the older Wire/Derive
 0.12 providers. Native schemas and the durable codec use one Wire provider;
 production Wasm likewise retains one core Wire 0.13 provider. Wire endpoint and
@@ -46,8 +49,8 @@ platform-types integration remain unselected. Arithmetic, codec bytes, bounds
 and restoration contracts are unchanged. The library lock's incoming Logging
 0.23.3 selection is adopted.
 
-Build/Host libraries and the selected Build editor use 0.73.2; Testkit Native/CLI
-use 0.75.0 with the unchanged server 16.1.0 selection. Common tool pins, local
+Build/Host libraries and the selected Build editor use 0.73.3; Testkit Native/CLI
+use 0.75.2 with the unchanged server 16.1.0 selection. Common tool pins, local
 package versions and the reviewed Shared snapshot remain unchanged.
 
 The library [dependency catalog](../Cargo.toml) owns direct package requirements

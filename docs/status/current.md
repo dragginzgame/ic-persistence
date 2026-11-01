@@ -1,13 +1,27 @@
 # Current handoff
 
+Pending compatible adoption: Wire 0.13.2 in both maintained graphs,
+Build/Host/editor 0.73.3 and Testkit Native/CLI 0.75.2. Requirements and separate
+tool pins are aligned. Publication identities below still describe the completed
+earlier delivery. The authorized deployment selects Persistence 0.60.4, Metrics
+Stable 0.61.2 and Logging Stable 0.60.2, in supplier-first order. All 72
+release-helper tests and 11 native-helper tests pass, along with actual-editor
+bootstrap fixtures (substituted release effects), Rust 1.91 helper compilation,
+production graph, pins, formatting and docs checks. Editor and Testkit offline
+admission pass; a managed server startup/environment/shutdown smoke test passes.
+The first setup wait and sandbox loopback refusal remain recorded under
+`target/delivery/upstream-issues/`, alongside successful retry logs. Earlier full
+hosted evidence applies to its recorded source, not this pending batch.
+
 Sibling adoption and registry delivery are complete: Memory/Storage 0.60.3,
 Metrics Stable 0.61.1 and Logging Stable 0.60.1. Each group passed its standard
 release gate; the published archive checksums match the qualified receipts.
 Independent group versions, ledgers, tags, receipts and recovery are active.
 
 Platform 0.15.3, Types 0.15.1, Metrics 0.24.1, Logging 0.23.3 and
-Build/Host/editor 0.73.2 are selected. Wire 0.13.0, Testkit Native/CLI 0.75.0,
-stable-structures 0.7.2 and PocketIC 16.1.0 are unchanged. Both maintained
+Build/Host/editor 0.73.3 are selected. Wire 0.13.2 and Testkit Native/CLI 0.75.2
+replace their prior patch selections. Stable-structures 0.7.2 and PocketIC 16.1.0
+are unchanged. Both maintained
 Platform graphs use the selected patches. Stored formats and allocation custody
 are unchanged.
 
