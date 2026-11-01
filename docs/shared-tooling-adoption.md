@@ -10,7 +10,7 @@ local baseline. Future policy changes require reviewed snapshot adoption.
 ## Current source selection
 
 IC Persistence selects committed Shared Tooling VERSION 0.27.24 at
-`23d29abf3182abe480bd2b57635272c1339ad770`, with 80 explicit roots and 134 payloads.
+`9275bf0de39ed941d81c47bab97eef7f6fc38df2`, with 81 explicit roots and 136 payloads.
 The source-only grouped bootstrap observer replaces the launcher's parallel
 manifest/lock parser. The launcher compares complete metadata byte identities
 again after tool admission and cache preparation, and verifies copied originals
@@ -404,6 +404,44 @@ The consumer opts into the selected revision’s classifier through the exporter
 [The consumer contract](ci-selection.md) and exact prose allowlist own CI dispatch;
 unknown and code changes keep full native qualification. Documentation checks
 remain separate from native evidence, and release gates are unchanged.
+
+## Exact-input ShellCheck reuse
+
+`make lint-tooling` retains Actionlint and ShellCheck coverage. The named
+`make check-shellcheck-stage` runs the ShellCheck portion ordinarily. To opt in to
+retained exact-input proofs, supply an exclusive trusted private directory and an
+explicit release group, for example:
+
+```bash
+VALIDATION_STAGE_STATE=/absolute/private/stage-state RELEASE_GROUP=persistence \
+  make check-shellcheck-stage
+```
+
+The caller freshly admits the selected group policy and locked metadata, records
+the current Git HEAD/index and metadata-byte projection identity, and rechecks
+them after the stage. The stage inventory includes the actual shell scripts,
+environment files, hook, Makefile and selected ShellCheck/jq executable bytes.
+Shared also binds its runner, interpreter/modules, command, observer, host and
+bounded environment. ShellCheck explicitly uses `--norc --shell=bash`; home
+configuration cannot silently change the selected contract. Actionlint always
+executes separately. New inventory entries or changed bytes/tools/configuration
+force execution; unknown, missing or failed evidence cannot supply a passing proof.
+
+Each invocation retains a new admission referencing the original immutable
+execution and logs. Source projection identities are consumer observations, not
+release authority or rebound native gate receipts. No Cargo compilation stage is
+reused, and no Cargo version projection is accepted by the stage executor.
+Existing full release gates, archives, source/intent/receipt authorization and
+registry provenance remain unchanged.
+
+`make test-validation-stage-reuse` qualifies the actual Make caller and ShellCheck
+in a retained source copy. It admits all three groups, uses the canonical editor
+between groups, preserves unrelated versions and the original checkout/index,
+and requires one execution plus two fresh admissions sharing the original proof.
+Native CI runs this focused qualification on Linux and both macOS architectures.
+The local Linux run measured 7.77 s for execution and 0.19 s for each reuse
+admission. These are stage measurements, not a claimed reduction of the 11.6-minute
+full gates in the earlier investigation.
 
 ## Destination dependency adoption
 

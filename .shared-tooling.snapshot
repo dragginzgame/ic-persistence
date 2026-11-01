@@ -2,7 +2,7 @@
 # version	0.27.24
 format	1
 source	https://github.com/dragginzgame/shared-tooling
-revision	23d29abf3182abe480bd2b57635272c1339ad770
+revision	9275bf0de39ed941d81c47bab97eef7f6fc38df2
 # entrypoint	DRAGGINZGAME.md
 # entrypoint	rules/contributions.md
 # entrypoint	rules/changelogs.md
@@ -83,6 +83,7 @@ revision	23d29abf3182abe480bd2b57635272c1339ad770
 # entrypoint	scripts/ci/cargo-release-group.sh
 # entrypoint	scripts/ci/classify-ci-change.pl
 # entrypoint	scripts/ci/observe-cargo-release-bootstrap.sh
+# entrypoint	scripts/ci/run-validation-stage.pl
 file	ffbdc603e8d989d9a3b9d0d745089a3e6bbc73c2f9a78c6c3360872424eaec79	-	DRAGGINZGAME.md
 file	6cbec75d346a06e90e3fc20a774aba7e735988ba7ef48c629166c687ccef6023	-	rules/contributions.md
 file	81921b5057cf9e48bbc332d616371709df471db7ef4303339a13b81fc58c49e8	-	rules/changelogs.md
@@ -113,7 +114,7 @@ file	52628e3c08d8c1ac8e258d34ea102daa81253fe78448d5afe406b52e247610d3	-	audits/f
 file	ffdca09602c44c8aff8fc2a17588b20eb6a56e2e71fb6d42ad75087fdd65819b	-	audits/complexity-and-technical-debt.md
 file	1b64cf2ba0393ab329ec29eb05a696d47ef5933f5ab9bff6e1fe4a7e7b294075	-	audits/module-surface-hardening.md
 file	090d05318e8114ea3e3ba789620a8f3ac638d43b2aad2f4e90a69e69b6d1f6f8	-	audits/module-cleanup.md
-file	a00be17bc206b7982687ad176d1cd458bfcdcc839e066b0f18ad3cd9c7d3df05	-	docs/releases.md
+file	fc75ab400c3b083d0b756b5e4066d5027bdac37a23ac9ddcef8027d7e10bf96c	-	docs/releases.md
 file	ffdcce5cf9c3871d45a6a7da24b38851ffd233729faacea4c3d1a5cc4305beac	x	scripts/ci/run-release.sh
 file	07ff21bc90ad9d9882be78d38af9f659d2e13d1a1e5e5208ed540f93bcfcdfaf	-	scripts/ci/release-pr.sh
 file	9e32385247296ce95d2b15b1290c64e6b6dff15716c1c139f21ab5e5128f4be3	x	scripts/ci/check-make-execution.sh
@@ -163,6 +164,7 @@ file	f3ccdd33f1322c6069daedf66669b3d4bac267476f80725d7031c741f20cb278	-	scripts/
 file	9fd250f349e3d6d297b9950a526b44dd586e3fd06ec2ca0a607e583af59905f3	-	scripts/ci/cargo-release-group.sh
 file	fbc7073fccaa24936e45382690c96ba6fbd72ec4e3350fae0098fb281f0ed772	-	scripts/ci/classify-ci-change.pl
 file	9157b3125c0c368547edb43f2f06f0015cc400bc709aa64cb84ba97b7ecd95c7	x	scripts/ci/observe-cargo-release-bootstrap.sh
+file	42bf4d5ababbf964607962d8ef5ae9d87a615f234533ded80eb53ac1d367f3b4	x	scripts/ci/run-validation-stage.pl
 file	36f36552df36ea6e082f1fd1f14661d40b281ea01294ffda2eb6c6ec91bc6907	x	scripts/ci/verify-file-checksum.sh
 file	9495336bbafd7a82d7446246c85571e5ccb5f17674ad92c83f008275f11c1201	x	scripts/ci/verify-shared-tooling-snapshot.sh
 file	401cda682ec95d115bab30f49adad7bb4f631560a07332bc542bc35168d56299	-	rules/engineering-details.md
@@ -170,6 +172,7 @@ file	e3aed908dd9b08bf93255328bb056bed57298dab39944e3726aad2726548e653	-	rules/rp
 file	c96e7f919c1f0b88155316f79567438fd5e1fc0c07a31b308170dbc8adf91b11	-	docs/node-tools.md
 file	b19096b9a5cbf7b27df3438bfde431c5053e9e6c64dda7dd35e9d24083349c16	-	docs/tool-catalog-bindings.md
 file	8c0067fd398a916c7ad3d6cd5c69f886d9c250f0b0a02916467eea38da46ae09	-	docs/cargo-publication.md
+file	8c04a25b1cec223ca7e012be78c39ca448bb4f6fd7f283fb73ca4e5fd2b8308c	-	docs/release-validation-reuse.md
 file	399f56ecf91c85defdca16c4b6f095bd99e9c2c89116edadd594ae8a88892133	-	scripts/ci/dependency-pins.jq
 file	7f8a58cc55f1cea0546b39bf97b64fee0a0a0e7fe2aaf31712c158cc43b6320c	-	docs/rust-toolchains.md
 file	9aa52699f4f7f8069cddd6b6ec295afc7a781e48b09bf104d2fff8f262a4720d	-	scripts/distribution/maintenance-files.txt
