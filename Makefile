@@ -116,6 +116,10 @@ check-pins:
 	+RUSTUP_TOOLCHAIN=$(VALIDATION_TOOLCHAIN) RUSTUP_AUTO_INSTALL=0 CARGO_NET_OFFLINE=true bash scripts/ci/check-dependency-pins.sh --cargo-inheritance
 
 # Product policy stays here; Shared observes the locked normal/build graph.
+.PHONY: check-dependency-adoption
+check-dependency-adoption:
+	+bash scripts/ci/check-dependency-adoption.sh $(VALIDATION_TOOLCHAIN)
+
 check-production-graph:
 	+@substrate="$$(cargo +$(VALIDATION_TOOLCHAIN) pkgid --locked --offline -p ic-stable-structures)" && \
 	  [ "$$substrate" = 'registry+https://github.com/rust-lang/crates.io-index#ic-stable-structures@0.7.2' ] || \
@@ -146,6 +150,7 @@ test-release-adapters:
 	bash scripts/ci/test-release-group-plans.sh
 	bash scripts/ci/test-release-adapters.sh
 	bash scripts/ci/test-consolidated-bootstrap.sh
+	bash scripts/ci/test-dependency-adoption.sh
 
 validation-compilers-check:
 	bash scripts/ci/check-validation-compilers.sh $(VALIDATION_TOOLCHAIN)

@@ -442,3 +442,29 @@ Native CI runs this focused qualification on Linux and both macOS architectures.
 The local Linux run measured 7.77 s for execution and 0.19 s for each reuse
 admission. These are stage measurements, not a claimed reduction of the 11.6-minute
 full gates in the earlier investigation.
+
+## Destination dependency adoption
+
+`make check-dependency-adoption` is a focused, read-only candidate check before
+planning downstream versions or building release artifacts. Prepare proposed
+supplier selections in an isolated checkout with both existing lockfiles, using
+source/archive qualification for unpublished suppliers. Record the required
+runtime/public-type/security/minimum-capability alignment and its introducing
+path; classify other refreshes as optional with a reason. An available compatible
+patch does not require raising every consumer minimum or republishing a group.
+
+The caller explicitly selects the Storage/Metrics Stable/Logging Stable Wasm
+normal graph, with no extra features, and the independent native runtime qualifier
+normal graph at the selected compiler's host target. It admits both locked metadata
+graphs and singleton/boundary policy before either selected Clippy command. Host,
+build and dev identities outside these runtime/public-type contracts are not a
+whole-lock duplicate ban. Evidence is retained on failure, and lock bytes are
+checked before compilation and at completion. The independent qualifier exchanges
+Platform/Wire types and Wasm bytes; it has no normal local Memory dependency.
+
+Conflicts must be repaired supplier-first in the proposed graph, preserving the
+singleton and exact member catalog versions. The check prints representative
+introducing paths for every distinct conflicting identity. These are candidate
+graph and public API compilation results, separate from native/Wasm installed
+qualification, final archives and actual registry availability before publication.
+The existing full gates and release-group decisions remain authoritative.
