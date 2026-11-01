@@ -10,6 +10,11 @@ coordinated 0.58.1 cutoff; [earlier shared history](../history.md) is preserved 
 - Qualify locked Wire 0.14.1 and adopt Testkit Native/qualification CLI 0.78.0.
   Preserve encoded bytes, limits, Platform 0.17 and server 16.1.0. [Details](0.62.md).
 
+### 🧪 Testing
+
+- Seed every declared group's detail metadata in release fixtures, so adapter
+  detail-note finalization exercises the same owned file set as live releases.
+
 ## [0.62.0] - 2026-11-01
 
 ### ⚠️ Breaking

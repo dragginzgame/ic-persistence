@@ -35,6 +35,7 @@ const FIXTURE_PACKAGES: [(&str, &[&str]); 4] = [
     ("ic-logging-stable", &[]),
 ];
 pub(super) const PACKAGE: &str = "[package]\nname = \"ic-memory\"\nversion = \"0.12.3\"\n";
+const DETAIL_NOTES: &str = "# Detail\n\n## [0.13.0]\n\nFixture changes.\n";
 
 pub(super) fn fixture_manifest() -> String {
     let members = FIXTURE_PACKAGES.map(|(name, _)| format!("crates/{name}"));
@@ -128,7 +129,7 @@ impl Fixture {
             ("source.rs".to_owned(), "// committed source\n".to_owned()),
             (
                 "releases/persistence/0.13.md".to_owned(),
-                "# Detail\n\n## [0.13.0]\n\nFixture changes.\n".to_owned(),
+                DETAIL_NOTES.to_owned(),
             ),
         ]);
         Self::group_sources(&mut source);
@@ -205,6 +206,11 @@ impl Fixture {
         for group in policy["groups"].as_array_mut().unwrap() {
             if group["name"] == "persistence" {
                 group["metadata_files"] = serde_json::json!(["releases/persistence/0.13.md"]);
+            }
+            for path in group["metadata_files"].as_array().into_iter().flatten() {
+                source
+                    .entry(path.as_str().unwrap().to_owned())
+                    .or_insert_with(|| DETAIL_NOTES.to_owned());
             }
         }
         source.insert(

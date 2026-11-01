@@ -7,6 +7,13 @@ completion under `target/delivery/metrics-testkit-wire-2026-11-01/`. The prepara
 descriptions below predate this delivery selection. The Metrics detail ledger is
 declared as owned release metadata for dated finalization with its root entry.
 
+The first core gate refused before version mutation: a release fixture lacked
+Metrics' newly declared detail metadata. Fixtures now seed every declared group
+metadata path; the focused three-group rollback/publication test and formatting
+passed. Retain failed gate `verify.7uETZU` and the focused `fixture-repair.log`
+under the delivery evidence directory. The clean repaired source requires a fresh
+standard gate; no receipt or release effect from the failed gate is reused.
+
 Published on crates.io and GitHub: Persistence 0.62.0 (Memory/Storage), Metrics
 Stable 0.63.0 and Logging Stable 0.62.0. Normal main is at `319dce0`. All three
 standard full gates, final archive qualification, registry checksums, Wire/core
