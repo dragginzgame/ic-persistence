@@ -3,6 +3,14 @@
 Independent releases begin after the coordinated 0.58.1 release. Earlier history
 is retained once in the [shared historical ledger](../history.md#0581---2026-10-31).
 
+## [0.60.4] - Unreleased
+
+### 🔧 Changed
+
+- Qualify the governed logging adapter and canister fixture with Platform 0.16.0.
+  Checkpoint bytes, limits, retained-data handling and restoration are unchanged.
+  Retain the selected Logging 0.23.5 patch and consume the compatible core supplier.
+
 ## [0.60.3] - 2026-11-01
 
 ### 🧹 Cleanup

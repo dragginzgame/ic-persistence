@@ -3,6 +3,14 @@
 Independent releases begin after the coordinated 0.58.1 release. Earlier history
 is retained once in the [shared historical ledger](../history.md#0581---2026-10-31).
 
+## [0.61.4] - Unreleased
+
+### 🔧 Changed
+
+- Qualify the governed snapshot adapter with Platform 0.16.0. Public metric
+  identities, record bytes, arithmetic admission and checkpoint continuity are unchanged.
+  Retain the selected Metrics 0.24.4 patch and consume the compatible core supplier.
+
 ## [0.61.3] - 2026-11-01
 
 ### 🧹 Cleanup

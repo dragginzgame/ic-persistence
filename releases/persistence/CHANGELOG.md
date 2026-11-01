@@ -3,6 +3,15 @@
 Covers `ic-memory` and `ic-storage`. Independent group releases begin after the
 coordinated 0.58.1 cutoff; [earlier shared history](../history.md) is preserved once.
 
+## [0.60.6] - Unreleased
+
+### 🔧 Changed
+
+- Bound native receipt reads and centralize typed JSON admission through Host FS.
+  Give captured Git/Cargo/helper observations a 120-second deadline while leaving
+  inherited-IO builds and gates unchanged. Adopt Platform 0.16.0 in both catalogs,
+  preserving stable-structures 0.7.2, PocketIC 16.1.0 and stored formats.
+
 ## [0.60.5] - 2026-11-01
 
 ### 🧹 Cleanup

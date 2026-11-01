@@ -14,8 +14,20 @@ use std::{
     io::{BufWriter, Write as _},
     path::{Path, PathBuf},
     process::{Command, Stdio},
-    time::Instant,
+    time::{Duration, Instant},
 };
+
+// Captured observations are bounded independently from long-running inherited-IO
+// builds/gates. Host owns deadline enforcement, pipe draining and child cleanup.
+const OBSERVATION_TIMEOUT: Duration = Duration::from_secs(120);
+
+const fn observation_limits(stdout: usize, stderr: usize) -> OutputLimits {
+    OutputLimits {
+        stdout: OutputLimit::Terminate(stdout),
+        stderr: OutputLimit::Terminate(stderr),
+        timeout: Some(OBSERVATION_TIMEOUT),
+    }
+}
 
 ///
 /// Execute
@@ -81,11 +93,7 @@ impl Execute for Processes {
         let output = capture_complete(
             "cargo",
             &mut command,
-            OutputLimits {
-                stdout: OutputLimit::Terminate(4 * 1024 * 1024),
-                stderr: OutputLimit::Terminate(64 * 1024),
-                timeout: None,
-            },
+            observation_limits(4 * 1024 * 1024, 64 * 1024),
         )?;
         let metadata = decode_metadata(&output.stdout)?;
         Ok(metadata.target_directory.into_std_path_buf())
@@ -99,11 +107,7 @@ impl Execute for Processes {
         let output = capture_complete(
             program,
             &mut command,
-            OutputLimits {
-                stdout: OutputLimit::Terminate(8 * 1024 * 1024),
-                stderr: OutputLimit::Terminate(256 * 1024),
-                timeout: None,
-            },
+            observation_limits(8 * 1024 * 1024, 256 * 1024),
         )?;
         eprint!("{}", String::from_utf8_lossy(&output.stderr));
         Ok(String::from_utf8(output.stdout)?)
@@ -159,5 +163,34 @@ fn report_tool_error(program: &str, error: &ToolError) {
             eprintln!("{program} failed ({status})");
         }
         eprint!("{}", String::from_utf8_lossy(&failure.evidence.stderr));
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn observation_timeout_preserves_partial_output_and_typed_failure() {
+        let mut command = Command::new("sh");
+        command.args(["-c", "printf ready; printf detail >&2; exec sleep 30"]);
+        let error = capture_complete(
+            "sh",
+            &mut command,
+            OutputLimits {
+                timeout: Some(Duration::from_secs(1)),
+                ..observation_limits(1024, 1024)
+            },
+        )
+        .unwrap_err();
+        let ToolError::Execution(failure) = error.downcast_ref::<ToolError>().unwrap() else {
+            panic!("expected retained execution evidence");
+        };
+        assert!(matches!(
+            failure.failure,
+            ic_host_process::tool::ExecutionFailure::TimedOut
+        ));
+        assert_eq!(failure.evidence.stdout, b"ready");
+        assert_eq!(failure.evidence.stderr, b"detail");
     }
 }

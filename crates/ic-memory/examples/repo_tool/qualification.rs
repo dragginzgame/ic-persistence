@@ -199,7 +199,7 @@ impl<E: Execute> Repository<E> {
         if !path.exists() {
             return Ok(None);
         }
-        let prepared: PackageEvidence = serde_json::from_slice(&fs::read(&path)?)?;
+        let prepared: PackageEvidence = evidence::read_receipt(&path)?;
         let previous = &prepared.validation.selection;
         if previous.source == selection.source {
             return Ok(None);
@@ -237,7 +237,8 @@ impl<E: Execute> Repository<E> {
                     std::process::id(),
                     SystemTime::now().duration_since(UNIX_EPOCH)?.as_nanos()
                 ));
-            self.exec.write_bytes(&retained, &fs::read(receipt)?)?;
+            self.exec
+                .write_bytes(&retained, &evidence::receipt_bytes(receipt)?)?;
         }
         Ok(())
     }
@@ -285,7 +286,7 @@ impl<E: Execute> Repository<E> {
 
     pub(super) fn validated(&self, selection: &ReleaseSelection) -> Result<ValidationEvidence> {
         let evidence: ValidationEvidence =
-            serde_json::from_slice(&fs::read(self.validation_path(&selection.version)?)?)?;
+            evidence::read_receipt(&self.validation_path(&selection.version)?)?;
         require(
             evidence.selection == *selection,
             "validation identifies another release intent",
@@ -342,7 +343,7 @@ impl<E: Execute> Repository<E> {
         location: ArchiveLocation,
     ) -> Result<PackageEvidence> {
         let evidence: PackageEvidence =
-            serde_json::from_slice(&fs::read(self.receipt_path(&selection.version, stage)?)?)?;
+            evidence::read_receipt(&self.receipt_path(&selection.version, stage)?)?;
         require(
             evidence.validation.selection == *selection,
             "package evidence identifies another release intent",

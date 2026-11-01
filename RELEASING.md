@@ -127,7 +127,11 @@ source commit binds the group policy. An admitted archive map must contain exact
 the selected members. Retained archives remain content-addressed under
 `release-validation/artifacts/`; earlier attempts, logs, receipts and tools are
 preserved. The common runner's saved intent, validation, prepared and final stages
-remain separate evidence. No fixture pass proves a full gate or live release.
+remain separate evidence. Native receipt reads use Host FS's bounded regular-file
+reader with an 8 MiB ceiling, including retention copies. Missing, malformed or
+oversized receipts fail without replacement or fallback. Captured observations
+have a 120-second Host Process deadline; inherited-IO builds, complete gates and
+publication keep their existing execution policy. No fixture pass proves a full gate or live release.
 
 Publish from the exact selected group's qualified release checkout. Admission
 requires clean source, release subject/parent, exact annotated tag, retained and

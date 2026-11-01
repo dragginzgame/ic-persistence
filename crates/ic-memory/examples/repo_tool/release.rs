@@ -53,7 +53,7 @@ impl<E: Execute> Repository<E> {
         self.clean()?;
         let version = self.version(Some(commit))?;
         let prepared: PackageEvidence =
-            serde_json::from_slice(&fs::read(self.receipt_path(&version, Prepared)?)?)?;
+            evidence::read_receipt(&self.receipt_path(&version, Prepared)?)?;
         let selection = prepared.validation.selection;
         require(
             selection.version == version,

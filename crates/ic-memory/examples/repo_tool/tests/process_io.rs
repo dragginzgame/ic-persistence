@@ -353,3 +353,24 @@ fn process_capture_rejects_oversized_output_instead_of_returning_truncation() {
         ));
     }
 }
+
+#[test]
+fn receipt_reads_refuse_oversized_and_malformed_inputs_without_replacement() {
+    let fixture = Fixture::new();
+    let path = fixture.repo.root.join("receipt.json");
+    let file = fs::File::create(&path).unwrap();
+    let oversized = (evidence::MAX_RECEIPT_BYTES as u64) + 1;
+    file.set_len(oversized).unwrap();
+    drop(file);
+    let error = evidence::read_receipt::<PackageEvidence>(&path).unwrap_err();
+    assert!(matches!(
+        error.downcast_ref::<ic_host_artifacts::artifact::ArtifactError>(),
+        Some(ic_host_artifacts::artifact::ArtifactError::LimitExceeded { .. })
+    ));
+    assert_eq!(fs::metadata(&path).unwrap().len(), oversized);
+    fs::write(&path, b"{}").unwrap();
+    let error = evidence::read_receipt::<PackageEvidence>(&path).unwrap_err();
+    assert!(error.downcast_ref::<serde_json::Error>().is_some());
+    assert_eq!(fs::read(&path).unwrap(), b"{}");
+    fixture.assert_original();
+}

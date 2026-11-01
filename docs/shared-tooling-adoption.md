@@ -32,11 +32,13 @@ reviewed and its configuration-dependent ownership/documentation/naming reasons
 are recorded at their shared configuration scope. No lint level, host/IC tool catalog,
 formatter pin or maintenance activation changed.
 
-The library lock selects Platform 0.15.3 and Types 0.15.1, preserving the
-incoming selections. The independent runtime graph selects Platform 0.15.3.
-Stable-structures 0.7.2 and PocketIC 16.1.0 remain unchanged. Testkit Native 0.75.2
-now shares the current Platform family; the native-only Platform 0.13 copy leaves
-the library lock. Production Wasm retains one Platform runtime owner.
+The production and independent runtime catalogs select Platform 0.16.0, retaining
+canonical Types 0.15.1, stable-structures 0.7.2 and PocketIC 16.1.0. The selected
+stable-structures and PocketIC facade sources are unchanged across Platform's
+0.15.3/0.16.0 tags. Testkit Native 0.75.2 retains a native-only Platform 0.15.3
+copy; production admission still requires exactly one Platform provider. Optional
+crypto/certification identity changes in 0.16 are outside this consumer's selected
+profiles; no cryptographic compiler flag or codec migration is introduced.
 
 Both maintained catalogs select Wire 0.13.2 and the library graph selects
 Testkit Native 0.75.2; installed qualification selects Testkit CLI 0.75.2.

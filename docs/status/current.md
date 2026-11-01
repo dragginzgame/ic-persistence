@@ -1,5 +1,35 @@
 # Current handoff
 
+Delivery selected: Persistence 0.60.6, Metrics Stable 0.61.4 and Logging Stable
+0.60.4, through the standard supplier-first release and crates.io publication
+workflow. Evidence lives under `target/delivery/platform-0.16-2026-11-01/`.
+
+The follow-up native receipt reads share an 8 MiB bounded JSON reader, and
+captured observations have a 120-second Host Process deadline. Long builds and
+release gates retain their execution policy. Both maintained catalogs now select
+Platform 0.16.0; Types 0.15.1, stable-structures 0.7.2 and PocketIC 16.1.0 remain
+unchanged. Testkit Native alone retains Platform 0.15.3 outside production Wasm.
+
+The common archive boundary is ready for review in
+[IC Tooling PR #296](https://github.com/dragginzgame/ic-tooling/pull/296): already-produced
+archives, caller-owned checks and final custody admission. Persistence retains its
+existing archive script until the API is published and adopted. The grouped-gate
+investigation measured 11.6 minutes and is recorded in
+[the audit](../audits/2026-11-01-release-validation-reuse.md) and
+[Shared #334](https://github.com/dragginzgame/shared-tooling/issues/334); no release
+proof is reused or gate skipped.
+
+The original-Wasm installed proof passed IO rejection, corruption/growth
+checkpoints, backing custody, Storage reopen and update/upgrade rollback, and
+Logging retention/reopen/rollback. Its recorded input hashes verified unchanged;
+evidence is `target/improvements-platform-2026-11-01/installed-original.bWYi12/`.
+Local test/compiler/policy evidence and retained failed attempts are alongside
+that directory. The pending compatible group notes are Persistence 0.60.6,
+Metrics Stable 0.61.4 and Logging Stable 0.60.4; package versions are unchanged.
+Release execution and publication require their final receipts and registry
+verification; the focused proof above does not establish delivery. Upstream PR
+checks and native macOS acceptance remain separate from this local Linux proof.
+
 The cleanup delivery batch selects Persistence 0.60.5, Metrics Stable 0.61.3 and
 Logging Stable 0.60.3 in supplier-first order. It addresses all ten audit items:
 release evidence flow, phase-local group projection, canonical command plans,

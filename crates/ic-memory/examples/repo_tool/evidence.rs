@@ -1,6 +1,17 @@
 //! Group-bound receipts and selected archive identities.
 use super::*;
 
+// Consumer-owned ceiling, separate from durable canister records and schemas.
+pub(super) const MAX_RECEIPT_BYTES: usize = 8 * 1024 * 1024;
+
+pub(super) fn receipt_bytes(path: &Path) -> Result<Vec<u8>> {
+    Ok(ic_host_fs::read::read_file(path, MAX_RECEIPT_BYTES)?)
+}
+
+pub(super) fn read_receipt<T: serde::de::DeserializeOwned>(path: &Path) -> Result<T> {
+    Ok(serde_json::from_slice(&receipt_bytes(path)?)?)
+}
+
 ///
 /// ValidationEvidence
 ///
