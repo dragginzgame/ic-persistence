@@ -77,6 +77,8 @@ sub publish {
     close $out or die "close stage evidence: $!\n";
 }
 safe_route($state);
+safe_route("$state/proofs");
+safe_route("$state/attempts");
 make_path("$state/proofs", "$state/attempts");
 $state = abs_path($state) // die "invalid stage state\n";
 my $attempt = tempdir("$stage-$group.XXXXXX", DIR=>"$state/attempts", CLEANUP=>0);
@@ -116,7 +118,12 @@ sub observe {
     my ($phase) = @_;
     my $observer_digest = sha256_hex(bytes($observer));
     my $status = run_child("$attempt/$phase-observation.json", "$attempt/$phase-observation.stderr", $observer);
-    if ($status) { print STDERR bytes("$attempt/$phase-observation.stderr"); print STDERR "stage observation failed ($status); no stage admitted\n"; exit $status; }
+    if ($status) {
+        my $diagnostic = eval { bytes("$attempt/$phase-observation.stderr") };
+        print STDERR defined($diagnostic) ? $diagnostic : $@;
+        print STDERR "stage observation failed ($status); no stage admitted\n";
+        exit $status;
+    }
     $observer_digest eq sha256_hex(bytes($observer)) && $runner_digest eq sha256_hex(bytes(abs_path($0)))
         or die "stage observer/runner changed during observation\n";
     -x $program && -x $observer or die "stage executable admission changed during observation\n";

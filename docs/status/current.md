@@ -88,6 +88,6 @@ metadata projections. Native CI remains acceptance; complete gates and native
 receipts retain their existing behavior. See [adoption](../shared-tooling-adoption.md#exact-input-shellcheck-reuse)
 and [the original investigation](../audits/2026-11-01-release-validation-reuse.md).
 The selected Shared snapshot is
-`830649f4cc8bc5736d258b29ce8c16a707f0f103` (VERSION 0.27.24),
+`9275bf0de39ed941d81c47bab97eef7f6fc38df2` (VERSION 0.27.24),
 with 81 roots and 136 payloads. Snapshot files change only through the exporter;
 no dirty sibling rules are adopted.

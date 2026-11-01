@@ -10,7 +10,7 @@ local baseline. Future policy changes require reviewed snapshot adoption.
 ## Current source selection
 
 IC Persistence selects committed Shared Tooling VERSION 0.27.24 at
-`830649f4cc8bc5736d258b29ce8c16a707f0f103`, with 81 explicit roots and 136 payloads.
+`9275bf0de39ed941d81c47bab97eef7f6fc38df2`, with 81 explicit roots and 136 payloads.
 The source-only grouped bootstrap observer replaces the launcher's parallel
 manifest/lock parser. The launcher compares complete metadata byte identities
 again after tool admission and cache preparation, and verifies copied originals

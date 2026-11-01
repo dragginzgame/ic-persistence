@@ -202,6 +202,14 @@ availability is separate evidence; a cached offline build or a `version` beside
   Use `cargo update --package NAME --precise VERSION` when an exact version was
   selected. Review its lockfile changes, including required transitive changes.
   Network access does not authorize unrelated upgrades or a broad `cargo update`.
+- Before planning a downstream release cascade, apply the
+  [adoption planning contract](../docs/cargo-graph-checks.md#dependency-adoption-planning).
+  Every additional dependency upgrade must have a required contract/security
+  reason or be explicitly selected as an optional refresh. Compatible external
+  patch availability alone does not justify raising a minimum or republishing
+  unchanged consumers. Raise minimums when the delivered contract actually needs
+  the newer fix/capability, and qualify that requirement. This does not relax the
+  exact current-version catalog rule for local workspace members.
 - Release/deployment preparation for an already selected graph uses
   `cargo fetch --locked` before dependent builds or checks. That preparation is
   included in the authorized release/deployment workflow. A plain deployment
