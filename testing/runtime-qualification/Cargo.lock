@@ -782,22 +782,54 @@ dependencies = [
 
 [[package]]
 name = "ic-platform"
-version = "0.16.0"
+version = "0.17.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d35ff1252b77bf7d9b6495ac90f4c03ccac66520765a38267e425000a16e1e4b"
+checksum = "813bed7d93c0adc82b80157f4ccbb0b31260f8764fa3b7695fadaf9bcd14e241"
 dependencies = [
+ "ic-platform-pocket-ic",
  "ic-platform-types",
  "ic_principal",
- "pocket-ic",
  "serde",
  "thiserror 2.0.18",
 ]
 
 [[package]]
-name = "ic-platform-types"
-version = "0.15.1"
+name = "ic-platform-pocket-ic"
+version = "0.17.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "de0b5a4e7dff6d2c8ec7a58e5673f7348a49e90232add1eb31fec0bba5f4252e"
+checksum = "259cca738ece85627683ebef5df14a5b04cc0db4c59182f780f92e7e15902f8f"
+dependencies = [
+ "backon",
+ "base64 0.22.1",
+ "candid",
+ "flate2",
+ "hex",
+ "ic-certification",
+ "ic-management-canister-types",
+ "ic-transport-types",
+ "reqwest",
+ "schemars",
+ "semver",
+ "serde",
+ "serde_cbor",
+ "serde_json",
+ "sha2",
+ "slog",
+ "strum",
+ "strum_macros",
+ "tempfile",
+ "thiserror 2.0.18",
+ "tokio",
+ "tracing",
+ "tracing-appender",
+ "tracing-subscriber",
+]
+
+[[package]]
+name = "ic-platform-types"
+version = "0.16.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "235a930ed63426af24eaac83d8e164e051ee4f1113ae225acbbea6f61fd34198"
 dependencies = [
  "crc32fast",
  "data-encoding",
@@ -826,9 +858,9 @@ dependencies = [
 
 [[package]]
 name = "ic-wire"
-version = "0.13.3"
+version = "0.13.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "971d63627e019fc0ece8331a62e21e55046017e6456301e5bf62e0149d9ef398"
+checksum = "a84839b136cdb92833e274cbe4083b38f3f94e2e04ae1da091d1e2c9ba219a1c"
 dependencies = [
  "bytemuck",
  "ic-wire-derive",
@@ -839,9 +871,9 @@ dependencies = [
 
 [[package]]
 name = "ic-wire-derive"
-version = "0.13.3"
+version = "0.13.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7d4cb97060eea7238e8d913f0ef5b4e8396077a2e9c12e66658e0e2a1a23ef42"
+checksum = "1d43292c7b14a8d66afce95e117451795fa83c950fb07adeb324f97d93f8c2e3"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -1271,38 +1303,6 @@ name = "pkg-config"
 version = "0.3.34"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f6b464fbc74e149a392436b17d523f769e057cb6877f6a5c4618bc6f11800548"
-
-[[package]]
-name = "pocket-ic"
-version = "16.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "85135917c845e8fc132f5eca3a0a8cbab696477a5fee3c2dda168a0797f81e1c"
-dependencies = [
- "backon",
- "base64 0.22.1",
- "candid",
- "flate2",
- "hex",
- "ic-certification",
- "ic-management-canister-types",
- "ic-transport-types",
- "reqwest",
- "schemars",
- "semver",
- "serde",
- "serde_cbor",
- "serde_json",
- "sha2",
- "slog",
- "strum",
- "strum_macros",
- "tempfile",
- "thiserror 2.0.18",
- "tokio",
- "tracing",
- "tracing-appender",
- "tracing-subscriber",
-]
 
 [[package]]
 name = "postcard"

@@ -154,8 +154,9 @@ Wasm, input hashes and all optimizer/server/runtime logs remain under
 `target/qualification/runtime/`, including failures. Normal library builds and
 their Wasm budgets remain unoptimized. The runner consumes
 `IC_TESTKIT_POCKET_IC_URL`; it never downloads or
-spawns a server. IC Platform 0.16.0's native PocketIC boundary supplies the locked
-16.1.0 client; Testkit selects server 16.1.0. This pairing requires installed
+spawns a server. IC Platform 0.17.0's native PocketIC boundary supplies the owned
+0.17.0 client implementation, preserving the 16.1 protocol; Testkit selects server
+16.1.0. This pairing requires installed
 IO/upgrade qualification on Linux and both macOS hosts, supplied by the separate
 runtime CI jobs. Historical 16.0.0 client/server results remain scoped to their
 original inputs. Failed CLI setup, server attempts and runtime logs remain

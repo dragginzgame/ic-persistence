@@ -49,7 +49,7 @@ ic-metrics = "0.24.5"
 thiserror = "2.0"
 
 # External dependencies with mixed production/test usage; members select features.
-ic-platform = { version = "0.16.0", default-features = false }
+ic-platform = { version = "0.17.0", default-features = false }
 ic-wire = { version = "0.13.3", default-features = false }
 serde = { version = "1.0", default-features = false, features = [
     "alloc",

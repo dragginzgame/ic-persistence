@@ -12,6 +12,14 @@ coordinated 0.58.1 cutoff; [earlier shared history](../history.md) is preserved 
   group qualification logs without hiding the primary exit status.
   [Shared #334 — Validation proof reuse](https://github.com/dragginzgame/shared-tooling/issues/334).
 
+### ⬆️ Dependencies
+
+- Select Wire 0.13.5 in both maintained lockfiles, retaining compatible catalog
+  requirements, encoded bytes, budgets and error behavior. [Details](0.61.md).
+- Adopt Platform 0.17.0 in both catalogs, retaining stable-structures 0.7.2 and
+  governed storage contracts. The native qualifier uses Platform's owned PocketIC
+  client; Testkit's server selection remains 16.1.0. [Details](0.61.md).
+
 ### 🔧 Changed
 
 - Offer exact-input reuse for the real ShellCheck tooling stage with fresh group

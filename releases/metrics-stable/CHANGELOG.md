@@ -3,6 +3,15 @@
 Independent releases begin after the coordinated 0.58.1 release. Earlier history
 is retained once in the [shared historical ledger](../history.md#0581---2026-10-31).
 
+## [0.62.1] - Unreleased
+
+### ⬆️ Dependencies
+
+- Qualify governed metric snapshots with locked Wire 0.13.5. Record bytes,
+  budgets, arithmetic admission and checkpoint continuity remain unchanged.
+- Adopt the core supplier's Platform 0.17.0 boundary, preserving public metric
+  identities, stored records and validation.
+
 ## [0.62.0] - 2026-11-01
 
 ### ⚠️ Breaking

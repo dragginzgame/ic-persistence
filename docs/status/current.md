@@ -1,99 +1,89 @@
 # Current handoff
 
-Delivery selected: Persistence 0.61.0 (Memory and Storage), Metrics Stable 0.62.0
-and Logging Stable 0.61.0, supplier-first to crates.io and GitHub
-`dragginzgame/ic-persistence` on `main`. Catalog minimums now require Logging
-0.23.6 and Metrics 0.24.5, matching the incoming selected lock identities.
-Their release notes preserve engine/arithmetic/retained-data contracts. The
-incoming native Testkit 0.76.1 selection is retained, with CLI 0.76.0 separately
-pinned. Full group gates and final registry/tag readback establish delivery.
-Evidence is retained under `target/delivery/hard-cut-observability-2026-11-01/`.
+Delivery selected: compatible Persistence 0.61.1, Metrics Stable 0.62.1 and
+Logging Stable 0.61.1 to crates.io and GitHub `dragginzgame/ic-persistence`, `main`.
+The standard group gates, final archive receipts and registry/tag readback own
+delivery evidence under `target/delivery/platform-wire-2026-11-01/`. Earlier
+unpublished wording below describes preparation before this delivery selection.
 
-The additional four-part public API hard cut is implemented locally: explicit
-Storage `create`/`load`/`reset`, one bound-enforcing `StableCell`, validated-key
-runtime lookup/open, and nonzero bucket configuration. All maintained callers,
-examples, fixtures and docs use the new API. See
-[the migration](../migration/0.61-public-api.md); valid stored bytes are unchanged.
-The existing pending minor group notes include this batch; package versions and
-publication remain unchanged. Evidence is under `target/hard-cut-api-2026-11-01/`.
-Focused proof passed 72 Memory runtime tests, 20 Storage tests, both stable
-adapter suites, public runtime/composition tests, capability compile-fail tests,
-doctests, Clippy, native/Wasm Rust 1.91 checks and all existing Wasm budgets.
-Archive-backed consumer qualification and original-Wasm installed IO, custody,
-Storage/Logging reopen, retention and update/upgrade rollback passed; installed
-input hashes verified unchanged under `installed-original.NMq49l/`. Full release
-gates, optimizer variants and native macOS were not replayed for this API batch.
-Incoming dependency lock edits remain outside the API change; no dependency
-resolution or own-package release was performed.
+The normal checkout is synchronized with remote main at `9864637`, including
+published Persistence 0.61.0 (Memory/Storage), Metrics Stable 0.62.0 and Logging
+Stable 0.61.0, plus merged PRs #147–150. The releases require Logging 0.23.6 and
+Metrics 0.24.5. All three full gates, final archive qualification, crates.io
+checksums and annotated remote tags passed. Delivery evidence remains under
+`target/delivery/hard-cut-observability-2026-11-01/`.
 
-The shared grouped bootstrap observer is adopted from
-[Shared Tooling PR #336](https://github.com/dragginzgame/shared-tooling/pull/336).
-The launcher uses its source-only observations and rechecks metadata after tool
-admission and cache preparation; native source/receipt authority and retained
-scratch recovery remain consumer-owned.
+Those releases used its isolated `checkout/` to preserve incoming lockfile work.
+The original failed Persistence plan and its passing pre-bump gate remain as
+failure evidence; do not resume that superseded attempt. The completed isolated
+plans and final registry readback establish delivery. Normal checkout fast-forward
+used Git autostash; the incoming dependency patch and original lock were retained
+under `target/wire-0.13.5-adoption/` before reapplication.
 
-Build 0.73.5 now owns archive extraction, frozen external selection, exact
-extracted graph admission and final source/archive byte/mode custody. The native
-consumer retains the existing library checks, native development/MSRV execution
-and Wasm check roster. The old Perl manifest renderer and jq graph predicates
-are removed. The incoming Build/Host 0.73.5 lock selection is preserved; the
-separate Build editor remains 0.73.3.
+Current adoption selects published Wire/Derive 0.13.5 in both maintained lockfiles.
+The compatible 0.13.3 catalog requirements remain sufficient. Supplier encoding
+optimizations preserve bytes, budgets, primitive acceptance and error behavior;
+no migration or host reset is required. Incoming root Build/Host 0.73.6 and Testkit
+Native 0.76.2 selections are preserved. The separate Build editor remains 0.73.3,
+Testkit CLI 0.76.0 and PocketIC 16.1.0. No executable pins are changed.
 
-Release checks carry inspected commit evidence within a phase and re-inspect
-across packaging and remote effects. Metadata roles are classified in the plan,
-including opaque extra manifests. Fixture manifest/lock inputs share one roster,
-exclusive directory names use one process sequence, and installed Logging setup
-reuses the existing helper. Logging overlap comparison traverses its issued
-prefix once, preserving watermark and row-regression checks.
+Pending compatible notes select Persistence 0.61.1, Metrics Stable 0.62.1 and
+Logging Stable 0.61.1; package release versions remain at the published values.
+This Wire adoption is local and unpublished. Both locked graphs, singleton policy,
+selected Wasm/native Clippy and pin checks passed. Encoding fixtures passed 13
+ledger, seven Logging and 13 Metrics tests; one existing ledger probe stays ignored.
+Affected Wasm libraries passed Rust 1.91. Documentation links and diff checks passed.
+Evidence is retained under `target/wire-0.13.5-adoption/`; no new full release gate
+or installed runtime qualification is implied by dependency admission.
 
-`LedgerCommitError::Codec` now carries public `LedgerDecodeError` variants for
-Wire, key and slot failures, retaining typed error sources. This is a breaking
-Rust error contract; durable bytes and admission remain unchanged. Pending notes
-select Persistence 0.61.0, Metrics Stable 0.62.0 and Logging Stable 0.61.0 for
-aligned public core identities. Own package versions remain unchanged. The core
-release metadata now owns `releases/persistence/0.61.md`; published 0.60 notes
-remain retained. No reset, legacy decoder or migration is introduced.
+Platform 0.17.0 is now selected in both catalogs and lockfiles. The stable-structures
+facade and substrate 0.7.2 are unchanged. The native qualifier uses owned
+`ic-platform-pocket-ic` 0.17.0 with server 16.1.0; Logging's qualification fixture
+uses Runtime/macros/guard 0.17.1 and Types 0.16.0. Testkit's existing Platform 0.16
+dependency remains confined to native measurement helpers; production retains one
+provider. No public persistence API, retained format or executable pin changed.
 
-Focused proof passed 75 existing release-helper tests plus the extra-manifest
-regression, 46 ledger tests, seven diagnostics tests, 12 stable-cell tests,
-three Logging continuity tests and seven Logging encoding tests. Affected
-Clippy, native helper/library Rust 1.91, Wasm library Rust 1.91, graph/pin/storage
-boundaries, formatting, selected ShellCheck and documentation checks passed.
-Actual archive-backed native/MSRV/Wasm qualification passed through the new Build
-API. The consumer fixture refuses a substituted archive before compilation and
-qualifies MSRV dispatch using explicit compiler substitutes.
+Combined Platform/Wire destination metadata, singleton policy, Wasm/native Clippy,
+production graph and pin checks passed. All three original Wasm fixtures and the
+native qualifier built on Rust 1.91. Memory runtime (72) and Storage (20) tests
+passed. Installed Linux IO, Storage, custody, Logging reopen/retention and
+update/upgrade rollback passed with the owned client; post-run input hashes
+verified unchanged. Evidence is retained under `target/platform-0.17-adoption/`.
+Optimizer variants, native macOS and full release gates were not replayed.
+This compatible adoption shares the existing pending patch notes and is unpublished.
 
-Focused installed Logging retention, reopen and update/upgrade rollback passed
-with prepared Testkit 0.76.0 and PocketIC 16.1.0, retaining evidence under
-`target/qualification/runtime/attempt.rTl8f3/`. The unchanged optimizer matrix,
-other installed suites, full release gates and native macOS were not replayed.
-Local evidence, including earlier failed attempts, is retained under
-`target/complexity-followup-2026-11-01/`.
+The published API hard cut uses explicit Storage `create`/`load`/`reset`, one
+bound-enforcing `StableCell`, parsed `StableKey` runtime lookup/open and nonzero
+bucket configuration. `LedgerCommitError::Codec` retains typed
+`LedgerDecodeError` sources. See [the migration](../migration/0.61-public-api.md).
+Stored formats and allocation custody remain unchanged. Earlier focused and
+installed IO/upgrade/rollback proof is retained under `target/hard-cut-api-2026-11-01/`
+and `target/complexity-followup-2026-11-01/`.
 
-The real six-state bootstrap fixture and caller cache/error/drift checks passed
-locally on Linux. Hosted native qualification remains separate acceptance.
+Build owns archive extraction, exact extracted graph admission, frozen external
+selection and final input custody. The consumer owns the library/native/MSRV/Wasm
+roster. Shared's grouped source-only bootstrap observer is adopted from
+[Shared PR #336](https://github.com/dragginzgame/shared-tooling/pull/336); launcher
+metadata rechecks and scratch recovery remain in place.
 
-The preceding Testkit/Wire delivery is published on GitHub and crates.io:
-Persistence 0.60.7, Metrics Stable 0.61.5 and Logging Stable 0.60.5. Each group
-passed its full gate; registry checksums and annotated remote tags verified.
-Evidence remains under `target/delivery/testkit-wire-2026-11-01/`.
-Platform 0.16 delivery evidence remains under
-`target/delivery/platform-0.16-2026-11-01/`; earlier cleanup and dependency
-proof remains in its original `target/delivery/` and audit directories.
+The merged destination-adoption check admits both independent locked graphs
+before selected consumer compilation. See
+[Shared #335](https://github.com/dragginzgame/shared-tooling/issues/335).
+Opt-in exact-input ShellCheck reuse retains source/index admission, original
+execution evidence and separate current group admissions; complete gates remain
+unchanged. The real stage executed once and reused twice locally across group
+projections. Native CI remains separate acceptance for
+[Shared #334](https://github.com/dragginzgame/shared-tooling/issues/334).
+See [adoption](../shared-tooling-adoption.md#exact-input-shellcheck-reuse) and
+[the investigation](../audits/2026-11-01-release-validation-reuse.md).
 
-The opt-in exact-input ShellCheck stage and maintained three-group qualification
-are prepared for [Shared #334](https://github.com/dragginzgame/shared-tooling/issues/334).
-The merged macOS qualification exposed a caller allowance smaller than both
-native ShellCheck payloads. The repair admits complete tool bytes within 64 MiB
-and prints failed group logs while preserving the primary status. Retained
-failure evidence: GitHub run 41314835837; local repair evidence:
-`/tmp/persistence-334-large-tool/` and `/tmp/persistence-334-three-groups.log`.
-Corrected native macOS acceptance remains pending; do not close #334 yet.
-The actual caller executed once and reused twice locally around canonical group
-metadata projections. Native CI remains acceptance; complete gates and native
-receipts retain their existing behavior. See [adoption](../shared-tooling-adoption.md#exact-input-shellcheck-reuse)
-and [the original investigation](../audits/2026-11-01-release-validation-reuse.md).
-The selected Shared snapshot is
-`9275bf0de39ed941d81c47bab97eef7f6fc38df2` (VERSION 0.27.24),
-with 81 roots and 136 payloads. Snapshot files change only through the exporter;
-no dirty sibling rules are adopted.
+PR #150 raises the caller input limit to 64 MiB for native macOS ShellCheck and
+prints failed group logs while preserving their status. Earlier failed native
+qualification remains retained in GitHub run 41314835837; corrected native
+acceptance is separate from the local proof.
+
+The reviewed Shared snapshot remains
+`9275bf0de39ed941d81c47bab97eef7f6fc38df2` (VERSION 0.27.24), with 81 roots and
+136 payloads. Never patch vendored files or adopt dirty sibling rules. Earlier
+Testkit/Wire and Platform delivery evidence remains in its original `target/delivery/`
+directories; retain failed attempts, receipts and archives.

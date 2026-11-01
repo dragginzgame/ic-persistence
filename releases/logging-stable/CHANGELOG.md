@@ -3,6 +3,16 @@
 Independent releases begin after the coordinated 0.58.1 release. Earlier history
 is retained once in the [shared historical ledger](../history.md#0581---2026-10-31).
 
+## [0.61.1] - Unreleased
+
+### ⬆️ Dependencies
+
+- Qualify governed logging checkpoints with locked Wire 0.13.5. Checkpoint bytes,
+  budgets, retention and restoration remain unchanged.
+- Adopt Platform 0.17.0 for the core supplier and Wasm qualification entrypoints,
+  with Runtime 0.17.1 and Types 0.16.0. Public logging identities and retained
+  checkpoint contracts remain unchanged.
+
 ## [0.61.0] - 2026-11-01
 
 ### ⚠️ Breaking
