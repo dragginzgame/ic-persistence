@@ -5,7 +5,8 @@ use super::*;
 #[test]
 fn frozen_wire_rows_reopen_through_the_governed_map() {
     let backing = VectorMemory::default();
-    let mut records = StableBTreeMap::<Vec<u8>, Vec<u8>, _>::new(admitted_memory(backing.clone()));
+    let mut records =
+        StableBTreeMap::<Vec<u8>, Vec<u8>, _>::create(admitted_memory(backing.clone()));
     let id = MetricIdentity::new("x", 3).unwrap();
     // Frozen empty Wire states, independent of the production encoder.
     for (name, kind, payload) in [
@@ -84,7 +85,7 @@ fn truncated_records_reject_all_metric_families_without_writes() {
     fn check<T: crate::metric::StoredMetric + std::fmt::Debug>(value: &T) {
         let memory = WriteCountingMemory::default();
         let writes = memory.writes.clone();
-        let mut store = MetricsStore::new(StableBTreeMap::new(admitted_memory(memory)));
+        let mut store = MetricsStore::new(StableBTreeMap::create(admitted_memory(memory)));
         let key = key("app");
         let identity = identity();
         let bytes = encode(&identity, value);
@@ -123,7 +124,7 @@ fn stored_unit_bytes_preserve_malformed_and_identity_errors() {
     let encoded = encode(&identity, &Aggregate::EMPTY);
     let memory = WriteCountingMemory::default();
     let writes = memory.writes.clone();
-    let mut store = MetricsStore::new(StableBTreeMap::new(admitted_memory(memory)));
+    let mut store = MetricsStore::new(StableBTreeMap::create(admitted_memory(memory)));
     let key = key("app");
     for byte in 0..=u8::MAX {
         let mut bytes = encoded.clone();
@@ -284,7 +285,7 @@ fn counter_wire_records_reject_corruption_before_checkpoint_or_reset() {
     malformed.push((unknown_format, StoreError::UnsupportedFormat));
     let memory = WriteCountingMemory::default();
     let writes = memory.writes.clone();
-    let mut store = MetricsStore::new(StableBTreeMap::new(admitted_memory(memory)));
+    let mut store = MetricsStore::new(StableBTreeMap::create(admitted_memory(memory)));
     let key = key("app");
     for record in malformed {
         store.map.insert(key.0.clone(), record.0.clone());
@@ -422,7 +423,7 @@ fn populated_wire_rows_reopen_without_reencoding() {
     // Independent field layout: deliberately do not use the production encoder.
     let id = identity();
     let backing = VectorMemory::default();
-    let mut map = StableBTreeMap::<Vec<u8>, Vec<u8>, _>::new(admitted_memory(backing.clone()));
+    let mut map = StableBTreeMap::<Vec<u8>, Vec<u8>, _>::create(admitted_memory(backing.clone()));
     let maximum = u64::MAX;
     let total = u128::from(maximum) * 2;
     let aggregate = (2_u64, total, Some(maximum), false, false);
@@ -475,7 +476,7 @@ fn populated_wire_rows_reopen_without_reencoding() {
 fn wire_collection_and_frame_limits_refuse_without_replacement() {
     let memory = WriteCountingMemory::default();
     let writes = memory.writes.clone();
-    let mut store = MetricsStore::new(StableBTreeMap::new(admitted_memory(memory)));
+    let mut store = MetricsStore::new(StableBTreeMap::create(admitted_memory(memory)));
     let key = key("limits");
     let identity = identity();
     let value = Histogram::new([]).unwrap();

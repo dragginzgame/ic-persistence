@@ -5,7 +5,7 @@ use super::*;
 fn record_budget_identity_and_configuration_refusals_preserve_retained_bytes() {
     let memory = CountedMemory::default();
     let writes = memory.writes.clone();
-    let mut store = LoggingStore::new(StableBTreeMap::new(admitted(memory)));
+    let mut store = LoggingStore::new(StableBTreeMap::create(admitted(memory)));
     let limits = Limits {
         max_entries: NonZeroUsize::new(32).unwrap(),
         max_message_bytes: 4096,
@@ -183,7 +183,7 @@ fn wire_budgets_admit_maximum_rows_and_large_valid_checkpoints() {
 fn text_budget_eviction_and_forged_retained_usage_are_admitted_before_writes() {
     let memory = CountedMemory::default();
     let writes = memory.writes.clone();
-    let mut store = LoggingStore::new(StableBTreeMap::new(admitted(memory)));
+    let mut store = LoggingStore::new(StableBTreeMap::create(admitted(memory)));
     let bounded = Limits {
         max_text_bytes: 8,
         ..limits()
@@ -250,7 +250,7 @@ fn text_budget_eviction_and_forged_retained_usage_are_admitted_before_writes() {
 fn retired_checkpoint_requires_explicit_host_row_administration() {
     let memory = CountedMemory::default();
     let writes = memory.writes.clone();
-    let mut store = LoggingStore::new(StableBTreeMap::new(admitted(memory)));
+    let mut store = LoggingStore::new(StableBTreeMap::create(admitted(memory)));
     let retired =
         b"ICL\x02\x07\x04\x40\x10\x01\x01\x01\x0a\x01\x00\x0a\x01\x00\x01w\x00\x0cutf8-message"
             .to_vec();

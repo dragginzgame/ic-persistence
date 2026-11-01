@@ -63,9 +63,9 @@ mod canister {
             &[KEY],
             MemoryManagerConfig::default(),
         ));
-        let memory = required(runtime.open_memory(KEY));
+        let memory = required(runtime.open_memory(&ic_memory::StableKey::parse(KEY).unwrap()));
         let mut store = LoggingStore::new(if fresh {
-            StableBTreeMap::new(memory)
+            StableBTreeMap::create(memory)
         } else {
             StableBTreeMap::load(memory)
         });

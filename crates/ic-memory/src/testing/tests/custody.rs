@@ -4,7 +4,7 @@ use super::*;
 #[test]
 fn fixture_cells_and_detached_handles_refuse_duplicate_setup_without_writes() {
     let backing = VectorMemory::default();
-    let config = MemoryManagerConfig::new(16).unwrap();
+    let config = MemoryManagerConfig::new(std::num::NonZeroU16::new(16).unwrap());
     let mut cell = FixtureCell::create_bounded(
         backing.clone(),
         "fixture",

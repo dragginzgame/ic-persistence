@@ -126,7 +126,7 @@ pub type LoggingMap<M> = StableBTreeMap<Vec<u8>, Vec<u8>, M>;
 /// use ic_memory::VectorMemory;
 /// use ic_storage::adapter::StableBTreeMap;
 /// use ic_logging_stable::LoggingStore;
-/// let _ = LoggingStore::new(StableBTreeMap::<Vec<u8>, Vec<u8>, _>::new(VectorMemory::default()));
+/// let _ = LoggingStore::new(StableBTreeMap::<Vec<u8>, Vec<u8>, _>::create(VectorMemory::default()));
 /// ```
 pub struct LoggingStore<M: Memory> {
     map: LoggingMap<M>,
@@ -254,16 +254,12 @@ fn validate_checkpoint(
         (None, _) => {}
         _ => return Err(StoreError::StateRegression),
     }
-    let issued = current
-        .entries()
-        .take_while(|entry| {
-            previous
-                .next_sequence()
-                .is_none_or(|next| entry.sequence < next)
-        })
-        .count();
-    if issued != 0 {
-        let first = current.entries().next().expect("issued prefix is nonempty");
+    let mut issued = current.entries().take_while(|entry| {
+        previous
+            .next_sequence()
+            .is_none_or(|next| entry.sequence < next)
+    });
+    if let Some(first) = issued.next() {
         let start = previous
             .entries()
             .next()
@@ -271,10 +267,9 @@ fn validate_checkpoint(
             .and_then(|index| usize::try_from(index).ok())
             .ok_or(StoreError::StateRegression)?;
         let mut retained = previous.entries().skip(start);
-        if !current
-            .entries()
-            .take(issued)
-            .all(|entry| retained.next() == Some(entry))
+        if std::iter::once(first)
+            .chain(issued)
+            .any(|entry| retained.next() != Some(entry))
         {
             return Err(StoreError::StateRegression);
         }

@@ -16,7 +16,7 @@ fn repeated_bootstrap_is_idempotent_and_existing_memory_recovers() {
             .expect("idempotent bootstrap");
         assert_eq!(first, second);
         let memory = runtime
-            .open_memory("runtime_tests.rows.v1")
+            .open_memory(&crate::StableKey::parse("runtime_tests.rows.v1").unwrap())
             .expect("first runtime memory");
         memory.grow(1).unwrap();
         memory.write(0, b"persisted");
@@ -37,7 +37,7 @@ fn repeated_bootstrap_is_idempotent_and_existing_memory_recovers() {
         recovered_generation
     );
     let memory = recovered_runtime
-        .open_memory("runtime_tests.rows.v1")
+        .open_memory(&crate::StableKey::parse("runtime_tests.rows.v1").unwrap())
         .expect("recovered runtime memory");
     let mut bytes = [0; 9];
     memory.read(0, &mut bytes);
@@ -138,7 +138,9 @@ fn open_errors_and_failed_bootstrap_do_not_publish_authority() {
     let declarations = declarations();
     let mut runtime = empty_runtime();
 
-    let Err(open_before_bootstrap) = runtime.open_memory("runtime_tests.rows.v1") else {
+    let Err(open_before_bootstrap) =
+        runtime.open_memory(&crate::StableKey::parse("runtime_tests.rows.v1").unwrap())
+    else {
         panic!("open before bootstrap must fail");
     };
     assert_eq!(open_before_bootstrap, RuntimeOpenError::NotBootstrapped);
@@ -171,7 +173,9 @@ fn open_errors_and_failed_bootstrap_do_not_publish_authority() {
     runtime
         .bootstrap(&declarations, &pool(), &GenericAllocationPolicy)
         .expect("successful retry");
-    let Err(wrong_key) = runtime.open_memory("runtime_tests.missing.v1") else {
+    let Err(wrong_key) =
+        runtime.open_memory(&crate::StableKey::parse("runtime_tests.missing.v1").unwrap())
+    else {
         panic!("wrong key must fail");
     };
     assert!(matches!(
@@ -219,5 +223,8 @@ fn pool_admission_precedes_application_validation_and_preserves_retry() {
     }
     runtime.bootstrap(&source, &pool(), &policy).unwrap();
     assert_eq!(policy.0.get(), 1); // One external allocation; governance stays private.
-    assert_eq!(runtime.memory_id("runtime_tests.rows.v1"), Ok(120));
+    assert_eq!(
+        runtime.memory_id(&crate::StableKey::parse("runtime_tests.rows.v1").unwrap()),
+        Ok(120)
+    );
 }

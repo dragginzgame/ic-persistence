@@ -12,11 +12,13 @@ fn governed_reopen_restores_the_same_engine_and_retains_the_lease() {
         MemoryManagerConfig::default(),
     )
     .unwrap();
-    let mut store = LoggingStore::new(StableBTreeMap::new(
-        runtime.open_memory("logs.store.v1").unwrap(),
+    let mut store = LoggingStore::new(StableBTreeMap::create(
+        runtime
+            .open_memory(&ic_memory::StableKey::parse("logs.store.v1").unwrap())
+            .unwrap(),
     ));
     assert!(matches!(
-        runtime.open_memory("logs.store.v1"),
+        runtime.open_memory(&ic_memory::StableKey::parse("logs.store.v1").unwrap()),
         Err(RuntimeOpenError::AlreadyOpen { .. })
     ));
     assert!(store.load(&key(), identity(), limits()).unwrap().is_none());
@@ -27,12 +29,14 @@ fn governed_reopen_restores_the_same_engine_and_retains_the_lease() {
     store.save(&key(), identity(), &log).unwrap();
     let map = store.into_map();
     assert!(matches!(
-        runtime.open_memory("logs.store.v1"),
+        runtime.open_memory(&ic_memory::StableKey::parse("logs.store.v1").unwrap()),
         Err(RuntimeOpenError::AlreadyOpen { .. })
     ));
     drop(map);
     let store = LoggingStore::new(StableBTreeMap::load(
-        runtime.open_memory("logs.store.v1").unwrap(),
+        runtime
+            .open_memory(&ic_memory::StableKey::parse("logs.store.v1").unwrap())
+            .unwrap(),
     ));
     let mut restored = store.load(&key(), identity(), limits()).unwrap().unwrap();
     assert_eq!(restored.snapshot(), log.snapshot());

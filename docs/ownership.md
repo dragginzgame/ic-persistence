@@ -133,9 +133,10 @@ active evidence is replaced.
 Release tests give Git, build, registry and file effects their own state and
 faults, sharing one ordered command log. Make admission, jobserver, receipt and
 bootstrap scenarios remain scoped independently; the outer suite retains failed
-evidence. Archive graph predicates live in `scripts/ci/package-graph.jq`, used by
-both real admission and pure fixtures. Cargo observation and compiler dispatch
-remain in the archive qualification script.
+evidence. IC Build owns archive extraction, exact graph admission and frozen
+lock/source custody through its composable archive qualification API. The shell
+entrypoint owns packaging and compiler admission; the native archive adapter owns
+this consumer's library/native/MSRV/Wasm check roster and consumer fixture custody.
 
 ## Release tooling ownership
 

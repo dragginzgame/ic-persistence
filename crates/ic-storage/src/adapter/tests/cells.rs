@@ -68,7 +68,7 @@ fn observed_runtime(memory: &ObservedMemory) -> MemoryRuntime<ObservedMemory> {
         "test",
         "test.",
         &KEYS,
-        MemoryManagerConfig::new(1).unwrap(),
+        MemoryManagerConfig::new(std::num::NonZeroU16::new(1).unwrap()),
     )
     .unwrap()
 }
@@ -96,18 +96,26 @@ fn load_rejects_empty_foreign_unsupported_and_truncated_cells_without_effects() 
         let backing = ObservedMemory::default();
         let runtime = observed_runtime(&backing);
         if let Some(header) = header {
-            let memory = runtime.open_memory(KEY).unwrap();
+            let memory = runtime
+                .open_memory(&ic_memory::StableKey::parse(KEY).unwrap())
+                .unwrap();
             memory.grow(1).unwrap();
             memory.write(0, &header);
         }
         let before = backing.snapshot();
-        let error = StableCell::<u64, _>::load(runtime.open_memory(KEY).unwrap())
-            .err()
-            .unwrap();
+        let error = StableCell::<u64, _>::load(
+            runtime
+                .open_memory(&ic_memory::StableKey::parse(KEY).unwrap())
+                .unwrap(),
+        )
+        .err()
+        .unwrap();
         assert_eq!(error, expected);
         backing.assert_unchanged(&before);
         assert!(
-            runtime.open_memory(KEY).is_ok(),
+            runtime
+                .open_memory(&ic_memory::StableKey::parse(KEY).unwrap())
+                .is_ok(),
             "failed load retained lease"
         );
     }
@@ -119,20 +127,32 @@ fn codec_and_backing_panics_preserve_memory_and_release_the_consumed_lease() {
     let runtime = observed_runtime(&backing);
     // A structurally valid envelope whose single byte cannot decode as u64.
     drop(substrate::Cell::new(
-        runtime.open_memory(KEY).unwrap(),
+        runtime
+            .open_memory(&ic_memory::StableKey::parse(KEY).unwrap())
+            .unwrap(),
         vec![7_u8],
     ));
     let before = backing.snapshot();
     assert!(
         catch_unwind(AssertUnwindSafe(|| {
-            let _ = StableCell::<u64, _>::load(runtime.open_memory(KEY).unwrap());
+            let _ = StableCell::<u64, _>::load(
+                runtime
+                    .open_memory(&ic_memory::StableKey::parse(KEY).unwrap())
+                    .unwrap(),
+            );
         }))
         .is_err()
     );
     backing.assert_unchanged(&before);
-    assert!(runtime.open_memory(KEY).is_ok());
+    assert!(
+        runtime
+            .open_memory(&ic_memory::StableKey::parse(KEY).unwrap())
+            .is_ok()
+    );
 
-    let lease = runtime.open_memory(KEY).unwrap();
+    let lease = runtime
+        .open_memory(&ic_memory::StableKey::parse(KEY).unwrap())
+        .unwrap();
     backing.fail_read.set(true);
     assert!(
         catch_unwind(AssertUnwindSafe(|| {
@@ -142,7 +162,11 @@ fn codec_and_backing_panics_preserve_memory_and_release_the_consumed_lease() {
     );
     backing.fail_read.set(false);
     backing.assert_unchanged(&before);
-    assert!(runtime.open_memory(KEY).is_ok());
+    assert!(
+        runtime
+            .open_memory(&ic_memory::StableKey::parse(KEY).unwrap())
+            .is_ok()
+    );
 }
 
 #[test]
@@ -171,59 +195,255 @@ fn load_decodes_once_without_a_default_or_encoding_and_retains_canonical_bytes()
     let value = vec![42; 70_000];
     // Producer is the qualified upstream Cell, not our wrapper.
     drop(substrate::Cell::new(
-        runtime.open_memory(KEY).unwrap(),
+        runtime
+            .open_memory(&ic_memory::StableKey::parse(KEY).unwrap())
+            .unwrap(),
         Record(value.clone()),
     ));
     DECODES.store(0, Ordering::Relaxed);
     ENCODES.store(0, Ordering::Relaxed);
     let before = backing.snapshot();
-    let mut cell = StableCell::<Record, _>::load(runtime.open_memory(KEY).unwrap()).unwrap();
+    let mut cell = StableCell::<Record, _>::load(
+        runtime
+            .open_memory(&ic_memory::StableKey::parse(KEY).unwrap())
+            .unwrap(),
+    )
+    .unwrap();
     assert!(cell.get().0 == value);
     assert_eq!(DECODES.load(Ordering::Relaxed), 1);
     assert_eq!(ENCODES.load(Ordering::Relaxed), 0);
     backing.assert_unchanged(&before);
     assert!(matches!(
-        runtime.open_memory(KEY),
+        runtime.open_memory(&ic_memory::StableKey::parse(KEY).unwrap()),
         Err(RuntimeOpenError::AlreadyOpen { .. })
     ));
     assert!(cell.set(Record(Vec::new())).0 == value);
     drop(cell);
     let before = backing.snapshot();
-    let cell = StableCell::<Record, _>::load(runtime.open_memory(KEY).unwrap()).unwrap();
+    let cell = StableCell::<Record, _>::load(
+        runtime
+            .open_memory(&ic_memory::StableKey::parse(KEY).unwrap())
+            .unwrap(),
+    )
+    .unwrap();
     assert_eq!(cell.get().0, [] as [u8; 0]);
     backing.assert_unchanged(&before);
     drop(cell);
     // Consumer is upstream too; it recognizes the unchanged envelope/codec.
-    let cell = substrate::Cell::init(runtime.open_memory(KEY).unwrap(), Record(vec![99]));
+    let cell = substrate::Cell::init(
+        runtime
+            .open_memory(&ic_memory::StableKey::parse(KEY).unwrap())
+            .unwrap(),
+        Record(vec![99]),
+    );
     assert_eq!(cell.get().0, [] as [u8; 0]);
 }
 
 #[test]
-fn new_init_load_and_set_interoperate_without_changing_initialization_contracts() {
+fn create_load_and_explicit_reset_preserve_the_upstream_format() {
     let backing = ObservedMemory::default();
     let runtime = observed_runtime(&backing);
-    drop(StableCell::init(runtime.open_memory(KEY).unwrap(), 11_u64));
+    drop(StableCell::create(
+        runtime
+            .open_memory(&ic_memory::StableKey::parse(KEY).unwrap())
+            .unwrap(),
+        11_u64,
+    ));
     let before = backing.snapshot();
-    let cell = StableCell::init(runtime.open_memory(KEY).unwrap(), 99_u64);
+    let cell = StableCell::<u64, _>::load(
+        runtime
+            .open_memory(&ic_memory::StableKey::parse(KEY).unwrap())
+            .unwrap(),
+    )
+    .unwrap();
     assert_eq!(*cell.get(), 11);
     backing.assert_unchanged(&before);
     drop(cell);
-    // new remains destructive; load retains its replacement and set's old value.
-    drop(StableCell::new(runtime.open_memory(KEY).unwrap(), 22_u64));
-    let mut cell = StableCell::<u64, _>::load(runtime.open_memory(KEY).unwrap()).unwrap();
+    // Explicit reset replaces the value; load preserves the new bytes.
+    drop(StableCell::reset(
+        runtime
+            .open_memory(&ic_memory::StableKey::parse(KEY).unwrap())
+            .unwrap(),
+        22_u64,
+    ));
+    let mut cell = StableCell::<u64, _>::load(
+        runtime
+            .open_memory(&ic_memory::StableKey::parse(KEY).unwrap())
+            .unwrap(),
+    )
+    .unwrap();
     assert_eq!(*cell.get(), 22);
     assert_eq!(cell.set(33), 22);
     drop(cell);
-    let memory = runtime.open_memory(KEY).unwrap();
+    let memory = runtime
+        .open_memory(&ic_memory::StableKey::parse(KEY).unwrap())
+        .unwrap();
     let mut bytes = [0; 16];
     memory.read(0, &mut bytes);
     assert_eq!(&bytes[..8], b"SCL\x01\x08\0\0\0");
     assert_eq!(&bytes[8..], &33_u64.to_be_bytes());
     drop(memory);
     assert_eq!(
-        *StableCell::<u64, _>::load(runtime.open_memory(KEY).unwrap())
-            .unwrap()
-            .get(),
+        *StableCell::<u64, _>::load(
+            runtime
+                .open_memory(&ic_memory::StableKey::parse(KEY).unwrap())
+                .unwrap()
+        )
+        .unwrap()
+        .get(),
         33
     );
+}
+
+fn refuse_collection(kind: u8, operation: &str, runtime: &MemoryRuntime<ObservedMemory>) {
+    let memory = runtime
+        .open_memory(&ic_memory::StableKey::parse(KEY).unwrap())
+        .unwrap();
+    let create = operation == "create";
+    match kind {
+        0 => {
+            if create {
+                drop(StableCell::create(memory, 7_u64));
+            } else {
+                drop(StableCell::<u64, _>::load(memory).unwrap());
+            }
+        }
+        1 => {
+            drop(if create {
+                StableBTreeMap::<u64, u64, _>::create(memory)
+            } else {
+                StableBTreeMap::load(memory)
+            });
+        }
+        2 => {
+            drop(if create {
+                StableBTreeSet::<u64, _>::create(memory)
+            } else {
+                StableBTreeSet::load(memory)
+            });
+        }
+        3 => {
+            drop(if create {
+                StableVec::<u64, _>::create(memory)
+            } else {
+                StableVec::load(memory)
+            });
+        }
+        4 => {
+            drop(if create {
+                StableMinHeap::<u64, _>::create(memory)
+            } else {
+                StableMinHeap::load(memory)
+            });
+        }
+        _ => {
+            let data = runtime
+                .open_memory(&ic_memory::StableKey::parse("test.log.data.v1").unwrap())
+                .unwrap();
+            drop(if create {
+                StableLog::<u64, _>::create(memory, data)
+            } else {
+                StableLog::load(memory, data)
+            });
+        }
+    }
+}
+
+#[test]
+fn lifecycle_refusals_preserve_bytes_writes_growth_and_release_every_lease() {
+    for kind in 0..6 {
+        for operation in ["create", "load-empty", "load-foreign"] {
+            let backing = ObservedMemory::default();
+            let runtime = observed_runtime(&backing);
+            if operation != "load-empty" {
+                for key in [KEY, "test.log.data.v1"] {
+                    let memory = runtime
+                        .open_memory(&ic_memory::StableKey::parse(key).unwrap())
+                        .unwrap();
+                    memory.grow(1).unwrap();
+                    memory.write(0, b"BAD\0\0\0\0\0");
+                }
+            }
+            let before = backing.snapshot();
+            assert!(
+                catch_unwind(AssertUnwindSafe(|| refuse_collection(
+                    kind, operation, &runtime
+                )))
+                .is_err()
+            );
+            backing.assert_unchanged(&before);
+            for key in [KEY, "test.log.data.v1"] {
+                assert!(
+                    runtime
+                        .open_memory(&ic_memory::StableKey::parse(key).unwrap())
+                        .is_ok()
+                );
+            }
+        }
+    }
+}
+
+#[test]
+fn unbounded_cells_and_log_index_corruption_keep_explicit_lifecycle_contracts() {
+    let backing = ObservedMemory::default();
+    let runtime = observed_runtime(&backing);
+    let key = ic_memory::StableKey::parse(KEY).unwrap();
+    let cell = StableCell::create(runtime.open_memory(&key).unwrap(), vec![3_u8; 17]);
+    drop(cell);
+    let cell = StableCell::<Vec<u8>, _>::load(runtime.open_memory(&key).unwrap()).unwrap();
+    assert_eq!(cell.get(), &vec![3; 17]);
+    drop(cell);
+    let data_key = ic_memory::StableKey::parse("test.log.data.v1").unwrap();
+    let log = StableLog::<u64, _>::reset(
+        runtime.open_memory(&key).unwrap(),
+        runtime.open_memory(&data_key).unwrap(),
+    );
+    log.append(&9).unwrap();
+    drop(log);
+    let index = runtime.open_memory(&key).unwrap();
+    index.write(0, b"BAD");
+    drop(index);
+    let before = backing.snapshot();
+    assert!(
+        catch_unwind(AssertUnwindSafe(|| {
+            let _ = StableLog::<u64, _>::load(
+                runtime.open_memory(&key).unwrap(),
+                runtime.open_memory(&data_key).unwrap(),
+            );
+        }))
+        .is_err()
+    );
+    backing.assert_unchanged(&before);
+}
+
+#[test]
+fn log_lifecycle_refuses_partially_initialized_pairs_without_effects() {
+    for occupied in [0, 1] {
+        let backing = ObservedMemory::default();
+        let runtime = observed_runtime(&backing);
+        let keys = [KEY, "test.log.data.v1"].map(|key| ic_memory::StableKey::parse(key).unwrap());
+        let memory = runtime.open_memory(&keys[occupied]).unwrap();
+        memory.grow(1).unwrap();
+        memory.write(0, b"BAD");
+        drop(memory);
+        for create in [true, false] {
+            let before = backing.snapshot();
+            assert!(
+                catch_unwind(AssertUnwindSafe(|| {
+                    let index = runtime.open_memory(&keys[0]).unwrap();
+                    let data = runtime.open_memory(&keys[1]).unwrap();
+                    drop(if create {
+                        StableLog::<u64, _>::create(index, data)
+                    } else {
+                        StableLog::load(index, data)
+                    });
+                }))
+                .is_err()
+            );
+            backing.assert_unchanged(&before);
+            for key in &keys {
+                assert!(runtime.open_memory(key).is_ok());
+            }
+        }
+    }
 }

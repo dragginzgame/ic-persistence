@@ -11,7 +11,7 @@ use crate::physical::CommittedGenerationBytes;
 use serde::{Deserialize, Serialize};
 
 pub use claim::{ClaimConflict, ClaimOutcome, validate_declaration_claim};
-pub use error::{AllocationStageError, LedgerCommitError, LedgerIntegrityError};
+pub use error::{AllocationStageError, LedgerCommitError, LedgerDecodeError, LedgerIntegrityError};
 pub use record::{AllocationLedger, AllocationRecord, RecoveredLedger};
 pub use stage::stage_generation;
 

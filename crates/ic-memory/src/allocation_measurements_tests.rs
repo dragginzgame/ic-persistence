@@ -136,8 +136,11 @@ fn allocation_diagnostics_allocations() {
                 assert_eq!(manager.get(MemoryId::new(id)).grow(2), 0);
             }
         }
-        let mut runtime =
-            MemoryRuntime::new_with_config(backing, MemoryManagerConfig::new(1).unwrap()).unwrap();
+        let mut runtime = MemoryRuntime::new_with_config(
+            backing,
+            MemoryManagerConfig::new(std::num::NonZeroU16::new(1).unwrap()),
+        )
+        .unwrap();
         let prefix = if populated { "populated" } else { "empty" };
         assert_eq!(
             runtime
@@ -209,7 +212,7 @@ fn declaration_resolution_allocations() {
         measure(&format!("fresh_bootstrap_{count}"), 0, 10, || {
             let mut runtime = MemoryRuntime::new_with_config(
                 VectorMemory::default(),
-                MemoryManagerConfig::new(1).unwrap(),
+                MemoryManagerConfig::new(std::num::NonZeroU16::new(1).unwrap()),
             )
             .unwrap();
             assert_eq!(
@@ -242,7 +245,7 @@ fn doctor_report_allocations() {
         let declarations = SealedDeclarationSnapshot::new(requests).unwrap();
         let mut runtime = MemoryRuntime::new_with_config(
             VectorMemory::default(),
-            MemoryManagerConfig::new(1).unwrap(),
+            MemoryManagerConfig::new(std::num::NonZeroU16::new(1).unwrap()),
         )
         .unwrap();
         runtime

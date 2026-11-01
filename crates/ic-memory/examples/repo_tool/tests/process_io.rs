@@ -130,7 +130,7 @@ fn failed_release_fixture_retains_receipts_and_command_state() {
     );
     assert_eq!(
         fs::read_to_string(retained.join("Cargo.lock")).unwrap(),
-        LOCK
+        fixture_lock()
     );
     let evidence: ValidationEvidence = serde_json::from_slice(&fs::read(receipt).unwrap()).unwrap();
     assert_eq!(evidence.selection.source, "source");
@@ -255,7 +255,7 @@ fn streamed_receipts_preserve_json_and_reject_partial_serialization() {
     // or tag. Lifecycle admission is exercised by the release/recovery tests.
     let validation = ValidationEvidence {
         selection: fixture.selection.clone(),
-        lock: LOCK.as_bytes().to_vec(),
+        lock: fixture_lock().as_bytes().to_vec(),
         identities: ["cargo", "rustc", "msrv"].map(str::to_owned),
         configuration: BTreeMap::new(),
         command: vec!["validate".to_owned()],

@@ -40,11 +40,11 @@ fn admitted<M: MemoryBacking>(memory: M) -> ic_memory::RuntimeMemory<M> {
         MemoryManagerConfig::default(),
     )
     .unwrap()
-    .open_memory("logs.store.v1")
+    .open_memory(&ic_memory::StableKey::parse("logs.store.v1").unwrap())
     .unwrap()
 }
 fn store() -> LoggingStore<VectorMemory> {
-    LoggingStore::new(StableBTreeMap::new(admitted(VectorMemory::default())))
+    LoggingStore::new(StableBTreeMap::create(admitted(VectorMemory::default())))
 }
 
 #[derive(Clone, Default)]

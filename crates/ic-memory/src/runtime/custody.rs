@@ -225,10 +225,14 @@ mod tests {
                 "drop",
                 "drop.",
                 &["drop.rows.v1"],
-                MemoryManagerConfig::new(8).unwrap(),
+                MemoryManagerConfig::new(std::num::NonZeroU16::new(8).unwrap()),
             )
             .unwrap();
-            let handle = detach_handle.then(|| runtime.open_memory("drop.rows.v1").unwrap());
+            let handle = detach_handle.then(|| {
+                runtime
+                    .open_memory(&crate::StableKey::parse("drop.rows.v1").unwrap())
+                    .unwrap()
+            });
             drop(runtime);
             if handle.is_some() {
                 assert_eq!(destruction.get(), None);

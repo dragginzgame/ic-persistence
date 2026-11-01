@@ -28,41 +28,40 @@ impl<T: Storable> Storable for CellValue<T> {
         self.0
             .as_ref()
             .expect("cannot initialize a loading cell")
-            .to_bytes()
+            .to_bytes_checked()
     }
 
     fn into_bytes(self) -> Vec<u8> {
         self.0
             .expect("cannot initialize a loading cell")
-            .into_bytes()
+            .into_bytes_checked()
     }
 
     fn from_bytes(bytes: Cow<'_, [u8]>) -> Self {
+        T::check_bounds(&bytes);
         Self(Some(T::from_bytes(bytes)))
     }
 }
 
 impl<T: Storable, M: Memory> StableCell<T, M> {
-    /// Create a new collection, replacing any prior collection in the selected memory.
-    /// This is destructive even when a valid collection already exists.
+    /// Create a cell only in zero-page memory, enforcing declared record bounds.
     ///
     /// # Panics
-    /// Panics on insufficient memory or codec/backing failure.
-    pub fn new(memory: RuntimeMemory<M>, value: T) -> Self {
+    /// Refuses nonempty memory or a value outside its declared bound before
+    /// writing. Growth and codec failures retain upstream behavior.
+    pub fn create(memory: RuntimeMemory<M>, value: T) -> Self {
+        assert_eq!(memory.size(), 0, "cell memory is not empty");
+        Self::reset(memory, value)
+    }
+
+    /// Deliberately replace any contents, enforcing the record's declared bound.
+    ///
+    /// # Panics
+    /// Refuses oversized/fixed-width mismatches before writing. Growth and codec
+    /// failures retain upstream behavior. Unbounded record types remain allowed.
+    pub fn reset(memory: RuntimeMemory<M>, value: T) -> Self {
         Self {
             inner: substrate::Cell::new(memory, CellValue(Some(value))),
-        }
-    }
-    /// Open a recognized retained collection; initialize a new one when memory
-    /// is empty or has foreign magic. Foreign contents may be overwritten.
-    /// This is not a corruption-recovery or schema-admission operation.
-    ///
-    /// # Panics
-    /// Panics for unsupported recognized layouts, invalid retained contents,
-    /// insufficient memory or codec/backing failure.
-    pub fn init(memory: RuntimeMemory<M>, default_value: T) -> Self {
-        Self {
-            inner: substrate::Cell::init(memory, CellValue(Some(default_value))),
         }
     }
     /// Load an existing cell without initializing, writing or growing memory.
@@ -73,7 +72,7 @@ impl<T: Storable, M: Memory> StableCell<T, M> {
     ///
     /// # Errors
     /// Returns [`ic_memory::StableCellPayloadError`] for empty/foreign memory,
-    /// unsupported layout versions or a payload extending beyond memory. The
+    /// unsupported layout versions, a payload beyond memory or the declared maximum. The
     /// consumed lease is released on failure; no bytes are changed.
     ///
     /// # Panics
@@ -82,7 +81,11 @@ impl<T: Storable, M: Memory> StableCell<T, M> {
     /// the consumed lease; Wasm traps retain the host's rollback semantics.
     /// This validates the envelope, not the application's schema or recovery policy.
     pub fn load(memory: RuntimeMemory<M>) -> Result<Self, ic_memory::StableCellPayloadError> {
-        ic_memory::stable_cell_payload_length(&memory, usize::MAX)?;
+        let maximum = match T::BOUND {
+            Bound::Bounded { max_size, .. } => max_size as usize,
+            Bound::Unbounded => usize::MAX,
+        };
+        ic_memory::stable_cell_payload_length(&memory, maximum)?;
         Ok(Self {
             inner: substrate::Cell::init(memory, CellValue(None)),
         })
@@ -104,63 +107,5 @@ impl<T: Storable, M: Memory> StableCell<T, M> {
             .set(CellValue(Some(value)))
             .0
             .expect("loaded cell value")
-    }
-}
-
-/// A stable cell whose writes enforce the record's declared `Storable` bound.
-pub struct BoundedCell<T: Storable, M: Memory = DefaultMemoryImpl> {
-    cell: substrate::Cell<BoundedValue<T>, RuntimeMemory<M>>,
-}
-
-impl<T: Storable, M: Memory> BoundedCell<T, M> {
-    /// Open a current cell or initialize a fresh bounded record.
-    /// Empty memory or foreign magic initializes the supplied value, potentially
-    /// overwriting foreign contents. Recognized incompatible layouts are refused.
-    ///
-    /// # Panics
-    /// Panics for unbounded records or encodings that violate the declared bound.
-    /// Also retains [`StableCell::init`] layout, growth and codec/backing panics.
-    #[must_use]
-    pub fn init(memory: RuntimeMemory<M>, value: T) -> Self {
-        assert!(matches!(T::BOUND, Bound::Bounded { .. }));
-        Self {
-            cell: substrate::Cell::init(memory, BoundedValue(value)),
-        }
-    }
-
-    /// Read the cached current record without serializing or cloning it.
-    #[must_use]
-    pub fn get(&self) -> &T {
-        &self.cell.get().0
-    }
-
-    /// Validate and persist a complete replacement, returning the prior record.
-    ///
-    /// # Panics
-    /// Panics before writing if the encoding violates its declared bound.
-    pub fn set(&mut self, value: T) -> T {
-        self.cell.set(BoundedValue(value)).0
-    }
-}
-
-struct BoundedValue<T>(T);
-
-impl<T: Storable> Storable for BoundedValue<T> {
-    const BOUND: Bound = T::BOUND;
-
-    fn to_bytes(&self) -> Cow<'_, [u8]> {
-        self.0.to_bytes_checked()
-    }
-
-    fn into_bytes(self) -> Vec<u8> {
-        self.0.into_bytes_checked()
-    }
-
-    fn from_bytes(bytes: Cow<'_, [u8]>) -> Self {
-        if matches!(T::BOUND, Bound::Unbounded) {
-            unreachable!("bounded cell record must declare a bound");
-        }
-        T::check_bounds(&bytes);
-        Self(T::from_bytes(bytes))
     }
 }

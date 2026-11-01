@@ -9,33 +9,31 @@ pub struct StableBTreeMap<K: Storable + Ord + Clone, V: Storable, M: Memory = De
     inner: substrate::BTreeMap<K, V, RuntimeMemory<M>>,
 }
 impl<K: Storable + Ord + Clone, V: Storable, M: Memory> StableBTreeMap<K, V, M> {
-    /// Create a new collection, replacing any prior collection in the selected memory.
-    /// This is destructive even when a valid collection already exists.
+    /// Create a collection only in zero-page memory.
     ///
     /// # Panics
-    /// Panics on insufficient memory or codec/backing failure.
-    pub fn new(memory: RuntimeMemory<M>) -> Self {
+    /// Refuses nonempty memory before writing. Growth and codec failures retain
+    /// upstream behavior.
+    pub fn create(memory: RuntimeMemory<M>) -> Self {
+        assert_eq!(memory.size(), 0, "collection memory is not empty");
+        Self::reset(memory)
+    }
+
+    /// Deliberately replace any contents in this admitted allocation.
+    ///
+    /// # Panics
+    /// Growth and codec failures retain upstream behavior.
+    pub fn reset(memory: RuntimeMemory<M>) -> Self {
         Self {
             inner: substrate::BTreeMap::new(memory),
         }
     }
-    /// Open a recognized retained collection; initialize a new one when memory
-    /// is empty or has foreign magic. Foreign contents may be overwritten.
-    /// This is not a corruption-recovery or schema-admission operation.
+
+    /// Load retained collection state without initializing a replacement.
     ///
     /// # Panics
-    /// Panics for unsupported recognized layouts, invalid retained contents,
-    /// insufficient memory or codec/backing failure.
-    pub fn init(memory: RuntimeMemory<M>) -> Self {
-        Self {
-            inner: substrate::BTreeMap::init(memory),
-        }
-    }
-    /// Load an existing tree without initializing a replacement.
-    ///
-    /// # Panics
-    /// Panics for missing/foreign headers, unsupported layouts or backing failure.
-    /// Record decoding can also panic when records are subsequently accessed.
+    /// Refuses empty or foreign memory and incompatible layouts/bounds without
+    /// writing. Record decoding and backing failures retain upstream behavior.
     pub fn load(memory: RuntimeMemory<M>) -> Self {
         Self {
             inner: substrate::BTreeMap::load(memory),

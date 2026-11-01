@@ -8,23 +8,42 @@ pub struct StableLog<T: Storable, M: Memory = DefaultMemoryImpl> {
     inner: substrate::Log<T, RuntimeMemory<M>, RuntimeMemory<M>>,
 }
 impl<T: Storable, M: Memory> StableLog<T, M> {
-    /// Create a new collection, replacing any prior collection in the selected memory.
-    /// This is destructive even when a valid collection already exists.
+    /// Create a log only when both admitted memories have zero pages.
     ///
     /// # Panics
-    /// Panics on insufficient memory or codec/backing failure.
-    pub fn new(index_memory: RuntimeMemory<M>, data_memory: RuntimeMemory<M>) -> Self {
+    /// Refuses either nonempty memory before writing. Growth failures retain
+    /// upstream behavior.
+    pub fn create(index_memory: RuntimeMemory<M>, data_memory: RuntimeMemory<M>) -> Self {
+        assert_eq!(index_memory.size(), 0, "log index is not empty");
+        assert_eq!(data_memory.size(), 0, "log data is not empty");
+        Self::reset(index_memory, data_memory)
+    }
+
+    /// Deliberately replace both admitted log allocations.
+    ///
+    /// # Panics
+    /// Growth and backing failures retain upstream behavior.
+    pub fn reset(index_memory: RuntimeMemory<M>, data_memory: RuntimeMemory<M>) -> Self {
         Self {
             inner: substrate::Log::new(index_memory, data_memory),
         }
     }
-    /// Open a retained log, or initialize both memories when data memory is
-    /// empty or has foreign magic. The latter overwrites previous contents.
+
+    /// Load a retained log without initializing either allocation.
     ///
     /// # Panics
-    /// With recognized data magic, panics for an invalid index or unsupported
-    /// layout. Growth and codec/backing failures also retain upstream panics.
-    pub fn init(index_memory: RuntimeMemory<M>, data_memory: RuntimeMemory<M>) -> Self {
+    /// Refuses empty/foreign memory and incompatible layouts without writing.
+    /// Backing and collection corruption failures retain upstream behavior.
+    pub fn load(index_memory: RuntimeMemory<M>, data_memory: RuntimeMemory<M>) -> Self {
+        assert!(
+            index_memory.size() > 0 && data_memory.size() > 0,
+            "log memory is empty"
+        );
+        let mut magic = [0; 3];
+        data_memory.read(0, &mut magic);
+        assert_eq!(&magic, b"GLD", "foreign log data");
+        // With recognized data magic upstream refuses every other incompatible
+        // header before writes, including invalid/missing index magic.
         Self {
             inner: substrate::Log::init(index_memory, data_memory),
         }

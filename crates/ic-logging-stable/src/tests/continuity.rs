@@ -4,7 +4,7 @@ use super::*;
 #[test]
 fn empty_and_exhausted_checkpoints_preserve_watermarks_across_reopen() {
     let backing = VectorMemory::default();
-    let mut store = LoggingStore::new(StableBTreeMap::new(admitted(backing.clone())));
+    let mut store = LoggingStore::new(StableBTreeMap::create(admitted(backing.clone())));
     let mut log = Log::new(limits());
     log.append(input(20, "expired")).unwrap();
     log.prune_expired(21, 0, 1);
@@ -48,7 +48,7 @@ fn empty_and_exhausted_checkpoints_preserve_watermarks_across_reopen() {
 fn identical_and_refused_checkpoints_do_not_write_or_rewrite_issued_history() {
     let memory = CountedMemory::default();
     let writes = memory.writes.clone();
-    let mut store = LoggingStore::new(StableBTreeMap::new(admitted(memory)));
+    let mut store = LoggingStore::new(StableBTreeMap::create(admitted(memory)));
     let mut log = Log::new(limits());
     for time in 10..13 {
         log.append(input(time, "event")).unwrap();
@@ -102,7 +102,7 @@ fn identical_and_refused_checkpoints_do_not_write_or_rewrite_issued_history() {
 fn rolling_retention_preserves_overlap_and_refuses_rewrites_without_writes() {
     let memory = CountedMemory::default();
     let writes = memory.writes.clone();
-    let mut store = LoggingStore::new(StableBTreeMap::new(admitted(memory)));
+    let mut store = LoggingStore::new(StableBTreeMap::create(admitted(memory)));
     let mut log = Log::new(limits());
     for time in 0..4 {
         log.append(input(time, "original")).unwrap();

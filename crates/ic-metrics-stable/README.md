@@ -73,7 +73,7 @@ Serialization, kind selection and continuity dispatch are private implementation
 Vec<u8>, M>` type. Hosts may use either spelling; this is a type alias, with no
 collection wrapper or independent initialization policy. `MetricsStore::new(map)`
 and `store.into_map()` transfer that same collection and its allocation lease.
-Hosts select `StableBTreeMap::new(handle)` for known fresh storage or
+Hosts select `StableBTreeMap::create(handle)` for known fresh storage or
 `StableBTreeMap::load(handle)` for a known retained map. The store constructor
 wraps the supplied collection without touching storage. The generic parameter
 remains the runtime's backing memory, and the B-tree format remains unchanged. Rows use the current Wire contract. No custom tree format or additional memory ID is introduced.
@@ -104,8 +104,9 @@ let pool = MemoryAllocationPool::new(
 let declarations = SealedDeclarationSnapshot::new(vec![MemoryRequest::new("app", STORE_KEY)?])?;
 let mut runtime = MemoryRuntime::new(VectorMemory::default())?;
 runtime.bootstrap(&declarations, &pool, &GenericAllocationPolicy)?;
-let mut store = MetricsStore::new(StableBTreeMap::new(runtime.open_memory(STORE_KEY)?));
-assert!(matches!(runtime.open_memory(STORE_KEY), Err(RuntimeOpenError::AlreadyOpen { .. })));
+let store_key = ic_memory::StableKey::parse(STORE_KEY)?;
+let mut store = MetricsStore::new(StableBTreeMap::create(runtime.open_memory(&store_key)?));
+assert!(matches!(runtime.open_memory(&store_key), Err(RuntimeOpenError::AlreadyOpen { .. })));
 let identity = MetricIdentity::new("instructions", 0)?;
 let key = MetricKey::new("canic", "endpoint.create")?;
 let mut summary = store.load_summary(&key, &identity)?.unwrap_or(MeasurementSummary::EMPTY);
@@ -129,10 +130,10 @@ let mut histogram = store.load_histogram(&histogram_key, &items, &bounds)?
 histogram.record(3);
 store.save_histogram(&histogram_key, &items, &histogram)?;
 let map = store.into_map();
-assert!(matches!(runtime.open_memory(STORE_KEY), Err(RuntimeOpenError::AlreadyOpen { .. })));
+assert!(matches!(runtime.open_memory(&store_key), Err(RuntimeOpenError::AlreadyOpen { .. })));
 drop(map);
 
-let reopened = MetricsStore::new(StableBTreeMap::load(runtime.open_memory(STORE_KEY)?));
+let reopened = MetricsStore::new(StableBTreeMap::load(runtime.open_memory(&store_key)?));
 assert_eq!(reopened.load_summary(&key, &identity)?, Some(summary));
 assert_eq!(reopened.load_counter(&bytes_key, &bytes_identity)?, Some(bytes));
 assert_eq!(reopened.load_aggregate(&aggregate_key, &items)?, Some(aggregate));

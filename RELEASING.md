@@ -85,8 +85,8 @@ Toolchain/formatter and installed server preparation retain their separate owner
 Every group runs the same complete `make validate` release gate. Group selection
 does not narrow Clippy, compiler-floor, Wasm, runtime prerequisites or whole-workspace
 archive integration. Development validation may qualify dirty source; release
-admission and `make package` retain clean-source checks. `package-workspace.sh`
-qualifies all four current archives as one integration graph with each package's
+admission and `make package` retain clean-source checks. `package-workspace.sh` delegates archive admission to Build 0.73.5 and the native
+`repo-tool qualify-archives` consumer roster. It qualifies all four current archives as one integration graph with each package's
 own version. The selected group is then packaged alone: published suppliers use
 their registry checksums, while coordinated members package together. The full
 extracted integration graph is qualified using that final archive set; selected

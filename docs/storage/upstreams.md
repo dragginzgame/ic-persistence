@@ -20,7 +20,7 @@ raw memory, collection extraction nor unrestricted upstream collections. The onl
 public Rust module is `ic_storage::adapter`; its collection wrappers, iterator
 aliases, error and codec re-exports are the supported integration surface.
 The exported `Memory` trait supports generic bounds, not allocation authority.
-`BoundedCell` checks declared encoding bounds around the upstream cell; record
+`StableCell` checks declared encoding bounds around the upstream cell; record
 schemas, decoding semantics and recovery remain consumer-owned. Map reservation
 accepts caller-owned page budgets and makes no node-layout entry-capacity promise.
 

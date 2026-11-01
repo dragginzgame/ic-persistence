@@ -34,7 +34,7 @@ fn exact_caps_and_overflow_flags_survive_storage_and_continue() {
 fn counter_checkpoints_preserve_wide_caps_identity_and_explicit_resets() {
     let memory = WriteCountingMemory::default();
     let writes = memory.writes.clone();
-    let mut store = MetricsStore::new(StableBTreeMap::new(admitted_memory(memory.clone())));
+    let mut store = MetricsStore::new(StableBTreeMap::create(admitted_memory(memory.clone())));
     let key = key("app");
     let identity = MetricIdentity::new("bytes", 7).unwrap();
     assert_eq!(store.load_counter(&key, &identity), Ok(None));
@@ -102,7 +102,7 @@ fn counter_checkpoints_preserve_wide_caps_identity_and_explicit_resets() {
 fn inconsistent_summary_latest_rejects_load_and_save_without_overwrite() {
     let memory = WriteCountingMemory::default();
     let writes = memory.writes.clone();
-    let mut store = MetricsStore::new(StableBTreeMap::new(admitted_memory(memory.clone())));
+    let mut store = MetricsStore::new(StableBTreeMap::create(admitted_memory(memory.clone())));
     let key = key("app");
     let identity = identity();
     let mut summary = Summary::EMPTY;
@@ -346,7 +346,7 @@ fn identical_checkpoints_validate_without_stable_writes() {
     fn check<T: crate::metric::StoredMetric>(initial: &T, changed: &T) {
         let memory = WriteCountingMemory::default();
         let writes = memory.writes.clone();
-        let mut store = MetricsStore::new(StableBTreeMap::new(admitted_memory(memory)));
+        let mut store = MetricsStore::new(StableBTreeMap::create(admitted_memory(memory)));
         let key = key("app");
         writes.set(0);
         store.save(&key, &identity(), initial).unwrap();
@@ -432,7 +432,7 @@ fn histogram_checkpoints_preserve_each_bucket_count_and_flag() {
     for (previous, regressing) in pairs {
         let memory = WriteCountingMemory::default();
         let writes = memory.writes.clone();
-        let mut store = MetricsStore::new(StableBTreeMap::new(admitted_memory(memory)));
+        let mut store = MetricsStore::new(StableBTreeMap::create(admitted_memory(memory)));
         let key = key("app");
         store.save(&key, &identity(), &previous).unwrap();
         writes.set(0);

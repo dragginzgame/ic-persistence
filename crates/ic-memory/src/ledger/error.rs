@@ -27,6 +27,27 @@ pub enum LedgerIntegrityError {
 }
 
 ///
+/// LedgerDecodeError
+///
+/// Typed source of a logical ledger decoding failure. Decoded rows still
+/// require ledger integrity validation before granting allocation authority.
+///
+
+#[non_exhaustive]
+#[derive(Clone, Debug, Eq, thiserror::Error, PartialEq)]
+pub enum LedgerDecodeError {
+    /// IC Wire refused syntax, trailing bytes or traversal budgets.
+    #[error(transparent)]
+    Wire(#[from] ic_wire::Error),
+    /// A stored logical key violates its bounded grammar.
+    #[error(transparent)]
+    Key(#[from] crate::StableKeyError),
+    /// A stored slot is outside the usable manager ID domain.
+    #[error(transparent)]
+    Slot(#[from] crate::MemoryManagerSlotError),
+}
+
+///
 /// LedgerCommitError
 ///
 /// Failure to recover or commit a logical allocation ledger.
@@ -38,7 +59,7 @@ pub enum LedgerCommitError {
     Recovery(CommitRecoveryError),
     /// Built-in ledger decoding failed.
     #[error("allocation ledger codec failed: {0}")]
-    Codec(String),
+    Codec(#[source] LedgerDecodeError),
     /// Decoded ledger violates current ownership invariants.
     #[error(transparent)]
     Integrity(LedgerIntegrityError),

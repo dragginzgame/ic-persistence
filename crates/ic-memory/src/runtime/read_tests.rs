@@ -31,7 +31,9 @@ fn shared_bootstrap_verification_never_touches_backing_or_releases_leases() {
         .unwrap();
     let runtime = Rc::new(runtime);
     let consumer = Rc::clone(&runtime);
-    let lease = runtime.open_memory("runtime_tests.rows.v1").unwrap();
+    let lease = runtime
+        .open_memory(&crate::StableKey::parse("runtime_tests.rows.v1").unwrap())
+        .unwrap();
     let backing = &runtime.growth.backing;
     let before = (
         backing.safe_reads.get(),
@@ -59,7 +61,7 @@ fn shared_bootstrap_verification_never_touches_backing_or_releases_leases() {
         Err(RuntimeBootstrapError::DeclarationSnapshotMismatch)
     ));
     assert!(matches!(
-        consumer.open_memory("runtime_tests.rows.v1"),
+        consumer.open_memory(&crate::StableKey::parse("runtime_tests.rows.v1").unwrap()),
         Err(super::RuntimeOpenError::AlreadyOpen { .. })
     ));
     assert_eq!(
@@ -72,7 +74,11 @@ fn shared_bootstrap_verification_never_touches_backing_or_releases_leases() {
         before
     );
     drop(lease);
-    assert!(consumer.open_memory("runtime_tests.rows.v1").is_ok());
+    assert!(
+        consumer
+            .open_memory(&crate::StableKey::parse("runtime_tests.rows.v1").unwrap())
+            .is_ok()
+    );
 }
 
 #[derive(Default)]
@@ -126,7 +132,7 @@ impl Memory for ObservedMemory {
 fn runtime(bucket_pages: u16) -> MemoryRuntime<ObservedMemory> {
     MemoryRuntime::new_with_config(
         ObservedMemory::default(),
-        MemoryManagerConfig::new(bucket_pages).unwrap(),
+        MemoryManagerConfig::new(std::num::NonZeroU16::new(bucket_pages).unwrap()),
     )
     .unwrap()
 }
@@ -266,9 +272,11 @@ fn default_read_unsafe_and_lease_support_borrowed_nonclone_backing() {
         }
     }
     let backing = VectorMemory::default();
-    let runtime =
-        MemoryRuntime::new_with_config(DefaultOnly(&backing), MemoryManagerConfig::new(1).unwrap())
-            .unwrap();
+    let runtime = MemoryRuntime::new_with_config(
+        DefaultOnly(&backing),
+        MemoryManagerConfig::new(std::num::NonZeroU16::new(1).unwrap()),
+    )
+    .unwrap();
     let memory = handle(&runtime, 1);
     memory.grow(1).unwrap();
     memory.write(PAGE - 3, &[1, 2, 3]);
@@ -408,7 +416,7 @@ fn byte_io_crosses_four_gib_with_discontiguous_buckets() {
             header,
             bytes: RefCell::default(),
         },
-        MemoryManagerConfig::new(128).unwrap(),
+        MemoryManagerConfig::new(std::num::NonZeroU16::new(128).unwrap()),
     )
     .unwrap();
     let memory = handle(&runtime, 1);

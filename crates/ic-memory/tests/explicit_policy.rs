@@ -32,7 +32,7 @@ impl RuntimeBootstrapPolicy for CustomPolicy {
 fn custom_policy_bootstrap_is_identity_bound_and_idempotent() {
     let mut runtime = ic_memory::MemoryRuntime::new_with_config(
         ic_platform::stable_structures::VectorMemory::default(),
-        ic_memory::MemoryManagerConfig::new(16).unwrap(),
+        ic_memory::MemoryManagerConfig::new(std::num::NonZeroU16::new(16).unwrap()),
     )
     .unwrap();
     assert!(!runtime.is_bootstrapped());
@@ -66,7 +66,7 @@ fn custom_policy_bootstrap_is_identity_bound_and_idempotent() {
         ));
     }
     runtime
-        .open_memory("default_custom_policy.rows.v1")
+        .open_memory(&ic_memory::StableKey::parse("default_custom_policy.rows.v1").unwrap())
         .unwrap();
 }
 

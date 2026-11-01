@@ -109,9 +109,10 @@ Fresh runtimes default to 128 Wasm pages, or 8 MiB, per bucket.
 same-release memory.
 
 To choose a different size for new memory, construct an explicit runtime with
-`MemoryRuntime::new_with_config(memory, MemoryManagerConfig::new(pages)?)`.
+`MemoryRuntime::new_with_config(memory, MemoryManagerConfig::new(nonzero_pages))`.
 
-All nonzero `u16` page counts are supported. The setting is immutable for that
+Pass a `std::num::NonZeroU16`; construction is infallible and zero is not a
+configuration value. All nonzero `u16` page counts are supported. The setting is immutable for that
 runtime. Existing memory must match exactly: configuration never shrinks,
 migrates, or reinterprets an existing layout.
 

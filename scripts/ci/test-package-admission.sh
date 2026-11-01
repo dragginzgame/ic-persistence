@@ -15,7 +15,6 @@ REAL_YQ="$(command -v yq)"
 REAL_RUSTUP="$(command -v rustup)"
 export REAL_CARGO REAL_YQ REAL_RUSTUP
 pin="$(sed -n 's/^channel = "\([^"]*\)"$/\1/p' rust-toolchain.toml)"
-bash scripts/ci/test-package-graph.sh
 # Packaging is setup, not the behavior under fault injection. Prepare it once;
 # One rejection still runs the real extraction and pre-compilation admission path.
 "$REAL_CARGO" "+$pin" package --workspace --registry crates-io --locked --offline --no-verify --allow-dirty > "$fixture/package.log" 2>&1
@@ -31,6 +30,8 @@ fi
 export PACKAGE_SELECTED_COMMAND
 metadata="$("$REAL_CARGO" "+$pin" metadata --no-deps --locked --offline --format-version 1)"
 target="$(printf '%s' "$metadata" | jq -er '.target_directory')"
+"$REAL_CARGO" "+$pin" build --locked --offline --example repo-tool >> "$fixture/package.log" 2>&1
+export QUALIFIED_REPO_TOOL="$target/debug/examples/repo-tool"
 PREPARED_ARCHIVES="$fixture/archives.sha256"
 PACKAGE_TOOLCHAIN="$pin"
 export PREPARED_ARCHIVES PACKAGE_TOOLCHAIN
@@ -43,8 +44,6 @@ cat > "$fixture/bin/yq" <<'STUB'
 set -euo pipefail
 if [[ "$REJECT_MODE" == selected-msrv && "$*" == '-p toml -o yaml -r .workspace.package.rust-version Cargo.toml' ]]; then
     printf '%s\n' "$FIXTURE_MSRV"
-elif [[ "$REJECT_MODE" == drift && "${*: -1}" == */package-qualification/attempt.*/Cargo.lock ]]; then
-    "$REAL_YQ" "$@" | jq '(.package[] | select(.source != null) | .version) = "999.0.0"'
 else
     exec "$REAL_YQ" "$@"
 fi
@@ -52,6 +51,15 @@ STUB
 cat > "$fixture/bin/cargo" <<'STUB'
 #!/usr/bin/env bash
 set -euo pipefail
+if [[ "$*" == *' --example repo-tool -- qualify-archives '* ]]; then
+    while [[ "$1" != -- ]]; do shift; done
+    shift
+    exec "$QUALIFIED_REPO_TOOL" "$@"
+fi
+if [[ "$REJECT_MODE" == drift && "$*" == *' metadata '* && "$*" == *'--manifest-path'* ]]; then
+    "$REAL_CARGO" "$@" | jq '(.packages[] | select(.name == "ic-memory") | .manifest_path) = "/foreign/Cargo.toml"'
+    exit
+fi
 if [[ "$*" == *' package '* ]]; then
     [[ "$*" == "+$PACKAGE_TOOLCHAIN package --workspace --registry crates-io --locked --offline --no-verify --allow-dirty" || ( -n "$PACKAGE_SELECTED_COMMAND" && "$*" == "$PACKAGE_SELECTED_COMMAND" ) ]] || exit 98
     shasum -a 256 -c "$PREPARED_ARCHIVES" > /dev/null
@@ -95,8 +103,8 @@ fi
 if rg -q 'unexpected compilation' "$fixture/drift.log"; then
     cat "$fixture/drift.log" >&2; exit 1
 fi
-rg -q 'archive dependency selection drift' "$fixture/drift.log"
-echo 'Pure graph refusals and real admission-before-compilation passed'
+rg -q 'resolved package is not the exact extracted payload' "$fixture/drift.log"
+echo 'Build admission refuses a substituted payload before consumer compilation'
 # Alter only the fixture's catalog observation. Real archive extraction and
 # graph admission run; compiler checks/build/run effects are substitutes.
 export FIXTURE_MSRV=1.90.0 MSRV_EVENTS="$fixture/msrv-events" MSRV_ADMISSION_EVENTS="$fixture/msrv-admission"

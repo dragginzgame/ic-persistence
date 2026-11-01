@@ -63,7 +63,7 @@ fn validation_lock_cannot_be_rebound_to_an_uncommitted_graph() {
     let path = fixture.repo.validation_path("0.13.0").unwrap();
     let mut evidence: ValidationEvidence =
         serde_json::from_slice(&fs::read(&path).unwrap()).unwrap();
-    let changed = LOCK.replace(
+    let changed = fixture_lock().replace(
         "name = \"other\"\nversion = \"0.12.3\"",
         "name = \"other\"\nversion = \"0.12.4\"",
     );
@@ -282,14 +282,14 @@ fn dirty_sources_and_changed_validation_inputs_prevent_version_edits() {
     assert!(fixture.prepare().is_err());
     assert_eq!(
         fs::read_to_string(fixture.repo.root.join("Cargo.toml")).unwrap(),
-        MANIFEST
+        fixture_manifest()
     );
     let fixture = Fixture::new();
     fixture.fail_build(BuildFault::ValidationLock);
     assert!(fixture.prepare().is_err());
     assert_eq!(
         fs::read_to_string(fixture.repo.root.join("Cargo.toml")).unwrap(),
-        MANIFEST
+        fixture_manifest()
     );
 }
 
@@ -311,7 +311,7 @@ fn lockfile_changes_during_post_validation_remote_inspection_stop_before_mutatio
     // Preserve the separately changed lock selection; it is not our version edit.
     assert_eq!(
         fs::read_to_string(fixture.repo.root.join("Cargo.lock")).unwrap(),
-        LOCK.replace(
+        fixture_lock().replace(
             "name = \"other\"\nversion = \"0.12.3\"",
             "name = \"other\"\nversion = \"0.12.4\""
         )
@@ -364,7 +364,7 @@ fn real_index_rejects_hidden_staging_and_checks_exact_prepared_bytes() {
     repo.git(&["read-tree", "HEAD"]).unwrap();
     // Give this real index fixture a tracked lock in an uncommitted tree object.
     // Existing repository history is reused; no commit or tag is created.
-    fs::write(repo.root.join("Cargo.lock"), LOCK).unwrap();
+    fs::write(repo.root.join("Cargo.lock"), fixture_lock()).unwrap();
     repo.git(&["add", "--force", "--", "Cargo.lock"]).unwrap();
     selection.source = repo.git(&["write-tree"]).unwrap();
     repo.git(&["read-tree", &selection.source]).unwrap();
@@ -372,7 +372,7 @@ fn real_index_rejects_hidden_staging_and_checks_exact_prepared_bytes() {
     let expected = format!("{original}\nPrepared release fixture.\n");
     let locked = fixture
         .repo
-        .replace_lock_version(LOCK, "0.12.3", "0.13.0")
+        .replace_lock_version(&fixture_lock(), "0.12.3", "0.13.0")
         .unwrap();
     let surfaces = BTreeMap::from([
         (
@@ -385,7 +385,7 @@ fn real_index_rejects_hidden_staging_and_checks_exact_prepared_bytes() {
         (
             "Cargo.lock".to_owned(),
             ReleaseSurface {
-                original: LOCK.to_owned(),
+                original: fixture_lock(),
                 expected: locked.clone(),
             },
         ),
@@ -428,7 +428,7 @@ fn real_index_rejects_hidden_staging_and_checks_exact_prepared_bytes() {
     ] {
         fs::write(repo.root.join("Cargo.lock"), staged).unwrap();
         repo.git(&["add", "--force", "--", "Cargo.lock"]).unwrap();
-        fs::write(repo.root.join("Cargo.lock"), LOCK).unwrap();
+        fs::write(repo.root.join("Cargo.lock"), fixture_lock()).unwrap();
         assert_eq!(repo.check_index(&selection, &surfaces).is_ok(), accepted);
         repo.git(&["read-tree", &selection.source]).unwrap();
     }
@@ -468,4 +468,16 @@ fn patch_preparation_keeps_head_and_rejects_unvalidated_source_or_staging() {
     fixture.fail_git(GitFault::RemoteAhead);
     assert!(fixture.prepare().is_err());
     fixture.assert_original();
+}
+
+#[test]
+fn declared_extra_manifest_is_preserved_instead_of_rendered_as_a_member() {
+    let fixture = Fixture::new();
+    let path = "testing/qualification/Cargo.toml";
+    let original = "[workspace.package]\nversion = \"9.8.7\"\n";
+    fixture.select_detail(path);
+    fixture.set_source(path, original);
+    let surfaces = fixture.repo.surfaces(&fixture.selection).unwrap();
+    assert_eq!(surfaces[path].original, original);
+    assert_eq!(surfaces[path].expected, original);
 }

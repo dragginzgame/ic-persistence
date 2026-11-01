@@ -187,7 +187,7 @@ impl<M: Memory> FixtureCell<M> {
         M: crate::MemoryBacking,
     {
         let runtime = fixture_runtime(memory, owner, namespace, &[stable_key], config)?;
-        Ok(runtime.open_memory(stable_key)?)
+        Ok(runtime.open_memory(&crate::StableKey::parse(stable_key).unwrap())?)
     }
 
     fn from_admitted_memory(memory: RuntimeMemory<M>, maximum: usize) -> Self {

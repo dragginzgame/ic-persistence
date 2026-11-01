@@ -15,8 +15,8 @@ pub extern "C" fn ic_memory_wasm_runtime_integration_size_probe_bootstrap() -> u
             return 0;
         };
         if slot.is_none() {
-            let Ok(config) = ic_memory::MemoryManagerConfig::new(16) else {
-                return 0;
+            let config = const {
+                ic_memory::MemoryManagerConfig::new(std::num::NonZeroU16::new(16).unwrap())
             };
             let Ok(runtime) =
                 host::Runtime::new_with_config(ic_memory::DefaultMemoryImpl::default(), config)
@@ -41,7 +41,7 @@ pub extern "C" fn ic_memory_wasm_runtime_integration_size_probe_grow(pages: u64)
             slot.try_borrow()
                 .ok()?
                 .as_ref()?
-                .open_memory(KEY)
+                .open_memory(&ic_memory::StableKey::parse(KEY).ok()?)
                 .ok()?
                 .grow(pages)
                 .ok()
@@ -59,7 +59,10 @@ pub extern "C" fn ic_memory_wasm_runtime_integration_size_probe_adopt() -> u32 {
             runtime
                 .verify_authority(&probe_declarations().ok()?, AUTHORITY)
                 .ok()?;
-            runtime.memory_id(KEY).ok().map(u32::from)
+            runtime
+                .memory_id(&ic_memory::StableKey::parse(KEY).ok()?)
+                .ok()
+                .map(u32::from)
         })
         .unwrap_or(u32::MAX)
 }

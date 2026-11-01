@@ -94,7 +94,7 @@ fn main() {
         let start = Instant::now();
         let mut runtime = MemoryRuntime::new_with_config(
             memory.clone(),
-            MemoryManagerConfig::new(bucket).unwrap(),
+            MemoryManagerConfig::new(std::num::NonZeroU16::new(bucket).unwrap()),
         )
         .unwrap();
         record(
@@ -121,7 +121,7 @@ fn main() {
         let start = Instant::now();
         for id in 100..128 {
             let handle = runtime
-                .open_memory(&format!("fixture.store{id}.v1"))
+                .open_memory(&ic_memory::StableKey::parse(format!("fixture.store{id}.v1")).unwrap())
                 .unwrap();
             black_box(Cell::init(handle, 7_u64));
         }
@@ -138,7 +138,9 @@ fn main() {
             unopened.memories[139].allocated_bytes(unopened.summary.bucket_size_pages),
             0
         );
-        let handle = runtime.open_memory("fixture.store128.v1").unwrap();
+        let handle = runtime
+            .open_memory(&ic_memory::StableKey::parse("fixture.store128.v1").unwrap())
+            .unwrap();
         let growing = StableVec::<[u8; 1024], RuntimeMemory<MeteredMemory>>::init(handle);
         memory.reset();
         let start = Instant::now();

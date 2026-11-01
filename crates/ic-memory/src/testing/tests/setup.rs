@@ -4,7 +4,7 @@ use super::*;
 #[test]
 fn cell_keeps_existing_runtime_bytes_and_bucket_configuration() {
     let backing = VectorMemory::default();
-    let config = MemoryManagerConfig::new(16).unwrap();
+    let config = MemoryManagerConfig::new(std::num::NonZeroU16::new(16).unwrap());
     // Construct through the ordinary substrate used by independently owned hosts.
     let request = MemoryRequest::new("fixture", "fixture.journal.v1").unwrap();
     let pool = MemoryAllocationPool::new(
@@ -18,7 +18,9 @@ fn cell_keeps_existing_runtime_bytes_and_bucket_configuration() {
         .bootstrap(&declarations, &pool, &GenericAllocationPolicy)
         .unwrap();
     let mut original = Cell::init(
-        runtime.open_memory("fixture.journal.v1").unwrap(),
+        runtime
+            .open_memory(&crate::StableKey::parse("fixture.journal.v1").unwrap())
+            .unwrap(),
         Vec::new(),
     );
     original.set(vec![0, 255, 42]);
@@ -64,7 +66,7 @@ fn fresh_empty_cell_is_distinct_from_incompatible_retained_configuration() {
         "fixture",
         "fixture.",
         "fixture.journal.v1",
-        MemoryManagerConfig::new(16).unwrap(),
+        MemoryManagerConfig::new(std::num::NonZeroU16::new(16).unwrap()),
         64,
     )
     .unwrap();
@@ -77,7 +79,7 @@ fn fresh_empty_cell_is_distinct_from_incompatible_retained_configuration() {
         "fixture",
         "fixture.",
         "fixture.journal.v1",
-        MemoryManagerConfig::new(128).unwrap(),
+        MemoryManagerConfig::new(std::num::NonZeroU16::new(128).unwrap()),
         64,
     );
     assert!(matches!(
@@ -92,7 +94,7 @@ fn fresh_empty_cell_is_distinct_from_incompatible_retained_configuration() {
 #[test]
 fn fallible_setup_keeps_payload_and_transfers_the_admitted_memory() {
     let backing = VectorMemory::default();
-    let config = MemoryManagerConfig::new(16).unwrap();
+    let config = MemoryManagerConfig::new(std::num::NonZeroU16::new(16).unwrap());
     let mut cell = FixtureCell::create_bounded(
         backing.clone(),
         "fixture",
@@ -122,7 +124,7 @@ fn fallible_setup_keeps_payload_and_transfers_the_admitted_memory() {
         "fixture",
         "fixture.",
         "fixture.jobs.v1",
-        MemoryManagerConfig::new(32).unwrap(),
+        MemoryManagerConfig::new(std::num::NonZeroU16::new(32).unwrap()),
         64,
     );
     assert!(matches!(
@@ -136,7 +138,7 @@ fn fallible_setup_keeps_payload_and_transfers_the_admitted_memory() {
 
 #[test]
 fn fallible_setup_preserves_typed_request_grant_and_bootstrap_errors() {
-    let config = MemoryManagerConfig::new(16).unwrap();
+    let config = MemoryManagerConfig::new(std::num::NonZeroU16::new(16).unwrap());
     let backing = VectorMemory::default();
     let refused = FixtureCell::create_bounded(
         backing.clone(),
@@ -177,7 +179,7 @@ fn fallible_setup_preserves_typed_request_grant_and_bootstrap_errors() {
 #[test]
 fn fallible_setup_refuses_non_cell_history_without_replacing_its_header() {
     let backing = VectorMemory::default();
-    let config = MemoryManagerConfig::new(16).unwrap();
+    let config = MemoryManagerConfig::new(std::num::NonZeroU16::new(16).unwrap());
     let cell = FixtureCell::create_bounded(
         backing.clone(),
         "fixture",
@@ -215,15 +217,19 @@ fn fallible_setup_refuses_non_cell_history_without_replacing_its_header() {
 #[test]
 fn fixture_runtime_keeps_named_allocations_and_returns_the_authority() {
     let backing = VectorMemory::default();
-    let config = MemoryManagerConfig::new(16).unwrap();
+    let config = MemoryManagerConfig::new(std::num::NonZeroU16::new(16).unwrap());
     let keys = ["fixture.map.v1", "fixture.cell.v1"];
     let runtime = fixture_runtime(backing.clone(), "fixture", "fixture.", &keys, config).unwrap();
     assert!(matches!(
-        runtime.open_memory("fixture.unknown.v1"),
+        runtime.open_memory(&crate::StableKey::parse("fixture.unknown.v1").unwrap()),
         Err(crate::RuntimeOpenError::StableKeyNotCommitted(_))
     ));
-    let map = runtime.open_memory(keys[0]).unwrap();
-    let cell = runtime.open_memory(keys[1]).unwrap();
+    let map = runtime
+        .open_memory(&crate::StableKey::parse(keys[0]).unwrap())
+        .unwrap();
+    let cell = runtime
+        .open_memory(&crate::StableKey::parse(keys[1]).unwrap())
+        .unwrap();
     assert_eq!(map.size(), 0, "setup must not initialize a collection");
     assert_eq!(cell.size(), 0);
     assert_eq!(map.grow(1).unwrap(), 0);
@@ -231,7 +237,9 @@ fn fixture_runtime_keeps_named_allocations_and_returns_the_authority() {
     assert_eq!(cell.size(), 0, "allocations must remain distinct");
     drop((runtime, map, cell));
     let runtime = fixture_runtime(backing.clone(), "fixture", "fixture.", &keys, config).unwrap();
-    let map = runtime.open_memory(keys[0]).unwrap();
+    let map = runtime
+        .open_memory(&crate::StableKey::parse(keys[0]).unwrap())
+        .unwrap();
     let mut bytes = [0; 9];
     map.read(0, &mut bytes);
     assert_eq!(&bytes, b"map bytes");
@@ -243,7 +251,7 @@ fn fixture_runtime_keeps_named_allocations_and_returns_the_authority() {
             "fixture",
             "fixture.",
             &keys,
-            MemoryManagerConfig::new(32).unwrap()
+            MemoryManagerConfig::new(std::num::NonZeroU16::new(32).unwrap())
         ),
         Err(FixtureRuntimeError::Construction(_))
     ));
@@ -252,7 +260,7 @@ fn fixture_runtime_keeps_named_allocations_and_returns_the_authority() {
 
 #[test]
 fn fixture_runtime_preserves_setup_error_categories() {
-    let config = MemoryManagerConfig::new(16).unwrap();
+    let config = MemoryManagerConfig::new(std::num::NonZeroU16::new(16).unwrap());
     let backing = VectorMemory::default();
     assert!(matches!(
         fixture_runtime(backing.clone(), "", "fixture.", &["fixture.map.v1"], config),

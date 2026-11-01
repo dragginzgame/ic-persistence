@@ -50,17 +50,12 @@ fn key_lookup_preserves_refusal_order_without_memory_effects() {
                 .unwrap();
         }
         let before = backing.borrow().clone();
-        for key in ["", "INVALID", "db.rows.v0", "ic_memory.ledger.v0"] {
-            let expected = RuntimeOpenError::StableKey(StableKey::parse(key).unwrap_err());
-            assert_eq!(host.memory_id(key), Err(expected.clone()));
-            assert_eq!(host.open_memory(key).err(), Some(expected));
-        }
         assert!(matches!(
-            host.memory_id(crate::IC_MEMORY_LEDGER_STABLE_KEY),
+            host.memory_id(&crate::StableKey::parse(crate::IC_MEMORY_LEDGER_STABLE_KEY).unwrap()),
             Err(RuntimeOpenError::ReservedStableKey { .. })
         ));
         assert_eq!(
-            host.memory_id(KEY),
+            host.memory_id(&crate::StableKey::parse(KEY).unwrap()),
             if bootstrapped {
                 Ok(11)
             } else {
@@ -75,9 +70,11 @@ fn key_lookup_preserves_refusal_order_without_memory_effects() {
 fn adoption_checks_logical_requirements_without_replaying_host() {
     let backing = VectorMemory::default();
     let policy = HostPolicy(Cell::new(0));
-    let mut host =
-        MemoryRuntime::new_with_config(backing.clone(), MemoryManagerConfig::new(16).unwrap())
-            .unwrap();
+    let mut host = MemoryRuntime::new_with_config(
+        backing.clone(),
+        MemoryManagerConfig::new(std::num::NonZeroU16::new(16).unwrap()),
+    )
+    .unwrap();
     assert_eq!(
         host.verify_authority(&source(), "db"),
         Err(RuntimeAdoptionError::Open(
@@ -91,7 +88,10 @@ fn adoption_checks_logical_requirements_without_replaying_host() {
     for _ in 0..2 {
         host.verify_authority(&requirements("db", KEY), "db")
             .unwrap();
-        assert_eq!(host.memory_id(KEY), Ok(11));
+        assert_eq!(
+            host.memory_id(&crate::StableKey::parse(KEY).unwrap()),
+            Ok(11)
+        );
     }
     let mut requests = source().requests().to_vec();
     requests.push(MemoryRequest::new("other", "other.missing.v1").unwrap());

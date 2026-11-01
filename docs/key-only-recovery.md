@@ -69,7 +69,8 @@ fn reconcile<M: ic_memory::Memory>(
 ) -> Result<(), Box<dyn std::error::Error>> {
     // The host includes this key in its complete snapshot or admission hook
     // before committing bootstrap, then injects the runtime into this component.
-    let journal = runtime.open_memory("db.removed_journal.v1")?;
+    let journal_key = ic_memory::StableKey::parse("db.removed_journal.v1")?;
+    let journal = runtime.open_memory(&journal_key)?;
     // The consumer validates journal debt and pending effects before retirement.
     drop(journal);
     Ok(())

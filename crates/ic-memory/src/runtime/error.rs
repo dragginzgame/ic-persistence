@@ -49,9 +49,6 @@ pub enum RuntimeConstructionError {
     /// Fresh manager metadata could not reserve physical capacity.
     #[error(transparent)]
     Growth(#[from] RuntimeGrowError),
-    /// Zero pages cannot form a bucket.
-    #[error("bucket size must be nonzero")]
-    InvalidBucketSize,
     /// Explicit policy differs from the actual durable setting.
     #[error("persisted bucket size {persisted} pages differs from requested {requested}")]
     BucketSizeMismatch { persisted: u16, requested: u16 },
@@ -155,9 +152,6 @@ pub enum RuntimeOpenError {
     /// This runtime has not published committed allocations.
     #[error("ic-memory runtime has not completed bootstrap validation")]
     NotBootstrapped,
-    /// Stable-key grammar failure.
-    #[error(transparent)]
-    StableKey(#[from] crate::StableKeyError),
     /// The stable key was not present in this runtime's committed declaration set.
     #[error("stable key '{0}' was not committed by ic-memory runtime bootstrap")]
     StableKeyNotCommitted(String),

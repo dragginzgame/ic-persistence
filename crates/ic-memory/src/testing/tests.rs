@@ -13,7 +13,7 @@ fn reopened_memory(
 ) -> RuntimeMemory<VectorMemory> {
     fixture_runtime(backing, "fixture", "fixture.", &[stable_key], config)
         .unwrap()
-        .open_memory(stable_key)
+        .open_memory(&crate::StableKey::parse(stable_key).unwrap())
         .unwrap()
 }
 

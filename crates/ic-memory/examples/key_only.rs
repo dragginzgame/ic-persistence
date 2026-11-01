@@ -27,8 +27,12 @@ fn main() {
     let mut host = MemoryRuntime::new(backing.clone()).unwrap();
     host.bootstrap(&declarations, &pool, &GenericAllocationPolicy)
         .unwrap();
-    let id = host.memory_id("db.rows.v1").unwrap();
-    let rows = host.open_memory("db.rows.v1").unwrap();
+    let id = host
+        .memory_id(&ic_memory::StableKey::parse("db.rows.v1").unwrap())
+        .unwrap();
+    let rows = host
+        .open_memory(&ic_memory::StableKey::parse("db.rows.v1").unwrap())
+        .unwrap();
     rows.grow(1).unwrap();
     rows.write(0, b"rows");
     drop(rows);
@@ -43,8 +47,13 @@ fn main() {
     ])
     .unwrap();
     host.verify_authority(&requirements, "db").unwrap();
-    assert_eq!(host.memory_id("db.rows.v1"), Ok(id));
+    assert_eq!(
+        host.memory_id(&ic_memory::StableKey::parse("db.rows.v1").unwrap()),
+        Ok(id)
+    );
     let mut bytes = [0; 4];
-    host.open_memory("db.rows.v1").unwrap().read(0, &mut bytes);
+    host.open_memory(&ic_memory::StableKey::parse("db.rows.v1").unwrap())
+        .unwrap()
+        .read(0, &mut bytes);
     assert_eq!(&bytes, b"rows");
 }

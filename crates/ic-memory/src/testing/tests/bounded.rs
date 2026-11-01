@@ -4,7 +4,7 @@ use super::*;
 #[test]
 fn bounded_cell_preserves_history_and_refuses_overwrites_or_oversized_writes() {
     let backing = VectorMemory::default();
-    let config = MemoryManagerConfig::new(16).unwrap();
+    let config = MemoryManagerConfig::new(std::num::NonZeroU16::new(16).unwrap());
     let mut cell = FixtureCell::create_bounded(
         backing.clone(),
         "fixture",
@@ -86,7 +86,7 @@ fn bounded_cell_preserves_history_and_refuses_overwrites_or_oversized_writes() {
 #[test]
 fn bounded_open_refuses_missing_and_malformed_history_without_replacement() {
     let backing = VectorMemory::default();
-    let config = MemoryManagerConfig::new(16).unwrap();
+    let config = MemoryManagerConfig::new(std::num::NonZeroU16::new(16).unwrap());
     assert!(matches!(
         FixtureCell::open_bounded(
             backing.clone(),
@@ -140,7 +140,7 @@ fn bounded_open_refuses_missing_and_malformed_history_without_replacement() {
 #[test]
 fn bounded_open_does_not_initialize_a_missing_cell_in_an_existing_manager() {
     let backing = VectorMemory::default();
-    let config = MemoryManagerConfig::new(16).unwrap();
+    let config = MemoryManagerConfig::new(std::num::NonZeroU16::new(16).unwrap());
     let mut runtime = MemoryRuntime::new_with_config(backing.clone(), config).unwrap();
     let declarations = SealedDeclarationSnapshot::new(vec![
         MemoryRequest::new("fixture", "fixture.consumer.v1").unwrap(),
@@ -155,7 +155,10 @@ fn bounded_open_does_not_initialize_a_missing_cell_in_an_existing_manager() {
         .bootstrap(&declarations, &pool, &GenericAllocationPolicy)
         .unwrap();
     assert_eq!(
-        runtime.open_memory("fixture.consumer.v1").unwrap().size(),
+        runtime
+            .open_memory(&crate::StableKey::parse("fixture.consumer.v1").unwrap())
+            .unwrap()
+            .size(),
         0
     );
     drop(runtime);

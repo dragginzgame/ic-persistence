@@ -93,7 +93,11 @@ impl<E: Execute> Repository<E> {
     }
 
     pub(super) fn qualify_release_at(&self, commit: &str) -> Result<()> {
-        let release = self.inspect_release_commit(commit)?;
+        self.qualify_inspected_release(self.inspect_release_commit(commit)?)
+    }
+
+    fn qualify_inspected_release(&self, release: InspectedRelease) -> Result<()> {
+        let commit = release.commit.as_str();
         let selection = &release.selection;
         let version = &selection.version;
         let head = &release.commit;
@@ -143,11 +147,12 @@ impl<E: Execute> Repository<E> {
         selection: &ReleaseSelection,
         commit: &str,
     ) -> Result<()> {
+        let release = self.inspect_release_commit(commit)?;
         require(
-            self.inspect_release_commit(commit)?.selection == *selection,
+            release.selection == *selection,
             "commit identifies another release intent",
         )?;
-        self.qualify_release_at(commit)
+        self.qualify_inspected_release(release)
     }
 
     pub(super) fn tagged_check(

@@ -82,7 +82,7 @@ fn preparation_retains_primary_and_rollback_errors_and_restores_other_owned_file
         }
 
         fn write_bytes(&self, path: &Path, bytes: &[u8]) -> Result<()> {
-            if path.ends_with("Cargo.lock") && bytes == LOCK.as_bytes() {
+            if path.ends_with("Cargo.lock") && bytes == fixture_lock().as_bytes() {
                 return Err(std::io::Error::from(std::io::ErrorKind::PermissionDenied).into());
             }
             self.0.write_bytes(path, bytes)

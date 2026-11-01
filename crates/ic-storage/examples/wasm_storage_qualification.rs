@@ -16,7 +16,7 @@ mod canister {
         DefaultMemoryImpl, MemoryManagerConfig, MemoryRuntime, StableCellPayloadError,
         testing::fixture_runtime,
     };
-    use ic_storage::adapter::{BTreeMapRegion, BoundedCell, Memory, StableBTreeMap, StableCell};
+    use ic_storage::adapter::{BTreeMapRegion, Memory, StableBTreeMap, StableCell};
     use ic_wire::native;
     use serde::{Serialize, de::DeserializeOwned};
     use std::{cell::RefCell, rc::Rc};
@@ -70,7 +70,7 @@ mod canister {
                 "storage.journal.v1",
                 "storage.probe.v1",
             ],
-            MemoryManagerConfig::new(8).unwrap(),
+            MemoryManagerConfig::new(std::num::NonZeroU16::new(8).unwrap()),
         )
         .unwrap();
         RUNTIME.with(|slot| *slot.borrow_mut() = Some(runtime));
@@ -78,7 +78,11 @@ mod canister {
 
     fn region(runtime: &MemoryRuntime<DefaultMemoryImpl>) -> BTreeMapRegion<u64, u64> {
         BTreeMapRegion::new(
-            Rc::new(runtime.open_memory("storage.region.v1").unwrap()),
+            Rc::new(
+                runtime
+                    .open_memory(&ic_memory::StableKey::parse("storage.region.v1").unwrap())
+                    .unwrap(),
+            ),
             0..64,
         )
     }
@@ -88,31 +92,60 @@ mod canister {
         argument::<()>(protocol::INIT_ID);
         bootstrap();
         with_runtime(|runtime| {
-            let mut map =
-                StableBTreeMap::<u64, u64>::new(runtime.open_memory("storage.map.v1").unwrap());
+            let mut map = StableBTreeMap::<u64, u64>::create(
+                runtime
+                    .open_memory(&ic_memory::StableKey::parse("storage.map.v1").unwrap())
+                    .unwrap(),
+            );
             let mut view = region(runtime);
             view.initialize();
             for key in 0..128 {
                 map.insert(key, key + 10);
                 view.insert(key, key + 20);
             }
-            let _ = BoundedCell::init(runtime.open_memory("storage.cell.v1").unwrap(), 30_u64);
-            let _ = StableCell::new(runtime.open_memory("storage.journal.v1").unwrap(), 30_u64);
+            let _ = StableCell::create(
+                runtime
+                    .open_memory(&ic_memory::StableKey::parse("storage.cell.v1").unwrap())
+                    .unwrap(),
+                30_u64,
+            );
+            let _ = StableCell::create(
+                runtime
+                    .open_memory(&ic_memory::StableKey::parse("storage.journal.v1").unwrap())
+                    .unwrap(),
+                30_u64,
+            );
         });
     }
 
     fn replace(value: u64) {
         with_runtime(|runtime| {
-            let mut map =
-                StableBTreeMap::<u64, u64>::load(runtime.open_memory("storage.map.v1").unwrap());
+            let mut map = StableBTreeMap::<u64, u64>::load(
+                runtime
+                    .open_memory(&ic_memory::StableKey::parse("storage.map.v1").unwrap())
+                    .unwrap(),
+            );
             map.insert(0, value);
             region(runtime).insert(0, value + 1);
-            BoundedCell::init(runtime.open_memory("storage.cell.v1").unwrap(), 0_u64)
-                .set(value + 2);
-            StableCell::<u64>::load(runtime.open_memory("storage.journal.v1").unwrap())
-                .unwrap()
-                .set(value + 2);
-            assert!(runtime.open_memory("storage.map.v1").is_err());
+            StableCell::<u64>::load(
+                runtime
+                    .open_memory(&ic_memory::StableKey::parse("storage.cell.v1").unwrap())
+                    .unwrap(),
+            )
+            .unwrap()
+            .set(value + 2);
+            StableCell::<u64>::load(
+                runtime
+                    .open_memory(&ic_memory::StableKey::parse("storage.journal.v1").unwrap())
+                    .unwrap(),
+            )
+            .unwrap()
+            .set(value + 2);
+            assert!(
+                runtime
+                    .open_memory(&ic_memory::StableKey::parse("storage.map.v1").unwrap())
+                    .is_err()
+            );
         });
     }
 
@@ -128,7 +161,9 @@ mod canister {
     extern "C" fn cell_load_failure() {
         let mode: u8 = argument(protocol::CELL_FAILURE_ID);
         with_runtime(|runtime| {
-            let memory = runtime.open_memory("storage.probe.v1").unwrap();
+            let memory = runtime
+                .open_memory(&ic_memory::StableKey::parse("storage.probe.v1").unwrap())
+                .unwrap();
             if mode != 0 {
                 if memory.size() == 0 {
                     memory.grow(1).unwrap();
@@ -158,7 +193,9 @@ mod canister {
                 )),
                 _ => unreachable!(),
             }
-            let memory = runtime.open_memory("storage.probe.v1").unwrap();
+            let memory = runtime
+                .open_memory(&ic_memory::StableKey::parse("storage.probe.v1").unwrap())
+                .unwrap();
             assert_eq!(memory.size(), pages);
             let mut after = vec![0; before.len()];
             memory.read(0, &mut after);
@@ -181,15 +218,30 @@ mod canister {
     extern "C" fn snapshot() {
         argument::<()>(protocol::SNAPSHOT_ID);
         let values = with_runtime(|runtime| {
-            let map =
-                StableBTreeMap::<u64, u64>::load(runtime.open_memory("storage.map.v1").unwrap());
+            let map = StableBTreeMap::<u64, u64>::load(
+                runtime
+                    .open_memory(&ic_memory::StableKey::parse("storage.map.v1").unwrap())
+                    .unwrap(),
+            );
             let view = region(runtime);
-            let cell = BoundedCell::init(runtime.open_memory("storage.cell.v1").unwrap(), 0_u64);
-            let journal =
-                StableCell::<u64>::load(runtime.open_memory("storage.journal.v1").unwrap())
-                    .unwrap();
+            let cell = StableCell::<u64>::load(
+                runtime
+                    .open_memory(&ic_memory::StableKey::parse("storage.cell.v1").unwrap())
+                    .unwrap(),
+            )
+            .unwrap();
+            let journal = StableCell::<u64>::load(
+                runtime
+                    .open_memory(&ic_memory::StableKey::parse("storage.journal.v1").unwrap())
+                    .unwrap(),
+            )
+            .unwrap();
             assert_eq!(journal.get(), cell.get());
-            assert!(runtime.open_memory("storage.journal.v1").is_err());
+            assert!(
+                runtime
+                    .open_memory(&ic_memory::StableKey::parse("storage.journal.v1").unwrap())
+                    .is_err()
+            );
             assert_eq!(
                 view.keys_range_limited(10.., 3).collect::<Vec<_>>(),
                 [10, 11, 12]

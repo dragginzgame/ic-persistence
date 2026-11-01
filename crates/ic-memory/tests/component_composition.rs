@@ -33,11 +33,17 @@ fn host_injects_component_memory_that_outlives_its_runtime() {
             .any(|declaration| declaration.stable_key().as_str() == "macro.integration.users.v1")
     );
     let logical = host
-        .open_memory("macro.logical.rows.v1")
+        .open_memory(&ic_memory::StableKey::parse("macro.logical.rows.v1").unwrap())
         .expect("key-only host adoption");
     assert_eq!(ic_platform::stable_structures::Memory::size(&logical), 0);
-    assert_eq!(host.memory_id("macro.logical.rows.v1").unwrap(), 11);
-    let component_memory = host.open_memory("macro.integration.users.v1").unwrap();
+    assert_eq!(
+        host.memory_id(&ic_memory::StableKey::parse("macro.logical.rows.v1").unwrap())
+            .unwrap(),
+        11
+    );
+    let component_memory = host
+        .open_memory(&ic_memory::StableKey::parse("macro.integration.users.v1").unwrap())
+        .unwrap();
     MACRO_MEMORY.with(|memory| *memory.borrow_mut() = Some(component_memory));
     drop(host);
     MACRO_MEMORY.with(|memory| {

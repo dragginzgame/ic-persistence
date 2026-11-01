@@ -28,6 +28,7 @@ use std::{
     time::{SystemTime, UNIX_EPOCH},
 };
 
+mod archive_qualification;
 mod groups;
 use groups::GROUP_POLICY;
 mod artifact_paths;
@@ -98,6 +99,13 @@ enum ToolCommand {
     Toolchain,
     /// Print Cargo's target directory.
     Target,
+    /// Qualify already-produced archives with the consumer native/MSRV/Wasm roster.
+    QualifyArchives {
+        /// Existing empty private evidence directory; retained on every outcome.
+        evidence: PathBuf,
+        /// Compiler floor admitted by the archive entrypoint.
+        msrv: String,
+    },
     /// Require clean repository source.
     EnsureClean,
     /// Build the selected Wasm probes offline and check their size budgets.
@@ -327,6 +335,9 @@ pub(super) fn main() -> Result<()> {
         ToolCommand::Msrv => println!("{}", repo.msrv()?),
         ToolCommand::Toolchain => println!("{}", repo.toolchain()?),
         ToolCommand::Target => println!("{}", repo.target()?.display()),
+        ToolCommand::QualifyArchives { evidence, msrv } => {
+            repo.qualify_archives(&evidence, &msrv)?;
+        }
         ToolCommand::EnsureClean => repo.clean()?,
         ToolCommand::WasmSize => repo.wasm_size()?,
         ToolCommand::ReleasePreflight => repo.preflight(&ReleaseSelection::from_env(&repo)?)?,

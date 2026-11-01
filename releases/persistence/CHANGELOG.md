@@ -3,7 +3,7 @@
 Covers `ic-memory` and `ic-storage`. Independent group releases begin after the
 coordinated 0.58.1 cutoff; [earlier shared history](../history.md) is preserved once.
 
-## [0.60.8] - Unreleased
+## [0.61.1] - Unreleased
 
 ### 🔧 Changed
 
@@ -11,6 +11,28 @@ coordinated 0.58.1 cutoff; [earlier shared history](../history.md) is preserved 
   startup. Recheck metadata after tool/cache helpers and verify copied inputs
   before scratch rendering, preserving native source/receipt authorization.
   [#333 — Review a shared read-only observation boundary for grouped Cargo bootstrap](https://github.com/dragginzgame/shared-tooling/issues/333).
+
+## [0.61.0] - 2026-11-01
+
+### ⚠️ Breaking
+
+- `LedgerCommitError::Codec` now carries `LedgerDecodeError` with typed Wire,
+  stable-key and slot sources. Callers constructing or inspecting that payload
+  must update; existing durable bytes and recovery admission remain unchanged.
+
+- Owning Storage collections now use fresh-only `create`, retained-only `load`,
+  or deliberate `reset`; combined initialization is removed. `StableCell` always
+  enforces declared record bounds and replaces the separate bounded wrapper.
+- Runtime lookup/open takes `&StableKey`, validated once at setup. Bucket
+  configuration takes `NonZeroU16` and is infallible. Stored bytes are unchanged;
+  callers must migrate their constructors and key/config setup. [Migration](../../docs/migration/0.61-public-api.md).
+
+### 🧹 Cleanup
+
+- Delegate archive extraction, graph admission and input custody to Build 0.73.5,
+  retaining the consumer's library/native/MSRV/Wasm roster. Carry inspected release
+  evidence within a phase, classify metadata roles before rendering, and simplify
+  fixture metadata and temporary-name allocation. [Details](0.61.md).
 
 ## [0.60.7] - 2026-11-01
 

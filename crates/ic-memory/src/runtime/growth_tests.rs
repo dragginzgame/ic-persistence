@@ -45,7 +45,12 @@ impl Memory for RefusableMemory {
 
 #[test]
 fn refused_fresh_metadata_growth_is_typed_and_allows_unchanged_backing_retry() {
-    for config in [None, Some(MemoryManagerConfig::new(16).unwrap())] {
+    for config in [
+        None,
+        Some(MemoryManagerConfig::new(
+            std::num::NonZeroU16::new(16).unwrap(),
+        )),
+    ] {
         let backing = RefusableMemory::default();
         backing.refuse.set(true);
         let construct = |backing| match config {
@@ -124,9 +129,11 @@ fn backing_reentry_cannot_assign_buckets_during_an_outer_reservation() {
         result: Cell::new(None),
         zero_result: Cell::new(None),
     });
-    let runtime =
-        MemoryRuntime::new_with_config(Rc::clone(&backing), MemoryManagerConfig::new(1).unwrap())
-            .unwrap();
+    let runtime = MemoryRuntime::new_with_config(
+        Rc::clone(&backing),
+        MemoryManagerConfig::new(std::num::NonZeroU16::new(1).unwrap()),
+    )
+    .unwrap();
     *backing.nested.borrow_mut() = Some(runtime.memory(121).unwrap());
     assert_eq!(runtime.memory(120).unwrap().grow(1), Ok(0));
     assert_eq!(
@@ -157,7 +164,7 @@ fn refused_application_growth_preserves_bytes_extents_and_retry() {
         let backing = RefusableMemory::default();
         let runtime = MemoryRuntime::new_with_config(
             backing.clone(),
-            MemoryManagerConfig::new(bucket).unwrap(),
+            MemoryManagerConfig::new(std::num::NonZeroU16::new(bucket).unwrap()),
         )
         .unwrap();
         let rows = runtime.memory(120).unwrap();
@@ -236,9 +243,11 @@ fn refused_application_growth_preserves_bytes_extents_and_retry() {
 #[test]
 fn interleaved_leases_reopen_and_detached_handles_share_growth_accounting() {
     let backing = RefusableMemory::default();
-    let runtime =
-        MemoryRuntime::new_with_config(backing.clone(), MemoryManagerConfig::new(8).unwrap())
-            .unwrap();
+    let runtime = MemoryRuntime::new_with_config(
+        backing.clone(),
+        MemoryManagerConfig::new(std::num::NonZeroU16::new(8).unwrap()),
+    )
+    .unwrap();
     let a = runtime.memory(120).unwrap();
     let b = runtime.memory(121).unwrap();
     let reads = backing.reads.get();

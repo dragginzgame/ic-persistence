@@ -107,7 +107,7 @@ fn core_releases_align_local_requirements_and_preserve_adapter_identity() {
     let fixture = Fixture::new();
     let result = fixture
         .repo
-        .project_catalog(MANIFEST, "0.12.3", "0.12.4")
+        .project_catalog(&fixture_manifest(), "0.12.3", "0.12.4")
         .unwrap();
     let after: toml::Value = toml::from_str(&result).unwrap();
     assert!(after["workspace"]["package"].get("version").is_none());
@@ -117,7 +117,7 @@ fn core_releases_align_local_requirements_and_preserve_adapter_identity() {
     );
     let breaking = fixture
         .repo
-        .project_catalog(MANIFEST, "0.12.3", "0.13.0")
+        .project_catalog(&fixture_manifest(), "0.12.3", "0.13.0")
         .unwrap();
     let after: toml::Value = toml::from_str(&breaking).unwrap();
     assert_eq!(
@@ -125,7 +125,7 @@ fn core_releases_align_local_requirements_and_preserve_adapter_identity() {
         Some("0.13.0")
     );
     for prefix in ["", "^", "~", "=", "^  "] {
-        let source = MANIFEST.replace(
+        let source = fixture_manifest().replace(
             "version = \"0.12.3\"",
             &format!("version = \"{prefix}0.12.3\""),
         );
@@ -148,7 +148,8 @@ fn core_releases_align_local_requirements_and_preserve_adapter_identity() {
         }
     }
     for stale in ["0.12", "0.12.2"] {
-        let source = MANIFEST.replace("version = \"0.12.3\"", &format!("version = \"{stale}\""));
+        let source =
+            fixture_manifest().replace("version = \"0.12.3\"", &format!("version = \"{stale}\""));
         assert!(
             fixture
                 .repo
@@ -160,7 +161,7 @@ fn core_releases_align_local_requirements_and_preserve_adapter_identity() {
         let adapter = Fixture::for_group(group);
         let projected = adapter
             .repo
-            .project_catalog(MANIFEST, "0.12.3", "0.13.0")
+            .project_catalog(&fixture_manifest(), "0.12.3", "0.13.0")
             .unwrap();
         let projected: toml::Value = toml::from_str(&projected).unwrap();
         for name in [

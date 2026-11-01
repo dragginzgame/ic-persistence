@@ -100,7 +100,7 @@ fn full_pool_resolution_combines_current_and_selected_history_without_reassignme
     assert_eq!(runtime.committed_allocations().unwrap().len(), 245);
     for (index, key) in keys.iter().enumerate() {
         assert_eq!(
-            runtime.memory_id(key),
+            runtime.memory_id(&crate::StableKey::parse(key).unwrap()),
             Ok(u8::try_from(index + 10).unwrap())
         );
     }
@@ -161,9 +161,11 @@ fn declared_membership_covers_original_inputs_and_retains_poisoned_selections() 
 
 pub(super) fn seeded() -> VectorMemory {
     let backing = VectorMemory::default();
-    let mut runtime =
-        MemoryRuntime::new_with_config(backing.clone(), MemoryManagerConfig::new(1).unwrap())
-            .unwrap();
+    let mut runtime = MemoryRuntime::new_with_config(
+        backing.clone(),
+        MemoryManagerConfig::new(std::num::NonZeroU16::new(1).unwrap()),
+    )
+    .unwrap();
     runtime
         .bootstrap(
             &snapshot(&[CONTROL, JOURNAL], "app"),
@@ -171,7 +173,9 @@ pub(super) fn seeded() -> VectorMemory {
             &GenericAllocationPolicy,
         )
         .unwrap();
-    let journal = runtime.open_memory(JOURNAL).unwrap();
+    let journal = runtime
+        .open_memory(&crate::StableKey::parse(JOURNAL).unwrap())
+        .unwrap();
     journal.grow(1).unwrap();
     journal.write(0, b"pending/debt");
     backing
@@ -187,14 +191,22 @@ fn discovers_omitted_journal_before_one_commit_and_skips_warm_admission() {
     };
     let mut runtime = MemoryRuntime::new(backing.clone()).unwrap();
     assert!(matches!(
-        runtime.open_memory(JOURNAL),
+        runtime.open_memory(&crate::StableKey::parse(JOURNAL).unwrap()),
         Err(RuntimeOpenError::NotBootstrapped)
     ));
     assert_eq!(runtime.bootstrap(&current, &pool(), &policy).unwrap(), 2);
     let mut marker = [0; 12];
-    runtime.open_memory(JOURNAL).unwrap().read(0, &mut marker);
+    runtime
+        .open_memory(&crate::StableKey::parse(JOURNAL).unwrap())
+        .unwrap()
+        .read(0, &mut marker);
     assert_eq!(&marker, b"pending/debt");
-    assert_eq!(runtime.memory_id(JOURNAL).unwrap(), 11);
+    assert_eq!(
+        runtime
+            .memory_id(&crate::StableKey::parse(JOURNAL).unwrap())
+            .unwrap(),
+        11
+    );
     let before = backing.borrow().clone();
     assert_eq!(runtime.bootstrap(&current, &pool(), &policy).unwrap(), 2);
     let _ = crate::testing::doctor_report(&runtime, &current, &pool(), &policy);
@@ -445,7 +457,10 @@ fn failed_persistence_retries_admission_without_partial_publication() {
     assert_eq!(runtime.bootstrap(&current, &pool(), &policy).unwrap(), 2);
     assert_eq!(policy.calls.get(), 2);
     let mut marker = [0; 12];
-    runtime.open_memory(JOURNAL).unwrap().read(0, &mut marker);
+    runtime
+        .open_memory(&crate::StableKey::parse(JOURNAL).unwrap())
+        .unwrap()
+        .read(0, &mut marker);
     assert_eq!(&marker, b"pending/debt");
 }
 
@@ -539,5 +554,10 @@ fn completion_bound_and_retained_selection_preserve_evidence() {
             .windows(2)
             .all(|pair| { pair[0].stable_key() < pair[1].stable_key() })
     );
-    assert_eq!(runtime.memory_id(JOURNAL).unwrap(), 11);
+    assert_eq!(
+        runtime
+            .memory_id(&crate::StableKey::parse(JOURNAL).unwrap())
+            .unwrap(),
+        11
+    );
 }

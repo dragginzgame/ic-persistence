@@ -38,25 +38,27 @@ formatter pin or maintenance activation changed.
 The production and independent runtime catalogs select Platform 0.16.0, retaining
 canonical Types 0.15.1, stable-structures 0.7.2 and PocketIC 16.1.0. The selected
 stable-structures and PocketIC facade sources are unchanged across Platform's
-0.15.3/0.16.0 tags. Testkit Native 0.76.0 now shares Platform 0.16.0, removing the former
+0.15.3/0.16.0 tags. The locked Testkit Native 0.76.1 now shares Platform 0.16.0, removing the former
 native-only Platform 0.15.3 copy; production admission still requires exactly one
 Platform provider. Optional
 crypto/certification identity changes in 0.16 are outside this consumer's selected
 profiles; no cryptographic compiler flag or codec migration is introduced.
 
 Both maintained catalogs select Wire 0.13.3 and the library graph selects
-Testkit Native 0.76.0; installed qualification selects Testkit CLI 0.76.0.
+Testkit Native 0.76.1; installed qualification selects Testkit CLI 0.76.0.
 These compatible patches preserve codec bytes, stable-memory helpers and the
-PocketIC 16.1.0 pairing. Metrics 0.24.4 preserves default
+PocketIC 16.1.0 pairing. Metrics 0.24.5 preserves default
 native metadata and now shares that Wire identity, removing the older Wire/Derive
 0.12 providers. Native schemas and the durable codec use one Wire provider;
 production Wasm likewise retains one core Wire 0.13 provider. Wire endpoint and
 platform-types integration remain unselected. Arithmetic, codec bytes, bounds
 and restoration contracts are unchanged. The library lock's incoming Logging
-0.23.5 selection is retained.
+0.23.6 selection is retained.
 
-The library lock retains Build/Host 0.73.4 while the selected Build editor remains
-0.73.3; Testkit Native/CLI use 0.76.0 with the unchanged server 16.1.0 selection. Common tool pins, local
+The library lock retains Build/Host 0.73.5 while the selected Build editor remains
+0.73.3. The direct Build requirement is 0.73.5 for composable archive qualification.
+The library lock selects Testkit Native 0.76.1; the CLI remains 0.76.0 with the
+unchanged server 16.1.0 selection. Common tool pins, local
 package versions remain unchanged. The Shared source selection above separately
 owns the bootstrap observer adoption.
 
