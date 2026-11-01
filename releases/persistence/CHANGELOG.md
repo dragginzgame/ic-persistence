@@ -3,6 +3,20 @@
 Covers `ic-memory` and `ic-storage`. Independent group releases begin after the
 coordinated 0.58.1 cutoff; [earlier shared history](../history.md) is preserved once.
 
+## [0.62.0] - Unreleased
+
+### ⚠️ Breaking
+
+- Adopt Wire 0.14.0 for ledger encoding and public codec-error sources. Hosts
+  constructing or matching Wire errors must align their Wire dependency. Durable
+  bytes, bounds and recovery behavior are unchanged; no reset is needed. [Details](0.62.md).
+
+### ⬆️ Dependencies
+
+- Adopt Testkit Native 0.77.0 for native allocation and stable-memory measurements,
+  sharing Platform 0.17.0 and removing the dev-only Platform 0.16 provider.
+  Production storage behavior, stored formats and executable pins are unchanged. [Details](0.62.md).
+
 ## [0.61.1] - 2026-11-01
 
 ### 🩹 Fixed

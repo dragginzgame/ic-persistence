@@ -50,8 +50,8 @@ make RELEASE_GROUP=metrics-stable publish
 
 These are maintainer commands, not adoption checks. `release-patch` and
 `release-major` keep their existing meanings. Pre-1.0 breaking public contracts
-require a minor; compatible work uses a patch. Current Wire identity
-changes select 0.60.0 pending notes, without bumping package manifests here.
+require a minor; compatible work uses a patch. Select the release kind matching
+the owning pending notes. Wire 0.14 codec-error identities require minor releases.
 
 Groups are release identities, not independent dependency graphs. Versioned
 root path requirements display each member’s full current version. Every member
@@ -59,7 +59,7 @@ and unused catalog alias belongs to its owning group’s dependency roster. Ever
 release updates those shared declarations, preserving their existing operators
 without changing adapter versions.
 The adapter then needs its own release to publish its changed requirement.
-Current Wire 0.13 adoption exposes new Memory errors and adapter codec errors:
+The Wire 0.14 adoption changes Memory and adapter codec-error identities:
 release the compatible core supplier first and then its adapters. Do not publish
 an old consumer declaration under an existing version, broaden requirements to
 hide a type mismatch, or remove production singleton checks. New versions of

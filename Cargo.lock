@@ -285,9 +285,9 @@ dependencies = [
 
 [[package]]
 name = "ic-logging"
-version = "0.23.6"
+version = "0.23.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6ea8e3fb4a31f52199d0214a78582f5be9aa5aa52a033d36ed0615dca7b3ba53"
+checksum = "868a4bd157d8baebc03708c7dcbff485a49db1ff86160d6ee142c4bb37fe7bb9"
 
 [[package]]
 name = "ic-logging-stable"
@@ -295,9 +295,9 @@ version = "0.61.1"
 dependencies = [
  "ic-logging",
  "ic-memory",
- "ic-platform 0.17.0",
+ "ic-platform",
  "ic-storage",
- "ic-wire",
+ "ic-wire 0.14.0",
  "serde",
  "thiserror",
 ]
@@ -311,9 +311,9 @@ dependencies = [
  "ic-host-artifacts",
  "ic-host-fs",
  "ic-host-process",
- "ic-platform 0.17.0",
+ "ic-platform",
  "ic-testkit-native",
- "ic-wire",
+ "ic-wire 0.14.0",
  "serde",
  "serde_json",
  "thiserror",
@@ -323,11 +323,11 @@ dependencies = [
 
 [[package]]
 name = "ic-metrics"
-version = "0.24.5"
+version = "0.24.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "440c378e52e275ae4ac3c9a5bcde619be9fa5b472cc59e9a3039b0c221a9004f"
+checksum = "974bab94f2b55223260c5c74d6c5797206e4f5286635a66f3b4606c04eaf04d4"
 dependencies = [
- "ic-wire",
+ "ic-wire 0.13.5",
  "serde",
 ]
 
@@ -338,18 +338,9 @@ dependencies = [
  "ic-memory",
  "ic-metrics",
  "ic-storage",
- "ic-wire",
+ "ic-wire 0.14.0",
  "serde",
  "thiserror",
-]
-
-[[package]]
-name = "ic-platform"
-version = "0.16.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d35ff1252b77bf7d9b6495ac90f4c03ccac66520765a38267e425000a16e1e4b"
-dependencies = [
- "ic-stable-structures",
 ]
 
 [[package]]
@@ -423,19 +414,19 @@ name = "ic-storage"
 version = "0.61.1"
 dependencies = [
  "ic-memory",
- "ic-platform 0.17.0",
- "ic-wire",
+ "ic-platform",
+ "ic-wire 0.14.0",
  "serde",
  "thiserror",
 ]
 
 [[package]]
 name = "ic-testkit-native"
-version = "0.76.2"
+version = "0.77.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9981cbb3db9cdf40ec81ee6d45b077d05b46aeb672abdb0f2d7bde51745b8990"
+checksum = "77ad938f07e87dbd3749eac4b134c96dd32dce7dac29c02673286f8f3e1bcfad"
 dependencies = [
- "ic-platform 0.16.0",
+ "ic-platform",
 ]
 
 [[package]]
@@ -445,7 +436,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a84839b136cdb92833e274cbe4083b38f3f94e2e04ae1da091d1e2c9ba219a1c"
 dependencies = [
  "bytemuck",
- "ic-wire-derive",
+ "ic-wire-derive 0.13.5",
  "postcard",
  "serde",
  "serde_bytes",
@@ -453,10 +444,34 @@ dependencies = [
 ]
 
 [[package]]
+name = "ic-wire"
+version = "0.14.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d0b8a66c4155cca82400e42e5208ede11eaef22c71614227ca0225389e8915dc"
+dependencies = [
+ "bytemuck",
+ "ic-wire-derive 0.14.0",
+ "postcard",
+ "serde",
+ "serde_bytes",
+]
+
+[[package]]
 name = "ic-wire-derive"
 version = "0.13.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1d43292c7b14a8d66afce95e117451795fa83c950fb07adeb324f97d93f8c2e3"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
+name = "ic-wire-derive"
+version = "0.14.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "94e40f1bf6a9a878e75190152ea1cef73a881201ddce792a286bd8f0efdbf705"
 dependencies = [
  "proc-macro2",
  "quote",

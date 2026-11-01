@@ -41,26 +41,26 @@ stable-structures facade source and registry substrate 0.7.2 are unchanged from
 0.17.1 and canonical Types 0.16.0. The native qualifier consumes Platform's owned
 PocketIC client 0.17.0, retaining the 16.1 HTTP/JSON protocol and Testkit-selected
 server 16.1.0. No direct registry client declarations or conversion layer are added.
-Testkit Native 0.76.2 retains Platform 0.16.0 for measurement helpers only; both
-facades use the same substrate trait identity. Production admission still requires
+Testkit Native 0.77.0 shares Platform 0.17.0 for measurement helpers, removing
+the dev-only Platform 0.16 provider. Production admission still requires
 exactly one Platform provider. Optional crypto/certification profiles remain
 unselected; no cryptographic compiler flag or codec migration is introduced.
 
-Both maintained lockfiles select Wire 0.13.5 through the existing compatible
-0.13.3 catalog requirements, and the library graph selects Testkit Native 0.76.2;
-installed qualification selects Testkit CLI 0.76.0.
-These compatible patches preserve codec bytes and stable-memory helpers.
-Metrics 0.24.5 preserves default
-native metadata and now shares that Wire identity, removing the older Wire/Derive
-0.12 providers. Native schemas and the durable codec use one Wire provider;
-production Wasm likewise retains one core Wire 0.13 provider. Wire endpoint and
-platform-types integration remain unselected. Arithmetic, codec bytes, bounds
-and restoration contracts are unchanged. The library lock's incoming Logging
-0.23.6 selection is retained.
+Both maintained catalogs and lockfiles select Wire/Derive 0.14.0, and the library
+graph selects Testkit Native 0.77.0; installed qualification selects Testkit CLI
+0.76.0. Wire endpoint and platform-types integration remain unselected. Public
+codec errors now expose the Wire 0.14 Rust identity; bytes, budgets and restoration
+contracts remain unchanged. The incoming Metrics 0.24.6 selection still requires
+Wire 0.13 for its default native-only schema support. That separate lane is retained
+without disabling features or overriding a published supplier. Production Wasm
+and the independent native qualifier each retain one Wire 0.14 provider; the full
+native library graph contains both generations until Metrics adopts Wire 0.14.
+The incoming Logging 0.23.7 selection is retained. No arithmetic or runtime-owner
+change is introduced by this Wire adoption.
 
 The library lock retains incoming Build/Host 0.73.6 while the selected Build editor remains
 0.73.3. The direct Build requirement is 0.73.5 for composable archive qualification.
-The library lock selects Testkit Native 0.76.2; the CLI remains 0.76.0 with the
+The library lock selects Testkit Native 0.77.0; the CLI remains 0.76.0 with the
 unchanged server 16.1.0 selection. Common tool pins, local
 package versions remain unchanged. The Shared source selection above separately
 owns the bootstrap observer adoption.

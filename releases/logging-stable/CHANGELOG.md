@@ -3,6 +3,15 @@
 Independent releases begin after the coordinated 0.58.1 release. Earlier history
 is retained once in the [shared historical ledger](../history.md#0581---2026-10-31).
 
+## [0.62.0] - Unreleased
+
+### ⚠️ Breaking
+
+- Adopt Wire 0.14.0 for governed logging checkpoints and public codec errors,
+  with the matching core supplier identity. Hosts constructing or matching Wire
+  payloads must align their dependency. Checkpoint bytes, bounds, retention and
+  restoration remain unchanged; no reset is needed.
+
 ## [0.61.1] - 2026-11-01
 
 ### ⬆️ Dependencies

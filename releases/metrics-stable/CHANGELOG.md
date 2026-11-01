@@ -3,6 +3,16 @@
 Independent releases begin after the coordinated 0.58.1 release. Earlier history
 is retained once in the [shared historical ledger](../history.md#0581---2026-10-31).
 
+## [0.63.0] - Unreleased
+
+### ⚠️ Breaking
+
+- Adopt Wire 0.14.0 for governed metric snapshots and public codec errors, with
+  the matching core supplier identity. Hosts constructing or matching Wire
+  payloads must align their dependency. Record bytes, bounds, arithmetic and
+  checkpoint continuity remain unchanged. Metrics' native schema support retains
+  its own required Wire 0.13 lane until the supplier adopts Wire 0.14.
+
 ## [0.62.1] - 2026-11-01
 
 ### ⬆️ Dependencies
