@@ -10,6 +10,8 @@ coordinated 0.58.1 cutoff; [earlier shared history](../history.md) is preserved 
 - Offer exact-input reuse for the real ShellCheck tooling stage with fresh group
   metadata and source/index admission. Retain the original execution proof and
   separate current admissions; existing complete release gates remain unchanged.
+  Native CI selects verified ShellCheck archives for Linux and both macOS
+  architectures through the shared installer's explicit-pin interface.
   [Shared #334](https://github.com/dragginzgame/shared-tooling/issues/334).
 
 - Add an explicit destination-adoption check for the Wasm library and independent
