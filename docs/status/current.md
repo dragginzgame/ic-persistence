@@ -1,98 +1,63 @@
 # Current handoff
 
-Delivery selected: Persistence 0.60.6, Metrics Stable 0.61.4 and Logging Stable
-0.60.4, through the standard supplier-first release and crates.io publication
-workflow. Evidence lives under `target/delivery/platform-0.16-2026-11-01/`.
+Active work adopts published Wire/Derive 0.13.3 in both maintained catalogs,
+Testkit Native 0.76.0 and the separately selected Testkit CLI 0.76.0. The native
+meter now shares Platform 0.16.0, removing the former native-only 0.15.3 copy.
+The incoming root lock already selected Wire 0.13.3; preserve that update.
+Types 0.15.1, stable-structures 0.7.2 and the PocketIC 16.1.0 client/server pair
+remain unchanged. Existing stored bytes and public contracts do not change;
+Wire's new optional fixed-byte-array representation is not selected.
 
-The follow-up native receipt reads share an 8 MiB bounded JSON reader, and
-captured observations have a 120-second Host Process deadline. Long builds and
-release gates retain their execution policy. Both maintained catalogs now select
-Platform 0.16.0; Types 0.15.1, stable-structures 0.7.2 and PocketIC 16.1.0 remain
-unchanged. Testkit Native alone retains Platform 0.15.3 outside production Wasm.
+Adoption evidence is retained under `target/adoption-testkit-wire-2026-11-01/`.
+Both full locked metadata observations, dependency boundaries, affected-package
+and independent-runner Clippy, 44 focused tests, native Rust 1.91 test compilation,
+all three Rust 1.91 Wasm fixtures, formatting and documentation checks passed.
+Testkit 0.76.0 setup and offline CLI/server admission passed. Original-Wasm
+installed IO, corruption/growth refusal, backing custody, Storage reopen, Logging
+retention and update/upgrade rollback passed; recorded input hashes verified
+unchanged. The unchanged optimizer matrix and native macOS checks were not replayed.
+Pending compatible notes are Persistence 0.60.7, Metrics Stable 0.61.5 and
+Logging Stable 0.60.5. The maintainer selected supplier-first release and
+publication to crates.io and GitHub `dragginzgame/ic-persistence` on `main`.
+Release evidence is retained under `target/delivery/testkit-wire-2026-11-01/`;
+final receipts and destination readback establish actual delivery.
 
-The common archive boundary is ready for review in
-[IC Tooling PR #296](https://github.com/dragginzgame/ic-tooling/pull/296): already-produced
-archives, caller-owned checks and final custody admission. Persistence retains its
-existing archive script until the API is published and adopted. The grouped-gate
-investigation measured 11.6 minutes and is recorded in
+The preceding Platform 0.16 delivery completed on GitHub and crates.io:
+Persistence 0.60.6 (Memory and Storage), Metrics Stable 0.61.4 and Logging
+Stable 0.60.4. Each group passed its complete gate. Independent registry
+readback matched all retained archive digests and final receipts; GitHub releases
+and remote annotated tags matched the release commits, with remote main at
+`053697f38853ed93e63032c0c5689f10296654ff`.
+See `target/delivery/platform-0.16-2026-11-01/` for delivery evidence.
+
+Native receipt reads share an 8 MiB bounded JSON reader; captured observations
+have a 120-second Host Process deadline. Long builds and release gates retain
+their execution policy. The preceding focused Platform proof passed original-Wasm
+IO rejection, corruption/growth checkpoints, backing custody, Storage reopen,
+update/upgrade rollback and Logging retention/reopen/rollback. Input hashes
+verified unchanged under
+`target/improvements-platform-2026-11-01/installed-original.bWYi12/`.
+That proof applies to its recorded selections, not this new adoption.
+
+The common archive boundary was delivered in
+[IC Tooling PR #296](https://github.com/dragginzgame/ic-tooling/pull/296).
+Persistence retains its archive script until the API is published and adopted.
+The validation-reuse investigation measured 11.6 minutes and is recorded in
 [the audit](../audits/2026-11-01-release-validation-reuse.md) and
-[Shared #334](https://github.com/dragginzgame/shared-tooling/issues/334); no release
-proof is reused or gate skipped.
+[Shared #334](https://github.com/dragginzgame/shared-tooling/issues/334).
+No release proof is reused or gate skipped. The bootstrap proposal remains
+[Shared #333](https://github.com/dragginzgame/shared-tooling/issues/333).
 
-The original-Wasm installed proof passed IO rejection, corruption/growth
-checkpoints, backing custody, Storage reopen and update/upgrade rollback, and
-Logging retention/reopen/rollback. Its recorded input hashes verified unchanged;
-evidence is `target/improvements-platform-2026-11-01/installed-original.bWYi12/`.
-Local test/compiler/policy evidence and retained failed attempts are alongside
-that directory. The pending compatible group notes are Persistence 0.60.6,
-Metrics Stable 0.61.4 and Logging Stable 0.60.4; package versions are unchanged.
-Release execution and publication require their final receipts and registry
-verification; the focused proof above does not establish delivery. Upstream PR
-checks and native macOS acceptance remain separate from this local Linux proof.
-
-The cleanup delivery batch selects Persistence 0.60.5, Metrics Stable 0.61.3 and
-Logging Stable 0.60.3 in supplier-first order. It addresses all ten audit items:
-release evidence flow, phase-local group projection, canonical command plans,
-bootstrap observation, pure growth arithmetic, histogram iteration, logging text
-validation, diagnostic state, fixture selection and ownership guidance. Public
-contracts, stored formats, receipt bytes and allocation custody remain unchanged.
-
-Focused qualification passed 73 release-helper tests, 72 runtime tests, 11 Metrics
-continuity tests and seven Logging encoding tests. Native bootstrap qualifies both
-interruption orders for all three groups without changing source. Rust 1.91 Wasm
-libraries and the native helper compile; selected Clippy, graph, pin, formatting,
-ShellCheck and documentation checks pass. Focused evidence and earlier failed
-attempts remain in `target/complexity-2026-11-01/`. The deployment retains the
-incoming Metrics 0.24.3 and Logging 0.23.4 lock selections with compatible catalog
-requirements. Standard delivery runs the complete release gate for each group;
-final receipts, retained archives and registry readback establish publication.
-Delivery logs live under `target/delivery/cleanup-2026-11-01/`.
-
-The cross-repository proposal is
-[Shared Tooling #333](https://github.com/dragginzgame/shared-tooling/issues/333);
-no sibling source or vendored files were edited.
-
-The previous delivery batch selected Persistence 0.60.4, Metrics Stable 0.61.2 and
-Logging Stable 0.60.2 in supplier-first order. Canonical group ledgers record
-release dates; final receipts and registry checks establish publication. Previous
-delivery evidence is retained under `target/delivery/2026-11-01/`.
-
-The catalogs select Wire 0.13.2, Build/Host/editor 0.73.3 and Testkit Native/CLI
-0.75.2. Platform 0.15.3, Types 0.15.1, Metrics 0.24.3 and Logging 0.23.4 are
-selected. Both maintained Wire graphs and separate tool pins are aligned.
-Stable-structures 0.7.2, PocketIC 16.1.0, stored formats and allocation custody
-are unchanged; no data reset or migration is needed.
-
-Focused qualification passed all 72 release-helper tests, 11 native-helper tests,
-actual-editor bootstrap fixtures (substituted release effects), Rust 1.91 helper
-compilation, production graph, pin, formatting and documentation checks. Editor
-and Testkit offline admission and a managed server lifecycle smoke test pass.
-Setup-lock waiting and the initial sandbox loopback refusal remain recorded with
-successful retries under `target/delivery/upstream-issues/`. Standard deployment
-uses the complete release gate separately for each group; its retained receipts
-and attempt logs are the authority for those executions.
-
-Earlier hosted evidence below applies to its recorded source. It does not
-qualify this new dependency batch.
-
-The [delivered full CI matrix](https://github.com/dragginzgame/ic-persistence/actions/runs/41229172386)
+Earlier cleanup/delivery evidence remains under `target/complexity-2026-11-01/`,
+`target/delivery/cleanup-2026-11-01/` and `target/delivery/upstream-issues/`.
+The [earlier full CI matrix](https://github.com/dragginzgame/ic-persistence/actions/runs/41229172386)
 at `a6354951fe63e293645c4316d5610971ad750ce5` passed native validation,
-installed runtime/upgrade/rollback and compiler-floor checks on Linux, Apple
-Silicon macOS and Intel macOS. The hook fixture uses explicit selected-toolchain
-Rustup dispatch; both macOS native suites passed. This completes the native-host
-obligations for release groups (#144) and the hook repair (#146).
+installed runtime/upgrade/rollback and compiler-floor checks on Linux and both
+macOS architectures, completing #144 and #146. It does not qualify newer inputs.
+CI selection #145 retains the exact three-file documentation-only policy and
+fails closed to the full matrix; see [CI selection](../ci-selection.md).
 
-Conservative CI selection (#145) is delivered. Only the reviewed exact three-file
-prose policy can select documentation-only checks. Unknown, source, workflow,
-policy and unsafe observations retain full qualification. Required native check
-names remain present; failed classification or documentation admission fails
-those checks. Selection fixtures cover normal and failure paths. A docs-only
-result reports that native suites did not run; it never replaces native evidence.
-See [CI selection](../ci-selection.md) for the qualification boundaries.
-
-The reviewed Shared snapshot remains commit
-`143a9abb9ae81feae9400ff3844b03b1ddfdd75a` (upstream 0.27.22 commit, recorded
-VERSION 0.27.21), extended canonically with the classifier: 79 roots, 133 payloads.
-No dirty sibling rules were adopted. Delivery evidence and retained failures stay
-under `target/delivery/upstream-issues/`; earlier issue evidence remains under
-`target/issues/145/`.
+The reviewed Shared snapshot remains
+`143a9abb9ae81feae9400ff3844b03b1ddfdd75a` (upstream 0.27.22 commit,
+recorded VERSION 0.27.21), with 79 roots and 133 payloads. Dirty sibling rules
+remain excluded. No vendored files or sibling working sources are edited.

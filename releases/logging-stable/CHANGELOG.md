@@ -3,6 +3,13 @@
 Independent releases begin after the coordinated 0.58.1 release. Earlier history
 is retained once in the [shared historical ledger](../history.md#0581---2026-10-31).
 
+## [0.60.5] - Unreleased
+
+### ⬆️ Dependencies
+
+- Require Wire 0.13.3 for governed logging checkpoints. Existing checkpoint
+  bytes, limits, retention and restoration remain unchanged.
+
 ## [0.60.4] - 2026-11-01
 
 ### 🔧 Changed

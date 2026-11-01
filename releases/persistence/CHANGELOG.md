@@ -3,6 +3,14 @@
 Covers `ic-memory` and `ic-storage`. Independent group releases begin after the
 coordinated 0.58.1 cutoff; [earlier shared history](../history.md) is preserved once.
 
+## [0.60.7] - Unreleased
+
+### ⬆️ Dependencies
+
+- Adopt Wire 0.13.3 in both maintained catalogs and Testkit Native/CLI 0.76.0.
+  Native Testkit now shares Platform 0.16.0; the PocketIC 16.1.0 pairing,
+  existing encoded bytes and stable-memory contracts remain unchanged. [Details](0.60.md).
+
 ## [0.60.6] - 2026-11-01
 
 ### 🔧 Changed
