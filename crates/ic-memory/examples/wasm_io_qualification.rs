@@ -26,11 +26,11 @@ mod canister {
         key: &str,
     ) -> Result<ic_memory::RuntimeMemory<ic_memory::DefaultMemoryImpl>, ic_memory::RuntimeOpenError>
     {
-        with_runtime(|runtime| runtime.open_memory(key))
+        with_runtime(|runtime| runtime.open_memory(&ic_memory::StableKey::parse(key).unwrap()))
     }
 
     fn memory_id(key: &str) -> Result<u8, ic_memory::RuntimeOpenError> {
-        with_runtime(|runtime| runtime.memory_id(key))
+        with_runtime(|runtime| runtime.memory_id(&ic_memory::StableKey::parse(key).unwrap()))
     }
 
     const PAGE: u64 = 65_536;
@@ -80,7 +80,7 @@ mod canister {
         let pages = if mode == 2 { 16 } else { 8 };
         let mut runtime = super::host::Runtime::new_with_config(
             ic_memory::DefaultMemoryImpl::default(),
-            MemoryManagerConfig::new(pages).unwrap(),
+            MemoryManagerConfig::new(std::num::NonZeroU16::new(pages).unwrap()),
         )
         .unwrap();
         runtime
@@ -115,8 +115,12 @@ mod canister {
         // retained component handles have released custody.
         let runtime = RUNTIME.with(|slot| slot.borrow_mut().take().unwrap());
         let generation = runtime.committed_generation().unwrap();
-        let rows = runtime.open_memory(ROWS).unwrap();
-        let neighbor = runtime.open_memory(NEIGHBOR).unwrap();
+        let rows = runtime
+            .open_memory(&ic_memory::StableKey::parse(ROWS).unwrap())
+            .unwrap();
+        let neighbor = runtime
+            .open_memory(&ic_memory::StableKey::parse(NEIGHBOR).unwrap())
+            .unwrap();
         let physical = ic_memory::DefaultMemoryImpl::default().size();
         let refused = || {
             assert!(matches!(

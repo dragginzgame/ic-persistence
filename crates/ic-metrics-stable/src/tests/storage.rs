@@ -28,27 +28,31 @@ fn store_retains_allocation_lease_through_map_transfer() {
         MemoryManagerConfig::default(),
     )
     .unwrap();
-    let mut store = MetricsStore::new(StableBTreeMap::new(
-        runtime.open_memory("metrics.store.v1").unwrap(),
+    let mut store = MetricsStore::new(StableBTreeMap::create(
+        runtime
+            .open_memory(&ic_memory::StableKey::parse("metrics.store.v1").unwrap())
+            .unwrap(),
     ));
     store
         .save_counter(&key("app"), &identity(), &Counter::ZERO)
         .unwrap();
     assert!(matches!(
-        runtime.open_memory("metrics.store.v1"),
+        runtime.open_memory(&ic_memory::StableKey::parse("metrics.store.v1").unwrap()),
         Err(RuntimeOpenError::AlreadyOpen { .. })
     ));
     let map: crate::MetricsMap<_> = store.into_map();
     assert!(matches!(
-        runtime.open_memory("metrics.store.v1"),
+        runtime.open_memory(&ic_memory::StableKey::parse("metrics.store.v1").unwrap()),
         Err(RuntimeOpenError::AlreadyOpen { .. })
     ));
     drop(map);
     let reopened = MetricsStore::new(StableBTreeMap::load(
-        runtime.open_memory("metrics.store.v1").unwrap(),
+        runtime
+            .open_memory(&ic_memory::StableKey::parse("metrics.store.v1").unwrap())
+            .unwrap(),
     ));
     assert!(matches!(
-        runtime.open_memory("metrics.store.v1"),
+        runtime.open_memory(&ic_memory::StableKey::parse("metrics.store.v1").unwrap()),
         Err(RuntimeOpenError::AlreadyOpen { .. })
     ));
     assert_eq!(
@@ -60,7 +64,7 @@ fn store_retains_allocation_lease_through_map_transfer() {
 #[test]
 fn one_map_reopens_mixed_types_and_namespaces_with_wide_totals() {
     let memory = VectorMemory::default();
-    let mut store = MetricsStore::new(StableBTreeMap::new(admitted_memory(memory.clone())));
+    let mut store = MetricsStore::new(StableBTreeMap::create(admitted_memory(memory.clone())));
     let mut aggregate = Aggregate::EMPTY;
     let mut summary = Summary::EMPTY;
     let mut histogram = Histogram::new([0, 10]).unwrap();
@@ -158,7 +162,7 @@ fn histogram_equality_shortcut_preserves_full_state_comparison() {
 fn public_histogram_load_admits_expected_bounds_before_reading_a_row() {
     let memory = WriteCountingMemory::default();
     let writes = memory.writes.clone();
-    let mut store = MetricsStore::new(StableBTreeMap::new(admitted_memory(memory)));
+    let mut store = MetricsStore::new(StableBTreeMap::create(admitted_memory(memory)));
     let key = key("app");
     let identity = identity();
     for retained in [None, Some(vec![0])] {

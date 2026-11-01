@@ -8,22 +8,33 @@ pub struct StableMinHeap<T: Storable + Ord, M: Memory = DefaultMemoryImpl> {
     inner: substrate::MinHeap<T, RuntimeMemory<M>>,
 }
 impl<T: Storable + Ord, M: Memory> StableMinHeap<T, M> {
-    /// Create a new collection, replacing any prior collection in the selected memory.
-    /// This is destructive even when a valid collection already exists.
+    /// Create a collection only in zero-page memory.
     ///
     /// # Panics
-    /// Panics on insufficient memory or codec/backing failure.
-    pub fn new(memory: RuntimeMemory<M>) -> Self {
+    /// Refuses nonempty memory before writing. Growth and codec failures retain
+    /// upstream behavior.
+    pub fn create(memory: RuntimeMemory<M>) -> Self {
+        assert_eq!(memory.size(), 0, "collection memory is not empty");
+        Self::reset(memory)
+    }
+
+    /// Deliberately replace any contents in this admitted allocation.
+    ///
+    /// # Panics
+    /// Growth and codec failures retain upstream behavior.
+    pub fn reset(memory: RuntimeMemory<M>) -> Self {
         Self {
             inner: substrate::MinHeap::new(memory),
         }
     }
-    /// Open a valid retained collection, or create one in zero-page memory.
+
+    /// Load retained collection state without initializing a replacement.
     ///
     /// # Panics
-    /// Panics for foreign magic, unsupported layout, incompatible element bounds,
-    /// insufficient memory or codec/backing failure. Foreign memory is not reset.
-    pub fn init(memory: RuntimeMemory<M>) -> Self {
+    /// Refuses empty or foreign memory and incompatible layouts/bounds without
+    /// writing. Record decoding and backing failures retain upstream behavior.
+    pub fn load(memory: RuntimeMemory<M>) -> Self {
+        assert!(memory.size() > 0, "collection memory is empty");
         Self {
             inner: substrate::MinHeap::init(memory),
         }

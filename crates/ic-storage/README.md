@@ -2,7 +2,7 @@
 
 Governed stable collections for Internet Computer applications. The supported
 public surface is `ic_storage::adapter`: `StableBTreeMap`, `StableBTreeSet`,
-`StableCell`, `BoundedCell`, `StableVec`, `StableMinHeap`, `StableLog`, their supported
+`StableCell`, `StableVec`, `StableMinHeap`, `StableLog`, their supported
 iterators, `BTreeMapRegion`, `RegionGrowError`, `LogWriteError`, `Memory`, `Storable`,
 `Bound` and `storable`. These wrappers preserve upstream
 `ic-stable-structures` formats and provide explicit initialization/loading contracts.
@@ -16,12 +16,13 @@ use ic_storage::adapter::{Bound, Memory, StableBTreeMap, Storable};
 # fn example<M: Memory>(runtime: &ic_memory::MemoryRuntime<M>) -> Result<(), Box<dyn std::error::Error>> {
 let _: Bound = <u64 as Storable>::BOUND;
 // The application has already admitted and committed this allocation.
-let memory = runtime.open_memory("app.rows.v1")?;
-let mut map = StableBTreeMap::<u64, u64, M>::init(memory);
+let rows_key = ic_memory::StableKey::parse("app.rows.v1")?;
+let memory = runtime.open_memory(&rows_key)?;
+let mut map = StableBTreeMap::<u64, u64, M>::create(memory);
 map.insert(1, 42);
 assert_eq!(map.get(&1), Some(42));
 drop(map);
-let map = StableBTreeMap::<u64, u64, M>::load(runtime.open_memory("app.rows.v1")?);
+let map = StableBTreeMap::<u64, u64, M>::load(runtime.open_memory(&rows_key)?);
 assert_eq!(map.get(&1), Some(42));
 # Ok(())
 # }
@@ -41,7 +42,7 @@ backing until all runtime/collection handles drop. Custom hosts must uphold
 ```compile_fail
 use ic_memory::VectorMemory;
 use ic_storage::adapter::StableBTreeMap;
-let _ = StableBTreeMap::<u64, u64>::new(VectorMemory::default());
+let _ = StableBTreeMap::<u64, u64>::create(VectorMemory::default());
 ```
 
 No raw backing constructors, memory manager or unrestricted upstream module is
@@ -65,7 +66,7 @@ Callers whose post-insert metadata needs both retain a caller-owned key copy
 before insertion. The caller owns that copy's bounds and metadata transaction
 policy. The collection's key/value encoding and insertion failure contracts apply.
 
-`StableCell::load(runtime.open_memory("app.journal.v1")?)?` opens an existing
+`StableCell::load(runtime.open_memory(&journal_key)?)?` opens an existing
 singleton without a default record, initialization, writes or growth. It returns
 `ic_memory::StableCellPayloadError` for empty/foreign memory, unsupported cell
 versions or lengths extending beyond the allocation. Successful loading decodes
@@ -77,17 +78,19 @@ recovery size ceiling.
 Cell codec and backing failures propagate as upstream panics. Failed loads
 preserve bytes and growth, releasing the consumed lease on errors or ordinary
 unwinding; installed Wasm traps follow the host's rollback semantics. Applications
-own schema validation and recovery. Choose `StableCell::new` to replace contents
-destructively, or `StableCell::init` to retain a recognized cell and initialize
-empty/foreign memory. Neither constructor is a read-only restoration operation.
+own schema validation and recovery.
 
-`BoundedCell` supports `init`, `get` and `set`, enforcing declared maximum or
-exact encoded sizes before writes and before decoding retained values. It rejects
-unbounded types. Rejected replacements preserve cached values and stored bytes;
-invalid retained values refuse opening without rewriting bytes or leaking leases.
-It preserves upstream cell bytes and initialization behavior, including initializing
-empty memory or memory without the cell magic. Applications retain codec, schema
-and recovery ownership; ordinary `StableCell` retains upstream's unchecked bounds.
+All owning collections use `create` for zero-page memory and `load` for retained
+state. `create` refuses nonempty allocations; `load` never initializes a
+replacement. `reset` explicitly replaces contents in an admitted allocation;
+for logs it replaces both the index and data allocations. Hosts own that choice.
+Map/set `clear` remains an entry-removal operation on a loaded collection.
+
+`StableCell` enforces `T::BOUND` on creation, loading and every write. Variable
+bounds reject oversized records; fixed bounds require the exact width. Unbounded
+record types remain supported. Invalid encodings fail before writes, and failed
+loads preserve bytes and release the lease. The cell envelope and value codecs
+remain unchanged.
 
 ## Retained trees inside a shared allocation
 

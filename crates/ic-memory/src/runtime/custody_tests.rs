@@ -4,7 +4,7 @@
     reason = "do not print entire stable memories on failure"
 )]
 use super::*;
-use crate::{MemoryBacking, VectorMemory, testing::fixture_runtime};
+use crate::{MemoryBacking, StableKey, VectorMemory, testing::fixture_runtime};
 use std::panic::{AssertUnwindSafe, catch_unwind};
 
 const A: &str = "custody.a.v1";
@@ -62,7 +62,7 @@ fn runtime(backing: VectorMemory) -> MemoryRuntime<VectorMemory> {
         "custody",
         "custody.",
         &[A, B, C],
-        MemoryManagerConfig::new(8).unwrap(),
+        MemoryManagerConfig::new(std::num::NonZeroU16::new(8).unwrap()),
     )
     .unwrap()
 }
@@ -71,8 +71,8 @@ fn runtime(backing: VectorMemory) -> MemoryRuntime<VectorMemory> {
 fn aliases_refuse_before_io_and_detached_leases_keep_the_backing_claimed() {
     let backing = VectorMemory::default();
     let owner = runtime(backing.clone());
-    let a = owner.open_memory(A).unwrap();
-    let b = owner.open_memory(B).unwrap();
+    let a = owner.open_memory(&StableKey::parse(A).unwrap()).unwrap();
+    let b = owner.open_memory(&StableKey::parse(B).unwrap()).unwrap();
     a.grow(1).unwrap();
     b.grow(1).unwrap();
     a.write(17, &[42]);
@@ -99,8 +99,8 @@ fn aliases_refuse_before_io_and_detached_leases_keep_the_backing_claimed() {
     ));
     drop(b);
     let owner = runtime(backing);
-    let a = owner.open_memory(A).unwrap();
-    let b = owner.open_memory(B).unwrap();
+    let a = owner.open_memory(&StableKey::parse(A).unwrap()).unwrap();
+    let b = owner.open_memory(&StableKey::parse(B).unwrap()).unwrap();
     let mut byte = [0];
     a.read(17, &mut byte);
     assert_eq!(byte, [42]);
@@ -177,13 +177,13 @@ fn foreign_manager_changes_poison_at_open_or_growth_before_mutation() {
         for mode in 0..4 {
             let backing = VectorMemory::default();
             let owner = runtime(backing.clone());
-            let a = owner.open_memory(A).unwrap();
-            let b = owner.open_memory(B).unwrap();
+            let a = owner.open_memory(&StableKey::parse(A).unwrap()).unwrap();
+            let b = owner.open_memory(&StableKey::parse(B).unwrap()).unwrap();
             a.grow(1).unwrap();
             b.grow(1).unwrap();
             a.write(17, &[42]);
             b.write(31, &[99]);
-            let id = owner.memory_id(A).unwrap();
+            let id = owner.memory_id(&StableKey::parse(A).unwrap()).unwrap();
             let saved = backing.borrow().clone();
             // Infrastructure fault injection: never a supported production manager.
             let foreign = MemoryManager::init(backing.clone());
@@ -195,7 +195,7 @@ fn foreign_manager_changes_poison_at_open_or_growth_before_mutation() {
                     assert_eq!(foreign.get(MemoryId::new(id)).grow(1), 1);
                 }
                 2 => {
-                    let other = owner.memory_id(B).unwrap();
+                    let other = owner.memory_id(&StableKey::parse(B).unwrap()).unwrap();
                     let mut bytes = backing.borrow_mut();
                     let table = &mut bytes[layout::HEADER_BYTES..layout::METADATA_BYTES];
                     let ai = table.iter().position(|value| *value == id).unwrap();
@@ -209,7 +209,7 @@ fn foreign_manager_changes_poison_at_open_or_growth_before_mutation() {
             let before = backing.borrow().clone();
             if detect_at_open {
                 assert!(matches!(
-                    owner.open_memory(C),
+                    owner.open_memory(&StableKey::parse(C).unwrap()),
                     Err(RuntimeOpenError::Layout(
                         MemoryManagerLayoutError::RuntimeMismatch
                     ))
@@ -229,7 +229,7 @@ fn foreign_manager_changes_poison_at_open_or_growth_before_mutation() {
                 ))
             );
             assert!(matches!(
-                owner.open_memory(C),
+                owner.open_memory(&StableKey::parse(C).unwrap()),
                 Err(RuntimeOpenError::Layout(
                     MemoryManagerLayoutError::RuntimeMismatch
                 ))
@@ -263,9 +263,15 @@ fn foreign_manager_changes_poison_at_open_or_growth_before_mutation() {
             drop(foreign);
             let reopened = runtime(backing);
             let mut byte = [0];
-            reopened.open_memory(A).unwrap().read(17, &mut byte);
+            reopened
+                .open_memory(&StableKey::parse(A).unwrap())
+                .unwrap()
+                .read(17, &mut byte);
             assert_eq!(byte, [42]);
-            reopened.open_memory(B).unwrap().read(31, &mut byte);
+            reopened
+                .open_memory(&StableKey::parse(B).unwrap())
+                .unwrap()
+                .read(31, &mut byte);
             assert_eq!(byte, [99]);
         }
     }

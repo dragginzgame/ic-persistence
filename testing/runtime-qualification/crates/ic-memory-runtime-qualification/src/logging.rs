@@ -51,9 +51,7 @@ fn append(time: u64, trap: bool) -> Update {
 pub(super) fn qualify(pic: &PocketIc) {
     let wasm =
         fs::read(env::var("IC_LOGGING_QUALIFICATION_WASM").expect("logging fixture path")).unwrap();
-    let canister = pic.create_canister();
-    pic.add_cycles(canister, 100_000_000_000_000);
-    pic.install_canister(canister, wasm.clone(), frame(protocol::INIT_ID, &()), None);
+    let canister = super::install_fixture(pic, &wasm, frame(protocol::INIT_ID, &()));
     let initial = read(pic, canister);
     assert!(initial.rows.is_empty());
     assert_eq!(initial.next_sequence, Some(0));

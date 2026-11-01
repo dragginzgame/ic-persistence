@@ -21,35 +21,49 @@ fn main() {
     };
     {
         let runtime = open();
-        let lease = runtime.open_memory("archive.map.v1").unwrap();
-        let mut map = StableBTreeMap::<u64, u64, _>::new(lease);
+        let lease = runtime
+            .open_memory(&ic_memory::StableKey::parse("archive.map.v1").unwrap())
+            .unwrap();
+        let mut map = StableBTreeMap::<u64, u64, _>::create(lease);
         assert_eq!(map.insert(7, 11), None);
         assert!(matches!(
-            runtime.open_memory("archive.map.v1"),
+            runtime.open_memory(&ic_memory::StableKey::parse("archive.map.v1").unwrap()),
             Err(RuntimeOpenError::AlreadyOpen { .. })
         ));
         drop(map);
-        assert!(runtime.open_memory("archive.map.v1").is_ok());
+        assert!(
+            runtime
+                .open_memory(&ic_memory::StableKey::parse("archive.map.v1").unwrap())
+                .is_ok()
+        );
     }
     let runtime = open();
-    let map = StableBTreeMap::<u64, u64, _>::load(runtime.open_memory("archive.map.v1").unwrap());
+    let map = StableBTreeMap::<u64, u64, _>::load(
+        runtime
+            .open_memory(&ic_memory::StableKey::parse("archive.map.v1").unwrap())
+            .unwrap(),
+    );
     assert_eq!(map.get(&7), Some(11));
 
     let key = MetricKey::new("archive", "bytes").unwrap();
     let identity = MetricIdentity::new("bytes", 0).unwrap();
     let mut counter = MeasurementCounter::ZERO;
     counter.add(42);
-    let mut store = MetricsStore::new(StableBTreeMap::new(
-        runtime.open_memory("archive.metrics.v1").unwrap(),
+    let mut store = MetricsStore::new(StableBTreeMap::create(
+        runtime
+            .open_memory(&ic_memory::StableKey::parse("archive.metrics.v1").unwrap())
+            .unwrap(),
     ));
     store.save_counter(&key, &identity, &counter).unwrap();
     assert!(matches!(
-        runtime.open_memory("archive.metrics.v1"),
+        runtime.open_memory(&ic_memory::StableKey::parse("archive.metrics.v1").unwrap()),
         Err(RuntimeOpenError::AlreadyOpen { .. })
     ));
     drop(store.into_map());
     let reopened = MetricsStore::new(StableBTreeMap::load(
-        runtime.open_memory("archive.metrics.v1").unwrap(),
+        runtime
+            .open_memory(&ic_memory::StableKey::parse("archive.metrics.v1").unwrap())
+            .unwrap(),
     ));
     assert_eq!(
         reopened.load_counter(&key, &identity).unwrap(),
@@ -73,17 +87,21 @@ fn main() {
         message: "archive checkpoint",
     })
     .unwrap();
-    let mut store = LoggingStore::new(StableBTreeMap::new(
-        runtime.open_memory("archive.logging.v1").unwrap(),
+    let mut store = LoggingStore::new(StableBTreeMap::create(
+        runtime
+            .open_memory(&ic_memory::StableKey::parse("archive.logging.v1").unwrap())
+            .unwrap(),
     ));
     store.save(&key, identity, &log).unwrap();
     assert!(matches!(
-        runtime.open_memory("archive.logging.v1"),
+        runtime.open_memory(&ic_memory::StableKey::parse("archive.logging.v1").unwrap()),
         Err(RuntimeOpenError::AlreadyOpen { .. })
     ));
     drop(store.into_map());
     let mut reopened = LoggingStore::new(StableBTreeMap::load(
-        runtime.open_memory("archive.logging.v1").unwrap(),
+        runtime
+            .open_memory(&ic_memory::StableKey::parse("archive.logging.v1").unwrap())
+            .unwrap(),
     ));
     let mut restored = reopened.load(&key, identity, limits).unwrap().unwrap();
     assert_eq!(restored.snapshot(), log.snapshot());
@@ -91,7 +109,9 @@ fn main() {
     reopened.save(&key, identity, &restored).unwrap();
     drop(reopened.into_map());
     let reopened = LoggingStore::new(StableBTreeMap::load(
-        runtime.open_memory("archive.logging.v1").unwrap(),
+        runtime
+            .open_memory(&ic_memory::StableKey::parse("archive.logging.v1").unwrap())
+            .unwrap(),
     ));
     let empty = reopened
         .load(&key, identity, limits)

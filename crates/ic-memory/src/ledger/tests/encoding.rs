@@ -34,7 +34,10 @@ fn ledger_wire_rejects_trailing_bytes() {
 
     let err = decode_ledger(&encoded, 2).expect_err("trailing bytes must fail closed");
 
-    assert_eq!(err, ic_wire::Error::Trailing.to_string());
+    assert_eq!(
+        err,
+        crate::LedgerDecodeError::Wire(ic_wire::Error::Trailing)
+    );
 }
 
 #[test]

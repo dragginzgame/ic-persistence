@@ -153,7 +153,7 @@ pub type MetricsMap<M> = StableBTreeMap<Vec<u8>, Vec<u8>, M>;
 /// use ic_memory::VectorMemory;
 /// use ic_metrics_stable::MetricsStore;
 /// use ic_storage::adapter::StableBTreeMap;
-/// let _ = MetricsStore::new(StableBTreeMap::<Vec<u8>, Vec<u8>, _>::new(VectorMemory::default()));
+/// let _ = MetricsStore::new(StableBTreeMap::<Vec<u8>, Vec<u8>, _>::create(VectorMemory::default()));
 /// ```
 ///
 /// ```compile_fail

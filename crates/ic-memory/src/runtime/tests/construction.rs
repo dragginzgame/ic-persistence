@@ -41,7 +41,7 @@ fn construction_rejects_caller_pregrown_blank_memory_without_writing() {
         let result = if configured {
             MemoryRuntime::new_with_config(
                 backing.clone(),
-                crate::runtime::MemoryManagerConfig::new(16).unwrap(),
+                crate::runtime::MemoryManagerConfig::new(std::num::NonZeroU16::new(16).unwrap()),
             )
         } else {
             MemoryRuntime::new(backing.clone())
@@ -96,7 +96,7 @@ fn separate_runtimes_have_independent_bootstrap_authority_and_memory() {
     );
 
     let memory_a = runtime_a
-        .open_memory("runtime_tests.rows.v1")
+        .open_memory(&crate::StableKey::parse("runtime_tests.rows.v1").unwrap())
         .expect("runtime A memory");
     memory_a.grow(1).unwrap();
     memory_a.write(0, b"runtime-a");
@@ -106,7 +106,7 @@ fn separate_runtimes_have_independent_bootstrap_authority_and_memory() {
         .expect("runtime B bootstrap");
     assert_eq!(policy.0.get(), 2);
     let memory_b = runtime_b
-        .open_memory("runtime_tests.rows.v1")
+        .open_memory(&crate::StableKey::parse("runtime_tests.rows.v1").unwrap())
         .expect("runtime B memory");
     assert_eq!(memory_b.size(), 0);
     memory_b.grow(1).unwrap();

@@ -13,7 +13,7 @@ No endpoint, recorder, timer or automatic checkpoint is installed.
 ## Host-owned storage
 
 Use a map opened with an admitted `ic-memory::RuntimeMemory` handle. Choose
-`StableBTreeMap::new(handle)` for known fresh storage, or `load(handle)` for known
+`StableBTreeMap::create(handle)` for known fresh storage, or `load(handle)` for known
 retained storage. Never initialize an unknown/corrupt map as a recovery fallback.
 `LoggingStore::new(map)` and `into_map()` transfer that same allocation lease;
 drop every owner before reopening. Collection geometry, corruption/backing traps,
@@ -32,7 +32,8 @@ let pool = MemoryAllocationPool::new(vec![MemoryAuthority::new("app", "app.")?],
 let declarations = SealedDeclarationSnapshot::new(vec![MemoryRequest::new("app", "app.logs.v1")?])?;
 let mut runtime = MemoryRuntime::new(VectorMemory::default())?;
 runtime.bootstrap(&declarations, &pool, &GenericAllocationPolicy)?;
-let mut store = LoggingStore::new(StableBTreeMap::new(runtime.open_memory("app.logs.v1")?));
+let store_key = ic_memory::StableKey::parse("app.logs.v1")?;
+let mut store = LoggingStore::new(StableBTreeMap::create(runtime.open_memory(&store_key)?));
 let key = LogKey::new("app", "worker")?;
 let identity = LogIdentity { epoch: 0 };
 let limits = Limits { max_entries: NonZeroUsize::new(128).unwrap(),
@@ -43,7 +44,7 @@ log.append(EntryInput { created_at_secs: 10, level: Level::Info,
     .map_err(|error| format!("append refused: {error:?}"))?;
 store.save(&key, identity, &log)?;
 drop(store);
-let reopened = LoggingStore::new(StableBTreeMap::load(runtime.open_memory("app.logs.v1")?));
+let reopened = LoggingStore::new(StableBTreeMap::load(runtime.open_memory(&store_key)?));
 let restored = reopened.load(&key, identity, limits)?.unwrap();
 assert_eq!(restored.snapshot(), log.snapshot());
 # Ok(())

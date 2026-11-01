@@ -97,9 +97,11 @@ fn summary_matches_report(runtime: &MemoryRuntime<MeteredMemory>, memory: &Meter
 #[test]
 fn numeric_summary_matches_detailed_accounting_before_and_after_bootstrap_and_reopen() {
     let memory: MeteredMemory = MeteredMemory::default();
-    let mut runtime =
-        MemoryRuntime::new_with_config(memory.clone(), super::MemoryManagerConfig::new(8).unwrap())
-            .unwrap();
+    let mut runtime = MemoryRuntime::new_with_config(
+        memory.clone(),
+        super::MemoryManagerConfig::new(std::num::NonZeroU16::new(8).unwrap()),
+    )
+    .unwrap();
     assert_eq!(
         runtime.committed_generation(),
         Err(RuntimeOpenError::NotBootstrapped)
@@ -125,7 +127,10 @@ fn numeric_summary_matches_detailed_accounting_before_and_after_bootstrap_and_re
         &super::fixtures::app_pool()
     );
     assert_eq!(runtime.committed_allocations().unwrap().len(), 1);
-    assert_eq!(runtime.memory_id("app.rows.v1"), Ok(10));
+    assert_eq!(
+        runtime.memory_id(&crate::StableKey::parse("app.rows.v1").unwrap()),
+        Ok(10)
+    );
     assert_eq!(checked_counts(&memory).reads, 0);
     assert_eq!(checked_counts(&memory).writes, 0);
     assert_eq!(checked_counts(&memory).grows, 0);
@@ -146,7 +151,11 @@ fn numeric_summary_matches_detailed_accounting_before_and_after_bootstrap_and_re
     assert_eq!(checked_counts(&memory).reads, 0);
     assert_eq!(checked_counts(&memory).writes, 0);
     assert_eq!(checked_counts(&memory).grows, 0);
-    runtime.open_memory("app.rows.v1").unwrap().grow(9).unwrap();
+    runtime
+        .open_memory(&crate::StableKey::parse("app.rows.v1").unwrap())
+        .unwrap()
+        .grow(9)
+        .unwrap();
     runtime.memory(121).unwrap().grow(1).unwrap();
     memory.grow(3);
     summary_matches_report(&runtime, &memory);
@@ -184,9 +193,11 @@ fn full_external_id_domain_preserves_bounded_read_only_attribution() {
         .collect();
     let snapshot = crate::SealedDeclarationSnapshot::new(declarations).unwrap();
     let memory: MeteredMemory = MeteredMemory::default();
-    let mut runtime =
-        MemoryRuntime::new_with_config(memory.clone(), super::MemoryManagerConfig::new(1).unwrap())
-            .unwrap();
+    let mut runtime = MemoryRuntime::new_with_config(
+        memory.clone(),
+        super::MemoryManagerConfig::new(std::num::NonZeroU16::new(1).unwrap()),
+    )
+    .unwrap();
     runtime
         .bootstrap(
             &snapshot,
@@ -195,12 +206,12 @@ fn full_external_id_domain_preserves_bounded_read_only_attribution() {
         )
         .unwrap();
     runtime
-        .open_memory("app.slot016.v1")
+        .open_memory(&crate::StableKey::parse("app.slot016.v1").unwrap())
         .unwrap()
         .grow(1)
         .unwrap();
     runtime
-        .open_memory("app.slot254.v1")
+        .open_memory(&crate::StableKey::parse("app.slot254.v1").unwrap())
         .unwrap()
         .grow(2)
         .unwrap();
@@ -212,7 +223,12 @@ fn full_external_id_domain_preserves_bounded_read_only_attribution() {
     assert_eq!(runtime.committed_allocations().unwrap().len(), ids.len());
     for id in ids {
         let key = format!("app.slot{id:03}.v1");
-        assert_eq!(runtime.memory_id(&key).unwrap(), id);
+        assert_eq!(
+            runtime
+                .memory_id(&crate::StableKey::parse(&key).unwrap())
+                .unwrap(),
+            id
+        );
         let key = crate::StableKey::parse(key).unwrap();
         assert_eq!(
             runtime.allocation_pool().unwrap().authority_for_key(&key),
@@ -240,10 +256,15 @@ fn bounded_conservation_bindings_and_no_effects() {
             &GenericAllocationPolicy,
         )
         .unwrap();
-    let rows = runtime.open_memory("runtime_tests.rows.v1").unwrap();
+    let rows = runtime
+        .open_memory(&crate::StableKey::parse("runtime_tests.rows.v1").unwrap())
+        .unwrap();
     let zero = runtime.memory_allocations().unwrap();
     assert_eq!(zero.memories[120].allocated_buckets, 0);
-    assert_eq!(runtime.memory_id("runtime_tests.rows.v1"), Ok(120));
+    assert_eq!(
+        runtime.memory_id(&crate::StableKey::parse("runtime_tests.rows.v1").unwrap()),
+        Ok(120)
+    );
     assert_eq!(rows.grow(129), Ok(0));
     // Test-only unmanaged backing tail and an ID with no current declaration.
     assert_eq!(runtime.memory(121).unwrap().grow(1), Ok(0));
@@ -276,11 +297,11 @@ fn bounded_conservation_bindings_and_no_effects() {
     assert_eq!(memory.backing().borrow().as_slice(), before);
     assert_eq!(report.summary.current_generation, Some(generation));
     assert!(matches!(
-        runtime.open_memory(IC_MEMORY_LEDGER_STABLE_KEY),
+        runtime.open_memory(&crate::StableKey::parse(IC_MEMORY_LEDGER_STABLE_KEY).unwrap()),
         Err(RuntimeOpenError::ReservedStableKey { .. })
     ));
     assert!(matches!(
-        runtime.open_memory("unknown.rows.v1"),
+        runtime.open_memory(&crate::StableKey::parse("unknown.rows.v1").unwrap()),
         Err(RuntimeOpenError::StableKeyNotCommitted(_))
     ));
     assert_eq!(runtime.memory_allocations().unwrap(), report);
@@ -407,12 +428,8 @@ fn diagnostic_revalidates_foreign_unsupported_and_stale_metadata() {
 fn explicit_configuration_validates_before_effects_and_replays() {
     let declarations = super::fixtures::declarations();
     let memory: MeteredMemory = MeteredMemory::default();
-    assert_eq!(
-        super::MemoryManagerConfig::new(0),
-        Err(RuntimeConstructionError::InvalidBucketSize)
-    );
     assert_eq!(memory.size(), 0);
-    let config = super::MemoryManagerConfig::new(8).unwrap();
+    let config = super::MemoryManagerConfig::new(std::num::NonZeroU16::new(8).unwrap());
     let mut runtime = MemoryRuntime::new_with_config(memory.clone(), config).unwrap();
     assert_eq!(runtime.memory_manager_config(), config);
     runtime
@@ -422,7 +439,9 @@ fn explicit_configuration_validates_before_effects_and_replays() {
             &GenericAllocationPolicy,
         )
         .unwrap();
-    let handle = runtime.open_memory("runtime_tests.rows.v1").unwrap();
+    let handle = runtime
+        .open_memory(&crate::StableKey::parse("runtime_tests.rows.v1").unwrap())
+        .unwrap();
     handle.grow(9).unwrap();
     handle.write(8 * 65_536 - 1, &[4, 5, 6]);
     drop(handle);
@@ -463,7 +482,9 @@ fn explicit_configuration_validates_before_effects_and_replays() {
             &GenericAllocationPolicy,
         )
         .unwrap();
-    let handle = runtime.open_memory("runtime_tests.rows.v1").unwrap();
+    let handle = runtime
+        .open_memory(&crate::StableKey::parse("runtime_tests.rows.v1").unwrap())
+        .unwrap();
     let mut bytes = [0; 3];
     handle.read(8 * 65_536 - 1, &mut bytes);
     assert_eq!(bytes, [4, 5, 6]);
@@ -540,7 +561,7 @@ fn finite_bucket_table_capacity_and_overflow_are_checked() {
                 pages: std::cell::Cell::new(0),
                 header: std::rc::Rc::new(std::cell::RefCell::new(vec![0; 65_536])),
             },
-            super::MemoryManagerConfig::new(bucket).unwrap(),
+            super::MemoryManagerConfig::new(std::num::NonZeroU16::new(bucket).unwrap()),
         )
         .unwrap();
         let pages = 32_768 * u64::from(bucket);

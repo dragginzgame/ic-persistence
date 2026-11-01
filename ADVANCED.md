@@ -201,7 +201,8 @@ let source = SealedDeclarationSnapshot::new(vec![
 let pool = MemoryAllocationPool::new(vec![MemoryAuthority::new("app", "app.")?], vec![])?;
 let mut runtime = MemoryRuntime::new(VectorMemory::default())?;
 runtime.bootstrap(&source, &pool, &GenericAllocationPolicy)?;
-let users = runtime.open_memory("app.users.v1")?;
+let users_key = ic_memory::StableKey::parse("app.users.v1")?;
+let users = runtime.open_memory(&users_key)?;
 let ledger = runtime.diagnostic_export()?;
 # Ok::<(), Box<dyn std::error::Error>>(())
 ```

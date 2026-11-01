@@ -14,9 +14,7 @@ pub extern "C" fn ic_memory_wasm_diagnostics_size_probe_bootstrap() -> u64 {
             return 0;
         };
         if slot.is_none() {
-            let Ok(config) = ic_memory::MemoryManagerConfig::new(128) else {
-                return 0;
-            };
+            let config = ic_memory::MemoryManagerConfig::default();
             let Ok(runtime) =
                 host::Runtime::new_with_config(ic_memory::DefaultMemoryImpl::default(), config)
             else {

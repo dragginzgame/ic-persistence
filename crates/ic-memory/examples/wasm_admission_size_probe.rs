@@ -51,9 +51,7 @@ pub extern "C" fn ic_memory_wasm_core_size_probe_bootstrap() -> u64 {
             return 0;
         };
         if slot.is_none() {
-            let Ok(config) = ic_memory::MemoryManagerConfig::new(128) else {
-                return 0;
-            };
+            let config = ic_memory::MemoryManagerConfig::default();
             let Ok(runtime) =
                 host::Runtime::new_with_config(ic_memory::DefaultMemoryImpl::default(), config)
             else {
@@ -77,7 +75,11 @@ pub extern "C" fn ic_memory_wasm_core_size_probe_open() -> u32 {
             return u32::MAX;
         };
         slot.as_ref()
-            .and_then(|runtime| runtime.open_memory("wasm_core_size_probe.rows.v1").ok())
+            .and_then(|runtime| {
+                runtime
+                    .open_memory(&ic_memory::StableKey::parse("wasm_core_size_probe.rows.v1").ok()?)
+                    .ok()
+            })
             .map_or(u32::MAX, |memory| {
                 u32::try_from(ic_memory::Memory::size(&memory)).unwrap_or(u32::MAX)
             })

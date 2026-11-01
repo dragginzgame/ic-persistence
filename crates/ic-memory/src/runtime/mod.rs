@@ -164,22 +164,26 @@ impl<M: Memory> MemoryRuntime<M> {
     /// Dropping the handle, or a collection that owns it, permits reopening.
     /// A successful new lease validates the complete persisted manager image;
     /// detected divergence poisons all of this runtime's existing handles.
-    pub fn open_memory(&self, stable_key: &str) -> Result<RuntimeMemory<M>, RuntimeOpenError> {
+    pub fn open_memory(
+        &self,
+        stable_key: &crate::StableKey,
+    ) -> Result<RuntimeMemory<M>, RuntimeOpenError> {
         self.memory(self.memory_id(stable_key)?)
     }
 
     /// Resolve an application key's committed ID without opening memory,
     /// reading history, or changing the host's policy or bucket configuration.
-    pub fn memory_id(&self, stable_key: &str) -> Result<u8, RuntimeOpenError> {
-        crate::key::validate(stable_key)?;
-        if crate::is_ic_memory_stable_key(stable_key) {
+    pub fn memory_id(&self, stable_key: &crate::StableKey) -> Result<u8, RuntimeOpenError> {
+        if crate::is_ic_memory_stable_key(stable_key.as_str()) {
             return Err(RuntimeOpenError::ReservedStableKey {
                 stable_key: stable_key.to_string(),
             });
         }
-        let declaration =
-            crate::declaration::declaration_for_key(self.committed_allocations()?, stable_key)
-                .ok_or_else(|| RuntimeOpenError::StableKeyNotCommitted(stable_key.to_string()))?;
+        let declaration = crate::declaration::declaration_for_key(
+            self.committed_allocations()?,
+            stable_key.as_str(),
+        )
+        .ok_or_else(|| RuntimeOpenError::StableKeyNotCommitted(stable_key.to_string()))?;
         Ok(declaration.slot().id())
     }
 

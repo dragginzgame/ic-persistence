@@ -8,22 +8,33 @@ pub struct StableVec<T: Storable, M: Memory = DefaultMemoryImpl> {
     inner: substrate::Vec<T, RuntimeMemory<M>>,
 }
 impl<T: Storable, M: Memory> StableVec<T, M> {
-    /// Create a new collection, replacing any prior collection in the selected memory.
-    /// This is destructive even when a valid collection already exists.
+    /// Create a collection only in zero-page memory.
     ///
     /// # Panics
-    /// Panics on insufficient memory or codec/backing failure.
-    pub fn new(memory: RuntimeMemory<M>) -> Self {
+    /// Refuses nonempty memory before writing. Growth and codec failures retain
+    /// upstream behavior.
+    pub fn create(memory: RuntimeMemory<M>) -> Self {
+        assert_eq!(memory.size(), 0, "collection memory is not empty");
+        Self::reset(memory)
+    }
+
+    /// Deliberately replace any contents in this admitted allocation.
+    ///
+    /// # Panics
+    /// Growth and codec failures retain upstream behavior.
+    pub fn reset(memory: RuntimeMemory<M>) -> Self {
         Self {
             inner: substrate::Vec::new(memory),
         }
     }
-    /// Open a valid retained collection, or create one in zero-page memory.
+
+    /// Load retained collection state without initializing a replacement.
     ///
     /// # Panics
-    /// Panics for foreign magic, unsupported layout, incompatible element bounds,
-    /// insufficient memory or codec/backing failure. Foreign memory is not reset.
-    pub fn init(memory: RuntimeMemory<M>) -> Self {
+    /// Refuses empty or foreign memory and incompatible layouts/bounds without
+    /// writing. Record decoding and backing failures retain upstream behavior.
+    pub fn load(memory: RuntimeMemory<M>) -> Self {
+        assert!(memory.size() > 0, "collection memory is empty");
         Self {
             inner: substrate::Vec::init(memory),
         }
@@ -43,12 +54,6 @@ impl<T: Storable, M: Memory> StableVec<T, M> {
     /// Delegates to upstream `Vec::pop` with the governed allocation.
     pub fn pop(&self) -> Option<T> {
         self.inner.pop()
-    }
-    /// Reset to an empty vector while retaining this allocation's exclusive lease.
-    /// Existing payload bytes follow upstream `Vec::new` semantics.
-    #[must_use]
-    pub fn reset(self) -> Self {
-        Self::new(self.inner.into_memory())
     }
     /// Delegates to upstream `Vec::len` with the governed allocation.
     pub fn len(&self) -> u64 {

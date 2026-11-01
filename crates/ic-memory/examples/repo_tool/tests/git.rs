@@ -161,7 +161,7 @@ impl GitState {
                 {
                     fs::write(
                         root.join("Cargo.lock"),
-                        LOCK.replace(
+                        fixture_lock().replace(
                             "name = \"other\"\nversion = \"0.12.3\"",
                             "name = \"other\"\nversion = \"0.12.4\"",
                         ),

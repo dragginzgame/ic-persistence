@@ -63,17 +63,25 @@ fn deterministic_requests_preserve_history_and_explicit_inspection() {
     let backing = VectorMemory::default();
     let mut host = MemoryRuntime::new(backing.clone()).unwrap();
     assert_eq!(
-        host.memory_id("jobs.rows.v1"),
+        host.memory_id(&crate::StableKey::parse("jobs.rows.v1").unwrap()),
         Err(RuntimeOpenError::NotBootstrapped)
     );
     host.bootstrap(&composed(&initial), &pool, &GenericAllocationPolicy)
         .unwrap();
     let ids: Vec<_> = initial
         .iter()
-        .map(|(_, key)| (*key, host.memory_id(key).unwrap()))
+        .map(|(_, key)| {
+            (
+                *key,
+                host.memory_id(&crate::StableKey::parse(key).unwrap())
+                    .unwrap(),
+            )
+        })
         .collect();
     for (key, _) in &ids {
-        let memory = host.open_memory(key).unwrap();
+        let memory = host
+            .open_memory(&crate::StableKey::parse(key).unwrap())
+            .unwrap();
         memory.grow(1).unwrap();
         memory.write(0, key.as_bytes());
     }
@@ -97,10 +105,12 @@ fn deterministic_requests_preserve_history_and_explicit_inspection() {
     let mut host = MemoryRuntime::new(backing.clone()).unwrap();
     host.bootstrap(&changed, &pool, &GenericAllocationPolicy)
         .unwrap();
-    let new_id = host.memory_id("canic.added.v1").unwrap();
+    let new_id = host
+        .memory_id(&crate::StableKey::parse("canic.added.v1").unwrap())
+        .unwrap();
     assert!(!ids.iter().any(|(_, id)| *id == new_id));
     assert!(matches!(
-        host.open_memory("icydb.main.rows.v1"),
+        host.open_memory(&crate::StableKey::parse("icydb.main.rows.v1").unwrap()),
         Err(RuntimeOpenError::StableKeyNotCommitted(_))
     ));
     drop(host);
@@ -109,9 +119,15 @@ fn deterministic_requests_preserve_history_and_explicit_inspection() {
         .bootstrap(&composed(&initial), &pool, &GenericAllocationPolicy)
         .unwrap();
     for (key, id) in ids {
-        assert_eq!(reopened.memory_id(key), Ok(id));
+        assert_eq!(
+            reopened.memory_id(&crate::StableKey::parse(key).unwrap()),
+            Ok(id)
+        );
         let mut bytes = vec![0; key.len()];
-        reopened.open_memory(key).unwrap().read(0, &mut bytes);
+        reopened
+            .open_memory(&crate::StableKey::parse(key).unwrap())
+            .unwrap()
+            .read(0, &mut bytes);
         assert_eq!(bytes, key.as_bytes());
     }
 }
@@ -130,9 +146,18 @@ fn common_pool_supplies_available_space_across_all_owners() {
     let mut host = MemoryRuntime::new(backing.clone()).unwrap();
     host.bootstrap(&declarations, &pool, &GenericAllocationPolicy)
         .unwrap();
-    assert_eq!(host.memory_id("canic.a.v1"), Ok(10));
-    assert_eq!(host.memory_id("canic.b.v1"), Ok(11));
-    assert_eq!(host.memory_id("icydb.main.a.v1"), Ok(12));
+    assert_eq!(
+        host.memory_id(&crate::StableKey::parse("canic.a.v1").unwrap()),
+        Ok(10)
+    );
+    assert_eq!(
+        host.memory_id(&crate::StableKey::parse("canic.b.v1").unwrap()),
+        Ok(11)
+    );
+    assert_eq!(
+        host.memory_id(&crate::StableKey::parse("icydb.main.a.v1").unwrap()),
+        Ok(12)
+    );
     drop(host);
     let before = backing.borrow().clone();
     let mut host = MemoryRuntime::new(backing.clone()).unwrap();
@@ -172,10 +197,16 @@ fn retained_and_omitted_claims_are_never_remapped_or_reused() {
         &GenericAllocationPolicy,
     )
     .unwrap();
-    assert_eq!(host.memory_id("app.retained.v1"), Ok(100));
-    assert_eq!(host.memory_id("app.new.v1"), Ok(11));
+    assert_eq!(
+        host.memory_id(&crate::StableKey::parse("app.retained.v1").unwrap()),
+        Ok(100)
+    );
+    assert_eq!(
+        host.memory_id(&crate::StableKey::parse("app.new.v1").unwrap()),
+        Ok(11)
+    );
     let mut bytes = [0; 8];
-    host.open_memory("app.retained.v1")
+    host.open_memory(&crate::StableKey::parse("app.retained.v1").unwrap())
         .unwrap()
         .read(0, &mut bytes);
     assert_eq!(&bytes, b"retained");
@@ -187,7 +218,10 @@ fn retained_and_omitted_claims_are_never_remapped_or_reused() {
         &GenericAllocationPolicy,
     )
     .unwrap();
-    assert_eq!(host.memory_id("app.omitted.v1"), Ok(10));
+    assert_eq!(
+        host.memory_id(&crate::StableKey::parse("app.omitted.v1").unwrap()),
+        Ok(10)
+    );
 }
 
 #[test]
@@ -254,7 +288,10 @@ fn retained_physical_slots_require_explicit_host_exclusion() {
         MemoryAllocationPool::new(pool().authorities().to_vec(), (30..=30).collect()).unwrap();
     host.bootstrap(&requests, &excluded, &GenericAllocationPolicy)
         .unwrap();
-    assert_eq!(host.memory_id("app.rows.v1"), Ok(10));
+    assert_eq!(
+        host.memory_id(&crate::StableKey::parse("app.rows.v1").unwrap()),
+        Ok(10)
+    );
     drop(host);
     let raw = MemoryManager::init(backing).get(MemoryId::new(30));
     let mut bytes = [0; 9];
@@ -289,8 +326,12 @@ fn current_host_grants_replace_owner_labels_without_moving_keys() {
     original
         .bootstrap(&source, &pool(), &GenericAllocationPolicy)
         .unwrap();
-    let id = original.memory_id("app.rows.v1").unwrap();
-    let rows = original.open_memory("app.rows.v1").unwrap();
+    let id = original
+        .memory_id(&crate::StableKey::parse("app.rows.v1").unwrap())
+        .unwrap();
+    let rows = original
+        .open_memory(&crate::StableKey::parse("app.rows.v1").unwrap())
+        .unwrap();
     rows.grow(1).unwrap();
     rows.write(0, b"retained");
     drop(rows);
@@ -308,10 +349,13 @@ fn current_host_grants_replace_owner_labels_without_moving_keys() {
             &GenericAllocationPolicy,
         )
         .unwrap();
-    assert_eq!(reopened.memory_id("app.rows.v1"), Ok(id));
+    assert_eq!(
+        reopened.memory_id(&crate::StableKey::parse("app.rows.v1").unwrap()),
+        Ok(id)
+    );
     let mut bytes = [0; 8];
     reopened
-        .open_memory("app.rows.v1")
+        .open_memory(&crate::StableKey::parse("app.rows.v1").unwrap())
         .unwrap()
         .read(0, &mut bytes);
     assert_eq!(&bytes, b"retained");

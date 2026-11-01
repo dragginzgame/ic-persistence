@@ -26,7 +26,7 @@ pub use map::StableBTreeMap;
 mod set;
 pub use set::StableBTreeSet;
 mod cell;
-pub use cell::{BoundedCell, StableCell};
+pub use cell::StableCell;
 mod vector;
 pub use vector::StableVec;
 mod heap;

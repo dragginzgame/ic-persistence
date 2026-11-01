@@ -6,7 +6,8 @@ use super::*;
 fn helper_output_cannot_change_locked_dependency_selection() {
     let fixture = Fixture::new();
     let same_name_registry = format!(
-        "{LOCK}[[package]]\nname = \"ic-memory\"\nversion = \"0.12.3\"\nsource = \"registry+https://github.com/rust-lang/crates.io-index\"\nchecksum = \"unchanged\"\n"
+        "{}[[package]]\nname = \"ic-memory\"\nversion = \"0.12.3\"\nsource = \"registry+https://github.com/rust-lang/crates.io-index\"\nchecksum = \"unchanged\"\n",
+        fixture_lock()
     );
     let rendered = fixture
         .repo
@@ -15,10 +16,10 @@ fn helper_output_cannot_change_locked_dependency_selection() {
     assert!(rendered.contains("name = \"ic-memory\"\nversion = \"0.13.0\""));
     assert!(rendered.contains("name = \"ic-storage\"\nversion = \"0.13.0\""));
     assert!(rendered.contains("name = \"ic-metrics-stable\"\nversion = \"0.12.3\""));
-    let changed = LOCK.replace("0.12.3", "0.13.0");
+    let changed = fixture_lock().replace("0.12.3", "0.13.0");
     let error = fixture
         .repo
-        .check_lock_update(LOCK.as_bytes(), &changed, "0.12.3", "0.13.0")
+        .check_lock_update(fixture_lock().as_bytes(), &changed, "0.12.3", "0.13.0")
         .unwrap_err();
     assert!(matches!(
         error.downcast_ref::<ic_build::cargo::lock_projection::LockProjectionError>(),
@@ -224,7 +225,7 @@ fn release_versions_and_pending_notes_preserve_dependency_versions_and_history()
     );
     let updated = fixture
         .repo
-        .project_catalog(MANIFEST, "0.12.3", "0.13.0")
+        .project_catalog(&fixture_manifest(), "0.12.3", "0.13.0")
         .unwrap();
     assert!(updated.contains("other = \"0.12.3\""));
     let current = "# Changelog\n\n## [0.13.0]\n\nChanges.\n\n## 0.12.3\n\nHistory.\n";

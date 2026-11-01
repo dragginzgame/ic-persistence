@@ -149,25 +149,31 @@ impl<E: Execute> Repository<E> {
         let version = &selection.version;
         let group = self.release_group(Some(source))?;
         let finalizer = self.root.join(CHANGELOG_FINALIZER);
-        let paths = group.files();
         let mut surfaces = BTreeMap::new();
-        for path in paths {
+        for (path, role) in group.surfaces() {
             let original = self.text(&path, Some(source))?;
-            let expected = if path == "Cargo.lock" {
-                Self::replace_group_lock_version(&group, &original, previous, version)?
-            } else if path == "Cargo.toml" {
-                self.project_group_catalog(&group, &original, previous, version)?
-            } else if path.ends_with("/Cargo.toml") {
-                render_group_manifest(&original, previous, version, ManifestVersion::Package, &[])?
-            } else if path == group.changelog
-                || (path.starts_with(&format!("releases/{}/", group.name))
-                    && Path::new(&path)
-                        .extension()
-                        .is_some_and(|extension| extension.eq_ignore_ascii_case("md")))
-            {
-                self.release_changelog(&finalizer, &original, previous, version, &selection.date)?
-            } else {
-                original.clone()
+            let expected = match role {
+                groups::SurfaceRole::Lock => {
+                    Self::replace_group_lock_version(&group, &original, previous, version)?
+                }
+                groups::SurfaceRole::Catalog => {
+                    self.project_group_catalog(&group, &original, previous, version)?
+                }
+                groups::SurfaceRole::Member => render_group_manifest(
+                    &original,
+                    previous,
+                    version,
+                    ManifestVersion::Package,
+                    &[],
+                )?,
+                groups::SurfaceRole::Notes => self.release_changelog(
+                    &finalizer,
+                    &original,
+                    previous,
+                    version,
+                    &selection.date,
+                )?,
+                groups::SurfaceRole::Preserved => original.clone(),
             };
             surfaces.insert(path, ReleaseSurface { original, expected });
         }

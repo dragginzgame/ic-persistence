@@ -86,14 +86,16 @@ fn cold_reopens() {
     let backing = VectorMemory::default();
     let declarations = snapshot();
     let requirements = database_requirements();
-    let config = MemoryManagerConfig::new(16).unwrap();
+    let config = MemoryManagerConfig::new(std::num::NonZeroU16::new(16).unwrap());
     let policy = HostPolicy::default();
     {
         let mut host = MemoryRuntime::new_with_config(backing.clone(), config).unwrap();
         host.bootstrap(&declarations, &pool(), &policy).unwrap();
         host.verify_authority(&requirements, "db").unwrap();
         for (key, marker) in [(HOST, b"host"), (CONTROL, b"ctrl"), (ROWS, b"rows")] {
-            let memory = host.open_memory(key).unwrap();
+            let memory = host
+                .open_memory(&ic_memory::StableKey::parse(key).unwrap())
+                .unwrap();
             memory.grow(1).unwrap();
             memory.write(0, marker);
         }
@@ -122,7 +124,7 @@ fn cold_reopens() {
                 Err(RuntimeOpenError::NotBootstrapped)
             );
             assert!(matches!(
-                rejected.open_memory(ROWS),
+                rejected.open_memory(&ic_memory::StableKey::parse(ROWS).unwrap()),
                 Err(RuntimeOpenError::NotBootstrapped)
             ));
             assert_eq!(*backing.borrow(), before);
@@ -140,8 +142,13 @@ fn cold_reopens() {
                 (CONTROL, 10, b"ctrl"),
                 (ROWS, 11, b"rows"),
             ] {
-                assert_eq!(host.memory_id(key), Ok(id));
-                let memory = host.open_memory(key).unwrap();
+                assert_eq!(
+                    host.memory_id(&ic_memory::StableKey::parse(key).unwrap()),
+                    Ok(id)
+                );
+                let memory = host
+                    .open_memory(&ic_memory::StableKey::parse(key).unwrap())
+                    .unwrap();
                 assert_eq!(memory.size(), 1);
                 let mut retained = [0; 4];
                 memory.read(0, &mut retained);
@@ -175,7 +182,7 @@ fn native_threads() {
                 let policy = HostPolicy::default();
                 let mut host = MemoryRuntime::new_with_config(
                     VectorMemory::default(),
-                    MemoryManagerConfig::new(16).unwrap(),
+                    MemoryManagerConfig::new(std::num::NonZeroU16::new(16).unwrap()),
                 )
                 .unwrap();
                 let requirements = database_requirements();
@@ -187,13 +194,18 @@ fn native_threads() {
                 );
                 host.bootstrap(&snapshot(), &pool(), &policy).unwrap();
                 host.verify_authority(&requirements, "db").unwrap();
-                let rows = host.open_memory(ROWS).unwrap();
+                let rows = host
+                    .open_memory(&ic_memory::StableKey::parse(ROWS).unwrap())
+                    .unwrap();
                 rows.grow(1).unwrap();
                 rows.write(0, b"rows");
                 let mut retained = [0; 4];
                 rows.read(0, &mut retained);
                 assert_eq!(&retained, b"rows");
-                assert_eq!(host.memory_id(ROWS), Ok(11));
+                assert_eq!(
+                    host.memory_id(&ic_memory::StableKey::parse(ROWS).unwrap()),
+                    Ok(11)
+                );
                 assert_eq!(
                     host.memory_allocation_summary().unwrap().bucket_size_pages,
                     16

@@ -23,7 +23,9 @@ fn admitted_memory<M: ic_memory::MemoryBacking>(backing: M) -> RuntimeMemory<M> 
         MemoryManagerConfig::default(),
     )
     .unwrap();
-    runtime.open_memory("metrics.store.v1").unwrap()
+    runtime
+        .open_memory(&ic_memory::StableKey::parse("metrics.store.v1").unwrap())
+        .unwrap()
 }
 
 fn identity() -> MetricIdentity {
@@ -33,9 +35,9 @@ fn key(namespace: &str) -> MetricKey {
     MetricKey::new(namespace, "work").unwrap()
 }
 fn store() -> MetricsStore<VectorMemory> {
-    MetricsStore::new(StableBTreeMap::new(
-        admitted_memory(VectorMemory::default()),
-    ))
+    MetricsStore::new(StableBTreeMap::create(admitted_memory(
+        VectorMemory::default(),
+    )))
 }
 
 fn encode<T: crate::metric::StoredMetric>(identity: &MetricIdentity, value: &T) -> Vec<u8> {
@@ -118,7 +120,7 @@ impl Memory for WriteCountingMemory {
 fn assert_rejected_checkpoint<T: crate::metric::StoredMetric>(previous: &T, current: &T) {
     let memory = WriteCountingMemory::default();
     let writes = memory.writes.clone();
-    let mut store = MetricsStore::new(StableBTreeMap::new(admitted_memory(memory)));
+    let mut store = MetricsStore::new(StableBTreeMap::create(admitted_memory(memory)));
     let key = key("append");
     store.save(&key, &identity(), previous).unwrap();
     let retained = store.map.get(&key.0);
@@ -138,7 +140,7 @@ fn check_wire_mutations<T: crate::metric::StoredMetric + std::fmt::Debug>(
 ) -> (usize, usize) {
     let memory = WriteCountingMemory::default();
     let writes = memory.writes.clone();
-    let mut store = MetricsStore::new(StableBTreeMap::new(admitted_memory(memory)));
+    let mut store = MetricsStore::new(StableBTreeMap::create(admitted_memory(memory)));
     let key = key("mutation");
     let identity = identity();
     let original = encode(&identity, value);

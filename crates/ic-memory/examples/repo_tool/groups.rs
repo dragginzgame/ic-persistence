@@ -88,15 +88,45 @@ impl<E: Execute> Repository<E> {
     }
 }
 
+#[derive(Clone, Copy)]
+pub(super) enum SurfaceRole {
+    Catalog,
+    Lock,
+    Member,
+    Notes,
+    Preserved,
+}
+
 impl ReleaseGroup {
     pub(super) fn files(&self) -> Vec<String> {
+        self.surfaces().into_iter().map(|(path, _)| path).collect()
+    }
+
+    pub(super) fn surfaces(&self) -> Vec<(String, SurfaceRole)> {
         let mut paths = vec![
-            "Cargo.toml".to_owned(),
-            "Cargo.lock".to_owned(),
-            self.changelog.clone(),
+            ("Cargo.toml".to_owned(), SurfaceRole::Catalog),
+            ("Cargo.lock".to_owned(), SurfaceRole::Lock),
+            (self.changelog.clone(), SurfaceRole::Notes),
         ];
-        paths.extend(self.members.iter().map(|name| package_manifest(name)));
-        paths.extend(self.metadata_files.iter().cloned());
+        paths.extend(
+            self.members
+                .iter()
+                .map(|name| (package_manifest(name), SurfaceRole::Member)),
+        );
+        paths.extend(self.metadata_files.iter().map(|path| {
+            // Current group detail notes share finalization. Other declared
+            // metadata is opaque, even when it is another Cargo manifest.
+            let role = if Path::new(path).parent() == Path::new(&self.changelog).parent()
+                && Path::new(path)
+                    .extension()
+                    .is_some_and(|extension| extension.eq_ignore_ascii_case("md"))
+            {
+                SurfaceRole::Notes
+            } else {
+                SurfaceRole::Preserved
+            };
+            (path.clone(), role)
+        }));
         paths
     }
 

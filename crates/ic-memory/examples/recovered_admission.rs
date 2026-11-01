@@ -48,10 +48,14 @@ fn main() {
     runtime
         .bootstrap(&declarations(&[CURRENT, RETAINED]), &pool(), &HostPolicy)
         .unwrap();
-    let retained = runtime.open_memory(RETAINED).unwrap();
+    let retained = runtime
+        .open_memory(&ic_memory::StableKey::parse(RETAINED).unwrap())
+        .unwrap();
     retained.grow(1).unwrap();
     retained.write(0, b"kept");
-    let id = runtime.memory_id(RETAINED).unwrap();
+    let id = runtime
+        .memory_id(&ic_memory::StableKey::parse(RETAINED).unwrap())
+        .unwrap();
     drop(retained);
     drop(runtime);
 
@@ -61,9 +65,17 @@ fn main() {
         runtime.bootstrap(&current, &pool(), &HostPolicy).unwrap(),
         2
     );
-    assert_eq!(runtime.memory_id(RETAINED).unwrap(), id);
+    assert_eq!(
+        runtime
+            .memory_id(&ic_memory::StableKey::parse(RETAINED).unwrap())
+            .unwrap(),
+        id
+    );
     let mut marker = [0; 4];
-    runtime.open_memory(RETAINED).unwrap().read(0, &mut marker);
+    runtime
+        .open_memory(&ic_memory::StableKey::parse(RETAINED).unwrap())
+        .unwrap()
+        .read(0, &mut marker);
     assert_eq!(&marker, b"kept");
     assert_eq!(
         runtime.bootstrap(&current, &pool(), &HostPolicy).unwrap(),

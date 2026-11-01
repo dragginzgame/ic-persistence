@@ -1,4 +1,4 @@
-use super::RuntimeConstructionError;
+use std::num::NonZeroU16;
 
 ///
 /// MemoryManagerConfig
@@ -14,33 +14,34 @@ use super::RuntimeConstructionError;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct MemoryManagerConfig {
-    bucket_size_pages: u16,
+    bucket_size_pages: NonZeroU16,
 }
 
 impl Default for MemoryManagerConfig {
     fn default() -> Self {
         Self {
-            bucket_size_pages: 128,
+            bucket_size_pages: NonZeroU16::new(128).unwrap(),
         }
     }
 }
 
 impl MemoryManagerConfig {
     pub(super) const fn from_validated(bucket_size_pages: u16) -> Self {
-        Self { bucket_size_pages }
+        Self {
+            bucket_size_pages: NonZeroU16::new(bucket_size_pages)
+                .expect("validated nonzero bucket size"),
+        }
     }
 
-    /// Validate a nonzero bucket size in Wasm pages before construction effects.
-    pub const fn new(bucket_size_pages: u16) -> Result<Self, RuntimeConstructionError> {
-        if bucket_size_pages == 0 {
-            return Err(RuntimeConstructionError::InvalidBucketSize);
-        }
-        Ok(Self { bucket_size_pages })
+    /// Bind an already nonzero bucket size before construction effects.
+    #[must_use]
+    pub const fn new(bucket_size_pages: NonZeroU16) -> Self {
+        Self { bucket_size_pages }
     }
 
     /// Return the requested bucket size in pages.
     #[must_use]
     pub const fn bucket_size_pages(self) -> u16 {
-        self.bucket_size_pages
+        self.bucket_size_pages.get()
     }
 }

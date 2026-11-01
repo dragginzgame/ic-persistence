@@ -201,7 +201,8 @@ fn initialize_stable_storage() -> Result<(), Box<dyn std::error::Error>> {
         ic_memory::DefaultMemoryImpl::default(),
     )?;
     runtime.bootstrap(&declarations, &pool, &ic_memory::GenericAllocationPolicy)?;
-    let users = runtime.open_memory(USERS_KEY)?;
+    let users_key = ic_memory::StableKey::parse(USERS_KEY)?;
+    let users = runtime.open_memory(&users_key)?;
     drop(users);
     Ok(())
 }

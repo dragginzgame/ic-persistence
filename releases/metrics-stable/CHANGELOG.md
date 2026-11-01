@@ -3,6 +3,21 @@
 Independent releases begin after the coordinated 0.58.1 release. Earlier history
 is retained once in the [shared historical ledger](../history.md#0581---2026-10-31).
 
+## [0.62.0] - Unreleased
+
+### ⚠️ Breaking
+
+- Align the next core supplier identity for typed ledger decode errors. Metric
+  records, arithmetic admission and checkpoint continuity remain unchanged.
+- Hosts must pass parsed stable keys and explicitly select Storage creation,
+  retained loading or deliberate reset. Valid checkpoint bytes remain unchanged.
+  [Migration](../../docs/migration/0.61-public-api.md).
+
+### ⬆️ Dependencies
+
+- Require published Metrics 0.24.5, preserving current checkpoint bytes and
+  canonical state admission.
+
 ## [0.61.5] - 2026-11-01
 
 ### ⬆️ Dependencies

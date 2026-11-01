@@ -1,6 +1,7 @@
 //! Shared disposable repository and substituted release effects.
 
 use super::*;
+use std::fmt::Write as _;
 
 pub(super) const PACKAGE_MANIFEST: &str = "crates/ic-memory/Cargo.toml";
 
@@ -27,9 +28,50 @@ pub(super) fn is_package_call(call: &[String]) -> bool {
                 .is_some_and(|script| script == "scripts/ci/package-workspace.sh")
 }
 
-pub(super) const MANIFEST: &str = "[workspace]\nmembers = [\"crates/ic-memory\", \"crates/ic-storage\", \"crates/ic-metrics-stable\", \"crates/ic-logging-stable\"]\n[workspace.package]\nrust-version = \"1.88.0\"\n[workspace.dependencies]\nic-memory = { path = \"crates/ic-memory\", version = \"0.12.3\" }\nic-storage = { path = \"crates/ic-storage\", version = \"0.12.3\" }\nic-metrics-stable = { path = \"crates/ic-metrics-stable\", version = \"0.12.3\" }\nic-logging-stable = { path = \"crates/ic-logging-stable\", version = \"0.12.3\" }\nother = \"0.12.3\"\n";
+const FIXTURE_PACKAGES: [(&str, &[&str]); 4] = [
+    ("ic-memory", &[]),
+    ("ic-storage", &["ic-memory"]),
+    ("ic-metrics-stable", &["ic-memory", "ic-storage"]),
+    ("ic-logging-stable", &[]),
+];
 pub(super) const PACKAGE: &str = "[package]\nname = \"ic-memory\"\nversion = \"0.12.3\"\n";
-pub(super) const LOCK: &str = "version = 4\n[[package]]\nname = \"ic-logging-stable\"\nversion = \"0.12.3\"\n[[package]]\nname = \"ic-metrics-stable\"\nversion = \"0.12.3\"\ndependencies = [\"ic-memory\", \"ic-storage\"]\n[[package]]\nname = \"ic-storage\"\nversion = \"0.12.3\"\ndependencies = [\"ic-memory\"]\n[[package]]\nname = \"ic-memory\"\nversion = \"0.12.3\"\n[[package]]\nname = \"other\"\nversion = \"0.12.3\"\n";
+
+pub(super) fn fixture_manifest() -> String {
+    let members = FIXTURE_PACKAGES.map(|(name, _)| format!("crates/{name}"));
+    let mut text = format!(
+        "[workspace]\nmembers = {}\n[workspace.package]\nrust-version = \"1.88.0\"\n[workspace.dependencies]\n",
+        serde_json::to_string(&members).unwrap()
+    );
+    for (name, _) in FIXTURE_PACKAGES {
+        writeln!(
+            text,
+            "{name} = {{ path = \"crates/{name}\", version = \"0.12.3\" }}"
+        )
+        .unwrap();
+    }
+    text.push_str("other = \"0.12.3\"\n");
+    text
+}
+
+pub(super) fn fixture_lock() -> String {
+    let mut text = "version = 4\n".to_owned();
+    for (name, dependencies) in FIXTURE_PACKAGES
+        .into_iter()
+        .rev()
+        .chain(std::iter::once(("other", &[][..])))
+    {
+        writeln!(text, "[[package]]\nname = {name:?}\nversion = \"0.12.3\"").unwrap();
+        if !dependencies.is_empty() {
+            writeln!(
+                text,
+                "dependencies = {}",
+                serde_json::to_string(dependencies).unwrap()
+            )
+            .unwrap();
+        }
+    }
+    text
+}
 
 pub(super) struct Fixture {
     pub(super) repo: Repository<Substitute>,
@@ -52,15 +94,16 @@ impl Fixture {
     fn new_in_group(parent: &Path, group: &str) -> Self {
         // Exclusive creation owns uniqueness, including across PID reuse.
         // Never reuse or remove an occupied path: it may hold failed evidence.
-        let mut sequence = 0_u64;
+        static SEQUENCE: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
         let root = loop {
+            let sequence = SEQUENCE.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
             let candidate = parent.join(format!(
                 "ic-memory-tooling-{}-{sequence}",
                 std::process::id()
             ));
             match fs::create_dir(&candidate) {
                 Ok(()) => break candidate,
-                Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => sequence += 1,
+                Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => {}
                 Err(error) => panic!("could not create fixture {}: {error}", candidate.display()),
             }
         };
@@ -70,8 +113,8 @@ impl Fixture {
                 "crates/ic-memory/src/lib.rs".to_owned(),
                 "// fixture library\n".to_owned(),
             ),
-            ("Cargo.lock".to_owned(), LOCK.to_owned()),
-            ("Cargo.toml".to_owned(), MANIFEST.to_owned()),
+            ("Cargo.lock".to_owned(), fixture_lock()),
+            ("Cargo.toml".to_owned(), fixture_manifest()),
             (PACKAGE_MANIFEST.to_owned(), PACKAGE.to_owned()),
             (
                 PACKAGE_README.to_owned(),
@@ -288,11 +331,11 @@ impl Fixture {
     pub(super) fn assert_original(&self) {
         assert_eq!(
             fs::read_to_string(self.repo.root.join("Cargo.toml")).unwrap(),
-            MANIFEST
+            fixture_manifest()
         );
         assert_eq!(
             fs::read_to_string(self.repo.root.join("Cargo.lock")).unwrap(),
-            LOCK
+            fixture_lock()
         );
         assert!(self.repo.exec.state.borrow().git.release.is_none());
     }

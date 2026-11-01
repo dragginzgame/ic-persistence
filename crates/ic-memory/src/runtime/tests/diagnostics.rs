@@ -15,7 +15,7 @@ fn doctor_keeps_memory_observations_before_policy_callbacks() {
             _slot: &MemoryManagerSlot,
         ) -> Result<(), Self::Error> {
             self.0
-                .open_memory("runtime_tests.rows.v1")
+                .open_memory(&crate::StableKey::parse("runtime_tests.rows.v1").unwrap())
                 .unwrap()
                 .grow(1)
                 .unwrap();
@@ -24,7 +24,7 @@ fn doctor_keeps_memory_observations_before_policy_callbacks() {
 
         fn runtime_bootstrap_identity(&self) -> PolicyIdentity {
             self.0
-                .open_memory("runtime_tests.rows.v1")
+                .open_memory(&crate::StableKey::parse("runtime_tests.rows.v1").unwrap())
                 .unwrap()
                 .grow(1)
                 .unwrap();
@@ -34,19 +34,24 @@ fn doctor_keeps_memory_observations_before_policy_callbacks() {
 
     let mut runtime = MemoryRuntime::new_with_config(
         VectorMemory::default(),
-        crate::runtime::MemoryManagerConfig::new(1).unwrap(),
+        crate::runtime::MemoryManagerConfig::new(std::num::NonZeroU16::new(1).unwrap()),
     )
     .unwrap();
     runtime
         .bootstrap(&declarations(), &pool(), &GenericAllocationPolicy)
         .unwrap();
-    let memory = runtime.open_memory("runtime_tests.rows.v1").unwrap();
+    let memory = runtime
+        .open_memory(&crate::StableKey::parse("runtime_tests.rows.v1").unwrap())
+        .unwrap();
     memory.grow(1).unwrap();
     drop(memory);
     let report =
         crate::testing::doctor_report(&runtime, &declarations(), &pool(), &GrowingPolicy(&runtime));
     assert_eq!(
-        runtime.open_memory("runtime_tests.rows.v1").unwrap().size(),
+        runtime
+            .open_memory(&crate::StableKey::parse("runtime_tests.rows.v1").unwrap())
+            .unwrap()
+            .size(),
         3
     );
     assert_eq!(report.validation, DiagnosticCheck::Passed);
@@ -77,7 +82,9 @@ fn doctor_and_diagnostics_report_the_same_runtime_lifecycle() {
     runtime
         .bootstrap(&declarations, &pool(), &GenericAllocationPolicy)
         .expect("bootstrap");
-    let memory = runtime.open_memory("runtime_tests.rows.v1").expect("open");
+    let memory = runtime
+        .open_memory(&crate::StableKey::parse("runtime_tests.rows.v1").unwrap())
+        .expect("open");
     memory.grow(2).unwrap();
     let doctor =
         crate::testing::doctor_report(&runtime, &declarations, &pool(), &GenericAllocationPolicy);

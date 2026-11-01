@@ -69,7 +69,11 @@ fn admit<M: Memory>(view: &BTreeMapRegion<[u8; 33], Vec<u8>, M>) -> Result<(), (
 fn retained_region_interleaves_namespaces_and_cold_reopens() {
     let backing = VectorMemory::default();
     let runtime = runtime(backing.clone());
-    let lease = Rc::new(runtime.open_memory("test.map.v1").unwrap());
+    let lease = Rc::new(
+        runtime
+            .open_memory(&ic_memory::StableKey::parse("test.map.v1").unwrap())
+            .unwrap(),
+    );
     lease.as_ref().grow(START).unwrap();
     for offset in [0, PAGE, (START - 1) * PAGE] {
         lease.write(offset, b"frame");
@@ -120,18 +124,26 @@ fn retained_region_interleaves_namespaces_and_cold_reopens() {
     drop(lease);
     drop(application);
     assert!(matches!(
-        runtime.open_memory("test.map.v1"),
+        runtime.open_memory(&ic_memory::StableKey::parse("test.map.v1").unwrap()),
         Err(RuntimeOpenError::AlreadyOpen { .. })
     ));
     drop(checkpoint);
-    drop(runtime.open_memory("test.map.v1").unwrap());
+    drop(
+        runtime
+            .open_memory(&ic_memory::StableKey::parse("test.map.v1").unwrap())
+            .unwrap(),
+    );
     drop(runtime);
 
     // Cold reopen through the ordinary runtime bootstrap models the retained
     // allocation handoff across an upgrade, with no second live runtime.
     let runtime = super::runtime(backing.clone());
     let before = backing.borrow().clone();
-    let lease = Rc::new(runtime.open_memory("test.map.v1").unwrap());
+    let lease = Rc::new(
+        runtime
+            .open_memory(&ic_memory::StableKey::parse("test.map.v1").unwrap())
+            .unwrap(),
+    );
     let view = BTreeMapRegion::new(lease.clone(), START..END);
     admit(&view).unwrap();
     assert_eq!(view.len(), 81);
@@ -158,7 +170,11 @@ fn retained_region_admission_refuses_corruption_without_rewriting() {
     for corruption in 0..7 {
         let backing = VectorMemory::default();
         let runtime = runtime(backing.clone());
-        let lease = Rc::new(runtime.open_memory("test.map.v1").unwrap());
+        let lease = Rc::new(
+            runtime
+                .open_memory(&ic_memory::StableKey::parse("test.map.v1").unwrap())
+                .unwrap(),
+        );
         let mut view = BTreeMapRegion::new(lease.clone(), 0..8);
         assert_eq!(view.allocated_pages(), 0);
         view.initialize();
@@ -184,11 +200,15 @@ fn retained_region_admission_refuses_corruption_without_rewriting() {
         assert!(*backing.borrow() == before);
         drop(view);
         assert!(matches!(
-            runtime.open_memory("test.map.v1"),
+            runtime.open_memory(&ic_memory::StableKey::parse("test.map.v1").unwrap()),
             Err(RuntimeOpenError::AlreadyOpen { .. })
         ));
         drop(lease);
-        drop(runtime.open_memory("test.map.v1").unwrap());
+        drop(
+            runtime
+                .open_memory(&ic_memory::StableKey::parse("test.map.v1").unwrap())
+                .unwrap(),
+        );
     }
 }
 
@@ -200,7 +220,11 @@ fn retained_region_bounds_and_growth_refusal_preserve_bytes_and_leases() {
         growth_calls: Rc::new(Cell::new(0)),
     };
     let runtime = runtime(memory.clone());
-    let lease = Rc::new(runtime.open_memory("test.map.v1").unwrap());
+    let lease = Rc::new(
+        runtime
+            .open_memory(&ic_memory::StableKey::parse("test.map.v1").unwrap())
+            .unwrap(),
+    );
     lease.as_ref().grow(1).unwrap();
     lease.write(0, b"frame");
     let mut view = BTreeMapRegion::<u64, Vec<u8>, _>::new(lease.clone(), START..START + 128);
@@ -280,7 +304,11 @@ fn retained_region_bounds_and_growth_refusal_preserve_bytes_and_leases() {
     drop(runtime);
     let runtime = super::runtime(memory);
     let view = BTreeMapRegion::<u64, Vec<u8>, _>::new(
-        Rc::new(runtime.open_memory("test.map.v1").unwrap()),
+        Rc::new(
+            runtime
+                .open_memory(&ic_memory::StableKey::parse("test.map.v1").unwrap())
+                .unwrap(),
+        ),
         START..START + 128,
     );
     assert_eq!(view.get(&7), Some(vec![11]));
@@ -291,7 +319,10 @@ fn retained_region_bounds_and_growth_refusal_preserve_bytes_and_leases() {
 fn limited_snapshots_resume_and_survive_intervening_mutations() {
     use std::ops::Bound::{Excluded, Unbounded};
     let host = runtime(VectorMemory::default());
-    let lease = Rc::new(host.open_memory("test.map.v1").unwrap());
+    let lease = Rc::new(
+        host.open_memory(&ic_memory::StableKey::parse("test.map.v1").unwrap())
+            .unwrap(),
+    );
     let mut view = BTreeMapRegion::<u64, u64>::new(lease, 0..END);
     // Zero must not try loading an uninitialized header.
     assert_eq!(view.keys_range_limited(.., 0).len(), 0);

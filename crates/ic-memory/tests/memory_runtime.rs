@@ -40,7 +40,7 @@ fn public_explicit_runtime_bootstraps_opens_and_diagnoses_its_memory() {
         .bootstrap(&declarations, &pool(), &AllowAll)
         .expect("runtime bootstrap");
     let rows = runtime
-        .open_memory("explicit_runtime.rows.v1")
+        .open_memory(&ic_memory::StableKey::parse("explicit_runtime.rows.v1").unwrap())
         .expect("committed rows memory");
     let mut cell = Cell::init(rows, 7_u64);
     cell.set(9);
@@ -79,11 +79,13 @@ fn owned_report_and_detached_lease_support_borrowed_nonclone_backing() {
     let memory = VectorMemory::default();
     let mut runtime = MemoryRuntime::new_with_config(
         BorrowedMemory(&memory),
-        ic_memory::MemoryManagerConfig::new(8).unwrap(),
+        ic_memory::MemoryManagerConfig::new(std::num::NonZeroU16::new(8).unwrap()),
     )
     .unwrap();
     runtime.bootstrap(&snapshot(), &pool(), &AllowAll).unwrap();
-    let rows = runtime.open_memory("explicit_runtime.rows.v1").unwrap();
+    let rows = runtime
+        .open_memory(&ic_memory::StableKey::parse("explicit_runtime.rows.v1").unwrap())
+        .unwrap();
     rows.grow(1).unwrap();
     rows.write(0, &[7]);
     let report = runtime.memory_allocations().unwrap();
@@ -110,12 +112,14 @@ fn live_lease_survives_warm_bootstrap_and_collection_transfer() {
     let committed = runtime
         .bootstrap(&declarations, &pool(), &AllowAll)
         .unwrap();
-    let rows = runtime.open_memory("explicit_runtime.rows.v1").unwrap();
+    let rows = runtime
+        .open_memory(&ic_memory::StableKey::parse("explicit_runtime.rows.v1").unwrap())
+        .unwrap();
     let mut cell = Cell::new(rows, 7_u64);
     let before = backing.borrow().clone();
     let assert_leased = |runtime: &MemoryRuntime<VectorMemory>| {
         assert!(matches!(
-            runtime.open_memory("explicit_runtime.rows.v1"),
+            runtime.open_memory(&ic_memory::StableKey::parse("explicit_runtime.rows.v1").unwrap()),
             Err(ic_memory::RuntimeOpenError::AlreadyOpen { id: 10 })
         ));
     };
@@ -134,20 +138,28 @@ fn live_lease_survives_warm_bootstrap_and_collection_transfer() {
     assert_leased(&runtime);
     drop(memory);
     let reopened = Cell::init(
-        runtime.open_memory("explicit_runtime.rows.v1").unwrap(),
+        runtime
+            .open_memory(&ic_memory::StableKey::parse("explicit_runtime.rows.v1").unwrap())
+            .unwrap(),
         0_u64,
     );
     assert_eq!(*reopened.get(), 9);
     assert_leased(&runtime);
     drop(reopened);
-    drop(runtime.open_memory("explicit_runtime.rows.v1").unwrap());
+    drop(
+        runtime
+            .open_memory(&ic_memory::StableKey::parse("explicit_runtime.rows.v1").unwrap())
+            .unwrap(),
+    );
 }
 
 #[test]
 fn failed_collection_construction_and_unwinding_release_the_lease() {
     let mut runtime = MemoryRuntime::new(VectorMemory::default()).unwrap();
     runtime.bootstrap(&snapshot(), &pool(), &AllowAll).unwrap();
-    let memory = runtime.open_memory("explicit_runtime.rows.v1").unwrap();
+    let memory = runtime
+        .open_memory(&ic_memory::StableKey::parse("explicit_runtime.rows.v1").unwrap())
+        .unwrap();
     memory.grow(1).unwrap();
     memory.write(0, b"bad");
     let refused = std::panic::catch_unwind(std::panic::AssertUnwindSafe(move || {
@@ -156,14 +168,18 @@ fn failed_collection_construction_and_unwinding_release_the_lease() {
     assert!(refused.is_err());
     let failure = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
         let _cell = Cell::new(
-            runtime.open_memory("explicit_runtime.rows.v1").unwrap(),
+            runtime
+                .open_memory(&ic_memory::StableKey::parse("explicit_runtime.rows.v1").unwrap())
+                .unwrap(),
             13_u64,
         );
         panic!("injected collection owner failure");
     }));
     assert!(failure.is_err());
     let reopened = Cell::init(
-        runtime.open_memory("explicit_runtime.rows.v1").unwrap(),
+        runtime
+            .open_memory(&ic_memory::StableKey::parse("explicit_runtime.rows.v1").unwrap())
+            .unwrap(),
         0_u64,
     );
     assert_eq!(*reopened.get(), 13);
@@ -186,53 +202,77 @@ fn all_application_slots_have_independent_leases() {
         .unwrap();
     let mut leases: Vec<_> = keys
         .iter()
-        .map(|key| Some(runtime.open_memory(key).unwrap()))
+        .map(|key| {
+            Some(
+                runtime
+                    .open_memory(&ic_memory::StableKey::parse(key).unwrap())
+                    .unwrap(),
+            )
+        })
         .collect();
     for (key, lease) in keys.iter().zip(&mut leases) {
         assert!(matches!(
-            runtime.open_memory(key),
+            runtime.open_memory(&ic_memory::StableKey::parse(key).unwrap()),
             Err(ic_memory::RuntimeOpenError::AlreadyOpen { .. })
         ));
         drop(lease.take());
-        let replacement = runtime.open_memory(key).unwrap();
+        let replacement = runtime
+            .open_memory(&ic_memory::StableKey::parse(key).unwrap())
+            .unwrap();
         assert!(matches!(
-            runtime.open_memory(key),
+            runtime.open_memory(&ic_memory::StableKey::parse(key).unwrap()),
             Err(ic_memory::RuntimeOpenError::AlreadyOpen { .. })
         ));
         *lease = Some(replacement);
     }
     drop(leases);
     for key in &keys {
-        drop(runtime.open_memory(key).unwrap());
+        drop(
+            runtime
+                .open_memory(&ic_memory::StableKey::parse(key).unwrap())
+                .unwrap(),
+        );
     }
     // A two-memory collection must release its first lease if the second open
     // refuses, and must retain both distinct leases after successful creation.
-    let held_data = runtime.open_memory(&keys[1]).unwrap();
-    let refused = runtime.open_memory(&keys[0]).and_then(|index| {
-        runtime
-            .open_memory(&keys[1])
-            .map(|data| ic_platform::stable_structures::Log::<u64, _, _>::new(index, data))
-    });
+    let held_data = runtime
+        .open_memory(&ic_memory::StableKey::parse(&keys[1]).unwrap())
+        .unwrap();
+    let refused = runtime
+        .open_memory(&ic_memory::StableKey::parse(&keys[0]).unwrap())
+        .and_then(|index| {
+            runtime
+                .open_memory(&ic_memory::StableKey::parse(&keys[1]).unwrap())
+                .map(|data| ic_platform::stable_structures::Log::<u64, _, _>::new(index, data))
+        });
     assert!(matches!(
         refused,
         Err(ic_memory::RuntimeOpenError::AlreadyOpen { id: 11 })
     ));
     drop(held_data);
     let log = ic_platform::stable_structures::Log::<u64, _, _>::new(
-        runtime.open_memory(&keys[0]).unwrap(),
-        runtime.open_memory(&keys[1]).unwrap(),
+        runtime
+            .open_memory(&ic_memory::StableKey::parse(&keys[0]).unwrap())
+            .unwrap(),
+        runtime
+            .open_memory(&ic_memory::StableKey::parse(&keys[1]).unwrap())
+            .unwrap(),
     );
     log.append(&23).unwrap();
     assert_eq!(log.get(0), Some(23));
     for key in &keys[..2] {
         assert!(matches!(
-            runtime.open_memory(key),
+            runtime.open_memory(&ic_memory::StableKey::parse(key).unwrap()),
             Err(ic_memory::RuntimeOpenError::AlreadyOpen { .. })
         ));
     }
     drop(log);
     for key in &keys[..2] {
-        drop(runtime.open_memory(key).unwrap());
+        drop(
+            runtime
+                .open_memory(&ic_memory::StableKey::parse(key).unwrap())
+                .unwrap(),
+        );
     }
 }
 
