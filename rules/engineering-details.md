@@ -66,12 +66,14 @@ product, release and recovery obligations remain binding when applicable.
 - Ordinary implementation does not include staging, commits or release execution. During
   ordinary implementation, leave the real checkout's index, package/application
   release versions and Git refs alone. Do not run `git add .`, `git add -A`,
-  `git commit`, version-bump helpers, `git tag`, pushes, `make release-*` or
+  `git commit`, package version-bump helpers, `git tag`, pushes, `make release-*` or
   mutating release adapters to finish a coding task. This includes release
   recovery and indirect calls from scripts or Make targets. "Keep going",
   "prepare the release", "work on 0.4" and "ready to push?" authorize no such
   effects unless the session already delegates delivery. Prepare source, numbered
-  changelog notes and validation within the established scope. A release/ship/deploy
+  changelog notes, and in Shared Tooling only the matching pending `VERSION` under the
+  [next-version rules](changelogs.md#automatic-next-version-selection), and
+  validation within the established scope. A release/ship/deploy
   request delegates its corresponding workflow and routine group/version/order
   choices under [delegated delivery](contributions.md#delegated-delivery).
   Continue that workflow without per-step permission; preserve explicit target
@@ -82,7 +84,7 @@ product, release and recovery obligations remain binding when applicable.
   branch, commits, branch push and PR creation/update needed to deliver it;
   do not require the maintainer to commit first or approve each substep again.
   The standing cross-repository PR workflow supplies the same scoped authority
-  without a separate PR request. Neither route authorizes release versions or tags.
+  without a separate PR request. Neither route authorizes package release versions or tags.
 - A PR request does not authorize merging, pushing directly to `main`, `master`
   or another integration/release branch, or rewriting shared history. Those
   effects require explicit authorization. Preserve branch protections and
@@ -293,6 +295,64 @@ product, release and recovery obligations remain binding when applicable.
   affected callers, generated bindings and retained retry bytes accounted for.
   Follow the [pre-1.0 contract rules](#pre-10-contracts); do not silently change a
   public interface or introduce parallel codecs/fallback readers for adoption.
+
+## Wasm optimization
+
+- Shared Tooling owns the common decision process and evidence requirements.
+  IC Tooling's `ic-build` owns reusable Cargo/Wasm optimization mechanics and
+  the canonical recommendations, recipe definitions and qualification evidence.
+  Improve that owner when shared support is missing; do not establish competing
+  general-purpose optimizer policies in consumers. Existing local adapters stay
+  explicit until a qualified shared replacement is available.
+- Consumers own deployment limits, representative workloads, required Wasm
+  features, interface/upgrade compatibility and release admission. They select
+  a qualified recipe and record product-specific deviations with their reason
+  and evidence. Cargo profile settings still belong in the consuming workspace;
+  depending on `ic-build` does not inherit or enforce a profile. Shared recipes
+  must expose their effective settings so local projections can be checked.
+- Define the objective before selecting settings: raw Wasm/code-section limits,
+  runtime instruction or cycle budgets, and the priority among them. A setting
+  called `z`, `Oz` or `O3` is not proof of an optimum. Prefer a reproducible,
+  qualified choice; do not silently search for and change the recipe on each
+  release.
+- Wasm footprint comparisons, benchmark summaries and optimization acceptance
+  report two separate metrics from the same final uncompressed module: total
+  module bytes (all sections) and code-section bytes. Show absolute before/after
+  values and byte deltas for both; percentages may supplement them. Label units
+  explicitly, using bytes and optionally MiB (1 MiB = 1,048,576 bytes). If either
+  measurement is unavailable, say so; do not substitute compressed size or infer
+  code-section size from total size. State the code-section measurement method
+  when reporting headroom against the IC admission limit.
+- The IC [resource limits](https://docs.internetcomputer.org/references/resource-limits/)
+  currently list a 12 MiB (12,582,912-byte) code-section limit per canister
+  (checked 2026-11-01). This is distinct from total module size. Verify the target
+  network/runtime limit when making admission claims; compression cannot reduce
+  the code-section size checked by the runtime.
+- Do not use gzip, zip or other compressed byte counts to rank Wasm footprint,
+  claim Wasm size savings or establish code-section headroom. Omit compressed
+  sizes from Wasm comparison tables, progress updates and final summaries unless
+  transport/compression measurement is explicitly requested. A requested transport
+  comparison must be labelled separately and cannot replace either raw metric.
+  This reporting rule does not remove compression or required upload admission
+  checks from deployment tooling.
+- Treat compiler optimization and post-link `wasm-opt` as separate stages of
+  one recipe. Record compiler/target and optimizer identities, Cargo profile,
+  LTO/codegen settings, ordered optimizer arguments, features and input identity.
+  Compare final deployable artifacts under matched inputs; a post-link pass
+  does not erase the effect of the compiler profile. Preserve required module
+  contracts and run the relevant runtime/upgrade checks when settings change.
+- Routine performance work uses the actual deployment recipe as its primary
+  measurement. Library benchmarks name the consumer recipe they represent and
+  state any missing deployment stages. Keep correctness controls for matched
+  logical values; additional profiles answer a named comparison question.
+  Do not require an exhaustive optimization matrix in ordinary consumer CI.
+- Reconsider recommendations when compiler/optimizer changes, workload changes
+  or observed regressions justify it. Use a small explicit candidate comparison,
+  widening it only when the result needs it. Retain absolute final sizes and
+  runtime costs, tradeoffs and limitations at the owning recipe. A codec beating
+  another codec under two profiles does not choose between those profiles.
+  Tool upgrades or changed recommendations require consumer qualification before
+  adoption; they do not silently rewrite deployment settings.
 
 ## Gzip encoding
 

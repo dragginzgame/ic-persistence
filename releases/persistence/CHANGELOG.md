@@ -3,6 +3,15 @@
 Covers `ic-memory` and `ic-storage`. Independent group releases begin after the
 coordinated 0.58.1 cutoff; [earlier shared history](../history.md) is preserved once.
 
+## [0.60.8] - Unreleased
+
+### 🔧 Changed
+
+- Use Shared's source-only grouped Cargo observer for interrupted launcher
+  startup. Recheck metadata after tool/cache helpers and verify copied inputs
+  before scratch rendering, preserving native source/receipt authorization.
+  [#333 — Review a shared read-only observation boundary for grouped Cargo bootstrap](https://github.com/dragginzgame/shared-tooling/issues/333).
+
 ## [0.60.7] - 2026-11-01
 
 ### ⬆️ Dependencies

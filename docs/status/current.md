@@ -45,8 +45,10 @@ Persistence retains its archive script until the API is published and adopted.
 The validation-reuse investigation measured 11.6 minutes and is recorded in
 [the audit](../audits/2026-11-01-release-validation-reuse.md) and
 [Shared #334](https://github.com/dragginzgame/shared-tooling/issues/334).
-No release proof is reused or gate skipped. The bootstrap proposal remains
-[Shared #333](https://github.com/dragginzgame/shared-tooling/issues/333).
+No release proof is reused or gate skipped. The bootstrap launcher now consumes
+Shared's source-only observer and rechecks metadata bytes after helper dispatch;
+scratch rendering and source/receipt authorization stay with this consumer. See
+[#333 — Review a shared read-only observation boundary for grouped Cargo bootstrap](https://github.com/dragginzgame/shared-tooling/issues/333).
 
 Earlier cleanup/delivery evidence remains under `target/complexity-2026-11-01/`,
 `target/delivery/cleanup-2026-11-01/` and `target/delivery/upstream-issues/`.
@@ -57,7 +59,8 @@ macOS architectures, completing #144 and #146. It does not qualify newer inputs.
 CI selection #145 retains the exact three-file documentation-only policy and
 fails closed to the full matrix; see [CI selection](../ci-selection.md).
 
-The reviewed Shared snapshot remains
-`143a9abb9ae81feae9400ff3844b03b1ddfdd75a` (upstream 0.27.22 commit,
-recorded VERSION 0.27.21), with 79 roots and 133 payloads. Dirty sibling rules
-remain excluded. No vendored files or sibling working sources are edited.
+The selected Shared snapshot is
+`fba200f649d6f1e09c0cb52f04b8c1493c5b0060` (VERSION 0.27.24), with 80 roots and
+134 payloads. The real six-state bootstrap fixture and caller cache/error/drift
+checks passed locally on Linux; native CI remains separate acceptance. Dirty
+sibling rules remain excluded; snapshot files change only through the exporter.
