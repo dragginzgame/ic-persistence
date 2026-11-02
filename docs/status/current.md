@@ -1,55 +1,44 @@
 # Current handoff
 
-## Storage 0.65.3 delivery in progress
+## Delivered Storage 0.65.3
 
-The maintainer selected 0.65.3 for cache capacity/routing retention, lazy mutation
-copies and corrected comparison phases. These changes are integrated on the
-published 0.65.2 IC0-only backing. Public APIs and formats remain unchanged.
-The release runner will qualify the integrated source before version preparation;
-publication is not yet complete. Evidence: `target/storage-0653-deploy/`.
-
-## Delivered Storage 0.65.2
-
-Storage **0.65.2** is published and unyanked. Release commit
-`eac8a84c6d5cf860f906b3fb788d8f275a1745b5` and annotated tag `storage-v0.65.2`
+Storage **0.65.3** is published and unyanked. Release commit
+`8c749ca2cd3859dfe4545f1792d7e8d2ff460002` and annotated tag `storage-v0.65.3`
 were atomically pushed to `origin/main`. The downloaded registry archive, fresh
 sparse-index record and final receipt agree on SHA-256:
-`127f3898bc06ed65478490f2f052ee5455c432b76ca286de95bcaaa46195fa0a`.
-Do not repeat release/upload. See [qualification and provenance](../ic0-backing-qualification.md)
-and [release notes](../../releases/storage/0.65.md).
+`74ee2e0c2e95769a67e9602184470f8258130c3935e0f52aa74471fc9104e28f`.
+Do not repeat release/upload. Evidence: `target/storage-0653-deploy/` and
+`target/release-validation/storage-0.65.3.json`.
 
-This compatible patch requires published Runtime ^0.18.1 with defaults disabled,
-only on Wasm, selecting `ic0` alone. All four stable64 backing operations use
-Runtime's public safe wrappers. Growth maps `u64::MAX` to `-1` and checks successful
-previous-page conversion. Native production has no Runtime dependency. Default
-Wasm has no runtime, executor, CDK, guard, Types or Candid activation.
-
-Fresh registry-only default consumers run on native and build on Wasm. Explicit
-runtime composition also passes both targets, with one Runtime 0.18.1 and matching
-guard 0.18.1. The registry graph resolved Wire/derive 0.15.1 and, for composition,
-Platform 0.18.0 / Types 0.17.0. No paths, Git pins, registry patches or guard
-overrides were used. This supplies Relay's requested Storage dependency;
-[Relay #21](https://github.com/dragginzgame/ic-relay/issues/21) remains downstream
-adoption. Relay and sibling checkouts were not edited.
+This compatible patch delivers cache capacity/routing retention, lazy mutation
+copies and corrected comparison phases. Public APIs and formats remain unchanged;
+caching remains disabled initially. See [release notes](../../releases/storage/0.65.md).
+It preserves 0.65.2's Runtime ^0.18.1 IC0-only Wasm backing. Native production has
+no Runtime dependency; default Wasm has no executor, CDK, guard, Types or Candid.
+The [0.65.2 qualification record](../ic0-backing-qualification.md) retains its
+registry-consumer, publication and isolated-checkout evidence. Relay and sibling
+checkouts were not edited; [Relay #21](https://github.com/dragginzgame/ic-relay/issues/21)
+remains downstream adoption.
 
 ## Qualification and checkout custody
 
-Implementation commit `4db4f2c` passed independent default/composed graph checks,
-consumer compilation/tests and the complete release gate in 230.067 seconds.
-Final archive integration passed after version preparation and release commit.
+Implementation commit `1cad31a` passed the complete release gate in 214.365 seconds
+(`target/release-validation/attempts/verify.WzEQr0`). Final archive integration
+passed in `target/package-qualification/attempt.TQ4gVq/` after the release commit.
 Installed IO, growth/refusal, bounds, reopen, upgrades, rollback, directory faults,
 backing custody, all five collection forms and Logging passed for original,
-O3, Os and Oz Wasm with Testkit 0.79.0 / PocketIC 16.1.0.
+O3, Os and Oz Wasm with Testkit 0.79.0 / PocketIC 16.1.0 in
+`target/qualification/runtime/attempt.iSSaeB/` against the exact release.
 Linux-local qualification does not establish native macOS execution.
 
-Release work used `/tmp/ic-storage-ic0-release-0652` to exclude concurrent benchmark
-edits in the original checkout. That isolated checkout retains
-`target/storage-0652-deploy/`, final receipt
-`target/release-validation/storage-0.65.2.json`, full gate `verify.S0HqOf`, final
-archive attempt `QHiehT` and installed runtime attempt `VzJL5A`.
-The [qualification record](../ic0-backing-qualification.md) maps complete paths.
-Sandbox-denied attempts and earlier evidence remain retained. The original
-checkout's benchmark work and local Git state were preserved.
+The first attempt stopped before commit because the root lockfile acquired
+unselected dependency upgrades after its qualified checksum was recorded. The
+exact source-derived projection matched that receipt; restoring it allowed the
+same saved release to resume without weakening admission. Those unselected edits
+are preserved in stash `storage-0653-unselected-lock-edits` and restored as pending
+root lock changes after publication. Their origin is unconfirmed; they were not
+included in 0.65.3. Original/changed lock bytes, failed log and receipt remain in
+the deployment directory. The earlier hotspot integration stash is also retained.
 
 ## Independent groups and retained contracts
 
@@ -73,7 +62,7 @@ optional node caching, bounded scans and vector/extent IO improvements remain.
 
 ## Validation and benchmark evidence
 
-Current evidence is in `target/storage-hotspots/`: 87 library tests, four public
+Pre-integration evidence is in `target/storage-hotspots/`: 87 library tests, four public
 runtime tests, nine benchmark model tests, 24,000 generated model operations,
 strict native/product-Wasm Clippy and Wasm test compilation pass. Installed
 original-Wasm IO, upgrade, rollback, directory faults, backing custody, all five
@@ -82,8 +71,8 @@ calls: 64 rows, uniform keys, two rounds, caches disabled, upstream 0.7.2.
 An overly broad Wasm Clippy selection hit the existing helper example's
 `missing_const_for_fn`; product Wasm linting and full Wasm test compilation pass.
 An earlier lock refusal during concurrent Platform edits is also retained.
-No full release gate was run for this pending work. Linux evidence does not
-establish native macOS or an optimizer runtime matrix.
+The integrated release gate and optimizer matrix are recorded above; the
+comparison itself retains its original isolated dependency graph.
 
 The comparison covers 28 cases / 46 type-size combinations across all five
 structures. The published control uses upstream 0.7.2 through Platform 0.17;
@@ -114,7 +103,7 @@ No general superiority, GiB qualification or 2× whole-call guarantee exists.
 
 Shared Tooling 0.27.27 (`651f5f7`) remains the reviewed executable snapshot;
 AGENTS' revision-bound policy remains authoritative. Rust 1.99.1 is the support
-floor and pinned compiler. Build/metadata CLI 0.74.0, Host 0.74.1, Testkit CLI
+floor and pinned compiler. The release selected Build/metadata CLI 0.74.0, Host 0.74.1, Testkit CLI
 0.79.0 and server 16.1.0 are unchanged. Both locks select Runtime 0.18.1 where
 applicable; the independent qualifier's canonical guard is 0.18.1 and its native
 client remains 0.18.0. No historical tool caches were removed.
