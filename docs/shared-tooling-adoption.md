@@ -52,15 +52,14 @@ Both catalogs require published Wire 0.15.0 and select Wire/Derive 0.15.0.
 Public codec errors carry the new Wire Rust identity; hosts matching those errors
 must align their dependency. Codec bytes, budgets and restoration contracts are
 unchanged. Core Storage, production Wasm and the independent native qualifier
-each select one Wire 0.15 provider. Metrics' published 0.26.1 supplier still enables
-Wire 0.14.2 for its default native schema traits, so the combined native adapter
-graph contains both versions. These traits are not used by Storage's Serde codec;
-native Metrics schema consumers need the separately prepared Metrics 0.27 release
-before combining those schemas with Wire 0.15. No defaults are suppressed and no
-supplier overrides are selected. Adapter publication remains separate.
+each select one Wire 0.15 provider. The pending Metrics Storage adoption selects
+published Metrics 0.27.0, aligning its default native schema traits with Wire 0.15
+and removing Wire/derive 0.14 from the root lockfile. The combined native adapter
+graph also has one Wire identity. No defaults are suppressed and no supplier
+overrides are selected. Adapter publication remains separate.
 The library graph selects Testkit Native 0.79.0; installed qualification selects
 Testkit CLI 0.79.0. Wire endpoint and platform-types integration remain unselected.
-Metrics Storage's public measurement/error types carry Metrics 0.26 identity;
+Metrics Storage's public measurement/error types carry Metrics 0.27 identity;
 Logging Storage's public log/limit/restoration-error types carry Logging 0.24
 identity. Hosts must align their direct supplier dependencies. Both suppliers now
 share this repository's Rust 1.99.1 floor; arithmetic, logging semantics, encoded

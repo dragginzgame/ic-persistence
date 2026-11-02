@@ -34,7 +34,7 @@ ic-logging-storage = { path = "crates/ic-logging-storage", version = "0.63.0" }
 # External production dependencies.
 ic-logging = { version = "0.24.0", default-features = false }
 # Default native metadata shares the selected Wire identity.
-ic-metrics = "0.26.0"
+ic-metrics = "0.27.0"
 thiserror = "2.0"
 
 # External dependencies with mixed production/test usage; members select features.

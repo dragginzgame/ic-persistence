@@ -8,7 +8,7 @@ retains its original package and release identities.
 ### ⚠️ Breaking
 
 - Expose Wire 0.15 codec errors while preserving checkpoint bytes and budgets.
-  Native Metrics schema alignment awaits its separately published supplier.
+  Align native metric schemas with the same Wire identity through Metrics 0.27.
 - Adopt fallible Storage map operations and propagate collection admission errors
   through `StoreError::Storage`; host map constructors now return `Result`.
 
@@ -23,7 +23,7 @@ retains its original package and release identities.
 - Consume allocation and runtime types from the consolidated `ic-storage` crate;
   hosts must replace their `ic-memory` imports. [Details](0.66.md).
 
-- Adopt Metrics 0.26.0 for public measurement and restoration-error types. Hosts
+- Adopt Metrics 0.27.0 for public measurement and restoration-error types. Hosts
   exchanging these values must align their Metrics dependency. Arithmetic,
   snapshots, limits and the Rust 1.99.1 support floor are unchanged. [Details](0.66.md).
 

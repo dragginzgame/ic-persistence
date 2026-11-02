@@ -59,11 +59,19 @@ tests, strict native/Wasm Clippy and formatting evidence are retained in
 
 Both catalogs now select published Wire/derive 0.15.0. Public codec error identities
 change, while codec bytes and budgets remain unchanged. Core Storage, production
-Wasm and the independent qualifier each use one Wire 0.15. Native Metrics schema
-support still brings Wire 0.14 through published Metrics 0.26.1; its separate
-Metrics 0.27 adoption is prepared upstream but was not published at inspection.
-This does not affect Storage's Serde codec or authorize feature suppression,
-an upstream override or an adapter publication. Native product tests (112), eight
+Wasm and the independent qualifier each use one Wire 0.15. The subsequent local
+Metrics 0.27.0 adoption aligns default native schema support with Wire 0.15 and
+removes the old Wire/derive 0.14 entries. This updates Metrics Storage's public
+arithmetic/error identity; hosts must align direct Metrics dependencies. Its
+pending 0.66.0 notes include this adoption; no package version, commit, adapter
+publication or sibling checkout is changed by this follow-up. Source and
+qualification evidence is retained in `target/metrics-027-adoption/`.
+All 30 Metrics Storage tests and three doctests pass, including native schema
+composition through the adapter's Wire identity. Strict native/Wasm Clippy,
+single-Metrics/single-Wire graph admission on both targets, production boundaries,
+pins, formatting and documentation checks pass. The independent workspace lock
+is unchanged; only Metrics and obsolete Wire records change in the root lock.
+The preceding Wire adoption passed native product tests (112), eight
 benchmark/composition tests and the selected native/Wasm graph/Clippy checks pass;
 source comparison and registry evidence are in `target/wire-015-adoption/`.
 The rebuilt original-Wasm installed IO, growth/refusal, reopen, upgrade, rollback,

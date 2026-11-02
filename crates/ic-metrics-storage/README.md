@@ -24,7 +24,8 @@ for the selected dependency's declaration and lifecycle APIs.
 Storage owns the core `storage` release identity. This adapter
 owns its independent `metrics-storage` release group; hosts select compatible core
 requirements declared by its package metadata. Hosts exchanging arithmetic values
-also select `ic-metrics = "0.26"` so Rust type identities agree. See the adapter's
+also select `ic-metrics = "0.27"` so Rust type identities agree. Native report
+schemas use Wire 0.15 with the default `native-wire` feature. See the adapter's
 [release ledger](../../releases/metrics-storage/CHANGELOG.md) and [group commands](../../RELEASING.md#release-groups).
 Stored formats and governed handle requirements are unchanged by release grouping.
 
@@ -38,7 +39,7 @@ hooks.
 
 ## Upgrade disposition
 
-This release adopts Metrics 0.26 and Storage's owned allocator and ordered maps.
+This release adopts Metrics 0.27 and Storage's owned allocator and ordered maps.
 Hosts must rebuild with the matching supplier types and use fresh/reset whole
 backing. The previous manager and collection images have no reader. Do not clear
 only governance while retaining application bytes. Increment the host's reset

@@ -2,6 +2,14 @@
 
 use super::*;
 
+#[cfg(not(target_family = "wasm"))]
+#[test]
+fn public_metric_schemas_compose_with_the_storage_wire_identity() {
+    // Metrics supplies these impls; an older Wire trait cannot satisfy this caller.
+    ic_wire::typescript::native_schema::<(Aggregate, Counter, Summary, Histogram<4>)>()
+        .expect("stored metric types share the adapter's native Wire schema identity");
+}
+
 #[test]
 fn frozen_wire_rows_reopen_through_the_governed_map() {
     let backing = VectorMemory::default();
