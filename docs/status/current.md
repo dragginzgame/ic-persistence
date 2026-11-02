@@ -1,119 +1,80 @@
 # Current handoff
 
-## Storage 0.65.2 delivery in progress
+## Delivered Storage 0.65.2
 
-The compatible IC0-only backing fix is prepared in an isolated checkout while
-benchmark work continues in the main working tree. Only Storage is selected for
-release/publication. Runtime >=0.18.1 supplies all four safe stable64 wrappers;
-native production has no Runtime dependency and default Wasm selects only `ic0`.
-The Memory growth sentinel, bounds traps and all retained formats are unchanged.
-Default external and explicitly runtime-enabled consumers are separately checked
-on native and Wasm. Evidence is under `target/storage-0652-deploy/`; full release,
-installed runtime and registry-only verification remain separate delivery gates.
+Storage **0.65.2** is published and unyanked. Release commit
+`eac8a84c6d5cf860f906b3fb788d8f275a1745b5` and annotated tag `storage-v0.65.2`
+were atomically pushed to `origin/main`. The downloaded registry archive, fresh
+sparse-index record and final receipt agree on SHA-256:
+`127f3898bc06ed65478490f2f052ee5455c432b76ca286de95bcaaa46195fa0a`.
+Do not repeat release/upload. See [qualification and provenance](../ic0-backing-qualification.md)
+and [release notes](../../releases/storage/0.65.md).
 
-## Delivered Storage 0.65.1
+This compatible patch requires published Runtime ^0.18.1 with defaults disabled,
+only on Wasm, selecting `ic0` alone. All four stable64 backing operations use
+Runtime's public safe wrappers. Growth maps `u64::MAX` to `-1` and checks successful
+previous-page conversion. Native production has no Runtime dependency. Default
+Wasm has no runtime, executor, CDK, guard, Types or Candid activation.
 
-Storage **0.65.1** is published and unyanked. Release commit
-`055cf5a48f7aad0449bced8d2d46fd953f1bbf9a` and annotated tag `storage-v0.65.1`
-were atomically pushed to `origin/main`. Fresh sparse-index and downloaded-archive
-checks match the final receipt checksum:
-`5af04fdb60433b12387baf8f3529c7bc8be63b6d492da43d70e80f9921751423`.
-Evidence is in `target/storage-0651-deploy/` and
-`target/release-validation/storage-0.65.1.json`. Do not repeat release/upload.
+Fresh registry-only default consumers run on native and build on Wasm. Explicit
+runtime composition also passes both targets, with one Runtime 0.18.1 and matching
+guard 0.18.1. The registry graph resolved Wire/derive 0.15.1 and, for composition,
+Platform 0.18.0 / Types 0.17.0. No paths, Git pins, registry patches or guard
+overrides were used. This supplies Relay's requested Storage dependency;
+[Relay #21](https://github.com/dragginzgame/ic-relay/issues/21) remains downstream
+adoption. Relay and sibling checkouts were not edited.
 
-This compatible patch delivers checked allocation diagnostics, simpler directory
-preparation, free-block splitting and conservative live-record shrink reuse,
-optional byte-budgeted map node caching, single-buffer routing views, fewer
-ancestor writes, bounded key-only ranges, vector IO/buffer reuse, extent
-translation caching and bounded-scan fixes. Caching starts disabled. Stored
-formats are unchanged from 0.65.0; no consumer migration or sibling release ran.
-See [release notes](../../releases/storage/0.65.md) and
-[upstream comparison provenance](../storage/upstreams.md).
+## Qualification and checkout custody
 
-The first full gate stopped at Wasm test compilation because an IO-count test
-used native-only `MeteredMemory`. Source commit `46b41b6` gates that test to native;
-production code is unchanged by the repair. The failed log remains at
-`target/release-validation/attempts/verify.1nBWcF`. The corrected complete gate
-passed in 192 seconds (`verify.wcDBds`), followed by prepared/final archive
-qualification. Final package proof is `target/package-qualification/attempt.y2Xkok/`.
-The earlier implementation source is `14e9187`; all accepted source work is committed.
-Build artifacts and failed evidence remain.
+Implementation commit `4db4f2c` passed independent default/composed graph checks,
+consumer compilation/tests and the complete release gate in 230.067 seconds.
+Final archive integration passed after version preparation and release commit.
+Installed IO, growth/refusal, bounds, reopen, upgrades, rollback, directory faults,
+backing custody, all five collection forms and Logging passed for original,
+O3, Os and Oz Wasm with Testkit 0.79.0 / PocketIC 16.1.0.
+Linux-local qualification does not establish native macOS execution.
 
-## Independent groups and current contracts
+Release work used `/tmp/ic-storage-ic0-release-0652` to exclude concurrent benchmark
+edits in the original checkout. That isolated checkout retains
+`target/storage-0652-deploy/`, final receipt
+`target/release-validation/storage-0.65.2.json`, full gate `verify.S0HqOf`, final
+archive attempt `QHiehT` and installed runtime attempt `VzJL5A`.
+The [qualification record](../ic0-backing-qualification.md) maps complete paths.
+Sandbox-denied attempts and earlier evidence remain retained. The original
+checkout's benchmark work and local Git state were preserved.
+
+## Independent groups and retained contracts
 
 Metrics Storage **0.66.0** remains published (tag `metrics-storage-v0.66.0`, commit
-`64777ae7a5ca916ecfcf7db94342b22008dc02c9`). Its registry proof remains in
-`target/metrics-storage-066-deploy/` and its group receipt. Logging Storage
-**0.63.0** remains the package version with **0.64.0** notes pending; it was not
-released by this deployment. Adapter versions remain independent of core patches.
+`64777ae7a5ca916ecfcf7db94342b22008dc02c9`). Logging Storage **0.63.0** remains its
+package version with **0.64.0** notes pending. Neither group was released or
+published by this delivery. Storage's release updated only its own identity and
+required local catalog/lock references; adapter versions and notes are unchanged.
 
 Storage owns allocation, backing custody and Cell, Map, Set, Vector and map
-regions. There is no Memory package or compatibility facade. IDs are opaque;
-hosts own grants, lifecycle, migration framing and explicit reset/fresh backing.
-Map/Set/regions use the `ICMAP002` B-tree introduced in 0.65.0. Earlier AVL images
-require explicit rebuild/reset; no legacy decoder or automatic reset exists.
-Small values stay inline; external values are separately checksummed. Membership
-and key-only scans do not audit external value integrity. Native backing failures
-poison the shared owner; IC traps retain host rollback. See [SAFETY](../../SAFETY.md)
-and [the allocation contract](../current-ledger.md).
+regions. IDs remain opaque; hosts own grants, lifecycle, migration framing and
+explicit reset/fresh backing. Map/Set/regions retain `ICMAP002` from 0.65.0.
+Earlier AVL images require explicit rebuild/reset. No compatibility decoder or
+automatic reset exists. Native backing failures poison the owner; IC traps retain
+host rollback. See [SAFETY](../../SAFETY.md) and [allocation](../current-ledger.md).
 
-Wire 0.15 owns current codec errors. Metrics Storage uses Metrics 0.27. Logging
-Storage's maintained checkpoint contract uses discriminator 3 and a retained-text
-ceiling; hosts retire earlier rows explicitly. No sibling edits are included.
-Storage #152 is resolved by the published native dependency boundary. The prepared
-0.65.2 Wasm fix removes Runtime's execution feature. Track
-[Platform #135](https://github.com/dragginzgame/ic-platform/issues/135)
-and downstream [Relay #21](https://github.com/dragginzgame/ic-relay/issues/21).
+Wire 0.15 owns current codec errors; Metrics Storage uses Metrics 0.27. Logging
+checkpoints retain discriminator 3 and an explicit retained-text ceiling. Hosts
+retire earlier rows explicitly. Storage 0.65.1's diagnostics, free-block reuse,
+optional node caching, bounded scans and vector/extent IO improvements remain.
 
-## Validation and benchmark evidence
-
-`target/upstream-improvements/` retains 85 passing library tests, four public
-runtime tests, 24,000 generated model operations, strict native/Wasm checks and
-production graph checks. Installed original-Wasm IO, upgrade, rollback, directory
-faults, backing custody, all five structures and Logging pass in
-`runtime-final-qualified/`. The earlier artifact-path failure is retained in
-`runtime-final/`. These installed tests precede the native-only test annotation
-and release metadata update; the full release gate covers the final source.
-Linux evidence does not establish native macOS or an optimizer runtime matrix.
-
-The comparison covers 28 cases / 46 type-size combinations across all five
-structures. The published control uses upstream 0.7.2 through Platform 0.17;
-an optional comparison-only Git control pins upstream `b5d1650`. Production has
-no upstream dependency. See the [benchmark methodology](../../testing/runtime-qualification/crates/ic-storage-benchmarks/README.md).
-
-Matched pre-release HEAD comparisons are in `target/storage-comparison/attempt.ey0896/`
-(Storage cache 128 KiB, upstream 32 slots) and `attempt.PkfT47/` (both disabled).
-Each passes 4,212 calls and final model checks with identical Wasm hashes: 4,096
-rows, integer maps plus six byte-value sizes, one shuffled population seed,
-three mutation rounds, uniform/hot-16/Zipf keys and batches 1/32. These are
-collection intervals, not whole endpoints; cache settings are not equal heap budgets.
-Storage's single-read cache gains are 1.09× uniform, 30.02× hot-16 and 2.06× Zipf.
-
-Results are mixed. With caches enabled, uniform single-operation Storage/upstream
-ratios are 1.8125 for integer Get, 1.1092 for Replace, 0.4806 for a one-entry
-bounded scan and 0.3987 for a 4 KiB-value Get. A 4 KiB-value missing-key trace costs
-176,082 versus 2,502 instructions. Integer maps reserve 6 versus 129 stable pages,
-but 4 KiB values reserve 519 versus 385. Reservation is not live payload. Cache
-placement, large-record slack, directory snapshots and unreclaimed tails remain
-costs. No general superiority, GiB qualification or 2× whole-call guarantee exists.
-The full-matrix 64-row draft smoke is `attempt.i6I874/` (2,080 calls); it predates
-the conservative shrink adjustment. Other historical runs remain retained.
-
-## Tooling and retained history
+## Tooling, benchmark work and history
 
 Shared Tooling 0.27.27 (`651f5f7`) remains the reviewed executable snapshot;
-the AGENTS policy reference remains authoritative. Rust 1.99.1 is the support
-floor and pinned compiler. Build/metadata CLI 0.74.0, Host 0.74.1, Testkit CLI 0.79
-and server 16.1.0 are unchanged. Root locks retain Runtime 0.18.1, Metrics 0.27.1
-and Logging 0.24.2; the independent qualifier selects Runtime/guard 0.18.1 while
-retaining its 0.18.0 native client graph and 16.1.0 server pairing.
-Unused Testkit Native was removed; Storage owns memory metering under test-support.
-See [adoption boundaries](../shared-tooling-adoption.md) for exact selections.
+AGENTS' revision-bound policy remains authoritative. Rust 1.99.1 is the support
+floor and pinned compiler. Build/metadata CLI 0.74.0, Host 0.74.1, Testkit CLI
+0.79.0 and server 16.1.0 are unchanged. Both locks select Runtime 0.18.1 where
+applicable; the independent qualifier's canonical guard is 0.18.1 and its native
+client remains 0.18.0. No historical tool caches were removed.
 
-Earlier publication and recovery narratives are retained in the
-[pre-release handoff](https://github.com/dragginzgame/ic-storage/blob/14e9187/docs/status/current.md).
-Existing `target/storage-065-deploy/`, `target/metrics-storage-066-deploy/`,
-`target/storage-audit-improvements/`, `target/storage-scan-audit/`, supplier-adoption
-and release-validation evidence remains intact. Intentional historical-note
-retirement is preserved through the ledgers' revision-bound links. Never remove
-historical caches, failed attempts, receipts or release archives implicitly.
+Prior publication, comparison measurements and retained artifact paths remain in
+the [0.65.1 handoff](https://github.com/dragginzgame/ic-storage/blob/a82de9b8682ddfff62a1cdaef09c189f229fd861/docs/status/current.md)
+and [comparison provenance](../storage/upstreams.md). Benchmark results remain
+mixed; large-record slack, directory snapshots and unreclaimed tails remain
+costs. This release makes no superiority, GiB-scale or whole-call speed claim.
+Concurrent benchmark changes are separate work, excluded from this delivery.
