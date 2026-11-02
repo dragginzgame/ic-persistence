@@ -1,148 +1,89 @@
 # Current handoff
 
-The GitHub repository is now `dragginzgame/ic-storage` (same repository identity,
-1427245576), and this checkout's origin uses the new URL. The local directory
-is `ic-storage`. The adapters are now `ic-metrics-storage` and
-`ic-logging-storage`, with matching Rust imports and package directories.
-Release groups are `storage`, `metrics-storage` and `logging-storage`.
-Published history remains at its original paths; only pending notes moved.
-See [the naming adoption guide](../migration/storage-naming.md).
+## Selected delivery
 
-The maintainer's complete hard cut is implemented locally. Storage owns named
-allocation, exclusive leases, backing/codec traits and all sibling-used collection
-engines. The separate Memory package, fixed-slot manager, ledger reader and all
-upstream stable-structures implementations/dependencies are removed. No legacy
-reader or automatic reset remains. Hosts must adopt fresh/reset whole backing;
-IcyDB must also replace old region framing admission with `ICMAP001`.
+The authorized core release is Storage **0.65.0**, from `main` at `a9e6fe6` plus
+this session's pending changes. The standard `RELEASE_GROUP=storage` minor
+release and publication workflow owns validation, version preparation, Git effects
+and registry admission. This handoff records preparation, not successful delivery;
+the annotated tag, retained final receipt and registry checksum establish that.
+Metrics Storage 0.66.0 and Logging Storage 0.64.0 remain separate pending releases.
+No sibling release or migration is included. Preserve all earlier release plans,
+archives, failure logs and caches.
 
-The supported roster is Cell, Map, Set, Vector and map regions. Log and Min-heap
-were removed after a read-only sibling usage scan. Map/Set/regions share an owned
-AVL tree with reusable blocks and staged node writes; Vector uses bounded slots.
-The supported BTree collection names remain, but the implementation is AVL.
-Public `Memory`, `Storable` and `Bound` identities now belong to Storage;
-primitive numeric encodings are little-endian.
+## Contracts and completed source work
 
-`StorageConfig`, `AllocationGrants` and opaque `AllocationId` values replace
-manager geometry, numeric pools and slots. Namespace admission commits durable
-names before issuing leases. Omitted names retain identity/data but require current
-admission. Detached leases retain backing custody. Ordinary IO trusts custody;
-construction, bootstrap, lease opening and nonzero growth validate the directory.
-Generation advances for new names and extent growth, not an unchanged reopen.
-See [allocation](../../crates/ic-storage/ALLOCATION.md),
-[collections](../../crates/ic-storage/README.md) and
-[the design](../design/dynamic-allocation.md).
+Map, Set and regions use the degree-six B-tree `ICMAP002`, replacing the released
+AVL format. Hosts must explicitly rebuild/reset affected state and update region
+framing admission. No legacy decoder or automatic reset exists. Public collection
+signatures, allocation governance and Cell/Vector formats remain unchanged.
+Small values up to 32 encoded bytes stay inline; external values are independently
+checksummed. Membership and key-only scans do not audit external value integrity.
+Mutations stage writes and admit capacity first; native backing failures poison
+the owner, while IC traps retain host rollback. See the
+[0.65 notes](../../releases/storage/0.65.md), [safety contract](../../SAFETY.md) and
+[design provenance](../storage/upstreams.md).
 
-The follow-up trim removes unused map/set convenience methods, the unused raw
-Cell payload decoder and public layout constants with no sibling callers.
-The bounded Cell envelope reader/header size remain for Auth/Scheduling consumers;
-map first/last lookups remain for Canic. Lease tests use the production constructor
-and typed growth; test-only construction switches and the second Memory adapter
-are removed. Allocation-ID lookup uses the existing index instead of cloning
-all diagnostic rows. Private directory candidates no longer take an encode/decode
-round trip; final preparation still validates receiving budgets before mutation.
+Runtime 0.18 is selected directly on Wasm; native production excludes Platform,
+Runtime, Types and the executor guard. This addresses
+[Storage #152](https://github.com/dragginzgame/ic-storage/issues/152) in source.
+The separate unpublished composition fixture verifies candidate Storage plus
+published Platform 0.18 with one Runtime/guard on native and Wasm, and tests
+native governed-cell create/reopen. Registry Storage 0.64 still has the old
+executor-guard conflict; verify the delivered archive before closing the issue.
 
-The locality follow-up skips unchanged ancestors during map replacement, retains
-bounded pointer cursors for scans and derives logical extent indexes at directory
-validation. Data IO spans contiguous physical extents instead of individual pages.
-Public APIs and current owned record layouts are unchanged. Latest focused native
-qualification passes 95 library tests (53 Storage, 29 Metrics, 13 Logging) and
-strict library/test Clippy for all three packages. New tests bound replacement
-writes and scan reads, compare mixed-direction ranges with the ordered model,
-and verify extent-spanning IO after reopen. Evidence is in `target/storage-locality/`.
-Earlier public-runtime/compile-fail proofs and the read-only sibling usage scan
-remain in `target/storage-trim/`; they were not rerun in this follow-up.
+Wasm still enables Runtime's execution feature: the selected 0.18 API only exposes
+stable-memory size publicly through IC0. [Platform #135](https://github.com/dragginzgame/ic-platform/issues/135)
+has a separately prepared owner fix; adopt a qualified published release before
+narrowing this dependency. [Relay #21](https://github.com/dragginzgame/ic-relay/issues/21)
+remains downstream work. No local supplier patch or sibling edit is selected.
 
-Installed original-Wasm qualification covers all five collection types across
-1,031 admitted names, allocation IO/bounds, metadata faults, poisoning, custody,
-update/upgrade rollback and Logging checkpoint/text-budget/watermark restoration
-on the prepared 16.1.0 server. Rebuilt original Wasm and the native runner pass
-again for the locality follow-up; input hashes and logs are retained in
-`target/storage-locality/runtime/`. This is lifecycle qualification, not a matched
-instruction/cycle performance comparison; optimizer variants were not rerun.
+The reviewed native-metering contribution is applied under `test-support` as
+`testing::{MeteredMemory, MemoryIoCounts}`. It preserves physical backing identity,
+shared counters/reset, refused growth and sticky overflow. Allocation measurement
+remains with Testkit Native. Its original patch and five passing metering/custody
+tests, strict native/Wasm Clippy and formatting evidence are retained in
+`target/metered-memory-adoption/`. Scheduling's separate migration was not applied.
 
-The separate [map comparison](../../testing/runtime-qualification/crates/ic-storage-benchmarks/README.md)
-now measures matched original Wasm against DFINITY 0.7.2, using the independent
-lockfile and prepared 16.1.0 server. Both 256-row and 4,096-row matrices pass:
-672 measured calls across both stacks, plus final full-map comparisons. Each
-matrix covers 32-byte/1-KiB values, single/batched calls, uniform/hot keys and
-three seeds. Evidence is retained in `target/storage-comparison/attempt.BNtMeL/`
-and `target/storage-comparison/attempt.S6boOH/`, respectively. For single uniform
-reads/replacements at 4,096 rows, Storage/DFINITY median instruction ratios are
-1.62/1.96 (32-byte values) and 2.16/2.32 (1-KiB values). These are operation
-intervals including each stack's allocator/governance, not complete endpoint
-bills or isolated tree algorithms. Storage uses more instructions in these cases;
-the comparison establishes a baseline, not a performance-equivalence claim.
-Native workload tests, strict native/both-backend Wasm Clippy, the existing
-runtime runner check, formatting, shell lint and production/dependency boundary
-checks pass. The production lockfile is unchanged; no existing independent
-dependency selection was updated. The benchmark is excluded from default
-qualification and release gates.
+## Tooling and qualification
 
-The subsequent release-adapter integration includes this independent catalog and
-lockfile in Storage's declared release metadata. It projects only the local
-Storage version, with rollback under the existing transaction; adapter releases
-preserve both files. This metadata-only follow-up does not change the measured
-library or workload. All 78 native release-helper tests and strict helper Clippy
-pass, including independent catalog/lock rollback and adapter-release preservation.
-Release preparation restored the historical Persistence, Metrics Stable and
-Logging Stable release documents at their original paths, resolving the missing
-historical target previously reported by the expanded documentation scan.
+Shared Tooling 0.27.27 (`651f5f7`) was exported from clean committed source and
+verified across 144 payloads. Build/metadata CLI are 0.74.0, Host libraries 0.74.1,
+Testkit Native/CLI 0.79.0, and Platform/PocketIC 0.18 with server 16.1.0. Rust
+1.99.1 remains the pinned compiler and support floor. Optional group validation
+plans and historical-cache reclamation are not enabled. See the
+[adoption boundary](../shared-tooling-adoption.md) for authoritative selections.
 
-The preceding hard-cut batch passed all package doctests, native/Wasm/runner
-Clippy, graph/pin boundaries, 77 repo-tool tests and development archive consumers.
-Its evidence remains in `target/owned-structures/` and
-`target/package-qualification/attempt.pHaKKs/`. The subsequent naming adoption
-passes 42 adapter tests, adapter doctests, 77 repo-tool tests, all three native
-release-file plans, substitute release-adapter checks, formatting, script/workflow
-lint, graph/pin boundaries and snapshot integrity. The independent native runner
-also checks with the moved Logging protocol source. Evidence is retained in
-`target/storage-rename/`. All three renamed development archives and their
-native/Wasm consumers pass in `target/package-qualification/attempt.kpVxyd/`.
-The full release gate was not rerun. Earlier prototype/consolidation proofs retain
-their original source scope. Failed attempts remain retained.
+Focused native product tests, release-helper tests, production graph/refusal
+checks and selected Clippy passed. Latest original-Wasm installed IO, zero/refused
+growth, same-format reopen/upgrade, rollback, custody, all five structures across
+1,031 allocations and Logging passed in `target/issue-152-runtime.bvHm54/`.
+Composition and graph evidence is in `target/issue-152/`; earlier tooling and
+B-tree proof remains under `target/tooling-platform-adoption/` and
+`target/btree-runtime.WUAr9L/`. These earlier proofs do not assert a completed
+release gate, optimized-Wasm matrix or native macOS qualification.
 
-The storage-safety follow-up adds typed codec/collection errors and fallible
-iteration, a required cell load ceiling, checksummed cell/vector payloads,
-reusable inactive directory arenas and contiguous-extent coalescing. Two-child
-AVL deletion extracts its successor in one traversal. Formats are now
-`ICROOTR1` / `ICDIRR01`, `ICCELL01` and `ICVECC01`; this extends the
-pending fresh/reset-backing cut. Map framing remains `ICMAP001`.
-Evidence in `target/storage-improvements/` covers 103 library tests (61 Storage,
-29 Metrics, 13 Logging), ownership compile-fail/public-runtime tests, doctests,
-strict native/Wasm Clippy and the owned benchmark caller. Installed original-Wasm
-IO/upgrade/rollback, custody and Logging pass on 16.1.0 in
-`target/storage-improvements/runtime/attempt.kLoeVb/`. Full snapshots still write
-per mutation; no timing improvement, optimized-Wasm or full release-gate claim.
+## Benchmark evidence and remaining costs
 
-Known costs: directory mutations still clone/validate/write complete bounded
-snapshots, now reusing inactive arenas. Application extents and abandoned tails
-remain unreclaimed. Pointer cursors still reread complete
-node records, including values for key scans; tiny scans may pay cursor setup
-overhead. Derived directory indexes add one u64 per extent plus vector overhead.
-Native writes are not transactions;
-IC rollback is the installed atomicity boundary. No performance-equivalence or
-full release-gate claim is made.
+The independent benchmark covers 28 cases / 46 type-size combinations and all
+five supported structures. It model-checks complete results and reports physical
+stable pages as well as instructions. Only its DFINITY control retains Platform
+0.17's stable-structures facade. See the
+[methodology](../../testing/runtime-qualification/crates/ic-storage-benchmarks/README.md).
 
-Pending notes are Storage 0.64.0, Metrics Storage 0.66.0 and Logging Storage 0.64.0;
-manifest versions remain 0.63.0 / 0.65.0 / 0.63.0. The pending adapters include
-Logging 0.24.0 and Metrics 0.26.0 supplier adoption plus the backing format cut.
-No commit, release, publication or sibling checkout change was performed.
-Downstream source adoption and publication are separate work.
+Expanded smoke: `target/storage-comparison/attempt.97I6WQ/`, 4,160 calls.
+Expanded 256-row/three-seed run: `target/storage-comparison/attempt.RfU4TW/`,
+12,480 calls and 2,080 summary rows, with source checks before and after execution.
+The initial Wire response-budget failure is retained in `attempt.X5CMF4/`;
+bounded allowances and largest-response regression tests corrected the harness.
+No expanded 4,096-row run was performed. Earlier 14-case 4,096-row results remain
+in `attempt.NJabku/` and do not qualify the expanded matrix.
 
-Rust 1.99.1 remains the pinned compiler and floor. Reviewed Shared policy is
-`e84252f5740bacd708359580455ea2b6fd67df38`; executable snapshot remains
-`9275bf0de39ed941d81c47bab97eef7f6fc38df2` (VERSION 0.27.24, 136 payloads).
-No vendored file changed. Platform 0.17.0 / Testkit 0.78.0 / server 16.1.0 remain
-the qualified client/server pairing. Preserve earlier receipts, logs and archives.
+No universal speedup is claimed. In the expanded matrix Storage/DFINITY ratios
+include 1.2257 for signed single reads, 1.9490 for fixed-256-byte single reads,
+4.4260 for batched last-entry lookup and 6.9840 for 4 KiB Cell growth.
+Whole-canister stable pages include reservation, not just live payload. Directory
+snapshot mutation and unreclaimed allocation tails remain known costs.
 
-The typed benchmark follow-up adds `u64`/`u64`, `u64`/`u128`, fixed 32-byte
-keys/values, string keys/UTF-8 values and `u64`/Wire-record cases alongside the
-original byte-vector cases. Four native workload tests, native benchmark Clippy,
-both Wasm backend Clippy checks and focused formatting pass. The Storage dependency
-still emitted warnings from the concurrent fallible-API migration; benchmark
-calls now use its fallible signatures. No dependency or lockfile selection changed.
-The expanded installed attempt `target/storage-comparison/attempt.iiwcwA/` was
-refused before execution because four Storage files changed during compilation.
-There are no qualified new timing results. Repeat `make benchmark-storage` after
-that concurrent work settles. Focused logs are in `target/storage-types/`;
-repository-wide formatting also encountered edits in progress outside the benchmark.
+The pre-delivery handoff and complete dirty-source backups are retained in
+`target/storage-065-deploy/`. No build or historical evidence was removed.

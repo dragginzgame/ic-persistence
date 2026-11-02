@@ -93,17 +93,20 @@ fn deletion_extracts_successor_without_a_second_key_search() {
     let key = StableKey::parse("test.map.v1").unwrap();
     let mut map =
         StableBTreeMap::<Counted, u64>::create(runtime.open_memory(&key).unwrap()).unwrap();
-    for key in [2, 1, 4, 3, 5] {
+    for key in 0..255 {
         map.insert(Counted(key), key).unwrap();
     }
     COMPARISONS.with(|count| count.set(0));
-    assert_eq!(map.remove(&Counted(2)).unwrap(), Some(2));
-    assert_eq!(COMPARISONS.with(Cell::get), 1);
+    assert_eq!(map.get(&Counted(6)).unwrap(), Some(6));
+    let lookup_comparisons = COMPARISONS.with(Cell::get);
+    COMPARISONS.with(|count| count.set(0));
+    assert_eq!(map.remove(&Counted(6)).unwrap(), Some(6));
+    assert_eq!(COMPARISONS.with(Cell::get), lookup_comparisons);
     drop(map);
     let map = StableBTreeMap::<Counted, u64>::load(runtime.open_memory(&key).unwrap()).unwrap();
     assert_eq!(
         map.values().collect::<Result<Vec<_>, _>>().unwrap(),
-        [1, 3, 4, 5]
+        (0..255).filter(|key| *key != 6).collect::<Vec<_>>()
     );
 }
 

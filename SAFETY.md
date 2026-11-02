@@ -47,8 +47,8 @@ not. Inactive snapshot arenas are reused only after checking that they are
 reserved metadata and do not overlap the active snapshot or application data.
 There is no fallback generation or automatic repair.
 
-Map/Set/region mutations stage affected AVL nodes and allocator metadata, reserve
-capacity, write nodes, then publish the root. Vector writes publish length last.
+Map/Set/region mutations stage affected B-tree nodes and external values and allocator metadata, reserve
+capacity, write records, then publish changed root metadata. Vector writes publish length last.
 Cell encodes and checks bounds before reserving capacity and replacing its value.
 These are ordered writes, not native transactions. A native panic can leave partial
 writes; poisoned owners must be dropped and retained state explicitly inspected.
@@ -56,7 +56,8 @@ IC message rollback provides atomicity for trapped updates and upgrades.
 
 Record checksums detect accidental corruption; they are not authentication or
 malicious-controller protection. Root loading is bounded. Map node validation is
-lazy on accessed paths, with a traversal-depth cap; loading a root is not a full
+lazy on accessed routing paths, with a traversal-depth cap; external values are
+checked when read, so membership and key-only scans are not value-integrity audits; loading a root is not a full
 audit of every node or free-list link. Caller codecs return typed encoding/decoding errors. A faulty implementation
 can still panic; no panic interception substitutes for a fallible codec contract.
 Cell/vector payload checksums run before decoding; cell loading also requires a

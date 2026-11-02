@@ -3,6 +3,36 @@
 Current releases use the Storage naming. [Earlier published history](../persistence/CHANGELOG.md)
 retains its original package and release identities.
 
+## [0.65.0] - Unreleased
+
+### ⚠️ Breaking
+
+- Replace the AVL engine with a multi-entry B-tree shared by Map, Set and regions.
+  The new `ICMAP002` format requires explicit fresh/reset collection state and
+  updated region framing admission. Public Rust APIs remain unchanged. [Details](0.65.md).
+
+### 🔧 Changed
+
+- Keep small values inline and load larger values separately; membership and
+  key-only scans avoid unrelated payloads. Skip unchanged root metadata on replacement.
+- Adopt Shared Tooling 0.27.27, Runtime/Platform 0.18, Build 0.74.0,
+  Host libraries 0.74.1 and Testkit 0.79.0. Preserve the comparison-only
+  Platform 0.17 stable-structures facade; production imports Runtime directly.
+- Resolve the Platform 0.18 executor-guard conflict by using Runtime 0.18 directly
+  ([#152](https://github.com/dragginzgame/ic-storage/issues/152)); qualify composition
+  with the facade's runtime feature on native and Wasm.
+- Restrict Storage's Runtime dependency to Wasm, removing it from native production.
+  IC0-only Wasm backing remains blocked by [Platform #135](https://github.com/dragginzgame/ic-platform/issues/135).
+
+### 🧪 Testing
+
+- Add native `testing::MeteredMemory` and `MemoryIoCounts` under `test-support`,
+  preserving backing custody, shared counters, reset and overflow detection.
+- Expand installed comparisons to every supported structure and 28 concrete cases,
+  including signed/wide keys, float vectors, inline-boundary and 4 KiB values,
+  endpoint/bounded scans, growth/shrink and removal/reinsertion. Report physical
+  stable pages alongside instructions.
+
 ## [0.64.0] - 2026-11-02
 
 ### ⚠️ Breaking

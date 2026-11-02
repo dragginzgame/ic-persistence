@@ -47,7 +47,7 @@ fn namespace(family: u8) -> std::ops::RangeInclusive<[u8; 33]> {
 fn admit<M: Memory>(view: &BTreeMapRegion<[u8; 33], Vec<u8>, M>) -> Result<(), ()> {
     let mut frame = [0; 8];
     view.read(0, &mut frame);
-    if frame != *b"ICMAP001" {
+    if frame != *b"ICMAP002" {
         return Err(());
     }
     let mut after_families = [0; 33];

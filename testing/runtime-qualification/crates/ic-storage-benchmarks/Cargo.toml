@@ -13,10 +13,11 @@ serde_json.workspace = true
 
 [features]
 owned = ["dep:ic-storage"]
-dfinity = ["ic-platform/stable-structures"]
+dfinity = ["dep:ic-platform-stable-benchmark"]
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
-ic-platform = { workspace = true, features = ["ic0"] }
+ic-platform-runtime = { workspace = true, features = ["ic0"] }
+ic-platform-stable-benchmark = { workspace = true, features = ["stable-structures"], optional = true }
 ic-storage = { workspace = true, optional = true }
 
 [dependencies]

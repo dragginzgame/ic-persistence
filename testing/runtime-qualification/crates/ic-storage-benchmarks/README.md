@@ -1,128 +1,149 @@
-# Installed map comparison
+# Installed collection comparison
 
-Compare IC Storage with DFINITY's `ic-stable-structures` using the same Rust
-workload compiled into separate, original Wasm canisters. Like IC Wire's Candid
-comparison, this is an explicitly selected, unpublished benchmark with retained
-raw measurements. It is not a product release gate.
-
-From the repository root, with Rust 1.99.1 and its Wasm target already installed:
+Compare IC Storage and DFINITY `ic-stable-structures` 0.7.2 using matched concrete
+Rust workloads compiled into separate original Wasm canisters. This explicitly
+selected, unpublished benchmark retains raw results and fails on mismatches.
+It is not a release gate or a claim about complete application calls.
 
 ```sh
-# Explicit preparation, only when needed:
+# Explicit preparation only when needed:
 make install-runtime-server
 cargo fetch --locked --manifest-path testing/runtime-qualification/Cargo.toml
 
-# Offline builds and installed comparison; no optimizer required:
-make benchmark-storage
+make benchmark-storage                             # 256 rows, three seeds
 make benchmark-storage BENCH_ROWS=4096 BENCH_SAMPLES=3
+make benchmark-storage BENCH_ROWS=64 BENCH_SAMPLES=1 # quick complete smoke matrix
 ```
 
-`BENCH_ROWS` accepts 1–16384 and `BENCH_SAMPLES` accepts 1–20. The defaults are
-256 rows and three samples. Sweep population separately: the default is a small
-map baseline, not evidence for GiB-scale collections. No tools or dependencies
-are installed by the benchmark command. IC Testkit 0.78.0 owns prepared PocketIC
-16.1.0 admission and lifecycle; Platform supplies its matching native client.
+Rows accept 1–16384, samples 1–20. Cell always has one value, regardless of the
+selected population. Builds are locked/offline on Rust 1.99.1; the command never
+installs tools or changes locks. Testkit 0.79.0 manages the prepared PocketIC
+16.1.0 server through Platform 0.18's owned native client. Platform 0.18 removed
+its stable-structures facade, so only the DFINITY backend retains the named
+`ic-platform-stable-benchmark` alias for Platform 0.17. Both backends use Runtime
+0.18 for system calls. The production graph has no DFINITY dependency. Both Wasm backends use the same comparison profile:
+optimization level 3, fat LTO, one codegen unit, abort panics, no Binaryen pass.
 
-The independent workspace lockfile selects DFINITY 0.7.2 through IC Platform's
-optional `stable-structures` boundary. Production Storage has no such dependency.
-Storage release preparation updates its local requirement and lock entry in this
-workspace through the existing metadata transaction; external selections stay fixed.
-The `comparison` profile uses optimization level 3, fat LTO, one codegen unit and
-abort panics for both backends. There is no Binaryen transformation. A backend
-feature must be selected explicitly when compiling the Wasm example.
+## Supported structures and concrete types
 
-## Workload and validation
+| Structure | Types | Logical value bytes |
+| --- | --- | --- |
+| Map | u64 → bytes | 0, 31, 32, 33, 1024, 4096 |
+| Map | String → String | 0, 32, 1024, 4096 |
+| Map | u64 → u64/u128; u128 → u128 | 8; 16 |
+| Map | Signed64 → Signed64 | 8 |
+| Map | [u8;32] → [u8;32]; [u8;64] → u128 | 32; 16 |
+| Map | u64 → [u8;31/32/33/256]; u64 → WireRecord | 31, 32, 33, 256; 60 |
+| Set | u64; String; Signed64; [u8;64] | unit values |
+| Vector | u64; Signed64; u128; f64; [u8;32]; WireRecord | 8; 8; 16; 8; 32; 60 |
+| Cell | bytes; WireRecord; u128; [u8;32] | 0, 31, 32, 33, 1024, 4096; 60; 16; 32 |
+| Map region | u64 → bytes | 0, 31, 32, 33, 1024, 4096 |
 
-Each backend/type/size/sample gets a fresh canister, populated with ascending
-keys and matched values in batches of 128. The concrete map type matrix is:
+All are real generic instantiations. `WireRecord` has an account ID, u128 balance,
+generation and 32-byte tag, using the same IC Wire codec on both backends. Its
+60 field bytes are not its encoded size; the declared encoding ceiling is 256
+bytes. Fixed array keys and zero-padded string keys preserve logical ID order.
+String values use two-byte UTF-8 characters. Scalars exercise high bits.
+There are 28 concrete cases and 46 type/size combinations. The 31/32/33-byte
+fixed and variable Map values straddle Storage's inline-value threshold; fixed
+256-byte values and 4 KiB variable values extend the payload comparison.
 
-| Key | Value | Logical value bytes |
-| --- | --- | ---: |
-| `u64` | `Vec<u8>` | 32, 1024 |
-| `u64` | `u64` | 8 |
-| `u64` | `u128` | 16 |
-| `[u8; 32]` | `[u8; 32]` | 32 |
-| `String` | `String` | 32, 1024 |
-| `u64` | `WireRecord` | 60 |
+`Signed64` wraps i64 because upstream has no primitive i64 Storable implementation.
+Both backends use the same eight-byte little-endian benchmark codec. Signed keys
+map logical ID 32 to zero, so populations above 32 cross the sign boundary. The
+u128 keys vary their upper 64 bits, and 64-byte keys share a 56-byte prefix before
+the ordered ID. Float vectors preserve exact IEEE bits, including signed zeros,
+subnormals, infinities and a NaN payload; floats are never ordering keys.
 
-These are concrete generic map instantiations, not byte-vector substitutes.
-Primitive types use each backend's built-in `Storable` implementation. Fixed
-array keys have an eight-byte big-endian ID followed by 24 constant bytes;
-string keys are `account/` plus a zero-padded 20-digit ID. Both preserve logical
-ID order, which the tests check across numeric width boundaries. String values
-contain two-byte UTF-8 characters. Scalar values exercise high bits, including
-both halves of `u128`.
+Each case uses uniform or hot-16 keys, one or 32 operations per execution, and
+seeds 1 through the requested sample count. Backend order alternates by sample.
+Initial population is ascending, in batches of 128. Each complete case/sample/
+backend gets fresh state; operations within it share the preceding operation's
+committed state. This is a trace, not an independent reset per operation.
 
-`WireRecord` contains an account ID, `u128` balance, generation and 32-byte tag.
-Both backends use exactly the same bounded IC Wire storage codec for this case.
-Its 60 logical field bytes are not its encoded size: the encoding is variable,
-bounded at 256 bytes. Replacements keep logical size but may change encoded size.
-This case includes application codec cost in the measured map operations.
+- Map: control, hit, miss, replacement, forward scan, insertion, removal,
+  membership, reverse scan, key-only scan, growth, shrink, missing removal,
+  reinsertion, first/last entry lookups and bounded forward ranges.
+  Growth/shrink apply only to variable byte/string values.
+- Set: control, membership hit/miss, forward iteration, insertion, removal,
+  missing removal and reinsertion. DFINITY's Set iterator is not double-ended;
+  reverse Set iteration remains native correctness coverage, not a fake comparison.
+- Vector: control, indexed hit/miss, indexed set, forward/reverse iteration,
+  push and pop. Pushes extend the current length; pops remove those appended slots.
+- Cell: control, cached get and replacement; byte cells also grow/shrink. Gets
+  clone the cached value on both sides to retain a result, so they include cloning.
+- Region: control, hit/miss, replacement, bounded key snapshot, insertion,
+  removal, missing removal, reinsertion, growth and shrink.
 
-Each measured call performs one or 32 operations (or returns up to that
-many scan rows). Keys use a deterministic generator over the full population or
-the first 16 keys. Sample seeds are 1 through the selected sample count. Backend
-order alternates by sample.
+Growth replaces values with four times the initial size (minimum 128 bytes);
+shrink uses empty bytes/strings. Fresh inserts and missing removals address keys
+beyond the initial population. Reinsert revisits the earlier removed original
+keys. Repeated keys, missing removals and partial scans are intentional.
+Map forward/reverse scans seek from the generated key; Map key-only scans and
+Set/Vector iteration start at their respective ends. Region key snapshots seek
+from the generated key and enforce the limit within the operation. Bounded Map
+scans use `[start, start + ceil(count/2))` and also enforce the requested count;
+this exercises an exclusive upper bound independently of the output limit.
+First/last lookups run `count` times and retain every result. These three new
+operations run after the existing mutation trace, so they observe its final values.
 
-Calls run in this order: loop control, successful reads, misses, existing-key
-replacements, forward bounded scans, fresh inserts, removals. Every
-call is a separate update execution. Repeated keys are intentional, especially
-in hot batches; repeated removals may miss. Inserts and misses use keys beyond
-the initial population. Scans may return fewer rows near the end. These are
-matched traces, not seven independently reset states. Maps stay open in heap
-between calls; cold reopening and upgrade are outside this workload.
+The full matrix has **2,080 comparison rows and 12,480 measured calls** with three
+seeds. The one-seed smoke matrix has 4,160 calls. These totals include controls.
 
-A native `BTreeMap` model checks every returned key/value, displaced value and
-length. Final queries compare all remaining rows in bounded chunks. Raw responses
-are flushed before comparison; a mismatch or trap fails the run. The summary is
-written only after every comparison succeeds.
-Concrete keys are converted back to logical IDs and values to canonical bytes
-after timing. Record normalization concatenates all fields without invoking its
-storage codec, so validation checks decoded contents independently of that codec.
-The default matrix has 224 comparison rows and 1,344 measured calls across both
-backends, with three seeds per case.
+## Comparison boundaries
 
-Storage uses a governed allocation admitted through its normal runtime and
-exclusive lease. DFINITY uses stock `MemoryManager` defaults and memory ID 0.
-Thus this compares the configured storage stacks, including their memory
-management, rather than isolating the tree algorithms on an identical allocator.
-Storage's owned AVL map and DFINITY's B-tree also have different layouts and
-node occupancy. The benchmark does not weaken governance for a lower score.
+Storage uses admitted governed leases. DFINITY uses its stock MemoryManager
+and memory ID 0. This measures their configured stacks, not tree algorithms over
+identical allocators. The new Storage B-tree keeps values up to 32 bytes inline
+and checksums external values separately. DFINITY has its own node/page layout.
 
-## Reading the results
+DFINITY has no `BTreeMapRegion`: that control reloads a BTreeMap from the same
+VirtualMemory for each operation. Storage uses its actual region API, which also
+loads the retained root per operation. Region key results are bounded owned
+snapshots on both sides. This is a documented wrapper comparison, not a claim
+that upstream supplies the same governance or region bounds.
 
-Each attempt retains evidence under `target/storage-comparison/attempt.*/`:
+`performance_counter(0)` surrounds collection operations, their IO, codecs,
+allocation, loops and result collection. Decoding the request, generating typed
+inputs, reserving output capacity, normalizing results, verification and encoding
+the reply are outside timing. Returned values stay live through the endpoint.
+Preparation can warm heap regions before the counter. Each measured call is a
+separate IC update; batches share that execution's tracking state. Controls are
+reported without automatic subtraction.
 
-- `report/summary.csv`: per-case upper-median instruction counts and the ratio
-  `storage_over_dfinity`; below 1 means Storage used fewer measured instructions.
-  `case`, `key_type`, `value_type` and `logical_value_bytes` identify each type/size.
-- `report/samples.jsonl`: individual requests, instruction counts, complete
-  results, lengths and physical stable-memory pages (64 KiB each).
-- `report/configuration.json`: selected case and measurement metadata.
-- Both Wasm artifacts, compiler identity, locked dependency selections, source
-  archive/hashes, pending tracked diff, build logs and managed server logs.
+The native ordered model checks every result and length, including displaced
+values, booleans, indexed writes and append/pop behavior. Final bounded queries
+compare all remaining contents. Raw samples are flushed before validation; a
+mismatch or trap fails the run, and no successful summary is written. Typed
+normalization happens after timing; Wire records normalize fields without their
+storage codec. Physical stable pages include metadata and reservation, not just
+payload bytes. The benchmark protocol admits four million traversal nodes and
+128 MiB of conservative allocation allowance so 512 KiB full-result responses fit;
+this allowance is not an actual allocation. Request/reply encoding is outside timing.
+Native regression tests round-trip the largest verification and grown-value
+responses under the same limits. Setup cost is excluded, but its allocation history remains.
 
-`performance_counter(0)` surrounds the collection operations, including their
-stable IO, codecs, allocation, loop and result collection. Request decoding,
-typed key/value preparation, result normalization, final validation and response encoding are outside the
-counter. Output capacity is reserved before measurement. Returned/displaced
-values remain live through the counter endpoint. Preparation can touch heap
-regions before measurement; this is not a complete endpoint instruction bill.
-All timings are instructions per measured call, not per returned row. A batch
-shares an execution's tracking state. Control rows expose loop overhead and are
-reported directly, never automatically subtracted.
+This matrix does not measure cold reopening for ordinary collections, setup,
+upgrades, rollback, randomized population histories, GiB maps, retained heap or
+complete application endpoints. Native B-tree tests additionally cover shuffled
+insert/delete histories; installed lifecycle qualification is a separate suite.
 
-Type selection dispatch occurs before the timer; traversal uses a concrete map.
-The expanded typed harness changes preparation and result handling relative to
-the original byte-vector-only harness. Treat saved earlier results as historical
-baselines, not a controlled before/after measurement of library changes.
+## Retained results
 
-Physical stable pages include directory/manager metadata and reservation; they
-are neither live payload size nor a heap footprint. The stock manager reserves
-bucket capacity differently from Storage. Setup costs are excluded, but setup's
-layout and capacity remain. Query verification runs only after measured work.
-There is no timing claim for native host wall-clock speed, Candid versus Wire,
-retained heap, large business records, upgrades, or complete application calls.
-Keep individual cases and raw samples: an aggregate ratio would hide workload
-differences. Installed correctness here supplements, not replaces, the separate
-IO, upgrade, rollback and corruption qualification suites.
+Each `target/storage-comparison/attempt.*/` contains:
+
+- `report/summary.csv`: per-case upper-median instructions and
+  `storage_over_dfinity` (below 1 means fewer Storage instructions), with explicit
+  structure/type/payload/operation/batch/access-pattern labels. The final two
+  columns report each backend's median physical stable pages after the operation.
+  Each page is 64 KiB; these are whole-canister high-water sizes, including manager
+  metadata and reserved capacity, not live payload bytes or allocation deltas.
+- `report/samples.jsonl`: requests, counts, full results, lengths and stable pages.
+- `report/configuration.json`: case operations, actual population and measurement
+  scope; both Wasm files, source archive/hashes, compiler identities, both locked
+  graphs, pending diff and build/server logs accompany the report.
+
+New cases, endpoint/range operations and result handling change the harness from
+the earlier map-only and 14-case experiments. Older results are historical evidence, not a controlled before/after
+speedup for the library. Compare the two backends within a matched current run;
+retain per-case regressions rather than averaging them into one score.

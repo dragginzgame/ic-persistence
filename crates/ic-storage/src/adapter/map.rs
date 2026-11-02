@@ -6,7 +6,7 @@ use crate::DefaultMemoryImpl;
 use crate::RuntimeMemory;
 use std::ops::RangeBounds;
 
-/// Governed ordered map backed by Storage’s owned AVL tree and reusable blocks.
+/// Governed ordered map backed by Storage’s owned B-tree and reusable blocks.
 pub struct StableBTreeMap<K: Storable + Ord + Clone, V: Storable, M: Memory = DefaultMemoryImpl> {
     inner: Tree<K, V, RuntimeMemory<M>>,
 }
@@ -95,7 +95,7 @@ impl<K: Storable + Ord + Clone, V: Storable, M: Memory> StableBTreeMap<K, V, M> 
     /// # Errors
     /// Reports structural, integrity or application decoding failures without writing.
     pub fn contains_key(&self, key: &K) -> Result<bool> {
-        Ok(self.inner.get(key)?.is_some())
+        self.inner.contains_key(key)
     }
     /// Perform `is_empty` on the governed ordered map.
     ///
@@ -145,8 +145,7 @@ impl<K: Storable + Ord + Clone, V: Storable, M: Memory> StableBTreeMap<K, V, M> 
     }
     /// Perform `keys` on the governed ordered map.
     pub fn keys(&self) -> impl DoubleEndedIterator<Item = Result<K>> + '_ {
-        self.iter()
-            .map(|entry| entry.map(super::MapEntry::into_key))
+        self.inner.keys_range(..)
     }
     /// Perform `values` on the governed ordered map.
     pub fn values(&self) -> impl DoubleEndedIterator<Item = Result<V>> + '_ {

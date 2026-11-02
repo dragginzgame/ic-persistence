@@ -1,0 +1,13 @@
+[package]
+name = "ic-storage-platform-qualification"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish = false
+
+# Deliberately compose the facade's runtime feature with Storage's backing.
+# This isolated consumer catches executor guard conflicts reported in #152.
+[dependencies]
+ic-platform = { workspace = true, features = ["runtime"] }
+ic-storage.workspace = true

@@ -22,16 +22,33 @@ perl "$shared/check-cargo-graph.pl" --consumer "$PWD" \
     --package ic-storage --package ic-metrics-storage --package ic-logging-storage \
     --target wasm32-unknown-unknown --edges normal --explain \
     --forbid pocket-ic --forbid-feature ic-storage/test-support \
-    --require ic-storage=1 --require ic-platform=1 --require ic-wire=1
+    --require ic-storage=1 --forbid ic-platform --require ic-platform-runtime=1 --require ic-wire=1
+perl "$shared/check-cargo-graph.pl" --consumer "$PWD" \
+    --package ic-storage --package ic-metrics-storage --package ic-logging-storage \
+    --target "$host" --edges normal --explain \
+    --forbid ic-platform --forbid ic-platform-runtime --forbid ic-platform-types --forbid ic-platform-runtime-guard
 # The native qualifier exchanges Platform/Wire types and opaque Wasm bytes;
 # it deliberately has no normal dependency on the local Memory/Storage crates.
 perl "$shared/check-cargo-graph.pl" --consumer "$PWD/testing/runtime-qualification" \
     --package ic-storage-runtime-qualification --target "$host" --edges normal --explain \
     --require ic-platform=1 --require ic-wire=1
+# A separate consumer selects the published facade runtime as an application would.
+# Keep this out of production-library graphs and the opaque-Wasm native driver.
+for target in "$host" wasm32-unknown-unknown; do
+    perl "$shared/check-cargo-graph.pl" --consumer "$PWD/testing/runtime-qualification" \
+        --package ic-storage-platform-qualification --target "$target" --edges normal --explain \
+        --require ic-storage=1 --require ic-platform=1 --require ic-platform-runtime=1 \
+        --require ic-platform-runtime-guard=1 --require ic-platform-types=1 \
+        --forbid ic-stable-structures --forbid pocket-ic
+done
 checkpoint "$evidence/before.json" "$evidence/graphs.json"
 cargo clippy --locked --offline --manifest-path Cargo.toml --target wasm32-unknown-unknown \
     --package ic-storage --package ic-metrics-storage --package ic-logging-storage --lib -- -D warnings
 cargo clippy --locked --offline --manifest-path testing/runtime-qualification/Cargo.toml \
     --package ic-storage-runtime-qualification --target "$host" --all-targets -- -D warnings
+for target in "$host" wasm32-unknown-unknown; do
+    cargo clippy --locked --offline --manifest-path testing/runtime-qualification/Cargo.toml \
+        --package ic-storage-platform-qualification --target "$target" --all-targets -- -D warnings
+done
 checkpoint "$evidence/before.json" "$evidence/final.json"
 echo 'Destination graphs and selected consumer compilation admitted; artifact/runtime/publication qualification remains separate.'

@@ -136,7 +136,12 @@ check-production-graph:
 		--forbid-pattern '^clap(?:_|$$)' \
 		--forbid pocket-ic --forbid serde_json --forbid toml --forbid trybuild \
 		--forbid-feature ic-storage/test-support \
-		--forbid ic-stable-structures --require ic-storage=1 --require ic-platform=1 --require ic-metrics=1 --require ic-logging=1 --require ic-wire=1
+		--forbid ic-stable-structures --require ic-storage=1 --forbid ic-platform --require ic-platform-runtime=1 --require ic-metrics=1 --require ic-logging=1 --require ic-wire=1
+
+	+RUSTUP_TOOLCHAIN=$(VALIDATION_TOOLCHAIN) RUSTUP_AUTO_INSTALL=0 perl scripts/ci/check-cargo-graph.pl \
+		--consumer "$(CURDIR)" --package ic-storage --package ic-metrics-storage --package ic-logging-storage \
+		--target "$$(rustc +$(VALIDATION_TOOLCHAIN) -vV | sed -n 's/^host: //p')" \
+		--forbid ic-platform --forbid ic-platform-runtime --forbid ic-platform-types --forbid ic-platform-runtime-guard
 
 # Install exact, checksum-verified tools separately; these checks are offline.
 lint-tooling: check-shellcheck-stage

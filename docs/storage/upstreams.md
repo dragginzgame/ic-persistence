@@ -15,7 +15,7 @@ See [Storage](../../crates/ic-storage/README.md) and
 Collections accept only admitted `RuntimeMemory` leases. `BTreeMapRegion` uses an
 `Rc<RuntimeMemory>` over a caller-selected page range and reloads the owned tree
 root per operation. Hosts must admit disjoint framing and update old `BTR`/`BTA`
-checks to the current `ICMAP001` contract. No region allocates another identity.
+checks to the current `ICMAP002` contract. No region allocates another identity.
 
 Shared Tooling owns the reviewed engineering baseline, formatting, setup and
 release runner. The snapshot remains unchanged by this rewrite. Build and Host
@@ -29,3 +29,25 @@ The test-support `fixture_runtime` performs the same namespace admission and
 bootstrap as production. Tests choose their own backing, stable keys and
 `StorageConfig`. Sibling repositories remain separately responsible for adopting
 the changed public types and explicit reset requirement.
+
+## B-tree design provenance
+
+The pending 0.65 engine applies the multi-entry B-tree design used by DFINITY's
+`ic-stable-structures` 0.7.2: minimum degree six, binary search within nodes,
+split/borrow/merge balancing and avoiding unrelated value reads. Reference
+implementation: `src/btreemap.rs`, `src/btreemap/node.rs` and
+`src/btreemap/node/v2.rs` in that published crate (DFINITY Foundation, Apache-2.0).
+No upstream source files are vendored and no production dependency is added.
+This is an independently implemented format, not a port of upstream bytes.
+
+Storage uses bottom-up splits and underflow repair with staged mutations, a
+checked compact routing encoding, inline values up to 32 bytes, and separately
+checksummed larger values. It retains its existing governed memory and reusable
+block allocator. DFINITY's exact node layout, overflow pages and bucket manager
+are not reproduced. The comparison harness measures these different stacks;
+results do not isolate the B-tree algorithm from allocation or integrity costs.
+
+`ICMAP002` requires explicit replacement of earlier map/set/region state.
+There is no legacy reader, implicit repair or automatic reset. Root loading
+validates framing and bounds without scanning all nodes. Key-only operations
+check routing records but deliberately do not audit external value payloads.

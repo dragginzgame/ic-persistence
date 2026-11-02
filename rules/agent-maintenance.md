@@ -189,9 +189,10 @@ skipped run; do not treat missing failure logs as a completed diagnosis.
   Apply the [shared dependency finding rule](engineering-details.md#shared-dependency-findings)
   to advisory and supplier defects instead of filing a waiting mirror per consumer.
 - Issue-posting authority and source-contribution authority are separate.
-  Relevant sibling repairs use the standing
-  [isolated PR workflow](contributions.md#cross-repository-pull-requests), including
-  its scoped commits and branch pushes; never edit sibling working checkouts
+  Explicitly requested sibling contributions use the
+  [isolated PR workflow](contributions.md#cross-repository-pull-requests); issue
+  authority does not authorize source work or unsolicited adoption PRs.
+  Never edit sibling working checkouts
   directly. Neither authority permits unrelated messages or release effects. A check request
   remains inspection; it does not authorize applying newly found local repairs.
   If another contributor owns an active edit or validation, coordinate before

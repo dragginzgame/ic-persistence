@@ -103,6 +103,15 @@ mod canister {
         let rows = open_memory(ROWS).unwrap();
         rows.grow(1).unwrap();
         rows.write(0, &[0x42]);
+        // Infrastructure-only backing checks: IC0 reports refusal as u64::MAX.
+        let backing = ic_storage::DefaultMemoryImpl::default();
+        let pages = backing.size();
+        assert_eq!(backing.grow(0), i64::try_from(pages).unwrap());
+        assert_eq!(backing.grow(u64::MAX), -1);
+        assert_eq!(backing.size(), pages);
+        let mut marker = [0];
+        rows.read(0, &mut marker);
+        assert_eq!(marker, [0x42]);
     }
 
     #[unsafe(export_name = "canister_post_upgrade")]

@@ -9,46 +9,48 @@ local baseline. Future policy changes require reviewed snapshot adoption.
 
 ## Current source selection
 
-IC Storage selects committed Shared Tooling VERSION 0.27.24 at
-`9275bf0de39ed941d81c47bab97eef7f6fc38df2`, with 81 explicit roots and 136 payloads.
-The source-only grouped bootstrap observer replaces the launcher's parallel
-manifest/lock parser. The launcher compares complete metadata byte identities
-again after tool admission and cache preparation, and verifies copied originals
-before using the managed editor in retained scratch. Its original source and
-receipt admission, compiler selection and explicit offline behavior remain owned
-by the native adapter. Normal release planning still requires a coherent graph.
-The snapshot was exported from the reviewed committed producer branch; dirty
-sibling source is excluded. Native acceptance is distinct from source selection.
-The canonical impact preview and refresh retain the reviewed selection. Source
-verification compares every payload and mode with that independent commit.
+IC Storage selects committed Shared Tooling VERSION 0.27.27 at
+`651f5f7acb2e3055abd51ba5f835a2112801666a`. The snapshot was previewed and exported
+from a clean checkout of that commit; dirty sibling changes are excluded. The
+manifest records the complete selected payload and executable-mode inventory.
+Source verification and native qualification remain separate.
 
-The adopted graph observer and captured validation-input checkpoint helper retain
-source-drift refusal and failure evidence. The Cargo publication adapter remains opt-in. The native consumer retains its
-qualified checksum/retry checks and selects only its declared release group.
-The approved policy is `ci/cargo-release-groups.json`: Storage owns the persistence group,
-and each stable adapter owns an independent version. All member versions are
-literal; each primary owns only its group. Canonical ledgers live under
-`releases/<group>/`, with a root index and `releases/history.md`. Release/resume
-and publication require explicit group selection. Example support now uses ordinary module discovery. Source-level lint
-exceptions use scoped expectations; the existing Cargo-table style policy was
-reviewed and its configuration-dependent ownership/documentation/naming reasons
-are recorded at their shared configuration scope. No lint level, host/IC tool catalog,
-formatter pin or maintenance activation changed.
+This adoption includes Shared's package-scoped native tool identity and explicit
+tool-store maintenance support. Setup may trim its own successful build scratch;
+no historical tool generation or retained qualification evidence is reclaimed.
+The new release-group validation plan is opt-in and is not enabled here: the
+consumer retains its existing complete release gate and native release adapter.
+The bootstrap observer, source-drift refusal and captured validation-input
+checkpoints remain selected. Common formatter, compiler and host-tool pins are
+unchanged; Rust 1.99.1 remains both the support floor and development compiler.
 
-The production and independent runtime catalogs select Platform 0.17.0. Storage selects Platform's stable-memory runtime API for Wasm backing IO; the
-owned allocator and collections no longer select the stable-structures facade.
-Logging's Wasm qualification entrypoints select the independent Runtime
-0.17.1 and canonical Types 0.16.0. The native qualifier consumes Platform's owned
-PocketIC client 0.17.0, retaining the 16.1 HTTP/JSON protocol and Testkit-selected
+Production Storage imports `ic-platform-runtime` 0.18.0 only on Wasm. Native
+production selects no Platform/Runtime, runtime guard or Types provider. Wasm
+production still needs `ic0` and `runtime`: Runtime 0.18 publicly exposes only
+stable-memory size through `ic0`; grow/read/write are private there and available
+publicly through CDK. [Platform #135](https://github.com/dragginzgame/ic-platform/issues/135)
+tracks exposing those existing wrappers without execution/type activation. Until
+a published owner release is adopted, Storage's Wasm backing still enables the
+executor, guard and Types; the optional execution boundary is not yet restored.
+Logging's Wasm qualification entrypoints explicitly select CDK as a dev dependency.
+The separate unpublished `ic-storage-platform-qualification` consumer composes
+candidate Storage with the facade's `runtime` feature for issue #152. Adoption
+checks require one canonical Runtime/guard on native and Wasm and compile both
+graphs; its native test checks governed cell creation/reopen. This is source
+qualification, not evidence that registry Storage 0.64.0 has been repaired.
+The native qualifier uses Platform 0.18.0's
+owned PocketIC client 0.18.0, retaining the 16.1 protocol and Testkit-selected
 server 16.1.0. No direct registry client declarations or conversion layer are added.
-Testkit Native 0.78.0 shares Platform 0.17.0 for measurement helpers, removing
-the dev-only Platform 0.16 provider. Production admission still requires
-exactly one Platform provider. Optional crypto/certification profiles remain
-unselected; no cryptographic compiler flag or codec migration is introduced.
+
+Platform 0.18 removed its stable-structures facade. The unpublished comparison
+benchmark alone retains an explicitly named `ic-platform-stable-benchmark` alias
+for Platform 0.17, with only its `stable-structures` feature. Its system calls use
+Runtime 0.18 and its native driver uses Platform 0.18. Production has no upstream
+collection dependency. Optional crypto/certification profiles remain unselected.
 
 Both catalogs retain compatible Wire 0.14.0 requirements; their lockfiles select
-Wire/Derive 0.14.2. The library graph selects Testkit Native 0.78.0; installed
-qualification selects Testkit CLI 0.78.0. Wire endpoint and platform-types
+Wire/Derive 0.14.2. The library graph selects Testkit Native 0.79.0; installed
+qualification selects Testkit CLI 0.79.0. Wire endpoint and platform-types
 integration remain unselected. Public
 codec errors now expose the Wire 0.14 Rust identity; bytes, budgets and restoration
 contracts remain unchanged. Metrics 0.26.0 aligns default native schema
@@ -61,12 +63,10 @@ identity. Hosts must align their direct supplier dependencies. Both suppliers no
 share this repository's Rust 1.99.1 floor; arithmetic, logging semantics, encoded
 records and runtime ownership remain unchanged.
 
-The library lock retains incoming Build/Host 0.73.6 while the selected Build editor remains
-0.73.3. The direct Build requirement is 0.73.5 for composable archive qualification.
-The library lock selects Testkit Native 0.78.0; the CLI selects 0.78.0 with the
-unchanged server 16.1.0 selection. Common tool pins, local
-package versions remain unchanged. The Shared source selection above separately
-owns the bootstrap observer adoption.
+The library and selected metadata editor use Build 0.74.0. Host Artifacts, FS and
+Process select 0.74.1. Testkit Native and the installed CLI select 0.79.0, with
+server 16.1.0 unchanged. Local package versions are unchanged; this is dependency
+and source adoption, not a release.
 
 The library [dependency catalog](../Cargo.toml) owns direct package requirements
 and feature selections; its [lockfile](../Cargo.lock) owns resolved identities.
@@ -76,8 +76,8 @@ host graph. The [Build editor pin](../ci/release-tools.env) and
 [Testkit CLI pin](../ci/runtime-tools.env) select executables independently.
 Read those owners for versions rather than copying their inventories here.
 
-The production graph admits one Platform provider and forbids
-`ic-stable-structures`, as declared in [the local overlay](../AGENTS.md). Library admission,
+The Wasm production graph admits one Runtime provider and forbids the
+Platform facade and `ic-stable-structures`, as declared in [the local overlay](../AGENTS.md). Library admission,
 executable setup/check and installed qualification remain separate authorities.
 Selection alone does not establish acceptance or permit relabelling older proof.
 The [release ledger](../CHANGELOG.md) and [current handoff](status/current.md)

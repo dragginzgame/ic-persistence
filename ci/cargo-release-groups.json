@@ -13,7 +13,7 @@
         "ic-storage"
       ],
       "metadata_files": [
-        "releases/storage/0.64.md",
+        "releases/storage/0.65.md",
         "testing/runtime-qualification/Cargo.toml",
         "testing/runtime-qualification/Cargo.lock"
       ]

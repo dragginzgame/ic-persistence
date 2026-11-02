@@ -106,17 +106,17 @@ pub struct DefaultMemoryImpl {
 #[cfg(target_arch = "wasm32")]
 impl Memory for DefaultMemoryImpl {
     fn size(&self) -> u64 {
-        ic_platform::ic0::stable64_size()
+        ic_platform_runtime::ic0::stable64_size()
     }
     fn grow(&self, pages: u64) -> i64 {
-        ic_platform::cdk::stable::stable_grow(pages).map_or(-1, |previous| {
+        ic_platform_runtime::cdk::stable::stable_grow(pages).map_or(-1, |previous| {
             i64::try_from(previous).expect("IC page count")
         })
     }
     fn read(&self, offset: u64, bytes: &mut [u8]) {
-        ic_platform::cdk::stable::stable_read(offset, bytes);
+        ic_platform_runtime::cdk::stable::stable_read(offset, bytes);
     }
     fn write(&self, offset: u64, bytes: &[u8]) {
-        ic_platform::cdk::stable::stable_write(offset, bytes);
+        ic_platform_runtime::cdk::stable::stable_write(offset, bytes);
     }
 }

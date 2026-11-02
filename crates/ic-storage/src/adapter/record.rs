@@ -18,6 +18,11 @@ const LIMITS: ic_wire::Limits = ic_wire::Limits {
 
 pub fn encode<T: Serialize>(magic: [u8; 8], value: &T) -> Result<Vec<u8>> {
     let payload = ic_wire::native::encode(value, LIMITS)?;
+    encode_payload(magic, &payload)
+}
+
+pub fn encode_payload(magic: [u8; 8], payload: &[u8]) -> Result<Vec<u8>> {
+    ensure(payload.len() <= MAX_RECORD, Error::Budget)?;
     let mut bytes = Vec::with_capacity(PREFIX + payload.len());
     bytes.extend_from_slice(&magic);
     bytes.extend_from_slice(
@@ -25,12 +30,19 @@ pub fn encode<T: Serialize>(magic: [u8; 8], value: &T) -> Result<Vec<u8>> {
             .map_err(|_| Error::Budget)?
             .to_le_bytes(),
     );
-    bytes.extend_from_slice(&hash::fnv64(hash::FNV_OFFSET, &payload).to_le_bytes());
-    bytes.extend_from_slice(&payload);
+    bytes.extend_from_slice(&hash::fnv64(hash::FNV_OFFSET, payload).to_le_bytes());
+    bytes.extend_from_slice(payload);
     Ok(bytes)
 }
 
 pub fn decode<T: DeserializeOwned>(magic: [u8; 8], bytes: &[u8]) -> Result<T> {
+    Ok(ic_wire::native::decode(
+        decode_payload(magic, bytes)?,
+        LIMITS,
+    )?)
+}
+
+pub fn decode_payload(magic: [u8; 8], bytes: &[u8]) -> Result<&[u8]> {
     ensure(bytes.len() >= PREFIX && bytes[..8] == magic, Error::Format)?;
     let length = u32::from_le_bytes(bytes[8..12].try_into().unwrap()) as usize;
     ensure(
@@ -43,7 +55,7 @@ pub fn decode<T: DeserializeOwned>(magic: [u8; 8], bytes: &[u8]) -> Result<T> {
         hash::fnv64(hash::FNV_OFFSET, payload) == digest,
         Error::Checksum,
     )?;
-    Ok(ic_wire::native::decode(payload, LIMITS)?)
+    Ok(payload)
 }
 
 pub fn read<T: DeserializeOwned>(
@@ -52,6 +64,16 @@ pub fn read<T: DeserializeOwned>(
     capacity: u64,
     magic: [u8; 8],
 ) -> Result<T> {
+    let bytes = read_bytes(memory, offset, capacity, magic)?;
+    decode(magic, &bytes)
+}
+
+pub fn read_bytes(
+    memory: &impl Memory,
+    offset: u64,
+    capacity: u64,
+    magic: [u8; 8],
+) -> Result<Vec<u8>> {
     ensure(capacity >= PREFIX as u64, Error::Budget)?;
     let end = offset.checked_add(capacity).ok_or(Error::Budget)?;
     ensure(
@@ -69,7 +91,7 @@ pub fn read<T: DeserializeOwned>(
     let mut bytes = vec![0; PREFIX + length];
     bytes[..PREFIX].copy_from_slice(&prefix);
     memory.read(offset + PREFIX as u64, &mut bytes[PREFIX..]);
-    decode(magic, &bytes)
+    Ok(bytes)
 }
 
 pub fn reserve(memory: &impl Memory, bytes: u64) -> Result<()> {

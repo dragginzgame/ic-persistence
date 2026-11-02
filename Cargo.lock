@@ -233,9 +233,9 @@ checksum = "2304e00983f87ffb38b55b444b5e3b60a884b5d30c0fca7d82fe33449bbe55ea"
 
 [[package]]
 name = "ic-build"
-version = "0.73.6"
+version = "0.74.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e94ae68b8a7893e9e7cee0f0f5e583493b80ca64b2dc59efe18e2398dc3d2a32"
+checksum = "ca614edaab68ad6a67963a6e822fe3531269f1ffcf43266bc3da76c8e4ce228e"
 dependencies = [
  "cargo_metadata",
  "ic-host-artifacts",
@@ -252,18 +252,18 @@ dependencies = [
 
 [[package]]
 name = "ic-host-artifacts"
-version = "0.73.6"
+version = "0.74.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "499c5dcde4cc97e49f2f653e6234639752f9b179ae387c6872ee6e5cc194fdce"
+checksum = "c6dd0344ca1c055fbf0f6a6f9a050a68f5cb8f9456d6d5bcef4f9ed97c8190a4"
 dependencies = [
  "sha2",
 ]
 
 [[package]]
 name = "ic-host-fs"
-version = "0.73.6"
+version = "0.74.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ff18ef5150d939d6789e6b16cf174fc792e5267fbe39e94b1564f4a9e94c929d"
+checksum = "a1cb75dfee73b1dcd609a559ddcd1f0d7c2933047c89a9e2d6a8a33c8b7acb12"
 dependencies = [
  "ic-host-artifacts",
  "rustix",
@@ -272,9 +272,9 @@ dependencies = [
 
 [[package]]
 name = "ic-host-process"
-version = "0.73.6"
+version = "0.74.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c4e77b081784d8c08ec11b49ebd62489debbabe38c52d2e9bd0abcaa4230267f"
+checksum = "fe482a2bae4eeda3c6e8b632e3f41235fe3752ef23557526fe57b6e41a5bf826"
 dependencies = [
  "command-fds",
  "ic-host-artifacts",
@@ -294,7 +294,7 @@ name = "ic-logging-storage"
 version = "0.63.0"
 dependencies = [
  "ic-logging",
- "ic-platform",
+ "ic-platform-runtime",
  "ic-storage",
  "ic-wire",
  "serde",
@@ -323,23 +323,10 @@ dependencies = [
 ]
 
 [[package]]
-name = "ic-platform"
-version = "0.17.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "813bed7d93c0adc82b80157f4ccbb0b31260f8764fa3b7695fadaf9bcd14e241"
-dependencies = [
- "ic-platform-macros",
- "ic-platform-runtime",
- "ic-platform-types",
- "serde",
- "thiserror",
-]
-
-[[package]]
 name = "ic-platform-macros"
-version = "0.17.1"
+version = "0.18.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6525d655d3c12193ab16ff10bf8d2a243e03d216d9bad5c26fafbdb42dbbc265"
+checksum = "510b03d62a3834122a99c0aac95c0b8751d6797273c95728d02e7fc27cc58860"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -348,10 +335,11 @@ dependencies = [
 
 [[package]]
 name = "ic-platform-runtime"
-version = "0.17.1"
+version = "0.18.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "67e0cef9c254622a92fadff2cc0ef287fa4fe2a489328a97ac4740de00a71f04"
+checksum = "4fdb0b3fee215166a704b9eb6be076adbf9d406e1b9156e65a9ee53abe6b5489"
 dependencies = [
+ "ic-platform-macros",
  "ic-platform-runtime-guard",
  "ic-platform-types",
  "pin-project-lite",
@@ -362,15 +350,15 @@ dependencies = [
 
 [[package]]
 name = "ic-platform-runtime-guard"
-version = "0.17.1"
+version = "0.18.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "da0f88de21b948fe5c27e9c695c0c998a413128fecdfc97b26b1348aebeaf7cd"
+checksum = "090fa416214c28a07a51cb87da73e4dc125f32b9fdbb05cd5af7907ec890b414"
 
 [[package]]
 name = "ic-platform-types"
-version = "0.16.0"
+version = "0.17.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "235a930ed63426af24eaac83d8e164e051ee4f1113ae225acbbea6f61fd34198"
+checksum = "93be2c8e9d20de7c0b45960689a5f0cf759a385b470affc7cad5bbf43fb1d892"
 dependencies = [
  "crc32fast",
  "data-encoding",
@@ -387,7 +375,7 @@ dependencies = [
  "ic-host-artifacts",
  "ic-host-fs",
  "ic-host-process",
- "ic-platform",
+ "ic-platform-runtime",
  "ic-testkit-native",
  "ic-wire",
  "serde",
@@ -399,9 +387,9 @@ dependencies = [
 
 [[package]]
 name = "ic-testkit-native"
-version = "0.78.0"
+version = "0.79.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ee32015ff74f8c5c665c4b27c803d131686e5df003a7514b82e74fe241ef4d69"
+checksum = "44723e730d836cb558315f5b7c58b6b74b01a386c6af7bb0bf2466be15ee367f"
 
 [[package]]
 name = "ic-wire"

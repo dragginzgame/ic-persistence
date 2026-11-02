@@ -178,8 +178,7 @@ impl<K: Storable + Ord + Clone, V: Storable, M: Memory> BTreeMapRegion<K, V, M> 
         }
         Ok(self
             .current_map()?
-            .range(bounds)
-            .map(|entry| entry.map(super::MapEntry::into_key))
+            .keys_range(bounds)
             .take(limit)
             .collect::<CollectionResult<Vec<_>>>()?
             .into_iter())

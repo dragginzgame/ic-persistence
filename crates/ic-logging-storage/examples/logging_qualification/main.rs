@@ -8,7 +8,7 @@ mod canister {
     use super::protocol::{self, Append, Outcome, Reply, Row, Snapshot, Update, Upgrade};
     use ic_logging::{AppendError, EntryInput, Level, Limits, Log};
     use ic_logging_storage::{LogIdentity, LogKey, LoggingStore, StoreError};
-    use ic_platform::cdk;
+    use ic_platform_runtime::cdk;
     use ic_storage::adapter::StableBTreeMap;
     use ic_storage::{DefaultMemoryImpl, MemoryRuntime, StorageConfig, testing::fixture_runtime};
     use ic_wire::native;
@@ -38,7 +38,7 @@ mod canister {
         required(LogKey::new("fixture", "worker"))
     }
     fn admit() -> Result<(), String> {
-        if ic_platform::ic0::msg_arg_data_size() > protocol::REQUEST.bytes {
+        if ic_platform_runtime::ic0::msg_arg_data_size() > protocol::REQUEST.bytes {
             return Err("logging fixture frame limit".into());
         }
         Ok(())

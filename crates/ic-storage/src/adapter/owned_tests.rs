@@ -110,6 +110,7 @@ struct FaultMemory {
     refuse: Rc<Cell<bool>>,
     fail_write: Rc<Cell<bool>>,
     reads: Rc<Cell<usize>>,
+    read_bytes: Rc<Cell<usize>>,
     writes: Rc<Cell<usize>>,
 }
 impl Memory for FaultMemory {
@@ -125,6 +126,7 @@ impl Memory for FaultMemory {
     }
     fn read(&self, offset: u64, dst: &mut [u8]) {
         self.reads.set(self.reads.get() + 1);
+        self.read_bytes.set(self.read_bytes.get() + dst.len());
         self.memory.read(offset, dst);
     }
     fn write(&self, offset: u64, bytes: &[u8]) {
@@ -143,8 +145,8 @@ fn replacement_and_scans_have_bounded_backing_traffic() {
     }
     backing.writes.set(0);
     assert_eq!(tree.insert(0, vec![2; 32]).unwrap(), Some(vec![1; 32]));
-    // An in-place leaf replacement writes its record and protected root only.
-    assert_eq!(backing.writes.get(), 2);
+    // In-place replacement does not rewrite unchanged root/allocation metadata.
+    assert_eq!(backing.writes.get(), 1);
     assert_eq!(tree.len(), 255);
     for reverse in [false, true] {
         backing.reads.set(0);
@@ -286,4 +288,64 @@ fn tree_variable_records_match_model_across_relocation_removal_and_reopen() {
         tree::Tree::<u64, Vec<u8>, _>::load(backing).unwrap().len(),
         0
     );
+}
+
+#[test]
+fn routing_and_key_scans_do_not_read_external_value_payloads() {
+    let backing = FaultMemory::default();
+    let mut tree = tree::Tree::<u64, Vec<u8>, _>::reset(backing.clone()).unwrap();
+    for key in 0..200 {
+        tree.insert(key, vec![u8::try_from(key).unwrap(); 16_384])
+            .unwrap();
+    }
+    backing.read_bytes.set(0);
+    assert!(!tree.contains_key(&201).unwrap());
+    assert!(backing.read_bytes.get() < 8192);
+    backing.read_bytes.set(0);
+    assert_eq!(
+        tree.keys_range(..).collect::<Result<Vec<_>, _>>().unwrap(),
+        (0..200).collect::<Vec<_>>()
+    );
+    assert!(backing.read_bytes.get() < 32_768);
+    backing.read_bytes.set(0);
+    assert_eq!(tree.get(&199).unwrap(), Some(vec![199; 16_384]));
+    assert!(backing.read_bytes.get() < 24_576);
+}
+
+#[test]
+fn btree_variable_keys_split_merge_and_collapse_match_model() {
+    let backing = VectorMemory::default();
+    let mut tree = tree::Tree::<String, Vec<u8>, _>::reset(backing.clone()).unwrap();
+    let mut model = BTreeMap::new();
+    for pass in 0..3 {
+        for id in (0..1500).map(|i| (i * 997) % 1500) {
+            let key = format!("{id:05}/{}", "k".repeat(id % 129));
+            let value = vec![pass; [0, 8, 32, 33, 1024][id % 5]];
+            assert_eq!(
+                tree.insert(key.clone(), value.clone()).unwrap(),
+                model.insert(key, value)
+            );
+        }
+        drop(tree);
+        tree = tree::Tree::load(backing.clone()).unwrap();
+        assert_eq!(
+            tree.range(..)
+                .map(|e| e.unwrap().into_pair().unwrap())
+                .collect::<Vec<_>>(),
+            model
+                .iter()
+                .map(|(k, v)| (k.clone(), v.clone()))
+                .collect::<Vec<_>>()
+        );
+        for id in (0..1500).map(|i| (i * 991) % 1500) {
+            let key = format!("{id:05}/{}", "k".repeat(id % 129));
+            assert_eq!(tree.remove(&key).unwrap(), model.remove(&key));
+            if id % 127 == 0 {
+                drop(tree);
+                tree = tree::Tree::load(backing.clone()).unwrap();
+            }
+        }
+        assert_eq!(tree.len(), 0);
+        assert!(tree.range(..).next().is_none());
+    }
 }

@@ -30,18 +30,27 @@ case "$1" in
         if [[ "${ADOPTION_FAILURE:-}" == independent-metadata && "$*" == *testing/runtime-qualification* ]]; then exit 24; fi
         ;;
     tree)
-        if [[ "$PWD" == */testing/runtime-qualification ]]; then
+        if [[ "$*" == *ic-storage-platform-qualification* ]]; then
+            printf 'ic-storage-platform-qualification v0.0.0\nic-storage v0.64.0\nic-platform v0.18.0\nic-platform-runtime v0.18.0\nic-platform-runtime-guard v0.18.0\nic-platform-types v0.17.0\n'
+            [[ "${ADOPTION_FAILURE:-}" != composition-policy ]] || printf 'ic-platform-runtime-guard v0.17.1\n'
+        elif [[ "$PWD" == */testing/runtime-qualification ]]; then
             printf 'ic-storage-runtime-qualification v0.0.0\nic-platform v0.16.0\nic-wire v0.13.3\n'
             [[ "${ADOPTION_FAILURE:-}" != independent-policy ]] || printf 'ic-platform v0.15.3\n'
         else
-            printf 'ic-storage v0.60.7\nic-metrics-storage v0.61.5\nic-logging-storage v0.60.5\nic-platform v0.16.0\nic-wire v0.13.3\n'
-            [[ "${ADOPTION_FAILURE:-}" != runtime-policy ]] || printf 'ic-platform v0.15.3\n'
+            printf 'ic-storage v0.60.7\nic-metrics-storage v0.61.5\nic-logging-storage v0.60.5\nic-wire v0.13.3\n'
+            if [[ "$*" == *wasm32-unknown-unknown* ]]; then
+                printf 'ic-platform-runtime v0.18.0\n'
+                [[ "${ADOPTION_FAILURE:-}" != runtime-policy ]] || printf 'ic-platform-runtime v0.17.1\n'
+            else
+                [[ "${ADOPTION_FAILURE:-}" != native-runtime ]] || printf 'ic-platform-runtime v0.18.0\n'
+            fi
         fi
         [[ "${ADOPTION_FAILURE:-}" != plausible-tree ]] || exit 25
         ;;
     clippy)
         printf 'plausible passing lint output\n'
         if [[ "${ADOPTION_FAILURE:-}" == root-lint && "$*" != *testing/runtime-qualification* ]]; then exit 26; fi
+        if [[ "${ADOPTION_FAILURE:-}" == composition-lint && "$*" == *ic-storage-platform-qualification* ]]; then exit 28; fi
         if [[ "${ADOPTION_FAILURE:-}" == independent-lint && "$*" == *testing/runtime-qualification* ]]; then exit 27; fi
         ;;
     *) exit 99 ;;
@@ -52,13 +61,14 @@ export PATH="$fixture/bin:$PATH"
 cd "$fixture/source"
 : > "$ADOPTION_CALLS"
 make -j4 --no-print-directory check-dependency-adoption > "$fixture/success.log" 2>&1
-[[ "$(wc -l < "$ADOPTION_CALLS")" == 6 ]]
-awk 'NR<=2 && $1!="metadata" {exit 1} NR>2 && NR<=4 && $1!="tree" {exit 1} NR>4 && $1!="clippy" {exit 1}' "$ADOPTION_CALLS"
-for failure in root-metadata independent-metadata runtime-policy independent-policy plausible-tree root-lint independent-lint; do
+[[ "$(wc -l < "$ADOPTION_CALLS")" == 11 ]]
+awk 'NR<=2 && $1!="metadata" {exit 1} NR>2 && NR<=7 && $1!="tree" {exit 1} NR>7 && $1!="clippy" {exit 1}' "$ADOPTION_CALLS"
+for failure in root-metadata independent-metadata runtime-policy native-runtime independent-policy composition-policy plausible-tree root-lint independent-lint composition-lint; do
     : > "$ADOPTION_CALLS"
     if ADOPTION_FAILURE="$failure" make -j4 --no-print-directory check-dependency-adoption > "$fixture/$failure.log" 2>&1; then exit 1; fi
     case "$failure" in
         root-lint) [[ "$(rg -c '^clippy ' "$ADOPTION_CALLS")" == 1 ]] ;;
+        composition-lint) [[ "$(rg -c '^clippy ' "$ADOPTION_CALLS")" == 3 ]] ;;
         independent-lint) [[ "$(rg -c '^clippy ' "$ADOPTION_CALLS")" == 2 ]] ;;
         *) if rg -q '^clippy ' "$ADOPTION_CALLS"; then exit 1; fi ;;
     esac

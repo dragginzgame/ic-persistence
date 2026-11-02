@@ -25,8 +25,10 @@ ic-testkit-native.workspace = true
 [features]
 test-support = []
 
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+ic-platform-runtime = { workspace = true, features = ["ic0", "runtime"] }
+
 [dependencies]
-ic-platform = { workspace = true, features = ["ic0", "runtime"] }
 ic-wire.workspace = true
 serde.workspace = true
 thiserror.workspace = true

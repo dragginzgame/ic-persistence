@@ -10,16 +10,18 @@ not depend on `ic-stable-structures`. Rust 1.99.1 or later is required.
 | Public type | Implementation | Known sibling use |
 | --- | --- | --- |
 | `StableCell` | Cached singleton with explicit create/load/reset | Canic, Blob |
-| `StableBTreeMap` | Owned AVL ordered tree with reusable blocks | Canic, IcyDB, Blob, Relay, Metrics and Logging Storage |
+| `StableBTreeMap` | Owned degree-six B-tree with reusable blocks | Canic, IcyDB, Blob, Relay, Metrics and Logging Storage |
 | `StableBTreeSet` | The same ordered-tree engine with unit values | Blob deletions |
 | `StableVec` | Fixed-stride indexed slots with bounded values | Canic templates and authentication |
 | `BTreeMapRegion` | Operation-local view of the owned tree inside a leased page range | IcyDB control storage |
 
-The map retains its public ordered-map name; its implementation is an AVL tree,
-not a copy of the upstream B-tree. Stable Log and Min-heap are outside the scope.
-Map and set iterators support forward/reverse traversal and ordered bounds.
-Iterators retain bounded pointer stacks after the initial seek, with linear
-traversal work across a scan and no retained ancestor payloads.
+Map, Set and regions share one B-tree with up to eleven entries per node.
+Values up to 32 encoded bytes stay inline; larger values occupy separate
+checksummed blocks. Routing reads skip external values; lookups load matching
+values and value-producing scans load candidate payloads.
+Membership and key-only scans do not load external values. Iterators keep bounded
+routing-node stacks and support forward/reverse traversal. Stable Log and Min-heap
+remain outside the scope.
 
 `ic_storage::adapter` exports these collections, `MapIter`, `SetIter`, `MapEntry`,
 `RegionGrowError`, `CollectionError`, `CodecError`, and the owned `Memory`, `Storable`, `Bound` and `storable`
@@ -56,7 +58,9 @@ only allocation governance while retaining unmanaged application data. Rebuild
 consumers against Storage's owned codec and backing traits. Primitive numeric
 codecs are little-endian; application codecs remain application-owned.
 
-The root directory, map metadata/nodes and vector root use bounded IC Wire.
+The root directory, map allocator metadata and vector root use bounded IC Wire.
+B-tree routing nodes use checked binary fields; external values retain their
+application encoding. Both have separate checksummed envelopes.
 Checksums detect accidental corruption, not hostile changes by linked code.
 Map node records have a 16 MiB encoded limit. Vector records require a finite
 `Storable::BOUND`; each slot reserves its maximum width. Cell supports unbounded
@@ -83,14 +87,17 @@ leave prior values intact. Native backing writes are not transactions. A backing
 failure poisons the shared allocation owner; drop it and its leases before
 reopening. Installed Wasm traps follow the host's rollback semantics.
 
-Maps stage the affected AVL nodes and allocator metadata before writing, publish
-the root last, and reuse power-of-two blocks on removal or replacement. `clear`
-reuses the allocation from its data start. They do not load the complete map
-into heap. This implementation has correctness qualification, not a production
-performance-equivalence claim. Node reads still include encoded values; hosts
-should measure their large-record and scan workloads. Existing-key replacements
-skip unchanged ancestors and do not rebalance the tree. Two-child deletion
-extracts and rebalances the successor path once, without searching for it again.
+Maps stage affected B-tree nodes, values and allocator metadata before writing,
+and publish changed root metadata last. Power-of-two blocks are reused after
+removal or relocation. In-place replacements skip unchanged ancestors and root
+metadata. `clear` reuses the allocation from its data start. Splits, sibling
+borrowing, merging and root collapse keep the tree balanced. These algorithms
+follow established B-tree practice; see [design provenance](../../docs/storage/upstreams.md).
+
+The pending 0.65 map format is `ICMAP002`. It does not read 0.64's `ICMAP001`
+AVL images. Hosts must explicitly rebuild/reset Map, Set and region state and
+update their framing admission. There is no automatic reset or compatibility
+reader. The directory, Cell and Vector formats and public Rust APIs are unchanged.
 
 `reserve_pages` takes an absolute virtual extent in 65,536-byte pages, not entry
 capacity. `allocated_pages` observes that extent while retaining the lease.
@@ -102,7 +109,7 @@ extraction.
 `BTreeMapRegion::new(Rc<RuntimeMemory<M>>, start..end)` selects a disjoint page
 range within one admitted allocation. Construction performs no IO. `initialize`
 requires an empty region. Operations load the current owned root, allowing
-views to interleave without stale caches. The current marker is `ICMAP001`;
+views to interleave without stale caches. The current marker is `ICMAP002`;
 old upstream `BTR`/`BTA` framing is unsupported. IcyDB must update its framing
 admission together with fresh storage for this hard cut.
 
@@ -115,3 +122,16 @@ the last shared lease owner before reopening that allocation.
 See [allocation and host integration](ALLOCATION.md).
 
 Licensed under MIT; see LICENSE.
+
+## Native memory metering
+
+Enable `test-support` and use `ic_storage::testing::{MeteredMemory, MemoryIoCounts}`
+for native backing IO observations. The wrapper implements Storage's `Memory`
+and delegates `MemoryBacking` identity to the underlying backing, preserving
+exclusive runtime custody across raw, wrapped and cloned aliases. Counters are
+shared by clones; `reset()` clears observations without clearing bytes. Reads
+and writes count attempts, while growth counts completed calls and successful
+requested pages. Counters saturate and set `overflowed`; reject overflowed results
+when reporting exact measurements. These observations are native IO counts,
+not IC instruction or cycle costs. Allocation measurement remains in
+`ic-testkit-native`.
