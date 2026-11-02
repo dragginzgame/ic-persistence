@@ -1,21 +1,25 @@
 # Installed runtime qualification
 
 This independent virtual workspace contains the unpublished host package
-`crates/ic-memory-runtime-qualification/` and owns its separate `Cargo.lock`.
+`crates/ic-storage-runtime-qualification/` and owns its separate `Cargo.lock`.
+It also contains the explicitly selected [Storage/DFINITY map comparison](crates/ic-storage-benchmarks/README.md).
+The default member remains the qualification runner; normal runtime qualification
+does not build or run the comparison.
 The package keeps PocketIC dependencies out of
 the library's normal graph. It installs the supplied
-[`wasm-io-qualification`](../../crates/ic-memory/examples/wasm_io_qualification.rs) fixture in a
+[`wasm-io-qualification`](../../crates/ic-storage/examples/wasm_io_qualification.rs) fixture in a
 caller-owned server selected by IC Testkit. The Storage-owned
 [`wasm-storage-qualification`](../../crates/ic-storage/examples/wasm_storage_qualification.rs)
-fixture additionally checks maps, bounded cells and region scans through successful
-upgrades and rollback of trapped updates/upgrades. It never starts or downloads a server.
+fixture additionally checks Cell, Map, Set, Vector and map regions across 1,031
+named allocations through successful upgrades and rollback of trapped
+updates/upgrades. It never starts or downloads a server.
 The Logging-owned
-[`wasm-logging-qualification`](../../crates/ic-logging-stable/examples/logging_qualification/main.rs)
+[`wasm-logging-qualification`](../../crates/ic-logging-storage/examples/logging_qualification/main.rs)
 fixture checks query non-persistence, update/upgrade rollback, canonical reopen
 and watermarks after pruning every row. Its bounded native Wire protocol is shared
 with the host runner; it installs no library endpoint or lifecycle hook.
-Memory and Storage also share fixture-only bounded Wire contracts with the
-runner in [`io_protocol.rs`](../../crates/ic-memory/examples/support/io_protocol.rs)
+Allocation and collection fixtures also share fixture-only bounded Wire contracts with the
+runner in [`io_protocol.rs`](../../crates/ic-storage/examples/support/io_protocol.rs)
 and [`qualification_protocol.rs`](../../crates/ic-storage/examples/support/qualification_protocol.rs).
 Requests and responses bind method identities, including unit requests and
 installation/upgrade arguments. Their limits are 128 encoded bytes, 4,096
@@ -43,11 +47,12 @@ dependency caches separately.
 
 For the focused Logging proof, run `make test-runtime-logging` after preparing
 the server and both dependency caches. It builds and installs only the original
-Logging Wasm; it requires no optimizer and skips the Memory/Storage runtime suites.
+Logging Wasm; it requires no optimizer and skips the allocation/collection runtime suites.
 The full `make test-runtime` includes Logging in each optimization variant.
 
-Use the [qualification record](../../docs/runtime-io-qualification.md) for
-inputs, commands, observed results and remaining limitations. The `IC_MEMORY_QUALIFICATION_WASM`, `IC_STORAGE_QUALIFICATION_WASM`, `IC_LOGGING_QUALIFICATION_WASM`
+Use the [current handoff](../../docs/status/current.md) for the owned-engine
+qualification and limitations. The [earlier record](../../docs/runtime-io-qualification.md)
+retains historical source/format-specific evidence. The `IC_MEMORY_QUALIFICATION_WASM`, `IC_STORAGE_QUALIFICATION_WASM`, `IC_LOGGING_QUALIFICATION_WASM`
 paths and `IC_TESTKIT_POCKET_IC_URL` are required when invoking the runner
 directly. `--measure-valid-io` skips the rejection
 and upgrade checks and does not require the Storage fixture; its output alone is not qualification evidence.

@@ -1,10 +1,14 @@
+> Historical qualification of the retired manager/ledger API. The owned-engine
+> hard cut supersedes its API examples, numeric limits and retained formats.
+> Use [the current allocation contract](../crates/ic-storage/ALLOCATION.md).
+
 <p align="center">
   <img src="https://raw.githubusercontent.com/dragginzgame/shared-assets/main/ic-memory/ic-memory-readme-header.svg" alt="IC Memory — Stops upgrades from mixing up stored data" width="100%">
 </p>
 
 # Recovered-metadata admission
 
-Current admission contract, introduced in 0.14.1 for completed issue #5 and
+Historical admission contract, introduced in 0.14.1 for completed issue #5 and
 simplified in 0.14.2. The design review and measurements below retain their
 original 0.14.0/0.14.1 scope; current downstream acceptance is recorded in the
 [issue reconciliation](issue-reconciliation.md).
@@ -75,7 +79,7 @@ contract.
 
 ## Usage and errors
 
-[`examples/recovered_admission.rs`](../crates/ic-memory/examples/recovered_admission.rs) is the
+[`examples/recovered_admission.rs`](../crates/ic-storage/examples/recovered_admission.rs) is the
 runnable known-key retention example. Run `cargo run --example recovered_admission`.
 It preserves a selected allocation across a cold reopen without interpreting its
 contents, then performs a matching warm bootstrap. A host calls

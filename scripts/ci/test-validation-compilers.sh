@@ -5,7 +5,7 @@ root="$(pwd -P)"
 pin="$(sed -n 's/^channel = "\([^"]*\)"$/\1/p' rust-toolchain.toml)"
 # shellcheck source=scripts/ci/fixture-lifecycle.sh
 source "$root/scripts/ci/fixture-lifecycle.sh"
-fixture="$(fixture_create "${TMPDIR:-/tmp}/persistence-compilers.XXXXXX")"
+fixture="$(fixture_create "${TMPDIR:-/tmp}/storage-compilers.XXXXXX")"
 fixture_complete=false
 trap 'fixture_finish "$?" "$fixture" "Compiler admission fixture retained"' EXIT
 mkdir -p "$fixture/bin" "$fixture/scripts/ci" "$fixture/testing/runtime-qualification"

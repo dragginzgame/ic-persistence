@@ -2,7 +2,7 @@
 # Exercise actual workflow scripts with substituted read-only Git observations.
 set -euo pipefail
 root="$(pwd -P)"
-fixture="$(mktemp -d "${TMPDIR:-/tmp}/ic-persistence-ci-selection.XXXXXX")"
+fixture="$(mktemp -d "${TMPDIR:-/tmp}/ic-storage-ci-selection.XXXXXX")"
 echo "Retained CI selection fixture: $fixture"
 rg -F 'cargo +$(VALIDATION_TOOLCHAIN) check --workspace --locked --offline --all-targets --features test-support' Makefile > /dev/null
 yq -o=json '.' .github/workflows/ci.yml > "$fixture/workflow.json"
@@ -65,11 +65,11 @@ case "$1" in
     paths=(README.md)
     mode=100644
     case "$FIXTURE_MODE" in
-      code) paths=(crates/ic-memory/src/lib.rs) ;;
-      mixed) paths+=(crates/ic-memory/src/lib.rs) ;;
+      code) paths=(crates/ic-storage/src/lib.rs) ;;
+      mixed) paths+=(crates/ic-storage/src/lib.rs) ;;
       policy-path) paths=(ci/docs-only-paths.txt) ;;
       workflow) paths=(.github/workflows/ci.yml) ;;
-      packaged) paths=(crates/ic-memory/README.md) ;;
+      packaged) paths=(crates/ic-storage/README.md) ;;
       unknown) paths=(docs/unreviewed.md) ;;
       executable) mode=100755 ;;
       symlink) mode=120000 ;;

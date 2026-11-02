@@ -1,0 +1,13 @@
+[package]
+name = "ic-storage-runtime-qualification"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish = false
+license.workspace = true
+
+[dependencies]
+clap.workspace = true
+ic-platform = { workspace = true, features = ["pocket-ic"] }
+ic-wire.workspace = true
+serde.workspace = true

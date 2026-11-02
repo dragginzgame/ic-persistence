@@ -3,10 +3,10 @@
 # Only Git source observation is substituted; no release effects are dispatched.
 set -euo pipefail
 pin="$(sed -n 's/^channel = "\([^"]*\)"$/\1/p' rust-toolchain.toml)"
-cargo "+$pin" build -p ic-memory --example repo-tool --locked --offline
+cargo "+$pin" build -p ic-storage --example repo-tool --locked --offline
 metadata="$(cargo "+$pin" metadata --locked --offline --no-deps --format-version 1)"
 target="$(printf '%s' "$metadata" | jq -er .target_directory)"
-fixture="$(mktemp -d "${TMPDIR:-/tmp}/ic-persistence-group-plans.XXXXXX")"
+fixture="$(mktemp -d "${TMPDIR:-/tmp}/ic-storage-group-plans.XXXXXX")"
 echo "Retained native group plan fixture: $fixture"
 mkdir "$fixture/bin"
 cat > "$fixture/bin/git" <<'STUB'

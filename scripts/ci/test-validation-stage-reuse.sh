@@ -9,7 +9,7 @@ source ci/release-tools.env
 editor="$(RUSTUP_TOOLCHAIN="$pin" bash scripts/dev/install-rust-tools.sh --consumer "$root" \
     --package ic-build --version "$IC_BUILD_RELEASE_METADATA_VERSION" --bin ic-build-release-metadata --profile debug --features cli --check)"
 shellcheck_bin="${SHELLCHECK_BIN:-$(command -v shellcheck)}"
-fixture="$(mktemp -d "${TMPDIR:-/tmp}/persistence-stage-qualification.XXXXXX")"
+fixture="$(mktemp -d "${TMPDIR:-/tmp}/storage-stage-qualification.XXXXXX")"
 fixture="$(cd -P "$fixture" && pwd -P)"
 echo "Retained stage qualification: $fixture"
 parent_inputs=(Cargo.toml Cargo.lock ci/cargo-release-groups.json crates/*/Cargo.toml)
@@ -23,7 +23,7 @@ git ls-files --stage -z | shasum -a 256 > "$fixture/index.before"
 cd "$fixture/source with spaces"
 export RUSTUP_TOOLCHAIN="$pin" RUSTUP_AUTO_INSTALL=0 CARGO_NET_OFFLINE=true
 inputs=(Cargo.toml Cargo.lock ci/cargo-release-groups.json crates/*/Cargo.toml)
-for group in persistence metrics-stable logging-stable; do
+for group in storage metrics-storage logging-storage; do
     bash scripts/ci/cargo-release-group.sh plan "$group" > "$fixture/$group.plan.json"
     perl scripts/ci/validation-input-checkpoint.pl "$PWD" '' "$fixture/$group.inputs.json" \
         scripts/ci/verify-file-checksum.sh "${inputs[@]}"
@@ -36,7 +36,7 @@ for group in persistence metrics-stable logging-stable; do
     fi
     perl scripts/ci/validation-input-checkpoint.pl "$PWD" "$fixture/$group.inputs.json" "$fixture/$group.after.json" \
         scripts/ci/verify-file-checksum.sh
-    if [[ "$group" == logging-stable ]]; then continue; fi
+    if [[ "$group" == logging-storage ]]; then continue; fi
     previous="$(jq -r .previous "$fixture/$group.plan.json")"
     next="$(bash scripts/ci/next-release-version.sh "$previous" patch)"
     RELEASE_VERSION="$next" bash scripts/ci/cargo-release-group.sh plan "$group" > "$fixture/project.json"
@@ -59,7 +59,7 @@ find "$fixture/state/attempts" -name admission.json -exec cat {} + | jq -s '
      sources:map(.source)|unique,groups:map(.group)|sort,proofs:map(.execution_proof_sha256)|unique,
      timings:map({group,mode,elapsed_seconds})}' > "$fixture/result.json"
 jq -e '.executed==1 and .reused==2 and (.sources|length)==3 and (.proofs|length)==1 and
-    .groups==["logging-stable","metrics-stable","persistence"]' "$fixture/result.json" > /dev/null
+    .groups==["logging-storage","metrics-storage","storage"]' "$fixture/result.json" > /dev/null
 git -C "$root" ls-files --stage -z | shasum -a 256 > "$fixture/index.after"
 cmp "$fixture/index.before" "$fixture/index.after"
 [[ "$(git -C "$root" rev-parse HEAD)" == "$base_source" ]]

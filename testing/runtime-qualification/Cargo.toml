@@ -1,8 +1,8 @@
 # Keep PocketIC's host-only dependency graph out of the library's normal gates.
 [workspace]
 resolver = "3"
-members = ["crates/ic-memory-runtime-qualification"]
-default-members = ["crates/ic-memory-runtime-qualification"]
+members = ["crates/ic-storage-benchmarks", "crates/ic-storage-runtime-qualification"]
+default-members = ["crates/ic-storage-runtime-qualification"]
 
 [workspace.package]
 version = "0.0.0"
@@ -13,6 +13,15 @@ license = "MIT"
 [workspace.dependencies]
 clap = { version = "4.6", default-features = false, features = ["derive", "std", "help", "usage", "error-context"] }
 # Native client boundary; Testkit retains server selection and lifecycle.
-ic-platform = { version = "0.17.0", default-features = false, features = ["pocket-ic"] }
+ic-platform = { version = "0.17.0", default-features = false }
+ic-storage = { path = "../../crates/ic-storage", version = "0.63.0" }
 ic-wire = "0.14.0"
 serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+[profile.comparison]
+inherits = "release"
+opt-level = 3
+lto = "fat"
+codegen-units = 1
+panic = "abort"

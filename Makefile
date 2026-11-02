@@ -18,7 +18,7 @@ endif
 export RELEASE_DELIVERY ?= direct
 ifneq ($(filter release-%,$(MAKECMDGOALS)),)
 ifneq ($(RELEASE_DELIVERY),direct)
-$(error ic-persistence release adapters support only RELEASE_DELIVERY=direct)
+$(error ic-storage release adapters support only RELEASE_DELIVERY=direct)
 endif
 endif
 
@@ -56,6 +56,7 @@ help:
 	@echo 'Formatting: fmt. Full release checks: validate, validate-toolchain.'
 	@echo 'Installed runtime: install-runtime-server (explicit Testkit setup), runtime-server-check (offline), test-runtime (prepared server and locked caches).'
 	@echo 'Focused installed Logging proof: test-runtime-logging (original Wasm only; no optimizer or other runtime suites).'
+	@echo 'Map comparison: benchmark-storage (prepared server/caches; BENCH_ROWS=256 BENCH_SAMPLES=3).'
 	@echo 'Report: cloc (root workspace; CLOC_MANIFEST selects an independent Cargo manifest). Fleet reports run in Shared Tooling.'
 	@echo 'Maintainer releases: release-patch, release-minor, release-major; normal targets start fresh; release-resume VERSION=X.Y.Z recovers a saved attempt.'
 
@@ -86,10 +87,18 @@ test-runtime: runtime-server-check ic-tools-check
 	  bash scripts/ci/qualify-runtime.sh "$(CURDIR)" "$$cli" "$(TESTKIT_SERVER_DIRECTORY)" "$(CURDIR)/.tools/ic/bin/wasm-opt" "$(IC_TOOL_PINS)"
 
 test-runtime-logging: runtime-server-check
-	+cargo +$(VALIDATION_TOOLCHAIN) build -p ic-logging-stable --locked --offline --profile wasm-size --target wasm32-unknown-unknown --example wasm-logging-qualification
+	+cargo +$(VALIDATION_TOOLCHAIN) build -p ic-logging-storage --locked --offline --profile wasm-size --target wasm32-unknown-unknown --example wasm-logging-qualification
 	+cargo +$(VALIDATION_TOOLCHAIN) build --locked --offline --manifest-path testing/runtime-qualification/Cargo.toml --target-dir target/runtime-qualification
 	+@cli="$$($(TESTKIT_CLI) --check)" && \
 	  bash scripts/ci/qualify-runtime.sh "$(CURDIR)" "$$cli" "$(TESTKIT_SERVER_DIRECTORY)" - "$(IC_TOOL_PINS)" --logging-only
+
+# Explicit comparison only; excluded from product release and validation gates.
+BENCH_ROWS ?= 256
+BENCH_SAMPLES ?= 3
+.PHONY: benchmark-storage
+benchmark-storage: runtime-server-check
+	+@cli="$$($(TESTKIT_CLI) --check)" && \
+	  RUSTUP_TOOLCHAIN=$(VALIDATION_TOOLCHAIN) bash scripts/ci/compare-storage.sh "$(CURDIR)" "$$cli" "$(TESTKIT_SERVER_DIRECTORY)" "$(BENCH_ROWS)" "$(BENCH_SAMPLES)"
 
 test-failure-evidence:
 	bash scripts/ci/test-failure-evidence.sh $${FAILURE_EVIDENCE_DIRECTORY:+"$$FAILURE_EVIDENCE_DIRECTORY"}
@@ -121,16 +130,13 @@ check-dependency-adoption:
 	+bash scripts/ci/check-dependency-adoption.sh $(VALIDATION_TOOLCHAIN)
 
 check-production-graph:
-	+@substrate="$$(cargo +$(VALIDATION_TOOLCHAIN) pkgid --locked --offline -p ic-stable-structures)" && \
-	  [ "$$substrate" = 'registry+https://github.com/rust-lang/crates.io-index#ic-stable-structures@0.7.2' ] || \
-	  { printf 'Unsupported stable-memory substrate identity: %s\n' "$$substrate" >&2; exit 1; }
 	+RUSTUP_TOOLCHAIN=$(VALIDATION_TOOLCHAIN) RUSTUP_AUTO_INSTALL=0 perl scripts/ci/check-cargo-graph.pl \
-		--consumer "$(CURDIR)" --package ic-storage --package ic-metrics-stable --package ic-logging-stable --target wasm32-unknown-unknown \
+		--consumer "$(CURDIR)" --package ic-storage --package ic-metrics-storage --package ic-logging-storage --target wasm32-unknown-unknown \
 		--forbid ic-build --forbid-pattern '^ic-host-' --forbid-pattern '^ic-testkit(?:-|$$)' \
 		--forbid-pattern '^clap(?:_|$$)' \
 		--forbid pocket-ic --forbid serde_json --forbid toml --forbid trybuild \
-		--forbid-feature ic-memory/test-support \
-		--require ic-stable-structures=1 --require ic-memory=1 --require ic-storage=1 --require ic-platform=1 --require ic-metrics=1 --require ic-logging=1 --require ic-wire=1
+		--forbid-feature ic-storage/test-support \
+		--forbid ic-stable-structures --require ic-storage=1 --require ic-platform=1 --require ic-metrics=1 --require ic-logging=1 --require ic-wire=1
 
 # Install exact, checksum-verified tools separately; these checks are offline.
 lint-tooling: check-shellcheck-stage
@@ -166,9 +172,9 @@ test:
 	+cargo +$(VALIDATION_TOOLCHAIN) test --workspace --locked --offline -- --test-threads=1
 
 test-fixture-cell:
-	+cargo +$(VALIDATION_TOOLCHAIN) clippy --locked --offline --lib --tests --features test-support -- -D warnings
-	+cargo +$(VALIDATION_TOOLCHAIN) test --locked --offline --lib --features test-support testing:: -- --test-threads=1
-	+cargo +$(VALIDATION_TOOLCHAIN) check --locked --offline --target wasm32-unknown-unknown --lib --features test-support
+	+cargo +$(VALIDATION_TOOLCHAIN) clippy -p ic-storage --locked --offline --lib --tests --features test-support -- -D warnings
+	+cargo +$(VALIDATION_TOOLCHAIN) test -p ic-storage --locked --offline --lib --features test-support adapter::tests::cells:: -- --test-threads=1
+	+cargo +$(VALIDATION_TOOLCHAIN) check -p ic-storage --locked --offline --target wasm32-unknown-unknown --lib --features test-support
 
 version:
 	+@$(TOOL) version
@@ -243,10 +249,9 @@ check-storage-boundary:
 
 check-license:
 	perl scripts/ci/check-license.pl --kind mit --file LICENSE
-	cmp LICENSE crates/ic-memory/LICENSE
 	perl scripts/ci/check-license.pl --kind mit --file crates/ic-storage/LICENSE
-	perl scripts/ci/check-license.pl --kind mit --file crates/ic-metrics-stable/LICENSE
-	perl scripts/ci/check-license.pl --kind mit --file crates/ic-logging-stable/LICENSE
+	perl scripts/ci/check-license.pl --kind mit --file crates/ic-metrics-storage/LICENSE
+	perl scripts/ci/check-license.pl --kind mit --file crates/ic-logging-storage/LICENSE
 
 check-doc-links:
-	perl scripts/ci/check-documentation-links.pl --root "$(CURDIR)" README.md AGENTS.md docs/status/current.md docs/migration/ic-persistence.md docs/migration/ic-metrics-stable.md docs/storage/upstreams.md crates/ic-storage/README.md crates/ic-metrics-stable/README.md crates/ic-logging-stable/README.md docs/archive/private-btree/*.md docs/history/ic-storage/index.md
+	perl scripts/ci/check-documentation-links.pl --root "$(CURDIR)" README.md AGENTS.md docs/status/current.md docs/migration/ic-persistence.md docs/migration/ic-metrics-stable.md docs/storage/upstreams.md crates/ic-storage/README.md crates/ic-metrics-storage/README.md crates/ic-logging-storage/README.md docs/archive/private-btree/*.md docs/history/ic-storage/index.md

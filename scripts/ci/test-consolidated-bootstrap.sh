@@ -8,7 +8,7 @@ pin="$(sed -n 's/^channel = "\([^"]*\)"$/\1/p' rust-toolchain.toml)"
 source ci/release-tools.env
 editor="$(RUSTUP_TOOLCHAIN="$pin" bash scripts/dev/install-rust-tools.sh --consumer "$root" \
     --package ic-build --version "$IC_BUILD_RELEASE_METADATA_VERSION" --bin ic-build-release-metadata --profile debug --features cli --check)"
-fixture="$(mktemp -d "${TMPDIR:-/tmp}/ic-persistence-group-bootstrap.XXXXXX")"
+fixture="$(mktemp -d "${TMPDIR:-/tmp}/ic-storage-group-bootstrap.XXXXXX")"
 echo "Retained group bootstrap fixture: $fixture"
 cp Cargo.toml Cargo.lock LICENSE rust-toolchain.toml CHANGELOG.md "$fixture/"
 mkdir -p "$fixture/docs"
@@ -18,7 +18,7 @@ cp -R crates "$fixture/"
 mkdir -p "$fixture/scripts/dev" "$fixture/scripts/ci" "$fixture/ci"
 cp scripts/dev/run-repo-tool.sh "$fixture/scripts/dev/"
 bash scripts/ci/prepare-script-fixture.sh "$root" "$fixture" scripts/ci/observe-cargo-release-bootstrap.sh
-cp scripts/ci/read-persistence-packages.sh scripts/ci/read-cargo-workspace-version.sh scripts/ci/validate-release-inputs.pl scripts/ci/StableVersion.pm "$fixture/scripts/ci/"
+cp scripts/ci/read-storage-packages.sh scripts/ci/read-cargo-workspace-version.sh scripts/ci/validate-release-inputs.pl scripts/ci/StableVersion.pm "$fixture/scripts/ci/"
 cp ci/release-tools.env ci/cargo-release-groups.json "$fixture/ci/"
 cat > "$fixture/scripts/dev/install-rust-tools.sh" <<'STUB'
 #!/usr/bin/env bash

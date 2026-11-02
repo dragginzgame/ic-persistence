@@ -1,6 +1,6 @@
 # Host support and qualification
 
-IC Persistence supports native development and maintainer workflows on these hosts.
+IC Storage supports native development and maintainer workflows on these hosts.
 Its canister runtime target remains `wasm32-unknown-unknown`.
 
 | Host | Architecture | Native CI label | Qualification |
@@ -33,7 +33,7 @@ when recording release qualification; retain failed runs and their limitations.
 ## Prerequisites
 
 The maintainer selected Rust 1.99.1 as both the minimum supported compiler and
-pinned development/release compiler in [#151](https://github.com/dragginzgame/ic-persistence/issues/151).
+pinned development/release compiler in [#151](https://github.com/dragginzgame/ic-storage/issues/151).
 Both workspace catalogs and every package must match `rust-toolchain.toml`.
 `make validation-compilers-check` admits installed Cargo/rustc identities offline,
 rejecting mismatched floors/selectors before archive work. It installs nothing.
@@ -184,7 +184,7 @@ Retain the supplied Wasm, source hashes and Testkit server/test output with the
 task's qualification evidence. The ignored test requires explicit server URL and
 fixture inputs; ordinary tests never prepare or start a server.
 
-For backing-custody changes, build the `ic-memory` example
+For backing-custody changes, build the `ic-storage` example
 `wasm-io-qualification` for the same Wasm target/profile and pass its artifact as
 `IC_MEMORY_QUALIFICATION_WASM`. Through the same prepared Testkit `run` command,
 select `ownership::tests::installed_backing_custody -- --ignored --nocapture`.
@@ -399,7 +399,7 @@ never follows the link to collect outside payloads.
 For interactive CI inspection, use the unchanged shared helper:
 
 ```sh
-GH_REPO=dragginzgame/ic-persistence bash scripts/dev/gh-ci.sh --commit HEAD --all-workflows --limit 100
+GH_REPO=dragginzgame/ic-storage bash scripts/dev/gh-ci.sh --commit HEAD --all-workflows --limit 100
 ```
 
 When `--logs` cannot retrieve failed-step evidence, the helper reports the gap
@@ -416,15 +416,15 @@ before claiming complete workflow coverage. Uncommitted edits have no CI result.
 The repository root is a virtual Cargo workspace. Shared package metadata,
 dependencies, profiles and the selected lockfile remain there; the library
 packages, examples, tests, current wire fixtures and package guides live in
-`crates/ic-memory/`, `crates/ic-storage/`, `crates/ic-metrics-stable/` and
-`crates/ic-logging-stable/`. All four are default workspace members.
+`crates/ic-storage/`, `crates/ic-storage/`, `crates/ic-metrics-storage/` and
+`crates/ic-logging-storage/`. All four are default workspace members.
 A checkout path dependency selects the corresponding package, for example
-`ic-memory = { path = "../ic-persistence/crates/ic-memory" }`. Storage's internal
+`ic-storage = { path = "../ic-storage/crates/ic-storage" }`. Storage's internal
 Memory edge is path-plus-version and shares the root Memory identity.
 
 The approved independent root remains `testing/runtime-qualification/`, with
 its own lockfile and sole package at
-`crates/ic-memory-runtime-qualification/`. Its locked fetch/run commands and
+`crates/ic-storage-runtime-qualification/`. Its locked fetch/run commands and
 caller-owned PocketIC server requirements retain that root. Layout adoption
 does not merge or update either dependency graph. Package archives contain the
 library source, examples, tests, fixtures, package guide and root-owned MIT

@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 # Exercise the real archive admission before any compilation, with bad observations.
 set -euo pipefail
-package_names="$(bash scripts/ci/read-persistence-packages.sh --all)"
+package_names="$(bash scripts/ci/read-storage-packages.sh --all)"
 IFS=$'\t' read -r -a packages <<< "$package_names"
 source scripts/ci/fixture-lifecycle.sh
-fixture="$(fixture_create "${TMPDIR:-/tmp}/ic-persistence-package-admission.XXXXXX")"
+fixture="$(fixture_create "${TMPDIR:-/tmp}/ic-storage-package-admission.XXXXXX")"
 trap 'status=$?; if [[ "$status" != 0 ]]; then
     fixture_replay_logs "$fixture/package.log" "$fixture/drift.log" "$fixture/msrv.log"
 fi; exit "$status"' EXIT
@@ -20,7 +20,7 @@ pin="$(sed -n 's/^channel = "\([^"]*\)"$/\1/p' rust-toolchain.toml)"
 "$REAL_CARGO" "+$pin" package --workspace --registry crates-io --locked --offline --no-verify --allow-dirty > "$fixture/package.log" 2>&1
 PACKAGE_SELECTED_COMMAND=""
 if [[ -n "${RELEASE_GROUP:-}" ]]; then
-    selected_names="$(bash scripts/ci/read-persistence-packages.sh)"
+    selected_names="$(bash scripts/ci/read-storage-packages.sh)"
     IFS=$'\t' read -r -a selected_packages <<< "$selected_names"
     selection=()
     for package in "${selected_packages[@]}"; do selection+=(--package "$package"); done
@@ -48,7 +48,7 @@ if [[ "$*" == *' --example repo-tool -- qualify-archives '* ]]; then
     exec "$QUALIFIED_REPO_TOOL" "$@"
 fi
 if [[ "$REJECT_MODE" == drift && "$*" == *' metadata '* && "$*" == *'--manifest-path'* ]]; then
-    "$REAL_CARGO" "$@" | jq '(.packages[] | select(.name == "ic-memory") | .manifest_path) = "/foreign/Cargo.toml"'
+    "$REAL_CARGO" "$@" | jq '(.packages[] | select(.name == "ic-storage") | .manifest_path) = "/foreign/Cargo.toml"'
     exit
 fi
 if [[ "$*" == *' package '* ]]; then

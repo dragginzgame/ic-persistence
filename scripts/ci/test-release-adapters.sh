@@ -6,7 +6,7 @@ unset MAKEFLAGS MFLAGS MAKEOVERRIDES GNUMAKEFLAGS MAKEFILES
 unset VALIDATION_REPOSITORY_ROOT VALIDATION_RUNNER_SNAPSHOT_PATH
 unset RELEASE_CACHE_PREPARE
 export RELEASE_DELIVERY=direct
-export RELEASE_GROUP=persistence
+export RELEASE_GROUP=storage
 # Keep Make status/warning assertions independent of the caller's locale.
 export LC_ALL=C
 # shellcheck source=ci/release-tools.env
@@ -20,7 +20,7 @@ FIXTURE_TOOLCHAIN="$(sed -n 's/^channel = "\([^"]*\)"$/\1/p' "$ROOT/rust-toolcha
 [[ "$FIXTURE_TOOLCHAIN" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || exit 1
 export FIXTURE_TOOLCHAIN
 bash "$ROOT/scripts/ci/check-release-commands.sh" "$ROOT" rust-toolchain.toml ci/release-tools.env ci/runtime-tools.env ci/tool-versions.env make/consumer.mk make/tools.mk make/release.mk make/rust-format.mk make/execution.mk scripts/ci/check-make-execution.sh scripts/ci/check-release-delivery.sh
-FIXTURE="$(mktemp -d "${TMPDIR:-/tmp}/ic-memory-release-adapters.XXXXXX")"
+FIXTURE="$(mktemp -d "${TMPDIR:-/tmp}/ic-storage-release-adapters.XXXXXX")"
 FIXTURE="$(CDPATH="" cd -P -- "$FIXTURE" && printf '%s/.' "$PWD")"
 FIXTURE="${FIXTURE%/.}"
 # shellcheck source=scripts/ci/fixture-lifecycle.sh
@@ -235,50 +235,6 @@ for selection in ready busy-cli busy-server missing-cli missing-server; do
     expected_calls=2
     if [[ "$selection" == *-cli ]]; then expected_calls=1; fi
     [[ "$(wc -l < "$FIXTURE/runtime-$selection.events" | tr -d ' ')" == "$expected_calls" ]] || exit 1
-done
-# Consumer protocol admission must reject drift and failed observations before
-# the generic graph observer, including a failed command with plausible stdout.
-mkdir "$FIXTURE/protocol-bin"
-cp "$ROOT/Cargo.toml" "$FIXTURE/"
-cp "$ROOT/scripts/ci/check-cargo-graph.pl" "$FIXTURE/scripts/ci/"
-cat > "$FIXTURE/protocol-bin/cargo" <<'STUB'
-#!/usr/bin/env bash
-set -euo pipefail
-if [[ "$*" == "+$FIXTURE_TOOLCHAIN pkgid --locked --offline -p ic-stable-structures" ]]; then
-    printf 'pkgid\n' >> protocol-events
-    printf '%s\n' "$SUBSTRATE_ID"
-    exit "$SUBSTRATE_STATUS"
-fi
-[[ "$1" == tree ]] || exit 99
-printf 'tree\n' >> protocol-events
-printf '%s\n' 'ic-storage v0.0.0' 'ic-memory v0.0.0' \
-    'ic-metrics-stable v0.0.0' 'ic-logging-stable v0.0.0' 'ic-logging v0.17.2' 'ic-metrics v0.15.8' \
-    'ic-platform v0.6.5' 'ic-stable-structures v0.7.2' 'ic-wire v0.7.21'
-STUB
-chmod +x "$FIXTURE/protocol-bin/cargo"
-for result in valid wrong-version wrong-source missing failed-observation; do
-    identity='registry+https://github.com/rust-lang/crates.io-index#ic-stable-structures@0.7.2'
-    observation=0
-    case "$result" in
-        wrong-version) identity="${identity%0.7.2}0.7.3" ;;
-        wrong-source) identity='path+file:///unreviewed#ic-stable-structures@0.7.2' ;;
-        missing) identity='' ;;
-        failed-observation) observation=23 ;;
-    esac
-    rm -f "$FIXTURE/protocol-events"
-    status=0
-    (cd "$FIXTURE"; PATH="$FIXTURE/protocol-bin:$PATH" \
-        SUBSTRATE_ID="$identity" SUBSTRATE_STATUS="$observation" \
-        make --no-print-directory check-production-graph) \
-        > "$FIXTURE/protocol-$result.log" 2>&1 || status=$?
-    printf 'pkgid\n' > "$FIXTURE/protocol-expected"
-    if [[ "$result" == valid ]]; then
-        [[ "$status" == 0 ]] || exit 1
-        printf 'tree\n' >> "$FIXTURE/protocol-expected"
-    else
-        [[ "$status" == 2 ]] || exit 1
-    fi
-    cmp "$FIXTURE/protocol-expected" "$FIXTURE/protocol-events"
 done
 # The actual validation recipe must finish Clippy before later stages, even with
 # parallel Make. Substitute recursive leaves and Cargo, never the parent recipe.
@@ -588,13 +544,13 @@ test_bootstrap_recovery() (
 # The actual Make launcher must reach the adapter while only the root lock is
 # prepared. Cargo/parser substitutes prove isolation and argument propagation.
 mkdir -p "$FIXTURE/scripts/dev" "$FIXTURE/bin" \
-    "$FIXTURE/crates/ic-memory/src" "$FIXTURE/crates/ic-memory/examples" "$FIXTURE/ci" "$FIXTURE/make"
+    "$FIXTURE/crates/ic-storage/src" "$FIXTURE/crates/ic-storage/examples" "$FIXTURE/ci" "$FIXTURE/make"
 cp "$ROOT/scripts/ci/read-cargo-workspace-version.sh" \
     "$ROOT/scripts/ci/validate-release-inputs.pl" "$ROOT/scripts/ci/StableVersion.pm" "$FIXTURE/scripts/ci/"
 cp "$ROOT/scripts/dev/run-repo-tool.sh" "$FIXTURE/scripts/dev/"
 bash "$ROOT/scripts/ci/prepare-script-fixture.sh" "$ROOT" "$FIXTURE" scripts/ci/observe-cargo-release-bootstrap.sh
-cp "$ROOT/scripts/ci/read-persistence-packages.sh" "$FIXTURE/scripts/ci/"
-mkdir -p "$FIXTURE/crates/ic-memory/examples/repo_tool"
+cp "$ROOT/scripts/ci/read-storage-packages.sh" "$FIXTURE/scripts/ci/"
+mkdir -p "$FIXTURE/crates/ic-storage/examples/repo_tool"
 cp "$ROOT/ci/cargo-release-groups.json" "$FIXTURE/ci/"
 # Exercise the real published renderer; substitute only tool-store selection.
 fixture_editor="$(RUSTUP_TOOLCHAIN="$FIXTURE_TOOLCHAIN" bash "$ROOT/scripts/dev/install-rust-tools.sh" \
@@ -615,51 +571,47 @@ STUB
 cd "$FIXTURE"
 cat > Cargo.toml <<'MANIFEST'
 [workspace]
-members = ["crates/ic-memory", "crates/ic-storage", "crates/ic-metrics-stable", "crates/ic-logging-stable"]
+members = ["crates/ic-storage", "crates/ic-metrics-storage", "crates/ic-logging-storage"]
 [workspace.package]
 rust-version = "1.99.1"
 [workspace.dependencies]
-ic-memory = { path = "crates/ic-memory", version = "0.12.3" }
 ic-storage = { path = "crates/ic-storage", version = "0.12.3" }
-ic-metrics-stable = { path = "crates/ic-metrics-stable", version = "0.12.3" }
-ic-logging-stable = { path = "crates/ic-logging-stable", version = "0.12.3" }
+ic-metrics-storage = { path = "crates/ic-metrics-storage", version = "0.12.3" }
+ic-logging-storage = { path = "crates/ic-logging-storage", version = "0.12.3" }
 other = "0.12.3"
 MANIFEST
 cat > Cargo.lock <<'LOCK'
 version = 4
 [[package]]
-name = "ic-memory"
-version = "0.12.3"
-[[package]]
 name = "ic-storage"
 version = "0.12.3"
 [[package]]
-name = "ic-metrics-stable"
+name = "ic-metrics-storage"
 version = "0.12.3"
 [[package]]
-name = "ic-logging-stable"
+name = "ic-logging-storage"
 version = "0.12.3"
 LOCK
-echo fixture > crates/ic-memory/README.md
-touch crates/ic-memory/src/lib.rs
+echo fixture > crates/ic-storage/README.md
+touch crates/ic-storage/src/lib.rs
 echo fixture-license > LICENSE
-cat > crates/ic-memory/Cargo.toml <<'MANIFEST'
+cat > crates/ic-storage/Cargo.toml <<'MANIFEST'
 [package]
-name = "ic-memory"
+name = "ic-storage"
 version = "0.12.3"
 MANIFEST
 mkdir -p crates/ic-storage/src
 printf '[package]\nname = "ic-storage"\nversion = "0.12.3"\n' > crates/ic-storage/Cargo.toml
 echo fixture > crates/ic-storage/README.md
 touch crates/ic-storage/src/lib.rs
-mkdir -p crates/ic-metrics-stable/src
-printf '[package]\nname = "ic-metrics-stable"\nversion = "0.12.3"\n' > crates/ic-metrics-stable/Cargo.toml
-echo fixture > crates/ic-metrics-stable/README.md
-touch crates/ic-metrics-stable/src/lib.rs
-mkdir -p crates/ic-logging-stable/src
-printf '[package]\nname = "ic-logging-stable"\nversion = "0.12.3"\n' > crates/ic-logging-stable/Cargo.toml
-echo scaffold > crates/ic-logging-stable/README.md
-touch crates/ic-logging-stable/src/lib.rs
+mkdir -p crates/ic-metrics-storage/src
+printf '[package]\nname = "ic-metrics-storage"\nversion = "0.12.3"\n' > crates/ic-metrics-storage/Cargo.toml
+echo fixture > crates/ic-metrics-storage/README.md
+touch crates/ic-metrics-storage/src/lib.rs
+mkdir -p crates/ic-logging-storage/src
+printf '[package]\nname = "ic-logging-storage"\nversion = "0.12.3"\n' > crates/ic-logging-storage/Cargo.toml
+echo scaffold > crates/ic-logging-storage/README.md
+touch crates/ic-logging-storage/src/lib.rs
 cp Cargo.toml original-manifest
 cat > bin/cargo <<'STUB'
 #!/usr/bin/env bash
@@ -715,19 +667,19 @@ case "$2" in
             [[ "${13}" == version || "${13}" == publish ]] || exit 1
             cmp expected-manifest "$7"
             cmp Cargo.lock "$(dirname "$7")/Cargo.lock"
-            [[ "$(yq -p toml -o json '.package.version' "$(dirname "$7")/crates/ic-memory/Cargo.toml")" == '"0.13.0"' ]] || exit 1
-            cmp crates/ic-memory/README.md "$(dirname "$7")/crates/ic-memory/README.md"
+            [[ "$(yq -p toml -o json '.package.version' "$(dirname "$7")/crates/ic-storage/Cargo.toml")" == '"0.13.0"' ]] || exit 1
+            cmp crates/ic-storage/README.md "$(dirname "$7")/crates/ic-storage/README.md"
             cmp LICENSE "$(dirname "$7")/LICENSE"
-            [[ -d "$(dirname "$7")/crates/ic-memory/src" && ! -L "$(dirname "$7")/crates/ic-memory/src" ]] || exit 1
-            [[ -d "$(dirname "$7")/crates/ic-memory/examples" && ! -L "$(dirname "$7")/crates/ic-memory/examples" ]] || exit 1
-            cmp crates/ic-memory/src/lib.rs "$(dirname "$7")/crates/ic-memory/src/lib.rs"
+            [[ -d "$(dirname "$7")/crates/ic-storage/src" && ! -L "$(dirname "$7")/crates/ic-storage/src" ]] || exit 1
+            [[ -d "$(dirname "$7")/crates/ic-storage/examples" && ! -L "$(dirname "$7")/crates/ic-storage/examples" ]] || exit 1
+            cmp crates/ic-storage/src/lib.rs "$(dirname "$7")/crates/ic-storage/src/lib.rs"
             cmp crates/ic-storage/src/lib.rs "$(dirname "$7")/crates/ic-storage/src/lib.rs"
             cmp crates/ic-storage/README.md "$(dirname "$7")/crates/ic-storage/README.md"
             [[ "$(yq -p toml -o json '.package.version' "$(dirname "$7")/crates/ic-storage/Cargo.toml")" == '"0.13.0"' ]] || exit 1
-            [[ "$(yq -p toml -o json ' .package.version ' "$(dirname "$7")/crates/ic-metrics-stable/Cargo.toml")" == '"0.13.0"' ]] || exit 1
-            cmp crates/ic-metrics-stable/src/lib.rs "$(dirname "$7")/crates/ic-metrics-stable/src/lib.rs"
-            [[ "$(yq -p toml -o json ' .package.version ' "$(dirname "$7")/crates/ic-logging-stable/Cargo.toml")" == '"0.13.0"' ]] || exit 1
-            cmp crates/ic-logging-stable/src/lib.rs "$(dirname "$7")/crates/ic-logging-stable/src/lib.rs"
+            [[ "$(yq -p toml -o json ' .package.version ' "$(dirname "$7")/crates/ic-metrics-storage/Cargo.toml")" == '"0.13.0"' ]] || exit 1
+            cmp crates/ic-metrics-storage/src/lib.rs "$(dirname "$7")/crates/ic-metrics-storage/src/lib.rs"
+            [[ "$(yq -p toml -o json ' .package.version ' "$(dirname "$7")/crates/ic-logging-storage/Cargo.toml")" == '"0.13.0"' ]] || exit 1
+            cmp crates/ic-logging-storage/src/lib.rs "$(dirname "$7")/crates/ic-logging-storage/src/lib.rs"
             echo bootstrap >> calls
         else
             [[ "$6" == --example && "$7" == repo-tool && "$8" == -- ]] || exit 1
@@ -806,7 +758,7 @@ check_release_cache_preparation() {
 # A failed or malformed roster cannot dispatch cache preparation or the helper.
 roster=ci/cargo-release-groups.json
 cp "$roster" original-roster
-for invalid in 'not-json' '["ic-memory"]' '["ic-memory","ic-storage","ic-metrics-stable"]' '["ic-memory","ic-storage","ic-metrics-stable","ic-metrics-stable"]' '["ic-memory","ic-storage","ic-metrics-stable","../escape"]'; do
+for invalid in 'not-json' '["ic-storage"]' '["ic-storage","ic-storage","ic-metrics-storage"]' '["ic-storage","ic-storage","ic-metrics-storage","ic-metrics-storage"]' '["ic-storage","ic-storage","ic-metrics-storage","../escape"]'; do
     printf '%s\n' "$invalid" > "$roster"
     status=0
     bash scripts/dev/run-repo-tool.sh "$FIXTURE_TOOLCHAIN" version > roster-refusal.log 2>&1 || status=$?
@@ -829,34 +781,20 @@ cmp original-manifest Cargo.toml
 cp calls saved-calls
 cat > expected-manifest <<'MANIFEST'
 [workspace]
-members = ["crates/ic-memory", "crates/ic-storage", "crates/ic-metrics-stable", "crates/ic-logging-stable"]
+members = ["crates/ic-storage", "crates/ic-metrics-storage", "crates/ic-logging-storage"]
 [workspace.package]
 rust-version = "1.99.1"
 [workspace.dependencies]
-ic-memory = { path = "crates/ic-memory", version = "0.13.0" }
 ic-storage = { path = "crates/ic-storage", version = "0.13.0" }
-ic-metrics-stable = { path = "crates/ic-metrics-stable", version = "0.13.0" }
-ic-logging-stable = { path = "crates/ic-logging-stable", version = "0.13.0" }
+ic-metrics-storage = { path = "crates/ic-metrics-storage", version = "0.13.0" }
+ic-logging-storage = { path = "crates/ic-logging-storage", version = "0.13.0" }
 other = "0.12.3"
 MANIFEST
-"$FIXTURE_RELEASE_EDITOR" --max-input-bytes "$CARGO_RELEASE_METADATA_MAX_BYTES" lock Cargo.lock 0.12.3 0.13.0 ic-memory > split-lock
-cp calls split-calls
-# A split lock is never a valid interrupted publication of the coordinated file.
-for manifest in original-manifest expected-manifest; do
-    cp "$manifest" Cargo.toml
-    cp split-lock Cargo.lock
-    status=0
-    bash scripts/dev/run-repo-tool.sh "$FIXTURE_TOOLCHAIN" version > split-lock.log 2>&1 || status=$?
-    [[ "$status" != 0 && ! -e "$BOOTSTRAP_TARGET/repo-tool-bootstrap" ]] || exit 1
-    grep -F 'group lock versions differ' split-lock.log
-    cmp split-calls calls
-    cmp "$manifest" Cargo.toml
-    cmp split-lock Cargo.lock
-done
-cp original-manifest Cargo.toml
-"$FIXTURE_RELEASE_EDITOR" --max-input-bytes "$CARGO_RELEASE_METADATA_MAX_BYTES" lock split-lock 0.12.3 0.13.0 ic-storage > storage-lock
-"$FIXTURE_RELEASE_EDITOR" --max-input-bytes "$CARGO_RELEASE_METADATA_MAX_BYTES" lock storage-lock 0.12.3 0.13.0 ic-metrics-stable > metrics-lock
-"$FIXTURE_RELEASE_EDITOR" --max-input-bytes "$CARGO_RELEASE_METADATA_MAX_BYTES" lock metrics-lock 0.12.3 0.13.0 ic-logging-stable > prepared-lock
+"$FIXTURE_RELEASE_EDITOR" --max-input-bytes "$CARGO_RELEASE_METADATA_MAX_BYTES" lock Cargo.lock 0.12.3 0.13.0 ic-storage > split-lock
+# Each group now has one package; a partial multi-member core lock is impossible.
+cp split-lock storage-lock
+"$FIXTURE_RELEASE_EDITOR" --max-input-bytes "$CARGO_RELEASE_METADATA_MAX_BYTES" lock storage-lock 0.12.3 0.13.0 ic-metrics-storage > metrics-lock
+"$FIXTURE_RELEASE_EDITOR" --max-input-bytes "$CARGO_RELEASE_METADATA_MAX_BYTES" lock metrics-lock 0.12.3 0.13.0 ic-logging-storage > prepared-lock
 cp prepared-lock Cargo.lock
 [[ "$(make --no-print-directory -s release-version 2> bootstrap.log)" == 0.12.3 ]] || exit 1
 printf '%s\n' bootstrap-cache bootstrap >> saved-calls
@@ -916,27 +854,25 @@ export BOOTSTRAP_TARGET="$normal_target"
 cp calls saved-format-calls
 cat > Cargo.toml <<'MANIFEST'
 [workspace]
-members = ["crates/ic-memory", "crates/ic-storage", "crates/ic-metrics-stable", "crates/ic-logging-stable"]
+members = ["crates/ic-storage", "crates/ic-metrics-storage", "crates/ic-logging-storage"]
 [ workspace.package ] # selected metadata
   rust-version   = "1.99.1" # keep this comment
 [workspace.dependencies]
-ic-memory = { path = "crates/ic-memory", version = "0.12.3" }
 ic-storage = { path = "crates/ic-storage", version = "0.12.3" }
-ic-metrics-stable = { path = "crates/ic-metrics-stable", version = "0.12.3" }
-ic-logging-stable = { path = "crates/ic-logging-stable", version = "0.12.3" }
+ic-metrics-storage = { path = "crates/ic-metrics-storage", version = "0.12.3" }
+ic-logging-storage = { path = "crates/ic-logging-storage", version = "0.12.3" }
 other = "0.12.3"
 MANIFEST
 cp Cargo.toml formatted-manifest
 cat > expected-manifest <<'MANIFEST'
 [workspace]
-members = ["crates/ic-memory", "crates/ic-storage", "crates/ic-metrics-stable", "crates/ic-logging-stable"]
+members = ["crates/ic-storage", "crates/ic-metrics-storage", "crates/ic-logging-storage"]
 [ workspace.package ] # selected metadata
   rust-version   = "1.99.1" # keep this comment
 [workspace.dependencies]
-ic-memory = { path = "crates/ic-memory", version = "0.13.0" }
 ic-storage = { path = "crates/ic-storage", version = "0.13.0" }
-ic-metrics-stable = { path = "crates/ic-metrics-stable", version = "0.13.0" }
-ic-logging-stable = { path = "crates/ic-logging-stable", version = "0.13.0" }
+ic-metrics-storage = { path = "crates/ic-metrics-storage", version = "0.13.0" }
+ic-logging-storage = { path = "crates/ic-logging-storage", version = "0.13.0" }
 other = "0.12.3"
 MANIFEST
 [[ "$(make --no-print-directory -s release-version 2> formatted.log)" == 0.12.3 ]] || exit 1
@@ -960,7 +896,7 @@ cmp before-mutation-calls calls
 cp Cargo.lock mutated-lock.retained
 cp prepared-lock Cargo.lock
 # A parser emitting plausible facts before failing cannot start Cargo preparation.
-for input in Cargo.toml Cargo.lock crates/ic-memory/Cargo.toml crates/ic-storage/Cargo.toml crates/ic-metrics-stable/Cargo.toml crates/ic-logging-stable/Cargo.toml; do
+for input in Cargo.toml Cargo.lock crates/ic-storage/Cargo.toml crates/ic-metrics-storage/Cargo.toml crates/ic-logging-storage/Cargo.toml; do
     cp calls saved-parser-calls
     status=0
     TOML_PARSER_FAILURE="$input" bash scripts/dev/run-repo-tool.sh "$FIXTURE_TOOLCHAIN" version \
@@ -983,10 +919,10 @@ cmp duplicate-manifest Cargo.toml
 cmp prepared-lock Cargo.lock
 cp original-manifest Cargo.toml
 # Reject malformed lock values before shell capture can trim or discard bytes.
-for package in ic-memory ic-storage ic-metrics-stable ic-logging-stable; do
+for package in ic-storage ic-metrics-storage ic-logging-storage; do
     for version in '13' '"0.13.0\n"' '"0.13.0\u0000"'; do
         printf 'version = 4\n' > Cargo.lock
-        for other in ic-memory ic-storage ic-metrics-stable ic-logging-stable; do
+        for other in ic-storage ic-metrics-storage ic-logging-storage; do
             value='"0.12.3"'
             if [[ "$other" == "$package" ]]; then value="$version"; fi
             printf '[[package]]\nname = "%s"\nversion = %s\n' "$other" "$value" >> Cargo.lock
@@ -1005,7 +941,7 @@ cp saved-format-calls calls
 cp calls saved-calls
 cat >> Cargo.lock <<'LOCK'
 [[package]]
-name = "ic-memory"
+name = "ic-storage"
 version = "0.14.0"
 LOCK
 cp Cargo.lock conflicting-lock
@@ -1016,7 +952,7 @@ cmp saved-calls calls
 cmp original-manifest Cargo.toml
 cmp conflicting-lock Cargo.lock
 cp prepared-lock Cargo.lock
-for package in ic-memory ic-storage ic-metrics-stable ic-logging-stable; do
+for package in ic-storage ic-metrics-storage ic-logging-storage; do
     manifest="crates/$package/Cargo.toml"
     cp "$manifest" saved-member
     for refusal in missing explicit-version; do

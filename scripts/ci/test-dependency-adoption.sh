@@ -2,7 +2,7 @@
 # The real caller's command order and failure propagation; Cargo is substituted.
 set -euo pipefail
 root="$(pwd -P)"
-fixture="$(mktemp -d "${TMPDIR:-/tmp}/persistence-adoption-fixture.XXXXXX")"
+fixture="$(mktemp -d "${TMPDIR:-/tmp}/storage-adoption-fixture.XXXXXX")"
 echo "Retained adoption caller fixture: $fixture"
 mkdir -p "$fixture/source/scripts/ci" "$fixture/source/ci" "$fixture/bin"
 cp Makefile rust-toolchain.toml "$fixture/source/"
@@ -31,10 +31,10 @@ case "$1" in
         ;;
     tree)
         if [[ "$PWD" == */testing/runtime-qualification ]]; then
-            printf 'ic-memory-runtime-qualification v0.0.0\nic-platform v0.16.0\nic-wire v0.13.3\n'
+            printf 'ic-storage-runtime-qualification v0.0.0\nic-platform v0.16.0\nic-wire v0.13.3\n'
             [[ "${ADOPTION_FAILURE:-}" != independent-policy ]] || printf 'ic-platform v0.15.3\n'
         else
-            printf 'ic-storage v0.60.7\nic-metrics-stable v0.61.5\nic-logging-stable v0.60.5\nic-memory v0.60.7\nic-platform v0.16.0\nic-wire v0.13.3\n'
+            printf 'ic-storage v0.60.7\nic-metrics-storage v0.61.5\nic-logging-storage v0.60.5\nic-platform v0.16.0\nic-wire v0.13.3\n'
             [[ "${ADOPTION_FAILURE:-}" != runtime-policy ]] || printf 'ic-platform v0.15.3\n'
         fi
         [[ "${ADOPTION_FAILURE:-}" != plausible-tree ]] || exit 25

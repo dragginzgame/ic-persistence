@@ -1,204 +1,117 @@
 # IC Storage
 
-Governed stable collections for Internet Computer applications. The supported
-public surface is `ic_storage::adapter`: `StableBTreeMap`, `StableBTreeSet`,
-`StableCell`, `StableVec`, `StableMinHeap`, `StableLog`, their supported
-iterators, `BTreeMapRegion`, `RegionGrowError`, `LogWriteError`, `Memory`, `Storable`,
-`Bound` and `storable`. These wrappers preserve upstream
-`ic-stable-structures` formats and provide explicit initialization/loading contracts.
-Consumers use the adapter rather than depending directly on the substrate.
+Owned stable allocation and collections for Internet Computer applications.
+Storage owns the backing interface, codec trait, named allocation directory,
+namespace admission, exclusive leases and collection implementations. It does
+not depend on `ic-stable-structures`. Rust 1.99.1 or later is required.
 
-The library requires Rust 1.99.1 or later.
+## Supported collections
+
+| Public type | Implementation | Known sibling use |
+| --- | --- | --- |
+| `StableCell` | Cached singleton with explicit create/load/reset | Canic, Blob |
+| `StableBTreeMap` | Owned AVL ordered tree with reusable blocks | Canic, IcyDB, Blob, Relay, Metrics and Logging Storage |
+| `StableBTreeSet` | The same ordered-tree engine with unit values | Blob deletions |
+| `StableVec` | Fixed-stride indexed slots with bounded values | Canic templates and authentication |
+| `BTreeMapRegion` | Operation-local view of the owned tree inside a leased page range | IcyDB control storage |
+
+The map retains its public ordered-map name; its implementation is an AVL tree,
+not a copy of the upstream B-tree. Stable Log and Min-heap are outside the scope.
+Map and set iterators support forward/reverse traversal and ordered bounds.
+Iterators retain bounded pointer stacks after the initial seek, with linear
+traversal work across a scan and no retained ancestor payloads.
+
+`ic_storage::adapter` exports these collections, `MapIter`, `SetIter`, `MapEntry`,
+`RegionGrowError`, `CollectionError`, `CodecError`, and the owned `Memory`, `Storable`, `Bound` and `storable`
+interfaces. Backing implementations and runtime types live at the crate root.
+Collections require non-cloneable `RuntimeMemory` leases; implementing `Memory`
+or `Storable` does not grant access to an allocation.
 
 ```rust
-use ic_storage::adapter::{Bound, Memory, StableBTreeMap, Storable};
-
-# fn example<M: Memory>(runtime: &ic_memory::MemoryRuntime<M>) -> Result<(), Box<dyn std::error::Error>> {
-let _: Bound = <u64 as Storable>::BOUND;
-// The application has already admitted and committed this allocation.
-let rows_key = ic_memory::StableKey::parse("app.rows.v1")?;
-let memory = runtime.open_memory(&rows_key)?;
-let mut map = StableBTreeMap::<u64, u64, M>::create(memory);
-map.insert(1, 42);
-assert_eq!(map.get(&1), Some(42));
-drop(map);
-let map = StableBTreeMap::<u64, u64, M>::load(runtime.open_memory(&rows_key)?);
-assert_eq!(map.get(&1), Some(42));
-# Ok(())
-# }
-```
-
-The dependency direction is application → IC Storage → IC Memory. Collections
-consume non-cloneable `ic_memory::RuntimeMemory<M>` allocation leases. The
-remaining generic `M` identifies the runtime backing; it does not permit an
-arbitrary collection-memory implementation. Allocation authority, IDs and runtime
-bootstrap belong to IC Memory. A live lease prevents another open of the same
-allocation through its runtime until the collection is dropped. A log consumes
-two distinct leases. Hosts retain exclusive backing custody across runtimes;
-Memory's backing claim rejects independent runtimes over the same identified
-backing until all runtime/collection handles drop. Custom hosts must uphold
-`ic_memory::MemoryBacking`; raw aliased access remains prohibited.
-
-```compile_fail
-use ic_memory::VectorMemory;
+use ic_storage::{AllocationGrants, GenericAllocationPolicy, MemoryAuthority,
+    MemoryRequest, MemoryRuntime, SealedDeclarationSnapshot, StableKey, VectorMemory};
 use ic_storage::adapter::StableBTreeMap;
-let _ = StableBTreeMap::<u64, u64>::create(VectorMemory::default());
+
+let mut host = MemoryRuntime::new(VectorMemory::default())?;
+let requests = SealedDeclarationSnapshot::new(vec![
+    MemoryRequest::new("app", "app.rows.v1")?,
+])?;
+let grants = AllocationGrants::new(vec![MemoryAuthority::new("app", "app.")?])?;
+host.bootstrap(&requests, &grants, &GenericAllocationPolicy)?;
+let key = StableKey::parse("app.rows.v1")?;
+let mut rows = StableBTreeMap::<u64, u64>::create(host.open_memory(&key)?)?;
+rows.insert(7, 11)?;
+drop(rows);
+let rows = StableBTreeMap::<u64, u64>::load(host.open_memory(&key)?)?;
+assert_eq!(rows.get(&7)?, Some(11));
+# Ok::<(), Box<dyn std::error::Error>>(())
 ```
 
-No raw backing constructors, memory manager or unrestricted upstream module is
-exported. Wrappers expose neither `Deref`, raw-memory access nor extraction.
-Drop a collection before reopening its allocation through IC Memory. Map
-`reserve_pages` and vector `reset` consume and return the collection while
-retaining its lease; reservation also returns a typed growth result. Map `clear`
-removes entries in place. These operations expose no memory handle. `Memory` is
-the exact upstream trait for generic backing bounds; implementing it grants no
-allocation authority.
+## Current storage contract
 
-Map `reserve_pages` takes an absolute virtual extent in 65,536-byte Wasm pages.
-It never shrinks memory and performs no growth or writes when already sufficient.
-`allocated_pages` also consumes and returns the map to observe its virtual extent
-without extracting the lease. Neither operation promises entry capacity or free
-space. Callers own their byte/page budget and must qualify it against their codecs;
-upstream node-layout constants are not a supported entry-reservation guarantee.
+This is a hard cut. Previous manager, ledger, map, set, vector and region images
+are retired. There is no legacy decoder or automatic reset. Hosts must install
+fresh backing or explicitly retire the complete old storage image; never reset
+only allocation governance while retaining unmanaged application data. Rebuild
+consumers against Storage's owned codec and backing traits. Primitive numeric
+codecs are little-endian; application codecs remain application-owned.
 
-Returning map insertion consumes its owned key and returns the previous value.
-Callers whose post-insert metadata needs both retain a caller-owned key copy
-before insertion. The caller owns that copy's bounds and metadata transaction
-policy. The collection's key/value encoding and insertion failure contracts apply.
+The root directory, map metadata/nodes and vector root use bounded IC Wire.
+Checksums detect accidental corruption, not hostile changes by linked code.
+Map node records have a 16 MiB encoded limit. Vector records require a finite
+`Storable::BOUND`; each slot reserves its maximum width. Cell supports unbounded
+values within its u32 envelope length and enforces finite bounds where declared.
+Cells and vector slots also checksum their payloads. `StableCell::load(memory,
+maximum_bytes)` requires a caller-selected ceiling before payload allocation.
+The cell marker is `ICCELL01` with a 24-byte envelope; the vector marker is
+`ICVECC01` with 12 bytes of length/checksum overhead per slot. These formats
+require fresh/reset storage; earlier cell/vector bytes are not reinterpreted.
 
-`StableCell::load(runtime.open_memory(&journal_key)?)?` opens an existing
-singleton without a default record, initialization, writes or growth. It returns
-`ic_memory::StableCellPayloadError` for empty/foreign memory, unsupported cell
-versions or lengths extending beyond the allocation. Successful loading decodes
-the retained value once and holds the exclusive lease through `get` and `set`.
-No `Default` or `Clone` bound is required. The existing V1 envelope and value
-codec are unchanged; arbitrary collection payloads do not acquire the ledger's
-recovery size ceiling.
+`Storable` encoding, decoding and bound checks return `Result<_, CodecError>`.
+Collection creation, loading, lookup and mutation return `CollectionError`;
+map/set iterators yield `Result` entries and fuse after an iteration error.
+`MapEntry` value decoding is separately fallible. Handle errors explicitly;
+Metrics/Logging Storage propagate them through `StoreError::Storage`.
+Backing panics and buggy caller codecs remain host failures. Cached length and
+value observations are not recovery APIs for a poisoned owner.
 
-Cell codec and backing failures propagate as upstream panics. Failed loads
-preserve bytes and growth, releasing the consumed lease on errors or ordinary
-unwinding; installed Wasm traps follow the host's rollback semantics. Applications
-own schema validation and recovery.
+`create` requires empty allocation memory. `load` only reads and never repairs or
+initializes a replacement. `reset` explicitly replaces contents in an admitted
+allocation. Maps also support `clear`. All collection growth reserves
+capacity before writes; rejected encoding/bounds or ordinary growth refusal
+leave prior values intact. Native backing writes are not transactions. A backing
+failure poisons the shared allocation owner; drop it and its leases before
+reopening. Installed Wasm traps follow the host's rollback semantics.
 
-All owning collections use `create` for zero-page memory and `load` for retained
-state. `create` refuses nonempty allocations; `load` never initializes a
-replacement. `reset` explicitly replaces contents in an admitted allocation;
-for logs it replaces both the index and data allocations. Hosts own that choice.
-Map/set `clear` remains an entry-removal operation on a loaded collection.
+Maps stage the affected AVL nodes and allocator metadata before writing, publish
+the root last, and reuse power-of-two blocks on removal or replacement. `clear`
+reuses the allocation from its data start. They do not load the complete map
+into heap. This implementation has correctness qualification, not a production
+performance-equivalence claim. Node reads still include encoded values; hosts
+should measure their large-record and scan workloads. Existing-key replacements
+skip unchanged ancestors and do not rebalance the tree. Two-child deletion
+extracts and rebalances the successor path once, without searching for it again.
 
-`StableCell` enforces `T::BOUND` on creation, loading and every write. Variable
-bounds reject oversized records; fixed bounds require the exact width. Unbounded
-record types remain supported. Invalid encodings fail before writes, and failed
-loads preserve bytes and release the lease. The cell envelope and value codecs
-remain unchanged.
+`reserve_pages` takes an absolute virtual extent in 65,536-byte pages, not entry
+capacity. `allocated_pages` observes that extent while retaining the lease.
+Satisfied reservations do not grow or write. These APIs grant no raw-memory
+extraction.
 
-## Retained trees inside a shared allocation
+## Map regions
 
-`BTreeMapRegion<K, V, M>` accepts an `Rc<RuntimeMemory<M>>` and an absolute,
-half-open allocation-page range. It retains the original lease alongside the
-application's disjoint frame owner. Construction performs no IO and grants no
-new allocation authority. The view implements neither `Memory` nor raw extraction.
-Every collection operation reloads the current root and allocator. `keys_range`
-returns an owned, ordered snapshot, so application/checkpoint views can interleave
-mutations without keeping stale roots or iterators. For bounded batches use
-`keys_range_limited(bounds, limit)`: it stops collection at the requested key
-count; applying `.take(limit)` to `keys_range` does not. Resume with an excluded
-last key and expect intervening mutations to be visible. Key count does not
-bound encoded bytes or instructions. Applications choose and enforce
-their namespace ranges; `len` counts the whole physical tree.
+`BTreeMapRegion::new(Rc<RuntimeMemory<M>>, start..end)` selects a disjoint page
+range within one admitted allocation. Construction performs no IO. `initialize`
+requires an empty region. Operations load the current owned root, allowing
+views to interleave without stale caches. The current marker is `ICMAP001`;
+old upstream `BTR`/`BTA` framing is unsupported. IcyDB must update its framing
+admission together with fresh storage for this hard cut.
 
-For `IcyDB`'s retained control layout, select `257..4_194_304`. Bytes have exactly
-the upstream `RestrictedMemory` offset and B-tree format. Keep the existing
-commit/boot/startup frame access through the same lease below page 257. No data
-copy, allocation reassignment or migration is required for this upstream layout.
-This interface does not support the retired independent tree format.
+`keys_range_limited(bounds, limit)` bounds the collected key count before
+returning an owned snapshot. Resume using an excluded last key. Regions bound
+all IO and growth to their selected extent; callers own disjoint application
+frames and must not reenter collection access from codecs. Drop all views and
+the last shared lease owner before reopening that allocation.
 
-```rust
-use ic_memory::RuntimeMemory;
-use ic_storage::adapter::{BTreeMapRegion, Memory};
-use std::rc::Rc;
-
-fn inspect_control<M: Memory>(
-    lease: Rc<RuntimeMemory<M>>,
-) -> Result<Option<Vec<u8>>, &'static str> {
-    let view = BTreeMapRegion::<[u8; 33], Vec<u8>, M>::new(lease, 257..4_194_304);
-    if view.allocated_pages() == 0 {
-        return Ok(None);
-    }
-    // Preserve the consumer's bounded checks before infallible tree loading.
-    let mut frame = [0; 4];
-    view.read(0, &mut frame);
-    if frame != *b"BTR\x02" {
-        return Err("invalid retained tree framing");
-    }
-    view.read(52, &mut frame);
-    if frame != *b"BTA\x01" {
-        return Err("invalid retained allocator framing");
-    }
-    // The consumer must still validate this header's schema/CRC, namespaces
-    // and record limits before accepting the control store.
-    Ok(view.get(&[0; 33]))
-}
-```
-
-Use `initialize` only on a zero-page region; it refuses nonempty memory without
-writing. Retained trees require admission followed by ordinary view operations.
-The application keeps its existing semantic-header, namespace and capacity checks.
-Malformed retained framing must return its corruption error before loading; the
-view does not catch upstream panics or implement application recovery.
-
-`read` checks the entire relative span against the allocated region before IO.
-`reserve_pages` takes a relative minimum page extent and returns `RegionGrowError`
-for region limits or typed IC Memory growth refusal. A rejected reservation
-preserves bytes and allocation accounting; a satisfied request performs no IO.
-Initialize empty regions before reserving. Reservation is a caller-qualified byte
-budget, with no entry-capacity or transactional-insert guarantee. Collection IO
-and growth stay within the selected region, including when adjacent frames exist.
-Do not mutate tree bytes through the retained lease or reenter collection access
-from record codecs. Drop all views and the caller's last `Rc` to release the lease.
-
-```compile_fail
-use ic_memory::VectorMemory;
-use ic_storage::adapter::BTreeMapRegion;
-use std::rc::Rc;
-let _ = BTreeMapRegion::<u64, u64>::new(Rc::new(VectorMemory::default()), 0..8);
-```
-
-```compile_fail
-fn extract(view: ic_storage::adapter::BTreeMapRegion<u64, u64>) {
-    let _ = view.into_memory();
-}
-```
-
-```compile_fail
-fn raw(view: ic_storage::adapter::BTreeMapRegion<u64, u64>) {
-    let _ = ic_storage::adapter::Memory::size(&view);
-}
-```
-
-```compile_fail
-use ic_storage::adapter::{MemoryManager, DefaultMemoryImpl};
-```
-
-```compile_fail
-fn extract(map: ic_storage::adapter::StableBTreeMap<u64, u64>) {
-    let _ = map.into_memory();
-}
-```
-
-```compile_fail
-fn bypass(map: &ic_storage::adapter::StableBTreeMap<u64, u64>) {
-    let _: &ic_platform::stable_structures::BTreeMap<u64, u64, ic_memory::RuntimeMemory<ic_memory::DefaultMemoryImpl>> = map;
-}
-```
-
-```compile_fail
-fn duplicate(memory: ic_memory::RuntimeMemory<ic_memory::DefaultMemoryImpl>) {
-    let _ = memory.clone();
-}
-```
-
-The former independent B-tree implementation has been removed. Its format is
-incompatible with upstream collections; the adapter must not reopen those bytes.
+See [allocation and host integration](ALLOCATION.md).
 
 Licensed under MIT; see LICENSE.

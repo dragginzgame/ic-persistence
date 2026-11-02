@@ -1,3 +1,7 @@
+> Historical qualification of the retired manager/ledger API. The owned-engine
+> hard cut supersedes its API examples, numeric limits and retained formats.
+> Use [the current allocation contract](../crates/ic-storage/ALLOCATION.md).
+
 <p align="center">
   <img src="https://raw.githubusercontent.com/dragginzgame/shared-assets/main/ic-memory/ic-memory-readme-header.svg" alt="IC Memory — Stops upgrades from mixing up stored data" width="100%">
 </p>
@@ -50,8 +54,8 @@ no capability. A fresh admitted attempt can leave an empty initialized ledger
 cell; previous committed mappings remain unchanged. IC message traps roll back
 stable writes; arbitrary native backing is not a crash-atomic storage protocol.
 
-See the runnable [key-only example](../crates/ic-memory/examples/key_only.rs)
-and [composed host](../crates/ic-memory/examples/composed_host.rs).
+See the runnable [key-only example](../crates/ic-storage/examples/key_only.rs)
+and [composed host](../crates/ic-storage/examples/composed_host.rs).
 
 ## Omitted-store inspection
 
@@ -64,12 +68,12 @@ duplicate, foreign-namespace and physically excluded claims. Ignoring
 an admission error does not make the attempt succeed.
 
 ```rust,no_run
-fn reconcile<M: ic_memory::Memory>(
-    runtime: &ic_memory::MemoryRuntime<M>,
+fn reconcile<M: ic_storage::Memory>(
+    runtime: &ic_storage::MemoryRuntime<M>,
 ) -> Result<(), Box<dyn std::error::Error>> {
     // The host includes this key in its complete snapshot or admission hook
     // before committing bootstrap, then injects the runtime into this component.
-    let journal_key = ic_memory::StableKey::parse("db.removed_journal.v1")?;
+    let journal_key = ic_storage::StableKey::parse("db.removed_journal.v1")?;
     let journal = runtime.open_memory(&journal_key)?;
     // The consumer validates journal debt and pending effects before retirement.
     drop(journal);

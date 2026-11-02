@@ -1,7 +1,9 @@
 //! Operation-local collection access within a retained allocation region.
+use super::error::{CollectionError as Error, Result as CollectionResult, ensure};
+use super::tree::Tree;
 use super::{Memory, Storable};
-use crate::substrate::{self, DefaultMemoryImpl};
-use ic_memory::{RuntimeGrowError, RuntimeMemory, WASM_PAGE_SIZE_BYTES as PAGE_BYTES};
+use crate::DefaultMemoryImpl;
+use crate::{RuntimeGrowError, RuntimeMemory, WASM_PAGE_SIZE_BYTES as PAGE_BYTES};
 use std::{marker::PhantomData, ops::Range, ops::RangeBounds, rc::Rc};
 
 const MAX_PAGES: u64 = 4_194_304;
@@ -22,7 +24,7 @@ pub enum RegionGrowError {
         /// Maximum relative page count.
         maximum: u64,
     },
-    /// IC Memory refused to grow the containing allocation.
+    /// Storage refused to grow the containing allocation.
     #[error("{0}")]
     Runtime(#[source] RuntimeGrowError),
 }
@@ -30,14 +32,13 @@ pub enum RegionGrowError {
 /// A B-tree view inside one existing, governed allocation lease.
 ///
 /// The caller retains its `Rc<RuntimeMemory>` for disjoint application frames.
-/// Each collection operation loads the current upstream root and allocator;
+/// Each collection operation loads the current owned tree root and allocator;
 /// multiple views may interleave operations without retaining stale roots.
 /// Key scans return owned snapshots, so no cached tree or iterator escapes.
 /// Applications own namespace bounds, codec admission and recovery policy.
 ///
 /// Construction performs no IO. Inspect retained framing with [`Self::read`]
-/// before calling collection operations, which retain upstream load/panic
-/// contracts. Only [`Self::initialize`] creates a tree, and only in an empty
+/// before calling collection operations, which return collection admission errors. Only [`Self::initialize`] creates a tree, and only in an empty
 /// region. No method reinitializes nonempty memory or exports raw backing.
 /// As with ordinary collections, callers must not reenter collection access
 /// from a codec or mutate the tree's bytes through their retained lease.
@@ -79,63 +80,82 @@ impl<K: Storable + Ord + Clone, V: Storable, M: Memory> BTreeMapRegion<K, V, M> 
         (&self.memory).read(offset, dst);
     }
 
-    /// Create an upstream tree only when the selected region has zero pages.
+    /// Create an owned tree only when the selected region has zero pages.
     ///
     /// Call before reserving extra pages. Retained trees need no initialization:
     /// admit their framing and use the operations directly.
     ///
-    /// # Panics
-    /// Panics without writing if the region is nonempty. Empty-region creation
-    /// retains upstream growth and panic contracts.
-    pub fn initialize(&mut self) {
-        assert_eq!(self.allocated_pages(), 0, "region is already nonempty");
-        substrate::BTreeMap::<K, V, _>::new(&self.memory);
+    /// # Errors
+    /// Rejects a nonempty region or capacity refusal without initializing a replacement.
+    pub fn initialize(&mut self) -> CollectionResult<()> {
+        ensure(self.allocated_pages() == 0, Error::NotEmpty)?;
+        Tree::<K, V, _>::reset(&self.memory)?;
+        Ok(())
     }
 
     /// Reserve an absolute relative extent without promising entry capacity.
     ///
     /// # Errors
-    /// Returns a region-limit or IC Memory growth error without changing bytes
+    /// Returns a region-limit or Storage growth error without changing bytes
     /// or allocation accounting. A satisfied request performs no growth or IO.
     /// Callers own byte/page budgets and must qualify them for their codecs.
-    /// Mutations retain upstream failure semantics; this is not a transaction
+    /// Mutations retain the host failure contract; this is not a transaction
     /// around an insert that later runs out of space or panics in a codec.
     pub fn reserve_pages(&mut self, minimum: u64) -> Result<(), RegionGrowError> {
         self.memory.reserve_pages(minimum)
     }
 
     /// Read a record using the current retained root.
-    pub fn get(&self, key: &K) -> Option<V> {
-        self.current_map().get(key)
+    ///
+    /// # Errors
+    /// Reports structural, integrity or application decoding failures without writing.
+    pub fn get(&self, key: &K) -> CollectionResult<Option<V>> {
+        self.current_map()?.get(key)
     }
 
-    /// Insert using the current retained root and upstream mutation semantics.
-    pub fn insert(&mut self, key: K, value: V) -> Option<V> {
-        self.current_map().insert(key, value)
+    /// Insert using the current retained root and staged node updates.
+    ///
+    /// # Errors
+    /// Rejects encoding, decoding, structural or capacity errors before committing writes.
+    pub fn insert(&mut self, key: K, value: V) -> CollectionResult<Option<V>> {
+        self.current_map()?.insert(key, value)
     }
 
-    /// Remove using the current retained root and upstream mutation semantics.
-    pub fn remove(&mut self, key: &K) -> Option<V> {
-        self.current_map().remove(key)
+    /// Remove using the current retained root and staged node updates.
+    ///
+    /// # Errors
+    /// Rejects decoding or structural errors before committing removal.
+    pub fn remove(&mut self, key: &K) -> CollectionResult<Option<V>> {
+        self.current_map()?.remove(key)
     }
 
     /// Return the current tree's record count across all namespaces.
-    #[must_use]
-    pub fn len(&self) -> u64 {
-        self.current_map().len()
+    ///
+    /// # Errors
+    /// Reports invalid region metadata or incompatible codec bounds.
+    pub fn len(&self) -> CollectionResult<u64> {
+        Ok(self.current_map()?.len())
     }
 
     /// Return whether the current tree has no records.
-    #[must_use]
-    pub fn is_empty(&self) -> bool {
-        self.current_map().is_empty()
+    ///
+    /// # Errors
+    /// Reports invalid region metadata or incompatible codec bounds.
+    pub fn is_empty(&self) -> CollectionResult<bool> {
+        Ok(self.current_map()?.len() == 0)
     }
 
     /// Snapshot ordered keys within the caller's namespace/range bounds.
     ///
     /// The scan completes before returning; the iterator retains owned keys,
     /// with no collection cache, memory handle or borrow across later mutations.
-    pub fn keys_range(&self, bounds: impl RangeBounds<K>) -> std::vec::IntoIter<K> {
+    ///
+    /// # Errors
+    /// Reports invalid ranges, retained structure or key decoding failures.
+    pub fn keys_range(
+        &self,
+        bounds: impl RangeBounds<K>,
+    ) -> CollectionResult<std::vec::IntoIter<K>> {
         self.keys_range_limited(bounds, usize::MAX)
     }
 
@@ -145,28 +165,33 @@ impl<K: Storable + Ord + Clone, V: Storable, M: Memory> BTreeMapRegion<K, V, M> 
     /// allocating the snapshot. Zero returns without loading the tree. Resume
     /// with an excluded last key; intervening mutations are visible to each call.
     /// The limit bounds key count, not encoded bytes or instruction cost.
+    ///
+    /// # Errors
+    /// Reports invalid ranges, retained structure or key decoding failures.
     pub fn keys_range_limited(
         &self,
         bounds: impl RangeBounds<K>,
         limit: usize,
-    ) -> std::vec::IntoIter<K> {
+    ) -> CollectionResult<std::vec::IntoIter<K>> {
         if limit == 0 {
-            return Vec::new().into_iter();
+            return Ok(Vec::new().into_iter());
         }
-        self.current_map()
-            .keys_range(bounds)
+        Ok(self
+            .current_map()?
+            .range(bounds)
+            .map(|entry| entry.map(super::MapEntry::into_key))
             .take(limit)
-            .collect::<Vec<_>>()
-            .into_iter()
+            .collect::<CollectionResult<Vec<_>>>()?
+            .into_iter())
     }
 
-    fn current_map(&self) -> substrate::BTreeMap<K, V, &RegionMemory<M>> {
-        substrate::BTreeMap::load(&self.memory)
+    fn current_map(&self) -> CollectionResult<Tree<K, V, &RegionMemory<M>>> {
+        Tree::load(&self.memory)
     }
 }
 
-// Private bounded IO over an admitted lease. Upstream RestrictedMemory does not
-// bound reads/writes and may overgrow an absent region; enforce both here.
+// Private bounded IO over an admitted lease. Reads, writes and growth stay
+// inside the selected region, including initially absent regions.
 struct RegionMemory<M: Memory> {
     memory: Rc<RuntimeMemory<M>>,
     pages: Range<u64>,

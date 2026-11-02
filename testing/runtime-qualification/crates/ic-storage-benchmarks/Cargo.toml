@@ -1,0 +1,29 @@
+[package]
+name = "ic-storage-benchmarks"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish = false
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+clap.workspace = true
+ic-platform = { workspace = true, features = ["pocket-ic"] }
+serde_json.workspace = true
+
+[features]
+owned = ["dep:ic-storage"]
+dfinity = ["ic-platform/stable-structures"]
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+ic-platform = { workspace = true, features = ["ic0"] }
+ic-storage = { workspace = true, optional = true }
+
+[dependencies]
+ic-wire.workspace = true
+serde.workspace = true
+
+[[example]]
+name = "storage-comparison-wasm"
+path = "examples/wasm.rs"
+crate-type = ["cdylib"]

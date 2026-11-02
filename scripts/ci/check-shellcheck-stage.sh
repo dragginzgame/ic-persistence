@@ -7,7 +7,7 @@ fi
 [[ $# == 1 && -n "${RELEASE_GROUP:-}" ]] || { echo 'stage reuse requires the selected compiler and RELEASE_GROUP' >&2; exit 2; }
 export RUSTUP_TOOLCHAIN="$1" RUSTUP_AUTO_INSTALL=0 CARGO_NET_OFFLINE=true
 root="$(pwd -P)"
-record="$(mktemp -d "${TMPDIR:-/tmp}/persistence-shellcheck-admission.XXXXXX")"
+record="$(mktemp -d "${TMPDIR:-/tmp}/storage-shellcheck-admission.XXXXXX")"
 printf 'Retained ShellCheck admission: %s\n' "$record"
 # Fresh policy/metadata and source/index identity are consumer admission, not an
 # assertion that a prior whole gate or different source passed.
@@ -26,7 +26,7 @@ jq -cnS --arg path "$PATH" --arg home "$HOME" --arg shellcheck "$shellcheck_bin"
 # ShellCheck 0.11.0's native macOS payloads exceed 32 MiB (ARM64: 61,551,911
 # bytes; Intel: 35,176,792). Admit their complete bytes within a fixed 64 MiB cap.
 perl scripts/ci/run-validation-stage.pl --state "$VALIDATION_STAGE_STATE" --stage shellcheck \
-    --contract persistence-shellcheck/1 --source "$source_id" --group "$RELEASE_GROUP" \
+    --contract storage-shellcheck/1 --source "$source_id" --group "$RELEASE_GROUP" \
     --observe scripts/ci/observe-shellcheck-stage.sh --environment "$record/environment.json" --max-bytes 67108864 \
     -- bash scripts/ci/qualify-shellcheck-stage.sh
 perl scripts/ci/validation-input-checkpoint.pl "$root" "$record/inputs.json" "$record/after.json" scripts/ci/verify-file-checksum.sh

@@ -1,5 +1,13 @@
 # Repository Instructions
 
+For scope, delegated delivery, validation, compiler support and reporting, use
+[Shared policy at e84252f](https://github.com/dragginzgame/shared-tooling/blob/e84252f5740bacd708359580455ea2b6fd67df38/DRAGGINZGAME.md)
+and its revision-bound references over older snapshot or local-guide wording.
+This includes Rust 1.99.1 as minimum and pinned development/release compiler;
+check local declarations and qualification before claiming adoption is complete.
+Product-specific safeguards and scoped permissions below remain binding.
+This policy reference does not refresh executable snapshots.
+
 ## Active shared rules and local overlay
 
 Apply the reviewed local [Shared Tooling baseline](DRAGGINZGAME.md) and its
@@ -14,45 +22,45 @@ Before changing tooling, formatting, release adapters or retention, read
 vendored files or attribute dirty shared source to a committed export.
 
 The virtual repository-root workspace owns shared package metadata and the
-dependency catalog. The library packages are `crates/ic-memory/`,
-`crates/ic-storage/`, `crates/ic-metrics-stable/` and
-`crates/ic-logging-stable/` adapter. Logging Stable owns bounded IC Wire checkpoints
-over governed Storage maps; IC Observability's published Logging 0.23.1 owns
+dependency catalog. The library packages are `crates/ic-storage/`, `crates/ic-metrics-storage/` and
+`crates/ic-logging-storage/` adapter. Logging Storage owns bounded IC Wire checkpoints
+over governed Storage maps; IC Observability's Logging owns
 logging semantics and validated restoration. Logging checkpoints use discriminator 3 and an explicit retained-text ceiling.
 The maintainer retired discriminator-2 rows by hard cut: hosts own explicit row
 retirement or fresh allocations; no legacy decoder or automatic reset is allowed.
 Hosts own clocks, identity,
-retention scheduling and checkpoint cadence. The maintainer selected Logging
-Stable publication integration on 2026-10-29. All four packages participate in
-workspace archive qualification; issue #144 selects independent release groups
-for core persistence and each stable adapter, with group-bound receipts/publication. Actual
-release and publication commands retain their separate authorization.
-Memory owns allocation governance, bootstrap and exclusive leases; Storage owns
-governed collections over those leases. Metrics Stable owns validated IC Wire metric
+retention scheduling and checkpoint cadence. All three packages participate in
+workspace archive qualification; core Storage and each storage adapter release
+independently with group-bound receipts and publication.
+Storage owns allocation governance, bootstrap, exclusive leases and governed
+collections over those leases. Allocation internals remain private modules. Metrics Storage owns validated IC Wire metric
 snapshots over Storage maps and depends on the external
 `ic-metrics` arithmetic crate. Hosts own metric attribution, lifecycle and cadence.
-Storage depends on Memory, never the reverse. Package source, tests and canonical
+Storage owns allocation, bootstrap, backing custody and collections in one crate.
+There is no separate Memory package or compatibility facade. Package source, tests and canonical
 READMEs live under their packages.
-The repository is IC Persistence; published crate identities remain unchanged.
+The repository is IC Storage; Storage and the two storage adapters are the
+maintained packages. Renamed adapter identities require separate publication.
+The former Memory package is retired.
 Follow the [workspace layout rules](rules/rust-workspaces.md).
 
-The 0.56.0 ledger hard cut uses IC Wire for logical records and the
-framed Cell value (`ICML`, protected marker `ICMWIRE1`). Earlier CBOR images are
-retired by the maintainer's explicit hard-cut instruction. No legacy decoder or
-automatic reset is allowed. Hosts own fresh/reset installation or a separately
-reviewed transition; never clear only governance while retaining unmanaged claims.
-See [the current ledger contract](docs/current-ledger.md).
+The current hard cut uses Storage-owned memory, codecs, named directory and
+collection engines. Previous manager/ledger and collection images are retired.
+No legacy decoder or automatic reset is allowed. Hosts own fresh/reset whole
+backing and current application framing admission. See [the current allocation
+contract](docs/current-ledger.md). IDs are opaque u64 values; host policy uses
+namespace grants and configured resource limits, without numeric slot pools.
 
 Product contracts and numeric limits remain owned by this crate. Host support
 and prerequisites are declared in [docs/host-support.md](docs/host-support.md).
 
 ## Stable-memory governance
 
-Production storage integrations must obtain handles from `ic-memory` after
+Production storage integrations must obtain handles from `ic-storage` after
 successful admission and durable allocation commitment. Applications and
 components must not independently assign memory IDs, construct memory managers
 or access unmanaged stable memory. Host backing setup and this crate's internal
-manager/ledger implementation remain their explicit infrastructure boundary.
+directory implementation remain their explicit infrastructure boundary.
 Generic storage engines and upstream collections preserve this guarantee only
 when their production integrations use checked runtime handles. See the
 [shared policy note](docs/shared-tooling-adoption.md#stable-memory-governance-policy)
@@ -61,17 +69,16 @@ for the upstream contribution and the `ic-storage` package integration boundary.
 ## Development and qualification commands
 
 - The maintainer selected Rust 1.99.1 as both support floor and pinned
-  development/release compiler in [#151](https://github.com/dragginzgame/ic-persistence/issues/151).
+  development/release compiler in [#151](https://github.com/dragginzgame/ic-storage/issues/151).
   Both workspace catalogs and all packages must agree with `rust-toolchain.toml`.
-  This explicit local decision supersedes the reviewed baseline's older
-  lowest-possible-MSRV guidance; vendored policy remains unchanged. Admit actual
+  Admit actual
   Cargo/rustc identities, retain each distinct feature/target/host proof, and run
   otherwise identical compiler graphs once. Never delete historical tool caches.
 - Before editing or compiling, check for active Cargo, rustc and rustdoc builds.
 - Select checks for the affected contract: `make shared-tooling-check`,
   `make check-pins`, `make check-production-graph`,
   `make fmt-check`, or an appropriately selected Rust test such as
-  `cargo test -p ic-memory --locked --offline --example repo-tool` for the native
+  `cargo test -p ic-storage --locked --offline --example repo-tool` for the native
   release helper. `make lint-tooling`, `make test-tools`, `make test-tooling`,
   `make test-release-adapters`, `make test-hooks`, `make test-fixture-cell` and
   `make test-failure-evidence` are aggregates; select their relevant scripts or
@@ -135,7 +142,7 @@ to prove adoption.
 
 Follow the reviewed shared [contribution rules](rules/contributions.md),
 [hard-cut baseline](DRAGGINZGAME.md#pre-10-contracts) and
-[changelog rules](rules/changelogs.md). Memory uses direct release delivery;
+[changelog rules](rules/changelogs.md). Storage uses direct release delivery;
 an ordinary PR does not select PR release delivery.
 
 Root `CHANGELOG.md` is an index. Each group owns `releases/<group>/CHANGELOG.md`
@@ -145,40 +152,22 @@ Historical documents may describe retired formats; maintained code and fixtures
 use only the current contract. Do not add legacy decoders, Serde field aliases
 or tests whose sole purpose is prohibiting a retired name.
 
-## Cargo dependency ownership
+## Independent runtime qualification
 
-Keep direct dependency versions, sources and default-feature selections in
-the root `[workspace.dependencies]`; package dependency tables inherit them.
-Centralization must preserve selected dependency versions and effective features.
-Apply the reviewed
-[Cargo dependency rules](rules/cargo-dependencies.md).
-
-The maintainer-accepted 0.25.14 qualification design is the local exception for
-`testing/runtime-qualification`: it remains an unpublished independent workspace,
-whose virtual root and authoritative dependency catalog are its own
-`Cargo.toml`. Its sole package is
-`testing/runtime-qualification/crates/ic-memory-runtime-qualification/`, whose
-package metadata and dependency tables inherit that root. The selected lockfile
-is `testing/runtime-qualification/Cargo.lock`; normal library gates exclude this
-graph. Locked metadata/formatting cover it during layout work, and installed
-qualification retains the caller-owned PocketIC server and Wasm requirements. This keeps PocketIC's host-only graph and
-separate selected lockfile outside the library's normal gates and dependencies.
-This exception does not permit other nested workspaces or drifting duplicate
-declarations. It preserves the accepted qualification scope rather than silently
-merging or upgrading the two measured dependency graphs.
+`testing/runtime-qualification` is the approved unpublished independent workspace.
+Its own root catalog and lockfile own PocketIC integration; normal library gates
+exclude that graph. Installed qualification retains its explicit server and Wasm
+requirements. This does not authorize other nested workspaces. Follow
+[the adoption boundary](docs/shared-tooling-adoption.md) when changing its setup.
 
 ## Dependency exceptions
 
-Registry requirements remain compatible ranges. Memory and Storage consume the
-manager/Cell substrate through IC Platform's opt-in `stable-structures` feature.
-The qualified underlying protocol remains registry `ic-stable-structures` 0.7.2,
-whose exact package identity is admitted by `make check-production-graph` before
-singleton graph checks. Direct substrate declarations are prohibited by
-`ci/cargo-dependency-boundaries.json`; the declaration-exception catalog is empty.
-The layouts inspected by `runtime/layout.rs` and `stable_cell.rs` remain owned by
-this crate's qualification: changing the substrate requires layout, corruption,
-growth and installed IO/upgrade checks. Memory keeps its local layout/growth
-safeguards. Changes stop at the owned IC Platform boundary.
+Registry requirements remain compatible ranges. Storage uses IC Platform's
+owned stable-memory API for Wasm backing IO. No `ic-stable-structures` dependency is
+allowed in the production graph. Memory, codec traits, allocation metadata and
+collection layouts are owned here. Changes require appropriate native corruption,
+growth, custody and installed IO/upgrade qualification. Do not restore old manager
+or collection compatibility paths during the rewrite.
 
 The independent qualification workspace consumes PocketIC through IC Platform's
 optional native client boundary; its lockfile selects owned client
@@ -219,28 +208,23 @@ requires a different style.
 
 ## Independent release identities
 
-The maintainer approved issue #144's three groups in one development workspace.
-`ci/cargo-release-groups.json` owns membership and metadata plans. `persistence`
-coordinates Memory/Storage through literal package versions; `metrics-stable`
-and `logging-stable` likewise own literal member versions. There is no root
-workspace package version. Each primary package is its group's version authority
-and each canonical ledger is `releases/<group>/CHANGELOG.md`. Preserve existing numeric versions and
-coordinated history through 0.58.1; no historical decoder or release reset is
-introduced. Root dependency blocks show each group once with its member paths, versions and
-separate changelog comment; no duplicate header map is maintained.
-Dependencies remain in the root catalog. Adapter-only changes do not advance
-Memory/Storage or the other adapter. Every member has a root catalog path/version entry and an alias in its owning
-group’s dependencies roster, including unused entries. These entries add no
-dependency edges. Versioned root path requirements show the full current member version, preserving
-the existing requirement operator. Release preparation keeps them aligned even
-for core patches; registry-only requirements retain their compatibility policy. Shared Cargo
-resolution and public type coupling remain real integration obligations.
+`ci/cargo-release-groups.json` owns the `storage` (Storage only), `metrics-storage` and
+`logging-storage` groups and their version authorities. Root `Cargo.toml` catalogs
+every member; group ledgers live under `releases/`. Adapter-only changes do not
+advance Storage or the other adapter. Explicit `RELEASE_GROUP` selects
+release, resume and publication; whole-workspace archive integration and shared
+lockfile/public-type qualification remain required. See
+[group commands](RELEASING.md#release-groups) and the retained migration records
+for [Storage](docs/migration/ic-persistence.md) and
+[Metrics Storage](docs/migration/ic-metrics-stable.md).
 
-The existing runner requires explicit `RELEASE_GROUP` for release, resume and
-publication, with namespaced tags,
-receipts and resume paths. Whole-workspace validation/archive integration remains
-required; publication selects only the qualified group. Actual release/publication
-commands retain separate authority. See [group commands](RELEASING.md#release-groups).
-Keep public APIs, formats and custody unchanged during this tooling change.
-The preserved import histories remain in [the migration map](docs/migration/ic-persistence.md)
-and [the adapter migration guide](docs/migration/ic-metrics-stable.md).
+## Allocation consolidation
+
+The maintainer selected a complete package/API hard cut on 2026-11-02.
+`ic-storage` owns the former allocation runtime and the native repository helper.
+Consumers import runtime, leases and keys from `ic_storage`; no `ic-memory`
+package, re-export crate or dependency remains. The named directory replaces the fixed-slot manager and ledger by explicit
+hard cut. Production runtime interfaces use StorageConfig, AllocationGrants and
+opaque AllocationId values. The supported collections are Cell, Map, Set, Vector
+and map regions; no upstream implementation or compatibility decoder remains.
+Qualification and publication state belong to the current handoff.

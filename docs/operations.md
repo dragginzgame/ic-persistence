@@ -1,233 +1,47 @@
-<p align="center">
-  <img src="https://raw.githubusercontent.com/dragginzgame/shared-assets/main/ic-memory/ic-memory-readme-header.svg" alt="IC Memory — Stops upgrades from mixing up stored data" width="100%">
-</p>
-
 # Operations and diagnostics
 
-This guide is for application owners who need to inspect storage allocation,
-choose a `MemoryManager` bucket size, or diagnose a bootstrap failure. Start
-with the [README](../crates/ic-memory/README.md) if you first need the purpose and basic setup of
-`ic-memory`.
+Use [Storage's allocation guide](../crates/ic-storage/ALLOCATION.md) to construct
+and bootstrap a runtime. `StorageConfig` owns allocation, extent, physical-page
+and Wire resource ceilings. There is no bucket-size configuration or numeric
+memory-ID pool.
 
-Diagnostic reports support serialization only. Applications own any JSON/CBOR
-report-ingestion protocol; reports are not an input to ledger recovery or
-runtime admission. Checked host configuration and durable ledger types retain
-their separate decoding contracts.
+## Allocation observations
 
-## What the reports measure
+`runtime.memory_allocations()` validates the directory and returns retained
+`MemoryAllocation` rows: stable key, opaque ID and logical pages. This includes
+omitted names, which require fresh current admission before opening. Rows are
+passive observations and do not carry a lease. `allocation_id` resolves a retained
+name without granting access. `committed_generation` observes the cached directory
+generation after bootstrap.
 
-`ic-memory` can report how stable memory is divided among `MemoryManager` IDs
-without opening application stores. The report distinguishes:
+Logical pages measure addressable capacity, not live payload bytes. Physical
+backing also contains the root, append-only directory snapshots and possible
+abandoned native tails. There is no bucket slack or 255-row fixed report.
+`memory_allocation_summary`, old ledger exports and fixture doctor reports are
+removed; hosts must update diagnostic projections to the new named rows.
 
-- locations bound to stores in the current application;
-- the internal `ic-memory` allocation ledger;
-- allocated locations whose current owner is unknown; and
-- bytes outside the manager's assigned region.
+## Capacity and generation
 
-Use `runtime.memory_allocations()` for the detailed, per-ID
-`MemoryAllocations` report. It returns all 255 usable IDs in order, including
-zero-size IDs and the ledger at ID 0. Numeric totals are in `report.summary`;
-per-ID rows are in `report.memories`. Serialized reports use the same two fields.
+Defaults permit 4,096 names, 16,384 data extents and 1,048,576 physical Wasm pages.
+IDs use `u64`; configured budgets and physical resources limit actual capacity.
+Directory metadata is not reclaimed, so repeated growth consumes additional
+physical capacity. Reopening the same names does not write metadata or advance
+generation. New names and nonzero growth each commit a new generation.
 
-Use `runtime.memory_allocation_summary()` for recurring numeric
-metrics. `MemoryAllocationSummary` contains the same capacity and conservation
-totals without constructing 255 rows or copying store names, owners, or range
-claims.
+`RuntimeMemory::grow` returns typed errors for arithmetic overflow, resource
+limits, backing refusal, poisoning or directory invalidity. Through the owned
+`Memory` trait, failures become `-1`. Zero-page growth reads the cached logical
+extent and still refuses a poisoned owner.
 
-Both paths read exactly 34,848 bytes of validated manager metadata. They do not
-decode retained ownership, initialize stores, write, grow memory, or advance the
-ledger generation. The application owns the runtime instance; observations
-never choose or initialize one implicitly.
+## Failure handling
 
-Manager validation, including reopen, uses a fixed 32 KiB local table buffer.
-This removes a temporary heap allocation while increasing stack use. Custom
-stack budgets must include the validator and its callers; see the measured
-[buffer tradeoff](allocation-diagnostics-qualification.md).
+Do not retry through a poisoned owner. Drop the runtime and all handles before
+reopening and validating the backing. Native partial writes are not rolled back;
+a malformed root refuses without repair or fallback. Installed Wasm update and
+upgrade traps rely on IC rollback. Foreign retained formats require the host's
+explicit reset or fresh backing, never a partial governance reset.
 
-## Understanding the numbers
-
-The reports measure allocated address space, not how many bytes of meaningful
-application data are present. In particular:
-
-- **Physical extent** is the size of the supplied backing memory.
-- **Virtual extent** is the addressable size exposed by individual virtual
-  memories.
-- **Allocated bucket bytes** are physical bytes assigned to memory IDs.
-- **Bucket slack** is assigned bucket capacity beyond virtual extent.
-- **Unknown binding bytes** belong to IDs whose current store cannot be named
-  safely.
-- **Unmanaged bytes** lie outside the manager's assigned region.
-
-Reports store primary measurements: Wasm pages, assigned bucket counts and
-persisted bucket geometry. Use `DiagnosticMemorySize::bytes()` and the summary's
-byte-total methods for derived values. Per-ID and binding-group byte methods
-take `summary.bucket_size_pages`. Fixed layout/read-budget facts are associated
-constants on `MemoryAllocationSummary`. JSON contains primary facts only;
-application APIs such as Canic own any expanded presentation DTOs. Per-ID rows
-contain only the ID, virtual extent and bucket count. Hosts join the borrowed
-`committed_allocations()` slice to their rows by slot ID and use the runtime
-`allocation_pool()` and `MemoryAllocationPool::authority_for_key` for current
-owner labels and eligibility. Ledger labels come from the reserved constants.
-Unknown IDs stay unknown: neither a namespace grant nor pool membership proves
-historical ownership. Numeric summary provenance groups remain available.
-
-Payload occupancy belongs to the storage owner's diagnostics. This report does
-not inspect collection formats or include a payload-occupancy field.
-
-The following identities should hold:
-
-```text
-physical bytes = manager metadata + assigned bucket bytes + unmanaged bytes
-assigned bucket bytes = sum(per-ID bucket bytes)
-                      = known binding bytes + unknown binding bytes
-                      = virtual bytes + bucket slack
-```
-
-A current range declaration is policy metadata, not proof of historical
-ownership. Retired and omitted stores remain unknown rather than being guessed
-from their bytes.
-
-## Ledger size and upgrade count
-
-The ledger keeps current ownership, with at most 255
-records. Repeated upgrades add no audit entries. One checksummed current snapshot
-remains for recovery. Recovery derives its logical counter from the checksum-protected header;
-the recovered counter also binds stale-proof checks. Logical metadata is
-bounded to 64 KiB; the enclosing record to 64 KiB + 4 KiB. Physical allocation
-also depends on the configured manager bucket size, so smaller encoded bytes do
-not necessarily reduce assigned bucket bytes. See [the current ledger contract](current-ledger.md).
-
-The 32 KiB bucket table belongs to the pinned `ic-stable-structures`
-`MemoryManager`: its entries map physical buckets to 255 usable memory IDs.
-It is not an ic-memory upgrade log or 32,768 separate store IDs. The diagnostic
-buffer reads that existing table and adds no table to stable memory.
-
-## Choosing a bucket size
-
-Fresh runtimes default to 128 Wasm pages, or 8 MiB, per bucket.
-`MemoryRuntime::new` honors the setting already persisted in an existing
-same-release memory.
-
-To choose a different size for new memory, construct an explicit runtime with
-`MemoryRuntime::new_with_config(memory, MemoryManagerConfig::new(nonzero_pages))`.
-
-Pass a `std::num::NonZeroU16`; construction is infallible and zero is not a
-configuration value. All nonzero `u16` page counts are supported. The setting is immutable for that
-runtime. Existing memory must match exactly: configuration never shrinks,
-migrates, or reinterprets an existing layout.
-
-Smaller buckets reduce the physical allocation caused by small stores, but they
-also reduce total table capacity and can increase growth operations and
-cross-bucket reads. Do not select a value from fixture measurements alone. Base
-the choice on the application's expected store count, lifetime capacity, and
-live measurements. The historical
-[CANIC-162 report](canic162-memory-attribution.md) records the detailed tradeoff
-study that introduced configurable buckets.
-
-## Bootstrap state and early observations
-
-The host constructs and retains one explicit runtime. `runtime.is_bootstrapped()`
-and its borrowed `runtime.committed_allocations()` slice inspect that instance.
-`bootstrap` returns the committed generation; `committed_generation()` queries
-it without ledger IO. Bindings and pool queries return `NotBootstrapped` until
-bootstrap succeeds; there is no detached allocation-open capability. Pass opened handles to components
-instead of constructing independent managers over the same backing memory.
-
-`open_memory` grants one non-cloneable lease per committed allocation. A second
-live open returns `RuntimeOpenError::AlreadyOpen { id }` without backing IO.
-Drop the collection or handle before reopening; transferring its memory keeps
-the lease alive. Authority verification and warm bootstrap do not release it.
-Hosts must retain exclusive backing custody until the runtime and all its
-handles are dropped, including handles that outlive the runtime. Hidden generic
-backing aliases cannot be detected. See [the custody contract](../SAFETY.md#runtime-and-lease-custody).
-
-An existing but unbootstrapped explicit runtime can report physical allocation
-with unknown application bindings. For pre-bootstrap inspection with a known
-configuration, construct `MemoryRuntime::new_with_config(memory, config)` and
-then call its recovery-status and physical-allocation queries.
-
-## Doctor reports
-
-Production hosts own response assembly from `diagnostic_export`,
-`commit_recovery_diagnostic`, `memory_allocations` and
-`memory_allocation_summary`, retaining the returned typed errors.
-
-For explicit fixture preflight, enable `test-support` and call
-`ic_memory::testing::doctor_report(&runtime, &declarations, &pool, &policy)`.
-The combined report and its outcome types live under `ic_memory::testing`;
-production Memory does not provide a combined doctor operation.
-
-A doctor report includes:
-
-- stable-cell status;
-- protected commit recovery;
-- recovered ledger export;
-- source key requests, current namespace grants and physical exclusions;
-- validation under the tested policy;
-- live slot sizes when recovery permits measurement; and
-- the tested and established runtime binding.
-
-Failures include a stable `testing::DiagnosticCode` in addition to a human-readable
-message. Automation should use the code rather than parsing the prose.
-
-Doctor validation does not run `RuntimeBootstrapPolicy::prepare_bootstrap`,
-predict which historical stores a consumer will select, or certify consumer
-admission. It is a read-only diagnostic, not permission to open memory.
-
-Use `runtime.commit_recovery_diagnostic()` when only current-snapshot
-presence, validity, checked generation, and corruption status are
-needed. It returns `CommitSnapshotDiagnostic` directly: `Empty`,
-`Valid { generation }` or `Invalid { generation }`. Only the valid case carries
-a checked physical generation; it does not certify logical ledger recovery.
-`runtime.diagnostic_export()` additionally requires a completed bootstrap.
-It returns the recovered generation and allocation records with observed sizes;
-physical or logical recovery failure returns an error instead of an export.
-The fixture doctor report combines physical recovery status, including observations from a
-failed logical recovery. Use `MEMORY_MANAGER_LEDGER_ID` for the fixed ledger
-anchor; applications own its labels and response presentation.
-
-## Read and write bounds
-
-Runtime handles check every read, raw read and write against their current
-virtual extent before translating buckets. Allocated bucket slack is not
-addressable memory. A span beyond the extent, including an overflowing
-offset/length pair, panics on native hosts or traps in Wasm before backing IO.
-
-Empty IO is allowed at the end of memory, but not beyond it. Grow the handle
-before writing newly addressable bytes. Valid IO still delegates directly to
-the underlying memory implementation; raw reads retain its optimized support
-for uninitialized destinations.
-
-Size and IO trust exclusive backing custody between construction, initial
-bootstrap, lease opening and growth validation. They check poisoning without
-rereading manager metadata. Raw writes to manager metadata during a live lease
-are prohibited and need not be detected until the next validation boundary.
-Once divergence is detected, all existing handles refuse further access even
-if the raw bytes are restored. Growth validates before mutation and verifies
-its projected manager changes afterward.
-
-## Growth failures
-
-`RuntimeMemory::grow` returns `Result<u64, RuntimeGrowError>` to direct callers.
-Ordinary backing refusal, arithmetic overflow, reentry, and bucket exhaustion
-are distinct typed errors. A normal refusal occurs before manager bucket
-assignment, preserving virtual extents and manager metadata for retry.
-
-The upstream `ic_stable_structures::Memory` trait requires an `i64` result, so
-only that adapter maps a growth failure to `-1`. Applications calling the
-runtime handle directly should use `?`, `match`, or an explicit error handler.
-
-A zero-page growth request returns the current virtual extent without backing
-reads, writes or growth. It still rejects reentrant growth while another handle
-holds the runtime's capacity reservation.
-
-## Security and access control
-
-Allocation reports do not authorize endpoints or users. Keep controller checks
-and response filtering in the integrating application. A report can describe a
-pool membership or current binding, but only committed runtime authority can open a
-store.
-
-For lower-level runtime ownership, policy, recovery, and manual persistence
-details, continue with [ADVANCED.md](../ADVANCED.md). The non-negotiable safety
-properties are in [SAFETY.md](../SAFETY.md).
+Data IO checks the complete span before translating extents. Directory integrity
+is checked at construction, bootstrap, lease opening and growth, not before each
+read/write. Hosts must prevent raw backing edits throughout custody.
+See [safety](../SAFETY.md) and [advanced integration](../ADVANCED.md).

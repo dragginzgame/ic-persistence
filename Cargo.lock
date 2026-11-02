@@ -285,16 +285,15 @@ dependencies = [
 
 [[package]]
 name = "ic-logging"
-version = "0.23.7"
+version = "0.24.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "868a4bd157d8baebc03708c7dcbff485a49db1ff86160d6ee142c4bb37fe7bb9"
+checksum = "b57f8628fc49c3dc70b644a6566ea5d02cdee57bdc5f3382c501c8799e485a4d"
 
 [[package]]
-name = "ic-logging-stable"
+name = "ic-logging-storage"
 version = "0.63.0"
 dependencies = [
  "ic-logging",
- "ic-memory",
  "ic-platform",
  "ic-storage",
  "ic-wire",
@@ -303,39 +302,19 @@ dependencies = [
 ]
 
 [[package]]
-name = "ic-memory"
-version = "0.63.0"
-dependencies = [
- "clap",
- "ic-build",
- "ic-host-artifacts",
- "ic-host-fs",
- "ic-host-process",
- "ic-platform",
- "ic-testkit-native",
- "ic-wire",
- "serde",
- "serde_json",
- "thiserror",
- "toml",
- "trybuild",
-]
-
-[[package]]
 name = "ic-metrics"
-version = "0.25.1"
+version = "0.26.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "081b1f0ada80283b9fe61c3f5355f98d8bff2a11f03a8fa3411c7dbd40100c57"
+checksum = "388d6a3f76fbb6ac07795b4d2211a9a846ba3aa4b94d51be81018ecb3298cda5"
 dependencies = [
  "ic-wire",
  "serde",
 ]
 
 [[package]]
-name = "ic-metrics-stable"
+name = "ic-metrics-storage"
 version = "0.65.0"
 dependencies = [
- "ic-memory",
  "ic-metrics",
  "ic-storage",
  "ic-wire",
@@ -352,7 +331,6 @@ dependencies = [
  "ic-platform-macros",
  "ic-platform-runtime",
  "ic-platform-types",
- "ic-stable-structures",
  "serde",
  "thiserror",
 ]
@@ -401,23 +379,22 @@ dependencies = [
 ]
 
 [[package]]
-name = "ic-stable-structures"
-version = "0.7.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8ee3372ddc0cf2a747fc26ce2d075a240ed6bfab151e63bc70109e8967f7ce6f"
-dependencies = [
- "ic_principal",
-]
-
-[[package]]
 name = "ic-storage"
 version = "0.63.0"
 dependencies = [
- "ic-memory",
+ "clap",
+ "ic-build",
+ "ic-host-artifacts",
+ "ic-host-fs",
+ "ic-host-process",
  "ic-platform",
+ "ic-testkit-native",
  "ic-wire",
  "serde",
+ "serde_json",
  "thiserror",
+ "toml",
+ "trybuild",
 ]
 
 [[package]]
@@ -425,9 +402,6 @@ name = "ic-testkit-native"
 version = "0.78.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ee32015ff74f8c5c665c4b27c803d131686e5df003a7514b82e74fe241ef4d69"
-dependencies = [
- "ic-platform",
-]
 
 [[package]]
 name = "ic-wire"
@@ -453,12 +427,6 @@ dependencies = [
  "quote",
  "syn",
 ]
-
-[[package]]
-name = "ic_principal"
-version = "0.1.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0c2732829022822ec69021c336d23b32a053e07abdd08553c71407d6e2d1675d"
 
 [[package]]
 name = "indexmap"

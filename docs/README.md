@@ -1,20 +1,18 @@
-# IC Persistence documentation
+# IC Storage documentation
 
 The documents in this directory serve different audiences. Use this index to
 distinguish current integration guidance from historical engineering evidence.
 
 ## Start here
 
-- [IC Persistence overview](../README.md) and [migration map](migration/ic-persistence.md) describe the repository and its consolidation history.
-- [Governed Storage collections](../crates/ic-storage/README.md) cover collection leases, regions and upstream formats.
-- [Logging Stable](../crates/ic-logging-stable/README.md) covers explicit bounded logging checkpoints and installed qualification.
+- [IC Storage overview](../README.md) and [migration map](migration/ic-persistence.md) describe the repository and its consolidation history.
+- [Governed Storage collections](../crates/ic-storage/README.md) cover collection leases, regions and owned formats.
+- [Logging Storage](../crates/ic-logging-storage/README.md) covers explicit bounded logging checkpoints and installed qualification.
 
-- [Project overview and quick start](../crates/ic-memory/README.md) explains in plain language
-  what `ic-memory` protects, when it is useful, and how to integrate it.
-- [Frequently asked questions](../crates/ic-memory/README.md#frequently-asked-questions) answers
-  common scope, lifecycle, retirement, and allocation-style questions.
+- [Project overview and quick start](../crates/ic-storage/README.md) explains in plain language
+  what Storage protects, when it is useful, and how to integrate it.
 - [Advanced integration](../ADVANCED.md) covers runtime ownership, custom
-  policies, host allocation pools, recovery, and manual bootstrap.
+  policies, host namespace grants, recovery, and manual bootstrap.
 - [Safety invariants](../SAFETY.md) defines the properties that implementation
   changes must preserve.
 - [Implementation ownership](ownership.md) identifies the runtime, collection,
@@ -28,14 +26,11 @@ distinguish current integration guidance from historical engineering evidence.
   retained ownership, bounded metadata and deployment requirements.
 
 - [Operations and diagnostics](operations.md) explains allocation reports,
-  bucket configuration, doctor reports, and growth failures.
+  resource budgets and growth failures.
 - [Troubleshooting](troubleshooting.md) maps common symptoms and typed errors
   to safe next actions without resetting durable state.
-- [Key-only allocation and bounded recovery](key-only-recovery.md) defines
-  automatic placement, host adoption, omitted-store inspection, and recovery
-  limits.
-- [Recovered-metadata admission](recovered-admission.md) defines how a host can
-  select known historical stores before committing one bootstrap generation.
+- [Named allocation and admission](../crates/ic-storage/ALLOCATION.md) defines
+  placement, namespace grants, retained-name admission and resource limits.
 
 When current guides disagree, the crate's public API and safety invariants are
 authoritative. This project is pre-1.0 and maintains only its current API and
@@ -66,6 +61,9 @@ promise that a later consumer graph or deployment was requalified.
 
 ## Historical design and measurement records
 
+- [Key-only allocation qualification](key-only-recovery.md)
+- [Recovered-metadata admission qualification](recovered-admission.md)
+
 These reports explain why earlier changes were made and retain their original
 measurements. Use the current guides above for present-day API instructions.
 
@@ -75,7 +73,7 @@ measurements. Use the current guides above for present-day API instructions.
 - [Wasm codec size audit](audits/wasm-codec-size-2026-07-14.md)
 - [Recurring audit records](audits/recurring)
 
-Current maintenance reviews use the [shared methods and ic-memory overlay](audits/README.md).
+Current maintenance reviews use the [shared methods and Persistence overlay](audits/README.md).
 Historical reports retain their original methods and measurements.
 
 Measurement CSVs under `measurements/` belong to the historical reports that
@@ -90,7 +88,7 @@ link to them.
 - [Detailed 0.26 release notes](changelog/0.26.md)
 - [Detailed 0.25 release notes](changelog/0.25.md)
 - [Release guide](../RELEASING.md)
-- [Current wire fixtures](../crates/ic-memory/fixtures/current/README.md)
+- [Owned directory design](design/dynamic-allocation.md)
 
 ### Documentation release checklist
 

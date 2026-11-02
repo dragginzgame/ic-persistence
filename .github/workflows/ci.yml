@@ -66,7 +66,7 @@ jobs:
       - name: Install exact validation tools
         shell: bash
         run: |
-          tool_dir="$RUNNER_TEMP/ic-persistence-tools"
+          tool_dir="$RUNNER_TEMP/ic-storage-tools"
           actionlint_bin="$(bash scripts/ci/install-ci-tool.sh actionlint --install-dir "$tool_dir")"
           shellcheck_bin="$(bash scripts/ci/install-ci-tool.sh shellcheck --install-dir "$tool_dir")"
           {
@@ -112,8 +112,8 @@ jobs:
         if: ${{ needs.change-scope.outputs.scope != 'docs' }}
         shell: bash
         run: |
-          mkdir -p "$RUNNER_TEMP/ic-memory-fixtures"
-          echo "TMPDIR=$RUNNER_TEMP/ic-memory-fixtures" >> "$GITHUB_ENV"
+          mkdir -p "$RUNNER_TEMP/ic-storage-fixtures"
+          echo "TMPDIR=$RUNNER_TEMP/ic-storage-fixtures" >> "$GITHUB_ENV"
       - uses: dtolnay/rust-toolchain@e97e2d8cc328f1b50210efc529dca0028893a2d9 # reviewed master-history commit
         if: ${{ needs.change-scope.outputs.scope != 'docs' }}
         with:
@@ -188,7 +188,7 @@ jobs:
             Darwin:x86_64) checksum=3c89db4edcab7cf1c27bff178882e0f6f27f7afdf54e859fa041fca10febe4c6 ;;
             *) echo 'Unsupported native ShellCheck qualification host' >&2; exit 1 ;;
           esac
-          SHELLCHECK_BIN="$(bash scripts/ci/install-ci-tool.sh shellcheck --version 0.11.0 --sha256 "$checksum" --install-dir "$RUNNER_TEMP/ic-persistence-tools")"
+          SHELLCHECK_BIN="$(bash scripts/ci/install-ci-tool.sh shellcheck --version 0.11.0 --sha256 "$checksum" --install-dir "$RUNNER_TEMP/ic-storage-tools")"
           export SHELLCHECK_BIN
           make test-validation-stage-reuse 2>&1 | tee "$RUNNER_TEMP/stage-reuse.log"
       - name: Qualify pinned toolchain and retain native failure-evidence archive
@@ -196,7 +196,7 @@ jobs:
         id: evidence
         shell: bash
         env:
-          FAILURE_EVIDENCE_DIRECTORY: ${{ runner.temp }}/ic-memory-fixtures/native-upload
+          FAILURE_EVIDENCE_DIRECTORY: ${{ runner.temp }}/ic-storage-fixtures/native-upload
         run: make validate-toolchain 2>&1 | tee "$RUNNER_TEMP/validation.log"
       - name: Upload native failure-evidence archive
         if: ${{ needs.change-scope.outputs.scope != 'docs' }}
@@ -218,14 +218,14 @@ jobs:
           EVIDENCE_RUN: ${{ github.run_id }}
           EVIDENCE_ARTIFACT: ${{ steps.evidence-upload.outputs.artifact-id }}
           EVIDENCE_DIGEST: ${{ steps.evidence-upload.outputs.artifact-digest }}
-        run: bash scripts/ci/download-evidence.sh "$EVIDENCE_REPOSITORY" "$EVIDENCE_RUN" "$EVIDENCE_ARTIFACT" "$EVIDENCE_DIGEST" "$RUNNER_TEMP/ic-memory-evidence-downloaded"
+        run: bash scripts/ci/download-evidence.sh "$EVIDENCE_REPOSITORY" "$EVIDENCE_RUN" "$EVIDENCE_ARTIFACT" "$EVIDENCE_DIGEST" "$RUNNER_TEMP/ic-storage-evidence-downloaded"
       - name: Verify downloaded native failure evidence
         if: ${{ needs.change-scope.outputs.scope != 'docs' }}
         shell: bash
         run: |
           bash scripts/ci/verify-failure-evidence.sh \
-            "$RUNNER_TEMP/ic-memory-fixtures/native-upload" \
-            "$RUNNER_TEMP/ic-memory-evidence-downloaded/evidence.tar.gz"
+            "$RUNNER_TEMP/ic-storage-fixtures/native-upload" \
+            "$RUNNER_TEMP/ic-storage-evidence-downloaded/evidence.tar.gz"
       - name: Archive failed validation and installer evidence
         if: ${{ needs.change-scope.outputs.scope != 'docs' && needs.change-scope.result == 'success' && needs.docs.result == 'success' && (failure()) }}
         id: failure-evidence

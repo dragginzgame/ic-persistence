@@ -7,13 +7,13 @@ shift
 [[ $# -eq 0 || "$1" == --allow-dirty ]] || exit 2
 export RUSTUP_AUTO_INSTALL=0
 msrv="$(bash scripts/ci/check-validation-compilers.sh "$pin")"
-bash scripts/ci/read-persistence-packages.sh --all > /dev/null
+bash scripts/ci/read-storage-packages.sh --all > /dev/null
 cargo "+$pin" package --workspace --registry crates-io --locked --offline --no-verify "$@"
 # The integration bundle may synthesize local supplier checksums. Repackage the
 # release group alone so already-published suppliers use their registry identity;
 # coordinated unpublished members still share one Cargo packaging invocation.
 if [[ -n "${RELEASE_GROUP:-}" ]]; then
-    selected_names="$(bash scripts/ci/read-persistence-packages.sh)"
+    selected_names="$(bash scripts/ci/read-storage-packages.sh)"
     IFS=$'\t' read -r -a selected_packages <<< "$selected_names"
     selection=()
     for package in "${selected_packages[@]}"; do selection+=(--package "$package"); done

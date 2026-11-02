@@ -39,11 +39,11 @@ jq -e '
     | .permissions.actions == "read"
     and ($producers | length) == 1 and ($producers[0] |
         .run == "make validate-toolchain 2>&1 | tee \"$RUNNER_TEMP/validation.log\""
-        and .env.FAILURE_EVIDENCE_DIRECTORY == "${{ runner.temp }}/ic-memory-fixtures/native-upload")
+        and .env.FAILURE_EVIDENCE_DIRECTORY == "${{ runner.temp }}/ic-storage-fixtures/native-upload")
     and ([.steps[] | select((.run // "") | contains("bash scripts/ci/test-failure-evidence.sh"))] | length) == 0
     and ($downloads | length) == 1 and ($downloads[0] |
         .if == "${{ needs.change-scope.outputs.scope != '\''docs'\'' && (!cancelled() && steps.evidence-upload.outputs.artifact-id != '\'''\'') }}"
-        and .run == "bash scripts/ci/download-evidence.sh \"$EVIDENCE_REPOSITORY\" \"$EVIDENCE_RUN\" \"$EVIDENCE_ARTIFACT\" \"$EVIDENCE_DIGEST\" \"$RUNNER_TEMP/ic-memory-evidence-downloaded\""
+        and .run == "bash scripts/ci/download-evidence.sh \"$EVIDENCE_REPOSITORY\" \"$EVIDENCE_RUN\" \"$EVIDENCE_ARTIFACT\" \"$EVIDENCE_DIGEST\" \"$RUNNER_TEMP/ic-storage-evidence-downloaded\""
         and .["timeout-minutes"] == 3 and (."continue-on-error" // false) == false
         and .env.GH_TOKEN == "${{ github.token }}"
         and .env.EVIDENCE_REPOSITORY == "${{ github.repository }}"
@@ -52,14 +52,14 @@ jq -e '
         and .env.EVIDENCE_DIGEST == "${{ steps.evidence-upload.outputs.artifact-digest }}")
 ' "$fixture/workflow.json" > /dev/null
 
-mkdir -p "$fixture/temp/ic-memory-fixtures" "$fixture/repository"
+mkdir -p "$fixture/temp/ic-storage-fixtures" "$fixture/repository"
 temp_root="$fixture/temp"
 repository_root="$fixture/repository"
 export SHARED_TOOLING_STORE="$fixture/shared-store"
 
 # Exercise the public installer directly. Shared owns its regression matrix;
 # Memory owns preservation of this actual refusal and its failed candidate.
-installer_fixture="$temp_root/ic-memory-fixtures/host-admission"
+installer_fixture="$temp_root/ic-storage-fixtures/host-admission"
 mkdir -p "$installer_fixture/bin" "$installer_fixture/consumer"
 cat > "$installer_fixture/probe" <<'PROBE'
 #!/usr/bin/env bash
@@ -415,7 +415,7 @@ fi
 [[ ! -s "$fixture/failed-output" && -s "$fixture/failed-error" && ! -s "$fixture/failed-fields" ]] || exit 1
 partial=0
 printf 'partial archive' > "$fixture/partial-content"
-for path in "$temp_root"/ic-memory-evidence.*/evidence.tar.gz; do
+for path in "$temp_root"/ic-storage-evidence.*/evidence.tar.gz; do
     if cmp -s "$path" "$fixture/partial-content"; then partial=$((partial + 1)); fi
 done
 [[ "$partial" == 1 && "$(cat "$temp_root/validation.log")" == original_status=1 ]] || exit 1

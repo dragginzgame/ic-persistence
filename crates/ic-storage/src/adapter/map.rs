@@ -1,132 +1,156 @@
 //! Governed map collection implementation.
+use super::error::{CollectionError as Error, Result, ensure};
+use super::tree::Tree;
 use super::{MapIter, Memory, Storable};
-use crate::substrate::{self, DefaultMemoryImpl};
-use ic_memory::RuntimeMemory;
+use crate::DefaultMemoryImpl;
+use crate::RuntimeMemory;
 use std::ops::RangeBounds;
 
-/// Governed upstream `BTreeMap`; initialization and failures follow upstream contracts.
+/// Governed ordered map backed by Storage’s owned AVL tree and reusable blocks.
 pub struct StableBTreeMap<K: Storable + Ord + Clone, V: Storable, M: Memory = DefaultMemoryImpl> {
-    inner: substrate::BTreeMap<K, V, RuntimeMemory<M>>,
+    inner: Tree<K, V, RuntimeMemory<M>>,
 }
 impl<K: Storable + Ord + Clone, V: Storable, M: Memory> StableBTreeMap<K, V, M> {
     /// Create a collection only in zero-page memory.
     ///
-    /// # Panics
-    /// Refuses nonempty memory before writing. Growth and codec failures retain
-    /// upstream behavior.
-    pub fn create(memory: RuntimeMemory<M>) -> Self {
-        assert_eq!(memory.size(), 0, "collection memory is not empty");
+    /// # Errors
+    /// Refuses nonempty memory, invalid encoding or capacity exhaustion before writes.
+    pub fn create(memory: RuntimeMemory<M>) -> Result<Self> {
+        ensure(memory.size() == 0, Error::NotEmpty)?;
         Self::reset(memory)
     }
 
     /// Deliberately replace any contents in this admitted allocation.
     ///
-    /// # Panics
-    /// Growth and codec failures retain upstream behavior.
-    pub fn reset(memory: RuntimeMemory<M>) -> Self {
-        Self {
-            inner: substrate::BTreeMap::new(memory),
-        }
+    /// # Errors
+    /// Returns encoding, capacity or structural admission errors.
+    pub fn reset(memory: RuntimeMemory<M>) -> Result<Self> {
+        Ok(Self {
+            inner: Tree::reset(memory)?,
+        })
     }
 
     /// Load retained collection state without initializing a replacement.
     ///
-    /// # Panics
-    /// Refuses empty or foreign memory and incompatible layouts/bounds without
-    /// writing. Record decoding and backing failures retain upstream behavior.
-    pub fn load(memory: RuntimeMemory<M>) -> Self {
-        Self {
-            inner: substrate::BTreeMap::load(memory),
-        }
+    /// # Errors
+    /// Refuses empty, foreign or corrupt memory and incompatible bounds without writing.
+    pub fn load(memory: RuntimeMemory<M>) -> Result<Self> {
+        Ok(Self {
+            inner: Tree::load(memory)?,
+        })
     }
     /// Clear entries while retaining this allocation's exclusive lease.
-    pub fn clear(&mut self) {
-        self.inner.clear_new();
+    ///
+    /// # Errors
+    /// Reports a poisoned owner or metadata encoding/capacity refusal.
+    pub fn clear(&mut self) -> Result<()> {
+        self.inner.clear()
     }
     /// Reserve a minimum virtual extent without exposing or duplicating the lease.
     ///
     /// Returns the map on both success and ordinary growth refusal. Entries are
-    /// preserved; reloading the upstream header refreshes its cached allocator.
-    /// Backing traps retain the upstream panic contract.
+    /// preserved; the cached tree remains unchanged.
+    /// Backing traps follow the host transaction contract.
     ///
     /// `minimum` is an absolute virtual extent in 65,536-byte Wasm pages, not an
     /// entry count or additional pages. Existing extents never shrink. A request
     /// already covered performs no growth or writes. This reserves backing only:
     /// it does not promise that any particular number or encoding of entries fits.
     /// Callers own their byte/page budget and must qualify it for their codecs;
-    /// upstream node-layout constants are not a supported capacity contract.
-    pub fn reserve_pages(self, minimum: u64) -> (Self, Result<(), ic_memory::RuntimeGrowError>) {
-        let memory = self.inner.into_memory();
-        let additional = minimum.saturating_sub(memory.size());
-        let result = memory.grow(additional).map(|_| ());
-        (Self::load(memory), result)
+    /// internal node-layout constants are not a supported capacity contract.
+    pub fn reserve_pages(
+        self,
+        minimum: u64,
+    ) -> (Self, std::result::Result<(), crate::RuntimeGrowError>) {
+        let additional = minimum.saturating_sub(self.inner.memory.size());
+        let result = self.inner.memory.grow(additional).map(|_| ());
+        (self, result)
     }
     /// Observe the virtual extent in 65,536-byte pages while retaining the lease.
     ///
-    /// Consumes and returns the map because upstream exposes memory only through
-    /// ownership transfer. Reloading reads the header without writing or growing.
+    /// Consumes and returns the map while retaining the exclusive lease.
+    /// Observing the allocation performs no writes or growth.
     /// This is allocated extent, not free space or guaranteed entry capacity.
     #[must_use]
     pub fn allocated_pages(self) -> (Self, u64) {
-        let memory = self.inner.into_memory();
-        let pages = memory.size();
-        (Self::load(memory), pages)
+        let pages = self.inner.memory.size();
+        (self, pages)
     }
-    /// Delegates to upstream `BTreeMap::insert` with the governed allocation.
-    pub fn insert(&mut self, key: K, value: V) -> Option<V> {
+    /// Perform `insert` on the governed ordered map.
+    ///
+    /// # Errors
+    /// Rejects encoding, decoding, structural or capacity errors before committing writes.
+    pub fn insert(&mut self, key: K, value: V) -> Result<Option<V>> {
         self.inner.insert(key, value)
     }
-    /// Delegates to upstream `BTreeMap::get` with the governed allocation.
-    pub fn get(&self, key: &K) -> Option<V> {
+    /// Perform `get` on the governed ordered map.
+    ///
+    /// # Errors
+    /// Reports structural, integrity or application decoding failures without writing.
+    pub fn get(&self, key: &K) -> Result<Option<V>> {
         self.inner.get(key)
     }
-    /// Delegates to upstream `BTreeMap::contains_key` with the governed allocation.
-    pub fn contains_key(&self, key: &K) -> bool {
-        self.inner.contains_key(key)
+    /// Perform `contains_key` on the governed ordered map.
+    ///
+    /// # Errors
+    /// Reports structural, integrity or application decoding failures without writing.
+    pub fn contains_key(&self, key: &K) -> Result<bool> {
+        Ok(self.inner.get(key)?.is_some())
     }
-    /// Delegates to upstream `BTreeMap::is_empty` with the governed allocation.
+    /// Perform `is_empty` on the governed ordered map.
+    ///
+    /// # Errors
+    /// Reports invalid region metadata or incompatible codec bounds.
     pub fn is_empty(&self) -> bool {
-        self.inner.is_empty()
+        self.inner.len() == 0
     }
-    /// Delegates to upstream `BTreeMap::len` with the governed allocation.
+    /// Perform `len` on the governed ordered map.
     pub fn len(&self) -> u64 {
         self.inner.len()
     }
-    /// Delegates to upstream `BTreeMap::remove` with the governed allocation.
-    pub fn remove(&mut self, key: &K) -> Option<V> {
+    /// Perform `remove` on the governed ordered map.
+    ///
+    /// # Errors
+    /// Rejects decoding or structural errors before committing removal.
+    pub fn remove(&mut self, key: &K) -> Result<Option<V>> {
         self.inner.remove(key)
     }
-    /// Delegates to upstream `BTreeMap::first_key_value` with the governed allocation.
-    pub fn first_key_value(&self) -> Option<(K, V)> {
-        self.inner.first_key_value()
+    /// Perform `first_key_value` on the governed ordered map.
+    ///
+    /// # Errors
+    /// Reports invalid structure, integrity failures or application codec errors.
+    pub fn first_key_value(&self) -> Result<Option<(K, V)>> {
+        self.iter()
+            .next()
+            .map(|entry| entry?.into_pair())
+            .transpose()
     }
-    /// Delegates to upstream `BTreeMap::last_key_value` with the governed allocation.
-    pub fn last_key_value(&self) -> Option<(K, V)> {
-        self.inner.last_key_value()
+    /// Perform `last_key_value` on the governed ordered map.
+    ///
+    /// # Errors
+    /// Reports invalid structure, integrity failures or application codec errors.
+    pub fn last_key_value(&self) -> Result<Option<(K, V)>> {
+        self.iter()
+            .next_back()
+            .map(|entry| entry?.into_pair())
+            .transpose()
     }
-    /// Delegates to upstream `BTreeMap::pop_first` with the governed allocation.
-    pub fn pop_first(&mut self) -> Option<(K, V)> {
-        self.inner.pop_first()
-    }
-    /// Delegates to upstream `BTreeMap::pop_last` with the governed allocation.
-    pub fn pop_last(&mut self) -> Option<(K, V)> {
-        self.inner.pop_last()
-    }
-    /// Delegates to upstream `BTreeMap::iter` with the governed allocation.
+    /// Perform `iter` on the governed ordered map.
     pub fn iter(&self) -> MapIter<'_, K, V, M> {
-        self.inner.iter()
+        self.inner.range(..)
     }
-    /// Delegates to upstream `BTreeMap::range` with the governed allocation.
+    /// Perform `range` on the governed ordered map.
     pub fn range(&self, key_range: impl RangeBounds<K>) -> MapIter<'_, K, V, M> {
         self.inner.range(key_range)
     }
-    /// Delegates to upstream `BTreeMap::keys` with the governed allocation.
-    pub fn keys(&self) -> impl DoubleEndedIterator<Item = K> + '_ {
-        self.inner.keys()
+    /// Perform `keys` on the governed ordered map.
+    pub fn keys(&self) -> impl DoubleEndedIterator<Item = Result<K>> + '_ {
+        self.iter()
+            .map(|entry| entry.map(super::MapEntry::into_key))
     }
-    /// Delegates to upstream `BTreeMap::values` with the governed allocation.
-    pub fn values(&self) -> impl DoubleEndedIterator<Item = V> + '_ {
-        self.inner.values()
+    /// Perform `values` on the governed ordered map.
+    pub fn values(&self) -> impl DoubleEndedIterator<Item = Result<V>> + '_ {
+        self.iter().map(|entry| entry?.into_value())
     }
 }
 

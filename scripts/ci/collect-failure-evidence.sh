@@ -21,7 +21,7 @@ repository_root="$2"
 inputs=()
 complete=true
 shopt -s nullglob
-for path in "$temp_root/ic-memory-fixtures" "$temp_root/tools-setup.log" "$temp_root/tools-check.log" \
+for path in "$temp_root/ic-storage-fixtures" "$temp_root/tools-setup.log" "$temp_root/tools-check.log" \
     "$temp_root/dependencies.log" "$temp_root/validation.log" \
     "$temp_root/runtime-host-setup.log" "$temp_root/runtime-host-check.log" \
     "$temp_root/runtime-ic-setup.log" "$temp_root/runtime-ic-check.log" \
@@ -78,7 +78,7 @@ if [[ "$select_tools" == true ]]; then
     # Shared owns selector admission, failed-output isolation and tool fallback.
     # Keep its receipts separate from Memory's local path-admission diagnostics.
     diagnostics="$(mktemp -d "$temp_root/tool-evidence.XXXXXX")"
-    archive_dir="$(mktemp -d "$temp_root/ic-memory-evidence.XXXXXX")"
+    archive_dir="$(mktemp -d "$temp_root/ic-storage-evidence.XXXXXX")"
     collection_status=0
     ic_selection=()
     [[ "$mode" != compact ]] || ic_selection=(wasm-opt)
@@ -92,7 +92,7 @@ if [[ "$select_tools" == true ]]; then
         *) exit "$collection_status" ;;
     esac
 elif [[ ${#inputs[@]} != 0 ]]; then
-    archive_dir="$(mktemp -d "$temp_root/ic-memory-evidence.XXXXXX")"
+    archive_dir="$(mktemp -d "$temp_root/ic-storage-evidence.XXXXXX")"
     bash "$ROOT/scripts/ci/archive-evidence.sh" "$archive_dir/evidence.tar.gz" "${inputs[@]}"
 fi
 # Publish completeness only after the selected evidence has been archived.

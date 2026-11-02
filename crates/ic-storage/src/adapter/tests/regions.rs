@@ -13,7 +13,7 @@ const PAGE: u64 = 65_536;
 #[test]
 fn region_growth_error_retains_the_runtime_source() {
     use std::error::Error as _;
-    let growth = ic_memory::RuntimeGrowError::BackingRefused {
+    let growth = crate::RuntimeGrowError::BackingRefused {
         additional_pages: 1,
     };
     let error = RegionGrowError::Runtime(growth);
@@ -21,7 +21,7 @@ fn region_growth_error_retains_the_runtime_source() {
         error
             .source()
             .unwrap()
-            .downcast_ref::<ic_memory::RuntimeGrowError>(),
+            .downcast_ref::<crate::RuntimeGrowError>(),
         Some(&growth)
     );
     assert!(
@@ -45,20 +45,16 @@ fn namespace(family: u8) -> std::ops::RangeInclusive<[u8; 33]> {
 // Representative consumer admission, before infallible collection loading.
 // Application header codecs/CRCs and recovery policy remain with IcyDB.
 fn admit<M: Memory>(view: &BTreeMapRegion<[u8; 33], Vec<u8>, M>) -> Result<(), ()> {
-    let mut frame = [0; 4];
+    let mut frame = [0; 8];
     view.read(0, &mut frame);
-    if frame != *b"BTR\x02" {
-        return Err(());
-    }
-    view.read(52, &mut frame);
-    if frame != *b"BTA\x01" {
+    if frame != *b"ICMAP001" {
         return Err(());
     }
     let mut after_families = [0; 33];
     after_families[0] = 3;
-    if view.get(&[0; 33]).as_deref() != Some(b"header")
-        || view.keys_range(namespace(0)).any(|k| k != [0; 33])
-        || view.keys_range(after_families..).next().is_some()
+    if view.get(&[0; 33]).unwrap().as_deref() != Some(b"header")
+        || view.keys_range(namespace(0)).unwrap().any(|k| k != [0; 33])
+        || view.keys_range(after_families..).unwrap().next().is_some()
     {
         return Err(());
     }
@@ -71,7 +67,7 @@ fn retained_region_interleaves_namespaces_and_cold_reopens() {
     let runtime = runtime(backing.clone());
     let lease = Rc::new(
         runtime
-            .open_memory(&ic_memory::StableKey::parse("test.map.v1").unwrap())
+            .open_memory(&crate::StableKey::parse("test.map.v1").unwrap())
             .unwrap(),
     );
     lease.as_ref().grow(START).unwrap();
@@ -79,12 +75,10 @@ fn retained_region_interleaves_namespaces_and_cold_reopens() {
         lease.write(offset, b"frame");
     }
 
-    // Seed the exact existing upstream RestrictedMemory layout, without using
-    // the new adapter to produce its own interoperability fixture.
-    let memory = substrate::RestrictedMemory::new(lease.clone(), START..END);
-    let mut retained = substrate::BTreeMap::<[u8; 33], Vec<u8>, _>::init(memory);
-    retained.insert([0; 33], b"header".to_vec());
-    retained.insert([1; 33], vec![9]);
+    let mut retained = BTreeMapRegion::new(lease.clone(), START..END);
+    retained.initialize().unwrap();
+    retained.insert([0; 33], b"header".to_vec()).unwrap();
+    retained.insert([1; 33], vec![9]).unwrap();
     drop(retained);
     let before = backing.borrow().clone();
 
@@ -93,27 +87,27 @@ fn retained_region_interleaves_namespaces_and_cold_reopens() {
     admit(&application).unwrap();
     admit(&checkpoint).unwrap();
     assert!(*backing.borrow() == before);
-    let snapshot = application.keys_range(namespace(1));
-    assert!(catch_unwind(AssertUnwindSafe(|| application.initialize())).is_err());
+    let snapshot = application.keys_range(namespace(1)).unwrap();
+    assert!(application.initialize().is_err());
     assert!(*backing.borrow() == before);
 
     for number in 0..80_u8 {
         let mut key = [1; 33];
         key[32] = number;
-        application.insert(key, vec![number; 40]);
+        application.insert(key, vec![number; 40]).unwrap();
         key[0] = 2;
-        checkpoint.insert(key, vec![number + 1; 40]);
+        checkpoint.insert(key, vec![number + 1; 40]).unwrap();
     }
     assert_eq!(snapshot.collect::<Vec<_>>(), vec![[1; 33]]);
-    assert_eq!(application.keys_range(namespace(1)).count(), 80);
-    assert_eq!(checkpoint.keys_range(namespace(2)).count(), 80);
-    assert_eq!(application.len(), 161);
+    assert_eq!(application.keys_range(namespace(1)).unwrap().count(), 80);
+    assert_eq!(checkpoint.keys_range(namespace(2)).unwrap().count(), 80);
+    assert_eq!(application.len().unwrap(), 161);
     for number in 0..80_u8 {
         let mut key = [1; 33];
         key[32] = number;
-        assert_eq!(application.remove(&key), Some(vec![number; 40]));
+        assert_eq!(application.remove(&key).unwrap(), Some(vec![number; 40]));
         key[0] = 2;
-        assert_eq!(checkpoint.get(&key), Some(vec![number + 1; 40]));
+        assert_eq!(checkpoint.get(&key).unwrap(), Some(vec![number + 1; 40]));
     }
     // Commit, boot and startup frames remain disjoint from collection writes.
     for offset in [0, PAGE, (START - 1) * PAGE] {
@@ -124,13 +118,13 @@ fn retained_region_interleaves_namespaces_and_cold_reopens() {
     drop(lease);
     drop(application);
     assert!(matches!(
-        runtime.open_memory(&ic_memory::StableKey::parse("test.map.v1").unwrap()),
+        runtime.open_memory(&crate::StableKey::parse("test.map.v1").unwrap()),
         Err(RuntimeOpenError::AlreadyOpen { .. })
     ));
     drop(checkpoint);
     drop(
         runtime
-            .open_memory(&ic_memory::StableKey::parse("test.map.v1").unwrap())
+            .open_memory(&crate::StableKey::parse("test.map.v1").unwrap())
             .unwrap(),
     );
     drop(runtime);
@@ -141,27 +135,24 @@ fn retained_region_interleaves_namespaces_and_cold_reopens() {
     let before = backing.borrow().clone();
     let lease = Rc::new(
         runtime
-            .open_memory(&ic_memory::StableKey::parse("test.map.v1").unwrap())
+            .open_memory(&crate::StableKey::parse("test.map.v1").unwrap())
             .unwrap(),
     );
     let view = BTreeMapRegion::new(lease.clone(), START..END);
     admit(&view).unwrap();
-    assert_eq!(view.len(), 81);
-    assert_eq!(view.keys_range(namespace(1)).count(), 0);
+    assert_eq!(view.len().unwrap(), 81);
+    assert_eq!(view.keys_range(namespace(1)).unwrap().count(), 0);
     for number in 0..80_u8 {
         let mut key = [1; 33];
         key[0] = 2;
         key[32] = number;
-        assert_eq!(view.get(&key), Some(vec![number + 1; 40]));
+        assert_eq!(view.get(&key).unwrap(), Some(vec![number + 1; 40]));
     }
     assert!(*backing.borrow() == before);
     drop(view);
-    let raw = substrate::BTreeMap::<[u8; 33], Vec<u8>, _>::load(substrate::RestrictedMemory::new(
-        lease,
-        START..END,
-    ));
-    assert_eq!(raw.len(), 81);
-    assert!(raw.keys().is_sorted());
+    let reopened = BTreeMapRegion::<[u8; 33], Vec<u8>, _>::new(lease, START..END);
+    assert_eq!(reopened.len().unwrap(), 81);
+    assert!(reopened.keys_range(..).unwrap().is_sorted());
     assert!(*backing.borrow() == before);
 }
 
@@ -172,41 +163,41 @@ fn retained_region_admission_refuses_corruption_without_rewriting() {
         let runtime = runtime(backing.clone());
         let lease = Rc::new(
             runtime
-                .open_memory(&ic_memory::StableKey::parse("test.map.v1").unwrap())
+                .open_memory(&crate::StableKey::parse("test.map.v1").unwrap())
                 .unwrap(),
         );
         let mut view = BTreeMapRegion::new(lease.clone(), 0..8);
         assert_eq!(view.allocated_pages(), 0);
-        view.initialize();
-        view.insert([0; 33], b"header".to_vec());
+        view.initialize().unwrap();
+        view.insert([0; 33], b"header".to_vec()).unwrap();
         match corruption {
             0..=3 => {
-                let offset = [0, 3, 52, 55][corruption];
+                let offset = [0, 3, 5, 7][corruption];
                 lease.write(offset, &[0xff]);
             }
             4 | 5 => {
                 let mut key = [0; 33];
                 key[0] = if corruption == 4 { 0 } else { 3 };
                 key[32] = 1;
-                view.insert(key, vec![0]);
+                view.insert(key, vec![0]).unwrap();
             }
             _ => {
-                view.insert([0; 33], vec![0xff]);
+                view.insert([0; 33], vec![0xff]).unwrap();
             }
         }
         let before = backing.borrow().clone();
         assert!(admit(&view).is_err());
-        assert!(catch_unwind(AssertUnwindSafe(|| view.initialize())).is_err());
+        assert!(view.initialize().is_err());
         assert!(*backing.borrow() == before);
         drop(view);
         assert!(matches!(
-            runtime.open_memory(&ic_memory::StableKey::parse("test.map.v1").unwrap()),
+            runtime.open_memory(&crate::StableKey::parse("test.map.v1").unwrap()),
             Err(RuntimeOpenError::AlreadyOpen { .. })
         ));
         drop(lease);
         drop(
             runtime
-                .open_memory(&ic_memory::StableKey::parse("test.map.v1").unwrap())
+                .open_memory(&crate::StableKey::parse("test.map.v1").unwrap())
                 .unwrap(),
         );
     }
@@ -222,7 +213,7 @@ fn retained_region_bounds_and_growth_refusal_preserve_bytes_and_leases() {
     let runtime = runtime(memory.clone());
     let lease = Rc::new(
         runtime
-            .open_memory(&ic_memory::StableKey::parse("test.map.v1").unwrap())
+            .open_memory(&crate::StableKey::parse("test.map.v1").unwrap())
             .unwrap(),
     );
     lease.as_ref().grow(1).unwrap();
@@ -249,15 +240,15 @@ fn retained_region_bounds_and_growth_refusal_preserve_bytes_and_leases() {
     assert!(matches!(
         view.reserve_pages(1),
         Err(RegionGrowError::Runtime(
-            ic_memory::RuntimeGrowError::BackingRefused { .. }
+            crate::RuntimeGrowError::BackingRefused { .. }
         ))
     ));
     assert!(*memory.backing.borrow() == before);
     assert_eq!(runtime.memory_allocations().unwrap(), allocations);
     memory.refuse_growth.set(false);
-    view.initialize();
-    assert!(view.is_empty());
-    view.insert(7, vec![11]);
+    view.initialize().unwrap();
+    assert!(view.is_empty().unwrap());
+    view.insert(7, vec![11]).unwrap();
     view.reserve_pages(127).unwrap();
     assert_eq!(view.allocated_pages(), 127);
     let before = memory.backing.borrow().clone();
@@ -270,7 +261,7 @@ fn retained_region_bounds_and_growth_refusal_preserve_bytes_and_leases() {
     assert!(matches!(
         view.reserve_pages(128),
         Err(RegionGrowError::Runtime(
-            ic_memory::RuntimeGrowError::BackingRefused { .. }
+            crate::RuntimeGrowError::BackingRefused { .. }
         ))
     ));
     assert!(matches!(
@@ -279,11 +270,11 @@ fn retained_region_bounds_and_growth_refusal_preserve_bytes_and_leases() {
     ));
     assert!(*memory.backing.borrow() == before);
     assert_eq!(runtime.memory_allocations().unwrap(), allocations);
-    assert_eq!(view.get(&7), Some(vec![11]));
+    assert_eq!(view.get(&7).unwrap(), Some(vec![11]));
     assert_eq!(view.allocated_pages(), 127);
     memory.refuse_growth.set(false);
     view.reserve_pages(128).unwrap();
-    view.insert(8, vec![12]);
+    view.insert(8, vec![12]).unwrap();
 
     // The containing allocation also has live suffix frames. Neither public
     // inspection nor private collection IO can cross the region's end.
@@ -306,13 +297,13 @@ fn retained_region_bounds_and_growth_refusal_preserve_bytes_and_leases() {
     let view = BTreeMapRegion::<u64, Vec<u8>, _>::new(
         Rc::new(
             runtime
-                .open_memory(&ic_memory::StableKey::parse("test.map.v1").unwrap())
+                .open_memory(&crate::StableKey::parse("test.map.v1").unwrap())
                 .unwrap(),
         ),
         START..START + 128,
     );
-    assert_eq!(view.get(&7), Some(vec![11]));
-    assert_eq!(view.get(&8), Some(vec![12]));
+    assert_eq!(view.get(&7).unwrap(), Some(vec![11]));
+    assert_eq!(view.get(&8).unwrap(), Some(vec![12]));
 }
 
 #[test]
@@ -320,28 +311,31 @@ fn limited_snapshots_resume_and_survive_intervening_mutations() {
     use std::ops::Bound::{Excluded, Unbounded};
     let host = runtime(VectorMemory::default());
     let lease = Rc::new(
-        host.open_memory(&ic_memory::StableKey::parse("test.map.v1").unwrap())
+        host.open_memory(&crate::StableKey::parse("test.map.v1").unwrap())
             .unwrap(),
     );
     let mut view = BTreeMapRegion::<u64, u64>::new(lease, 0..END);
     // Zero must not try loading an uninitialized header.
-    assert_eq!(view.keys_range_limited(.., 0).len(), 0);
-    view.initialize();
+    assert_eq!(view.keys_range_limited(.., 0).unwrap().len(), 0);
+    view.initialize().unwrap();
     for key in 0..200 {
-        view.insert(key, key + 1);
+        view.insert(key, key + 1).unwrap();
     }
-    let first = view.keys_range_limited(20..100, 3);
-    view.remove(&21);
-    view.insert(201, 202);
+    let first = view.keys_range_limited(20..100, 3).unwrap();
+    view.remove(&21).unwrap();
+    view.insert(201, 202).unwrap();
     assert_eq!(first.collect::<Vec<_>>(), [20, 21, 22]);
     assert_eq!(
         view.keys_range_limited((Excluded(22), Unbounded), 3)
+            .unwrap()
             .collect::<Vec<_>>(),
         [23, 24, 25]
     );
     assert_eq!(
-        view.keys_range_limited(199.., 20).collect::<Vec<_>>(),
+        view.keys_range_limited(199.., 20)
+            .unwrap()
+            .collect::<Vec<_>>(),
         [199, 201]
     );
-    assert_eq!(view.keys_range_limited(300.., 20).len(), 0);
+    assert_eq!(view.keys_range_limited(300.., 20).unwrap().len(), 0);
 }

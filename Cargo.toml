@@ -1,17 +1,7 @@
 [workspace]
 resolver = "3"
-members = [
-    "crates/ic-logging-stable",
-    "crates/ic-memory",
-    "crates/ic-metrics-stable",
-    "crates/ic-storage",
-]
-default-members = [
-    "crates/ic-logging-stable",
-    "crates/ic-memory",
-    "crates/ic-metrics-stable",
-    "crates/ic-storage",
-]
+members = ["crates/ic-logging-storage", "crates/ic-metrics-storage", "crates/ic-storage"]
+default-members = ["crates/ic-logging-storage", "crates/ic-metrics-storage", "crates/ic-storage"]
 # Independent unpublished runtime qualification workspace.
 exclude = ["testing/runtime-qualification"]
 
@@ -21,31 +11,30 @@ rust-version = "1.99.1"
 license = "MIT"
 authors = ["borovan <84897664+borovan@users.noreply.github.com>"]
 description = "Durable stable-memory allocation governance for Internet Computer canisters"
-readme = "crates/ic-memory/README.md"
-documentation = "https://docs.rs/ic-memory"
-homepage = "https://github.com/dragginzgame/ic-persistence"
-repository = "https://github.com/dragginzgame/ic-persistence"
-keywords = ["ic-stable-structures", "memory-id", "registry", "canister", "icp"]
+readme = "crates/ic-storage/README.md"
+documentation = "https://docs.rs/ic-storage"
+homepage = "https://github.com/dragginzgame/ic-storage"
+repository = "https://github.com/dragginzgame/ic-storage"
+keywords = ["stable-memory", "storage", "collections", "canister", "icp"]
 categories = ["wasm", "data-structures"]
 
 [workspace.dependencies]
-# persistence
-# Changelog : releases/persistence/CHANGELOG.md
-ic-memory = { path = "crates/ic-memory", version = "0.63.0" }
+# storage
+# Changelog : releases/storage/CHANGELOG.md
 ic-storage = { path = "crates/ic-storage", version = "0.63.0" }
 
-# metrics-stable
-# Changelog : releases/metrics-stable/CHANGELOG.md
-ic-metrics-stable = { path = "crates/ic-metrics-stable", version = "0.65.0" }
+# metrics-storage
+# Changelog : releases/metrics-storage/CHANGELOG.md
+ic-metrics-storage = { path = "crates/ic-metrics-storage", version = "0.65.0" }
 
-# logging-stable
-# Changelog : releases/logging-stable/CHANGELOG.md
-ic-logging-stable = { path = "crates/ic-logging-stable", version = "0.63.0" }
+# logging-storage
+# Changelog : releases/logging-storage/CHANGELOG.md
+ic-logging-storage = { path = "crates/ic-logging-storage", version = "0.63.0" }
 
 # External production dependencies.
-ic-logging = { version = "0.23.6", default-features = false }
+ic-logging = { version = "0.24.0", default-features = false }
 # Default native metadata shares the selected Wire identity.
-ic-metrics = "0.25.0"
+ic-metrics = "0.26.0"
 thiserror = "2.0"
 
 # External dependencies with mixed production/test usage; members select features.

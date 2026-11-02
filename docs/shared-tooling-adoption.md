@@ -1,4 +1,4 @@
-# IC Persistence tooling adoption and qualification boundaries
+# IC Storage tooling adoption and qualification boundaries
 
 Read this before changing the shared snapshot, tool setup, release adapters,
 formatting or evidence retention. [AGENTS.md](../AGENTS.md) owns the local overlay;
@@ -9,7 +9,7 @@ local baseline. Future policy changes require reviewed snapshot adoption.
 
 ## Current source selection
 
-IC Persistence selects committed Shared Tooling VERSION 0.27.24 at
+IC Storage selects committed Shared Tooling VERSION 0.27.24 at
 `9275bf0de39ed941d81c47bab97eef7f6fc38df2`, with 81 explicit roots and 136 payloads.
 The source-only grouped bootstrap observer replaces the launcher's parallel
 manifest/lock parser. The launcher compares complete metadata byte identities
@@ -25,7 +25,7 @@ verification compares every payload and mode with that independent commit.
 The adopted graph observer and captured validation-input checkpoint helper retain
 source-drift refusal and failure evidence. The Cargo publication adapter remains opt-in. The native consumer retains its
 qualified checksum/retry checks and selects only its declared release group.
-The approved policy is `ci/cargo-release-groups.json`: Memory/Storage coordinate,
+The approved policy is `ci/cargo-release-groups.json`: Storage owns the persistence group,
 and each stable adapter owns an independent version. All member versions are
 literal; each primary owns only its group. Canonical ledgers live under
 `releases/<group>/`, with a root index and `releases/history.md`. Release/resume
@@ -35,9 +35,9 @@ reviewed and its configuration-dependent ownership/documentation/naming reasons
 are recorded at their shared configuration scope. No lint level, host/IC tool catalog,
 formatter pin or maintenance activation changed.
 
-The production and independent runtime catalogs select Platform 0.17.0. The
-stable-structures facade source and registry substrate 0.7.2 are unchanged from
-0.16.0. Logging's Wasm qualification entrypoints select the independent Runtime
+The production and independent runtime catalogs select Platform 0.17.0. Storage selects Platform's stable-memory runtime API for Wasm backing IO; the
+owned allocator and collections no longer select the stable-structures facade.
+Logging's Wasm qualification entrypoints select the independent Runtime
 0.17.1 and canonical Types 0.16.0. The native qualifier consumes Platform's owned
 PocketIC client 0.17.0, retaining the 16.1 HTTP/JSON protocol and Testkit-selected
 server 16.1.0. No direct registry client declarations or conversion layer are added.
@@ -47,17 +47,19 @@ exactly one Platform provider. Optional crypto/certification profiles remain
 unselected; no cryptographic compiler flag or codec migration is introduced.
 
 Both catalogs retain compatible Wire 0.14.0 requirements; their lockfiles select
-Wire/Derive 0.14.1. The library graph selects Testkit Native 0.78.0; installed
+Wire/Derive 0.14.2. The library graph selects Testkit Native 0.78.0; installed
 qualification selects Testkit CLI 0.78.0. Wire endpoint and platform-types
 integration remain unselected. Public
 codec errors now expose the Wire 0.14 Rust identity; bytes, budgets and restoration
-contracts remain unchanged. Metrics 0.25.0 now aligns default native schema
+contracts remain unchanged. Metrics 0.26.0 aligns default native schema
 support with Wire 0.14, removing the former native-only Wire/Derive 0.13 packages
 without feature suppression or supplier overrides. Production Wasm, the native
 library and the independent native qualifier each select one Wire 0.14 provider.
-Metrics Stable's public measurement/error types now carry Metrics 0.25 identity;
-hosts must align their direct Metrics selection. The Logging 0.23.7 selection
-is retained. Arithmetic and runtime ownership remain unchanged.
+Metrics Storage's public measurement/error types carry Metrics 0.26 identity;
+Logging Storage's public log/limit/restoration-error types carry Logging 0.24
+identity. Hosts must align their direct supplier dependencies. Both suppliers now
+share this repository's Rust 1.99.1 floor; arithmetic, logging semantics, encoded
+records and runtime ownership remain unchanged.
 
 The library lock retains incoming Build/Host 0.73.6 while the selected Build editor remains
 0.73.3. The direct Build requirement is 0.73.5 for composable archive qualification.
@@ -74,8 +76,8 @@ host graph. The [Build editor pin](../ci/release-tools.env) and
 [Testkit CLI pin](../ci/runtime-tools.env) select executables independently.
 Read those owners for versions rather than copying their inventories here.
 
-The production graph admits one Platform provider and the exact qualified
-substrate declared in [the local overlay](../AGENTS.md). Library admission,
+The production graph admits one Platform provider and forbids
+`ic-stable-structures`, as declared in [the local overlay](../AGENTS.md). Library admission,
 executable setup/check and installed qualification remain separate authorities.
 Selection alone does not establish acceptance or permit relabelling older proof.
 The [release ledger](../CHANGELOG.md) and [current handoff](status/current.md)
@@ -84,7 +86,7 @@ dependency update activates neither maintenance schedules nor a snapshot refresh
 
 ### Local compiler decision
 
-The maintainer approved [#151](https://github.com/dragginzgame/ic-persistence/issues/151):
+The maintainer approved [#151](https://github.com/dragginzgame/ic-storage/issues/151):
 Rust 1.99.1 is the library support floor and pinned development/release compiler.
 This explicit owner decision supersedes the reviewed snapshot's earlier
 lowest-possible-floor guidance; snapshot files are unchanged. Root and independent
@@ -106,7 +108,7 @@ select Platform 0.7.3 without enabling optional provider/gzip features.
 The stable-structures 0.7.2 substrate and PocketIC 16.1.0 pair remain selected.
 Release 0.50.7 passed the complete native, MSRV and installed-runtime matrix
 on Linux and both macOS architectures; snapshot integrity alone is not acceptance.
-See [the adoption issue](https://github.com/dragginzgame/ic-persistence/issues/127).
+See [the adoption issue](https://github.com/dragginzgame/ic-storage/issues/127).
 The canonical takeover exporter retires the imported Storage snapshot after
 verifying its original bytes. Storage PR #18's release retry protection is
 therefore included; uncommitted Shared sibling changes are excluded.
@@ -157,7 +159,7 @@ new driver, source/config changes, exact ordering, jobserver descriptor forwardi
 failed standalone admission before workspace passes and retained failure logs.
 The hook fixture's exported-index closure includes the driver and preserves
 partial staging and unrelated work. This implements the local migration for
-[#135 — Adopt shared formatter orchestration without dropping package-consumer formatting](https://github.com/dragginzgame/ic-persistence/issues/135),
+[#135 — Adopt shared formatter orchestration without dropping package-consumer formatting](https://github.com/dragginzgame/ic-storage/issues/135),
 using the capability delivered for
 [Shared #314 — Support standalone Rust sources in shared formatting orchestration](https://github.com/dragginzgame/shared-tooling/issues/314).
 Remote issue closure and delivery remain separate from these working-tree changes.
@@ -166,7 +168,7 @@ Shared 0.26.26 replaces broad module-path screening with the shared Rust lexer's
 balanced-attribute inspection for workspace-only cache admission. The driver and
 `RustSource.pm` are both source-bound; the hook fixture copies/stages the module,
 and the jobserver fixture follows and compares that companion closure. Standalone
-selection still disables all reuse, so Persistence's active formatting behavior
+selection still disables all reuse, so Storage's active formatting behavior
 stays uncached. Shared 0.26.25's scanner filename qualification changes are outside
 this consumer's selected executable closure. Tool pins and build identity remain
 unchanged.
@@ -184,10 +186,10 @@ infrastructure boundary. No gzip dependency/feature or product encoding changes.
 The 0.26.22 refresh uses a clean detached copy of the committed source and the
 canonical impact preview, preserving the existing roots and payload closure.
 Shared 0.26.21 makes emoji categories the current/future root changelog format;
-Persistence already uses it, and older release entries are preserved. Shared
+Storage already uses it, and older release entries are preserved. Shared
 0.26.22 explicitly prohibits owned `CandidType` models and strengthens existing
 native error, machine-output, bounded-process, terminal-rendering and source-scan
-review rules. Persistence's maintained Rust sources contain no `CandidType`
+review rules. Storage's maintained Rust sources contain no `CandidType`
 derives or implementations. These are reviewed governance changes, not new
 executable scanners or a completed repository-wide hygiene audit. Existing
 caller qualification and negative tests retain their owning gates.
@@ -240,7 +242,7 @@ sections while refusing active drafts and conflicting current candidates.
 The source commit message says 0.27.19, but its committed VERSION and exported
 snapshot declare 0.26.19; adoption records the committed declaration.
 
-The RPC-budget rule is adopted as governance; Persistence owns no generated
+The RPC-budget rule is adopted as governance; Storage owns no generated
 cross-runtime application RPC client, so no product budget or codec is added.
 
 `make tools-report` runs every existing offline checker and retains individual
@@ -393,14 +395,13 @@ observations, gate logs, prior receipts and package archives across retries.
 
 ## Stable-memory governance policy
 
-Production stores consume checked Memory handles after admission and durable
+Production stores consume checked Storage handles after admission and durable
 allocation commitment. [AGENTS.md](../AGENTS.md#stable-memory-governance) and
 [SAFETY.md](../SAFETY.md) record this boundary. The common rule was adopted with
 Shared 0.20.0; policy adoption alone does not qualify consumer integrations.
 
-IC Storage owns governed collections consuming `RuntimeMemory`; its generic
-substrate stays private. Memory's exclusive leases and narrow backing exports do
-not require a dependency on Storage. Hosts still own exclusive backing custody;
+IC Storage owns allocation governance and collections consuming `RuntimeMemory`;
+its directory and tree engines stay private. Hosts still own exclusive backing custody;
 Rust import visibility cannot detect aliases or enforce application policy.
 
 ## Explicit cleanup boundary
@@ -428,7 +429,7 @@ retained exact-input proofs, supply an exclusive trusted private directory and a
 explicit release group, for example:
 
 ```bash
-VALIDATION_STAGE_STATE=/absolute/private/stage-state RELEASE_GROUP=persistence \
+VALIDATION_STAGE_STATE=/absolute/private/stage-state RELEASE_GROUP=storage \
   make check-shellcheck-stage
 ```
 
@@ -471,7 +472,7 @@ runtime/public-type/security/minimum-capability alignment and its introducing
 path; classify other refreshes as optional with a reason. An available compatible
 patch does not require raising every consumer minimum or republishing a group.
 
-The caller explicitly selects the Storage/Metrics Stable/Logging Stable Wasm
+The caller explicitly selects the Storage/Metrics Storage/Logging Storage Wasm
 normal graph, with no extra features, and the independent native runtime qualifier
 normal graph at the selected compiler's host target. It admits both locked metadata
 graphs and singleton/boundary policy before either selected Clippy command. Host,
@@ -486,3 +487,17 @@ introducing paths for every distinct conflicting identity. These are candidate
 graph and public API compilation results, separate from native/Wasm installed
 qualification, final archives and actual registry availability before publication.
 The existing full gates and release-group decisions remain authoritative.
+
+### Storage allocation consolidation
+
+The maintainer moved allocation ownership into Storage on 2026-11-02.
+This explicit hard cut supersedes the snapshot wording that names `ic-memory`
+as the handle issuer: `ic_storage::RuntimeMemory` now supplies the same checked
+custody and admission boundary. Shared vendor files remain untouched.
+The persistence group contains only Storage; both stable adapters depend on it.
+
+The subsequent owned-engine hard cut removes the fixed-slot manager and all
+upstream collection implementations. `make check-production-graph` forbids the
+retired substrate. Both selected lockfiles omit it. Named allocation and all
+collections require fresh/reset backing; old manager, map and vector formats
+have no decoder or implicit reset. See [the current directory contract](current-ledger.md).

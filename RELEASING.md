@@ -1,4 +1,4 @@
-# Releasing IC Persistence
+# Releasing IC Storage
 
 Release and publication require delivery authorization for this repository and
 destination. Delegated delivery includes routine group, version and order choices
@@ -9,15 +9,15 @@ supplies consumer policy to the existing Shared runner; it is not canister code.
 
 ## Release groups
 
-All four crates remain in one development workspace and one dependency catalog.
+All three crates remain in one development workspace and one dependency catalog.
 The approved [group policy](ci/cargo-release-groups.json) is the executable owner;
 root `Cargo.toml` lists each group once beside its member declarations and ledger.
 
 | Group | Packages | Version source | Canonical ledger |
 | --- | --- | --- | --- |
-| `persistence` | Memory, Storage | `crates/ic-memory/Cargo.toml` | [Persistence](releases/persistence/CHANGELOG.md) |
-| `metrics-stable` | Metrics Stable | `crates/ic-metrics-stable/Cargo.toml` | [Metrics Stable](releases/metrics-stable/CHANGELOG.md) |
-| `logging-stable` | Logging Stable | `crates/ic-logging-stable/Cargo.toml` | [Logging Stable](releases/logging-stable/CHANGELOG.md) |
+| `storage` | Storage | `crates/ic-storage/Cargo.toml` | [Storage](releases/storage/CHANGELOG.md) |
+| `metrics-storage` | Metrics Storage | `crates/ic-metrics-storage/Cargo.toml` | [Metrics Storage](releases/metrics-storage/CHANGELOG.md) |
+| `logging-storage` | Logging Storage | `crates/ic-logging-storage/Cargo.toml` | [Logging Storage](releases/logging-storage/CHANGELOG.md) |
 
 All members use literal `package.version` fields and group members match their
 primary. Root `Cargo.toml` remains a virtual dependency/shared-metadata catalog
@@ -31,21 +31,25 @@ one numbered pending entry in its canonical ledger. New detailed notes live at
 `releases/<group>/<major>.<minor>.md`; the policy names the current core detail
 file as metadata. Update it during source work when the group's next minor line
 changes. An old crate-local changelog is only a navigation pointer.
-The unpublished independent runtime workspace keeps its own version/lock outside
-these groups under its existing approved scope.
+The unpublished independent runtime workspace keeps its own package versions
+and dependency selection. Its benchmark consumes the local Storage package, so
+Storage's declared metadata also includes that workspace's catalog and lockfile.
+The existing release transaction advances only the Storage requirement and local
+lock entry there; independent registry selections and adapter-only releases leave
+them unchanged. Benchmark execution is not a release gate.
 
 Release, resume and publication require an explicit `RELEASE_GROUP`. There is no
 default or implicit whole-workspace release. Missing selection refuses before
 cache setup, helper compilation or release effects. For example:
 
 ```sh
-make RELEASE_GROUP=persistence release-minor
-make RELEASE_GROUP=metrics-stable release-minor
-make RELEASE_GROUP=logging-stable release-minor
-make RELEASE_GROUP=metrics-stable release-resume VERSION=0.59.0
-make RELEASE_GROUP=metrics-stable qualify-release
-make RELEASE_GROUP=metrics-stable publish-dry-run
-make RELEASE_GROUP=metrics-stable publish
+make RELEASE_GROUP=storage release-minor
+make RELEASE_GROUP=metrics-storage release-minor
+make RELEASE_GROUP=logging-storage release-minor
+make RELEASE_GROUP=metrics-storage release-resume VERSION=0.59.0
+make RELEASE_GROUP=metrics-storage qualify-release
+make RELEASE_GROUP=metrics-storage publish-dry-run
+make RELEASE_GROUP=metrics-storage publish
 ```
 
 These are maintainer commands, not adoption checks. `release-patch` and
@@ -59,11 +63,17 @@ and unused catalog alias belongs to its owning group’s dependency roster. Ever
 release updates those shared declarations, preserving their existing operators
 without changing adapter versions.
 The adapter then needs its own release to publish its changed requirement.
-The Wire 0.14 adoption changes Memory and adapter codec-error identities:
+The owned-engine hard cut changes Storage and adapter type identities:
 release the compatible core supplier first and then its adapters. Do not publish
 an old consumer declaration under an existing version, broaden requirements to
 hide a type mismatch, or remove production singleton checks. New versions of
 Metrics or Logging remain real public type dependencies when exchanged with hosts.
+
+The current group names are `storage`, `metrics-storage` and `logging-storage`.
+Saved attempts from the previous names must resume using their original source
+and policy; this rename does not relabel receipts, tags or existing package releases.
+The adapter package names are new registry identities and must be published before
+registry-only consumers can adopt them. See [naming adoption](docs/migration/storage-naming.md).
 
 ## Preparation, validation and exact effects
 
@@ -86,7 +96,7 @@ Every group runs the same complete `make validate` release gate. Group selection
 does not narrow Clippy, compiler-floor, Wasm, runtime prerequisites or whole-workspace
 archive integration. Development validation may qualify dirty source; release
 admission and `make package` retain clean-source checks. `package-workspace.sh` delegates archive admission to Build 0.73.5 and the native
-`repo-tool qualify-archives` consumer roster. It qualifies all four current archives as one integration graph with each package's
+`repo-tool qualify-archives` consumer roster. It qualifies all three current archives as one integration graph with each package's
 own version. The selected group is then packaged alone: published suppliers use
 their registry checksums, while coordinated members package together. The full
 extracted integration graph is qualified using that final archive set; selected
@@ -137,8 +147,8 @@ Publish from the exact selected group's qualified release checkout. Admission
 requires clean source, release subject/parent, exact annotated tag, retained and
 working archive digests, configuration and final receipts. Observe every selected
 registry package before any upload; only HTTP 404 means absence. A yanked version,
-checksum conflict or failed observation refuses all effects. Core publishes Memory
-then Storage; each adapter publishes only itself. `--no-verify` avoids replaying
+checksum conflict or failed observation refuses all effects. The core group publishes
+Storage only; each adapter publishes only itself. `--no-verify` avoids replaying
 compilation already proved by archive qualification. Shared retains each upload's
 stdout/stderr, exact selector and independent Cargo/logger statuses.
 
@@ -153,7 +163,7 @@ Never overwrite a published version or infer publication from cache/source state
 Select affected checks during development; full release gates require explicit
 release/validation authorization:
 
-- Native `cargo test -p ic-memory --example repo-tool --locked --offline` covers
+- Native `cargo test -p ic-storage --example repo-tool --locked --offline` covers
   consumer source/index/receipt checks, all groups, rollback, retention and upload retry
   using substituted Git/Cargo/gate/registry effects; it creates no commits or tags.
 - `scripts/ci/test-release-group-plans.sh` compares real native and shared exact

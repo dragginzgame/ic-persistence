@@ -1,33 +1,80 @@
 [package]
 name = "ic-storage"
-version = "0.63.0"
 edition.workspace = true
 rust-version.workspace = true
-repository.workspace = true
-description = "Governed stable collections for Internet Computer applications"
+version = "0.63.0"
 license.workspace = true
+authors.workspace = true
+description = "Governed stable allocation and collections for Internet Computer applications"
 readme = "README.md"
+documentation.workspace = true
+homepage.workspace = true
+repository.workspace = true
+keywords.workspace = true
+categories.workspace = true
 publish = ["crates-io"]
 
+[target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
+clap.workspace = true
+ic-build.workspace = true
+ic-host-artifacts.workspace = true
+ic-host-fs.workspace = true
+ic-host-process.workspace = true
+ic-testkit-native.workspace = true
+
+[features]
+test-support = []
+
 [dependencies]
-ic-memory.workspace = true
-ic-platform = { workspace = true, features = ["stable-structures"] }
+ic-platform = { workspace = true, features = ["ic0", "runtime"] }
+ic-wire.workspace = true
+serde.workspace = true
 thiserror.workspace = true
 
 [dev-dependencies]
-ic-memory = { workspace = true, features = ["test-support"] }
-ic-wire.workspace = true
-serde.workspace = true
+serde_json.workspace = true
+toml.workspace = true
+trybuild.workspace = true
+
+[[example]]
+name = "composed_host"
+path = "examples/composed_host.rs"
+test = true
+
+[[example]]
+name = "repo-tool"
+path = "examples/repo-tool.rs"
+test = true
+
+[[example]]
+name = "wasm-core-size-probe"
+path = "examples/wasm_core_size_probe.rs"
+crate-type = ["cdylib"]
+
+[[example]]
+name = "wasm-diagnostics-size-probe"
+path = "examples/wasm_diagnostics_size_probe.rs"
+crate-type = ["cdylib"]
+
+[[example]]
+name = "wasm-admission-size-probe"
+path = "examples/wasm_admission_size_probe.rs"
+crate-type = ["cdylib"]
+
+[[example]]
+name = "wasm-runtime-integration-size-probe"
+path = "examples/wasm_runtime_integration_size_probe.rs"
+crate-type = ["cdylib"]
+
+[[example]]
+name = "wasm-io-qualification"
+path = "examples/wasm_io_qualification.rs"
+crate-type = ["cdylib"]
 
 [[example]]
 name = "wasm-storage-qualification"
 path = "examples/wasm_storage_qualification.rs"
 crate-type = ["cdylib"]
 
-[lints.rust]
-missing_docs = "warn"
-unsafe_code = "deny"
-
-[lints.clippy]
-all = { level = "warn", priority = -1 }
-pedantic = { level = "warn", priority = -1 }
+[lints]
+workspace = true

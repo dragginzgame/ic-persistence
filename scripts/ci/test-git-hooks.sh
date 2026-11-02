@@ -12,7 +12,7 @@ root="$(cd -P "${root%/*}/../.." && printf '%s/.' "$PWD")"
 root="${root%/.}"
 # Keep inherited hook/index variables from redirecting fixture Git operations.
 while IFS= read -r variable; do unset "$variable"; done < <(git rev-parse --local-env-vars)
-fixture="$(mktemp -d "${TMPDIR:-/tmp}/ic-memory-hooks.XXXXXX")"
+fixture="$(mktemp -d "${TMPDIR:-/tmp}/ic-storage-hooks.XXXXXX")"
 fixture="$(CDPATH="" cd -P -- "$fixture" && printf '%s/.' "$PWD")"
 fixture="${fixture%/.}"
 # shellcheck source=scripts/ci/fixture-lifecycle.sh

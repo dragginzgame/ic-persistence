@@ -2,47 +2,50 @@
   "schema": 1,
   "groups": [
     {
-      "name": "persistence",
-      "primary": "ic-memory",
+      "name": "storage",
+      "primary": "ic-storage",
       "version": "package",
       "members": [
-        "ic-memory",
         "ic-storage"
       ],
-      "changelog": "releases/persistence/CHANGELOG.md",
+      "changelog": "releases/storage/CHANGELOG.md",
       "dependencies": [
-        "ic-memory",
         "ic-storage"
       ],
       "metadata_files": [
-        "releases/persistence/0.63.md"
+        "releases/storage/0.64.md",
+        "testing/runtime-qualification/Cargo.toml",
+        "testing/runtime-qualification/Cargo.lock"
       ]
     },
     {
-      "name": "metrics-stable",
-      "primary": "ic-metrics-stable",
+      "name": "metrics-storage",
+      "primary": "ic-metrics-storage",
       "version": "package",
       "members": [
-        "ic-metrics-stable"
+        "ic-metrics-storage"
       ],
-      "changelog": "releases/metrics-stable/CHANGELOG.md",
+      "changelog": "releases/metrics-storage/CHANGELOG.md",
       "dependencies": [
-        "ic-metrics-stable"
+        "ic-metrics-storage"
       ],
       "metadata_files": [
-        "releases/metrics-stable/0.65.md"
+        "releases/metrics-storage/0.66.md"
       ]
     },
     {
-      "name": "logging-stable",
-      "primary": "ic-logging-stable",
+      "name": "logging-storage",
+      "primary": "ic-logging-storage",
       "version": "package",
       "members": [
-        "ic-logging-stable"
+        "ic-logging-storage"
       ],
-      "changelog": "releases/logging-stable/CHANGELOG.md",
+      "changelog": "releases/logging-storage/CHANGELOG.md",
       "dependencies": [
-        "ic-logging-stable"
+        "ic-logging-storage"
+      ],
+      "metadata_files": [
+        "releases/logging-storage/0.64.md"
       ]
     }
   ]

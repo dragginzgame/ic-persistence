@@ -20,7 +20,7 @@ if [[ ${6:-} == --logging-only ]]; then
 fi
 shasum -a 256 Cargo.toml Cargo.lock .shared-tooling.snapshot ci/runtime-tools.env "$ic_pins" \
     testing/runtime-qualification/Cargo.toml testing/runtime-qualification/Cargo.lock \
-    target/runtime-qualification/debug/ic-memory-runtime-qualification "$cli" "$server" ${extra_inputs[@]+"${extra_inputs[@]}"} > "$evidence/inputs.sha256"
+    target/runtime-qualification/debug/ic-storage-runtime-qualification "$cli" "$server" ${extra_inputs[@]+"${extra_inputs[@]}"} > "$evidence/inputs.sha256"
 for artifact in "${artifacts[@]}"; do
     IFS=: read -r stem suffix <<< "$artifact"
     shasum -a 256 "target/wasm32-unknown-unknown/wasm-size/examples/$stem.wasm" >> "$evidence/inputs.sha256"
@@ -47,7 +47,7 @@ for optimization in "${optimizations[@]}"; do
         IC_LOGGING_QUALIFICATION_WASM="$root/$evidence/$optimization.logging.wasm" \
         "$cli" run --directory "$server_directory" --ttl 900 \
         --server-stdout "$evidence/$optimization.server.stdout" --server-stderr "$evidence/$optimization.server.stderr" \
-        -- "$root/target/runtime-qualification/debug/ic-memory-runtime-qualification" ${runner_args[@]+"${runner_args[@]}"} \
+        -- "$root/target/runtime-qualification/debug/ic-storage-runtime-qualification" ${runner_args[@]+"${runner_args[@]}"} \
         > "$evidence/$optimization.runtime.log" 2>&1 || status=$?
     cat "$evidence/$optimization.runtime.log"
     [[ "$status" == 0 ]] || exit "$status"
