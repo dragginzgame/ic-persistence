@@ -11,7 +11,7 @@ B-tree map per canister**. Multiple components share that map with permanent
 namespace/name keys. Adding this package is the opt-in: `ic-metrics` alone stays
 allocation-free, `no_std` and volatile, with Serde and native IC Wire support.
 This adapter uses `std` and IC Storage’s governed upstream-map facade,
-allocates bounded records and supports native hosts and Wasm with Rust 1.91.
+allocates bounded records and supports native hosts and Wasm with Rust 1.99.1.
 
 The host owns one `ic-memory` allocation pool and bootstrap. It declares one
 permanent metrics-store key, such as `app.metrics.v1`, and admits that allocation

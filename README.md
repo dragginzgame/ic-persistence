@@ -17,7 +17,7 @@ owns its V1 records here; allocation-free arithmetic remains in IC Metrics.
 See [ownership](docs/ownership.md) and [safety](SAFETY.md).
 
 The root Cargo workspace owns all four packages, one dependency catalog and one
-lockfile, with Rust 1.91 as the minimum. Run Make and Cargo commands here.
+lockfile, with Rust 1.99.1 as the minimum. Run Make and Cargo commands here.
 The independent [installed runtime runner](testing/runtime-qualification/README.md)
 retains its host-only lockfile. Archive consumer qualification uses isolated,
 generated workspaces so a workspace path dependency cannot mask missing package

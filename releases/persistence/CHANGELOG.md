@@ -3,6 +3,19 @@
 Covers `ic-memory` and `ic-storage`. Independent group releases begin after the
 coordinated 0.58.1 cutoff; [earlier shared history](../history.md) is preserved once.
 
+## [0.63.0] - Unreleased
+
+### ⚠️ Breaking
+
+- Require Rust 1.99.1 for Memory/Storage and contributor qualification, matching
+  the pinned compiler. Upgrade older build environments; stored formats and
+  runtime behavior are unchanged. [#151](https://github.com/dragginzgame/ic-persistence/issues/151), [details](0.63.md).
+
+### 🧹 Cleanup
+
+- Consolidate duplicate compiler jobs and archive runs while retaining native
+  hosts, feature-enabled builds, Wasm and installed-runtime qualification.
+
 ## [0.62.1] - 2026-11-01
 
 ### ⬆️ Dependencies

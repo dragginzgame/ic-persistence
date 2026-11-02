@@ -32,17 +32,15 @@ when recording release qualification; retain failed runs and their limitations.
 
 ## Prerequisites
 
-The current library declares Rust 1.91.0, including its native IC Build metadata dependency.
-The older matrix evidence above retains its original Rust 1.88.0 identity;
-current-source Rust 1.91 native CI acceptance must be recorded separately.
-Native CI prepares both the development compiler and the declared MSRV because
-archive consumers run on both. `make validation-compilers-check` admits those
-installed compilers offline before expensive validation; standalone archive
-qualification performs the same check. Neither check installs a compiler.
+The maintainer selected Rust 1.99.1 as both the minimum supported compiler and
+pinned development/release compiler in [#151](https://github.com/dragginzgame/ic-persistence/issues/151).
+Both workspace catalogs and every package must match `rust-toolchain.toml`.
+`make validation-compilers-check` admits installed Cargo/rustc identities offline,
+rejecting mismatched floors/selectors before archive work. It installs nothing.
+The historical matrix evidence above retains its original compiler identities;
+current native macOS acceptance remains separate from local Linux evidence.
 
-- Rustup with Rust 1.99.1, Clippy, rustfmt and `wasm32-unknown-unknown`; also
-  install the declared MSRV, Rust 1.91.0. Toolchain changes need a demonstrated
-  reason and separate qualification.
+- Rustup with Rust 1.99.1, Clippy, rustfmt and `wasm32-unknown-unknown`.
 - Git, GNU Make, Bash 3.2 or newer, curl, tar with gzip/xz support, Perl,
   `sed`, `awk`, and either `sha256sum` or `shasum` with SHA-256 support.
   On macOS, install Xcode Command Line Tools for native compilation and Git.
@@ -169,7 +167,7 @@ load rejection, byte/page preservation, leases and update/upgrade rollback witho
 replaying Memory's IO suite or the release optimizer matrix:
 
 ```sh
-cargo +1.91.0 build -p ic-storage --locked --offline --profile wasm-size \
+cargo +1.99.1 build -p ic-storage --locked --offline --profile wasm-size \
   --target wasm32-unknown-unknown --example wasm-storage-qualification
 testkit_cli="$(RUSTUP_TOOLCHAIN=1.99.1 bash scripts/dev/install-rust-tools.sh \
   --consumer "$PWD" --package ic-testkit --version 0.78.0 \
@@ -317,8 +315,9 @@ historical runtime gates above.
 Focused tooling checks are `make shared-tooling-check tools-check test-tools check-pins test-tooling test-hooks fmt-check`,
 `make test-release-adapters` and `make lint-tooling`. Compilation must wait for any existing build to finish.
 
-CI runs `make validate-toolchain` and the offline all-target MSRV check on each
-declared host. The full gate covers library/integration/compile-fail tests,
+CI runs `make validate-toolchain` on each declared host. Its feature-enabled
+native all-target check retains the former MSRV matrix's distinct proof; default
+library, Wasm and archive consumers remain separately qualified. The full gate covers library/integration/compile-fail tests,
 doctests, strict Clippy, warning-denied documentation, Wasm compilation and raw
 size budgets, and package verification. Local development uses focused checks;
 full validation requires explicit authority under the
@@ -360,7 +359,7 @@ and qualification receipts before uploading them for 14 days. The artifact conta
 symlinks. Hidden recovery evidence is included; Git metadata is excluded and
 symlinks are retained without following their targets. Archive failures preserve
 original inputs and partial output. No selected inputs produce no artifact.
-MSRV failures upload their compiler log separately. Logging preserves the failing
+Compiler and feature-check failures remain in the native validation log. Logging preserves the failing
 command's status through Bash pipefail; failure collectors run only after a failed
 job step.
 The native matrix also runs a controlled host-tool fixture failure with substitute

@@ -82,6 +82,17 @@ The [release ledger](../CHANGELOG.md) and [current handoff](status/current.md)
 record completed changes and scoped work without becoming release gates. A
 dependency update activates neither maintenance schedules nor a snapshot refresh.
 
+### Local compiler decision
+
+The maintainer approved [#151](https://github.com/dragginzgame/ic-persistence/issues/151):
+Rust 1.99.1 is the library support floor and pinned development/release compiler.
+This explicit owner decision supersedes the reviewed snapshot's earlier
+lowest-possible-floor guidance; snapshot files are unchanged. Root and independent
+workspace floors, inherited member declarations and observed Cargo/rustc identities
+must agree. Duplicate default compiler jobs and native archive runs are retired;
+feature-enabled native checks, all native hosts, Wasm/proc-macro compilation,
+archive consumers and installed runtime qualification remain. No cache is removed.
+
 ### Earlier adoption and qualification records
 
 The compact baseline derives `rules/engineering-details.md` as a companion;

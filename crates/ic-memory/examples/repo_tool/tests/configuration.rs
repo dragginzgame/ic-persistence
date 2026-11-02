@@ -3,6 +3,30 @@
 use super::*;
 
 #[test]
+fn compiler_identity_requires_one_observation_and_matching_policy() {
+    let fixture = Fixture::new();
+    let identities = fixture.repo.identities().unwrap();
+    assert_eq!(identities[1], identities[2]);
+    assert_eq!(
+        fixture
+            .repo
+            .exec
+            .state
+            .borrow()
+            .calls
+            .iter()
+            .filter(|call| call[0] == "rustc")
+            .count(),
+        1,
+    );
+    let manifest = fixture_manifest().replace(&fixture_toolchain(), "0.0.0");
+    fixture.set_source("Cargo.toml", &manifest);
+    assert!(fixture.repo.identities().is_err());
+    fixture.set_source("rust-toolchain.toml", "[toolchain]\nchannel = \"0.0.0\"\n");
+    assert!(fixture.repo.identities().is_err());
+}
+
+#[test]
 fn compiler_environment_overrides_refuse_preparation_and_release_effects() {
     const ROOT: &str = "IC_MEMORY_TEST_COMPILER_ROOT";
     const STATE: &str = "IC_MEMORY_TEST_COMPILER_STATE";

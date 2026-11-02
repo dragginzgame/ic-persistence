@@ -97,7 +97,7 @@ fn preparation_stage_commit_qualification_and_publish_preserve_exact_evidence() 
     assert!(state.calls.iter().any(|call| call
         == &[
             "cargo",
-            "+1.99.0",
+            &format!("+{}", fixture_toolchain()),
             "publish",
             "--locked",
             "--registry",

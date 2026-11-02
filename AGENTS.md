@@ -60,6 +60,13 @@ for the upstream contribution and the `ic-storage` package integration boundary.
 
 ## Development and qualification commands
 
+- The maintainer selected Rust 1.99.1 as both support floor and pinned
+  development/release compiler in [#151](https://github.com/dragginzgame/ic-persistence/issues/151).
+  Both workspace catalogs and all packages must agree with `rust-toolchain.toml`.
+  This explicit local decision supersedes the reviewed baseline's older
+  lowest-possible-MSRV guidance; vendored policy remains unchanged. Admit actual
+  Cargo/rustc identities, retain each distinct feature/target/host proof, and run
+  otherwise identical compiler graphs once. Never delete historical tool caches.
 - Before editing or compiling, check for active Cargo, rustc and rustdoc builds.
 - Select checks for the affected contract: `make shared-tooling-check`,
   `make check-pins`, `make check-production-graph`,

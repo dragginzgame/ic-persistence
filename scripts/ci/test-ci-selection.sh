@@ -4,6 +4,7 @@ set -euo pipefail
 root="$(pwd -P)"
 fixture="$(mktemp -d "${TMPDIR:-/tmp}/ic-persistence-ci-selection.XXXXXX")"
 echo "Retained CI selection fixture: $fixture"
+rg -F 'cargo +$(VALIDATION_TOOLCHAIN) check --workspace --locked --offline --all-targets --features test-support' Makefile > /dev/null
 yq -o=json '.' .github/workflows/ci.yml > "$fixture/workflow.json"
 jq -r '.jobs["change-scope"].steps[] | select(.id == "classify") | .run' "$fixture/workflow.json" > "$fixture/classify.sh"
 jq -e '
@@ -19,8 +20,8 @@ jq -e '
   (.on.push | has("paths") or has("paths-ignore") | not) and
   (.jobs.test.steps | any(.id == "evidence" and (.run | contains("make validate-toolchain")))) and
   (.jobs.runtime.steps | any((.run // "") | contains("make test-runtime"))) and
-  (.jobs.msrv.steps | any((.run // "") | contains("cargo check --workspace --locked --offline --all-targets"))) and
-  all(.jobs | to_entries[] | select(.key == "test" or .key == "runtime" or .key == "msrv");
+  (.jobs | has("msrv") | not) and
+  all(.jobs | to_entries[] | select(.key == "test" or .key == "runtime");
     .value.needs == ["change-scope","docs"] and
     .value.if == "${{ !cancelled() }}" and
     .value.steps[0].env.CHANGE_RESULT == "${{ needs.change-scope.result }}" and
@@ -34,7 +35,7 @@ jq -e '
 ' "$fixture/workflow.json" > /dev/null
 # Required matrix checks must fail, not disappear as successful skips, when a
 # prerequisite job fails. Execute each actual admission script for both outcomes.
-for job in test runtime msrv; do
+for job in test runtime; do
     jq -r --arg job "$job" '.jobs[$job].steps[0].run' "$fixture/workflow.json" > "$fixture/$job-admission.sh"
     CHANGE_RESULT=success DOCS_RESULT=success bash -e -o pipefail "$fixture/$job-admission.sh"
     for outcome in failure skipped cancelled; do
@@ -115,4 +116,4 @@ fi
 # Execute the real docs job command, not a simulated native pass.
 jq -r '.jobs.docs.steps[-1].run' "$fixture/workflow.json" > "$fixture/docs.sh"
 bash -e -o pipefail "$fixture/docs.sh" > "$fixture/docs.log" 2>&1
-echo 'Actual workflow selection, unchanged full matrices/steps, fail-closed cases and documentation checks passed.'
+echo 'Actual workflow selection, retained native/runtime matrices, fail-closed cases and documentation checks passed.'

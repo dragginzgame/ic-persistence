@@ -3,6 +3,18 @@
 use super::*;
 use std::fmt::Write as _;
 
+pub(super) fn fixture_toolchain() -> String {
+    toml_string(
+        &fs::read_to_string(
+            Path::new(env!("CARGO_MANIFEST_DIR")).join("../../rust-toolchain.toml"),
+        )
+        .unwrap(),
+        "toolchain",
+        "channel",
+    )
+    .unwrap()
+}
+
 pub(super) const PACKAGE_MANIFEST: &str = "crates/ic-memory/Cargo.toml";
 
 // Only these narrow command shapes are semantic effects in this fixture.
@@ -39,8 +51,9 @@ const DETAIL_NOTES: &str = "# Detail\n\n## [0.13.0]\n\nFixture changes.\n";
 
 pub(super) fn fixture_manifest() -> String {
     let members = FIXTURE_PACKAGES.map(|(name, _)| format!("crates/{name}"));
+    let toolchain = fixture_toolchain();
     let mut text = format!(
-        "[workspace]\nmembers = {}\n[workspace.package]\nrust-version = \"1.88.0\"\n[workspace.dependencies]\n",
+        "[workspace]\nmembers = {}\n[workspace.package]\nrust-version = {toolchain:?}\n[workspace.dependencies]\n",
         serde_json::to_string(&members).unwrap()
     );
     for (name, _) in FIXTURE_PACKAGES {
@@ -154,7 +167,7 @@ impl Fixture {
         }
         fs::write(
             root.join("rust-toolchain.toml"),
-            "[toolchain]\nchannel = \"1.99.0\"\n",
+            format!("[toolchain]\nchannel = {:?}\n", fixture_toolchain()),
         )
         .unwrap();
         let exec = Substitute {
@@ -480,7 +493,7 @@ impl Substitute {
     pub(super) fn publication(&self, root: &Path, args: &[&str]) -> Result<String> {
         require(
             args.len() == 10
-                && args[0] == "RUSTUP_TOOLCHAIN=1.99.0"
+                && args[0] == format!("RUSTUP_TOOLCHAIN={}", fixture_toolchain())
                 && args[1] == "bash"
                 && args[2] == "scripts/ci/run-cargo-publication.sh"
                 && matches!(args[3], "check" | "publish")
@@ -495,8 +508,9 @@ impl Substitute {
             version == BuildEffects::package_version(root, name)?,
             "wrong publication version",
         )?;
+        let compiler = format!("+{}", fixture_toolchain());
         let mut forwarded = vec![
-            "+1.99.0",
+            compiler.as_str(),
             "publish",
             "--locked",
             "--registry",

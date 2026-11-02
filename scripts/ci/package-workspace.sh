@@ -25,5 +25,5 @@ mkdir -p "$target/package-qualification"
 attempt="$(mktemp -d "$target/package-qualification/attempt.XXXXXX")"
 echo "Retained package qualification: $attempt"
 # Build owns extraction, frozen package admission and final archive/source custody.
-# The native consumer retains its explicit library/native/MSRV/Wasm check roster.
+# The native consumer retains its library/native/Wasm roster on the admitted pin.
 bash scripts/dev/run-repo-tool.sh "$pin" qualify-archives "$attempt" "$msrv"

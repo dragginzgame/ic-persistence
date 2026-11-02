@@ -21,6 +21,10 @@ const PROCESS_LIMITS: OutputLimits = OutputLimits {
 impl<E: Execute> Repository<E> {
     pub(super) fn qualify_archives(&self, evidence: &Path, msrv: &str) -> Result<()> {
         let toolchain = self.toolchain()?;
+        require(
+            msrv == self.msrv()? && msrv == toolchain,
+            "archive compiler must match the pinned support floor",
+        )?;
         let metadata = self.output(
             "cargo",
             &[
@@ -152,15 +156,13 @@ impl<E: Execute> Repository<E> {
             }),
             "consumer has a foreign local package",
         )?;
-        for (index, compiler) in [toolchain, msrv].into_iter().enumerate() {
-            let mut command = cargo(compiler);
-            command
-                .args(["run", "--locked", "--offline", "--manifest-path"])
-                .arg(&manifest_path)
-                .arg("--target-dir")
-                .arg(workspace.join("consumer-build"));
-            check(&mut command, workspace, &format!("consumer-native-{index}"))?;
-        }
+        let mut command = cargo(toolchain);
+        command
+            .args(["run", "--locked", "--offline", "--manifest-path"])
+            .arg(&manifest_path)
+            .arg("--target-dir")
+            .arg(workspace.join("consumer-build"));
+        check(&mut command, workspace, "consumer-native-0")?;
         let mut command = cargo(toolchain);
         command
             .args([

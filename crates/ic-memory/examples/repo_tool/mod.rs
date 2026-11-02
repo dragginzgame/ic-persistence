@@ -99,7 +99,7 @@ enum ToolCommand {
     Toolchain,
     /// Print Cargo's target directory.
     Target,
-    /// Qualify already-produced archives with the consumer native/MSRV/Wasm roster.
+    /// Qualify already-produced archives with the consumer native/Wasm roster.
     QualifyArchives {
         /// Existing empty private evidence directory; retained on every outcome.
         evidence: PathBuf,
@@ -311,11 +311,22 @@ impl<E: Execute> Repository<E> {
     }
 
     fn identities(&self) -> Result<[String; 3]> {
-        Ok([
-            self.output("cargo", &[&format!("+{}", self.toolchain()?), "--version"])?,
-            self.output("rustc", &[&format!("+{}", self.toolchain()?), "-Vv"])?,
-            self.output("rustc", &[&format!("+{}", self.msrv()?), "-Vv"])?,
-        ])
+        let toolchain = self.toolchain()?;
+        require(
+            toolchain == self.msrv()?,
+            "pinned compiler must match the declared support floor",
+        )?;
+        let selector = format!("+{toolchain}");
+        let cargo = self.output("cargo", &[&selector, "--version"])?;
+        let rustc = self.output("rustc", &[&selector, "-Vv"])?;
+        require(
+            cargo.split_whitespace().nth(1) == Some(toolchain.as_str())
+                && rustc.split_whitespace().nth(1) == Some(toolchain.as_str()),
+            "observed compiler identities differ from the selected pin",
+        )?;
+        // Preserve the receipt's compiler/support-floor roles without repeating
+        // an identical compiler observation.
+        Ok([cargo, rustc.clone(), rustc])
     }
 }
 

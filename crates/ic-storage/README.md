@@ -8,7 +8,7 @@ iterators, `BTreeMapRegion`, `RegionGrowError`, `LogWriteError`, `Memory`, `Stor
 `ic-stable-structures` formats and provide explicit initialization/loading contracts.
 Consumers use the adapter rather than depending directly on the substrate.
 
-The library requires Rust 1.91 or later.
+The library requires Rust 1.99.1 or later.
 
 ```rust
 use ic_storage::adapter::{Bound, Memory, StableBTreeMap, Storable};

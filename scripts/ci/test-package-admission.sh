@@ -39,15 +39,6 @@ for package in "${packages[@]}"; do
     version="$(printf '%s' "$metadata" | jq -er --arg name "$package" '.packages[] | select(.name == $name) | .version')"
     shasum -a 256 "$target/package/$package-$version.crate" >> "$PREPARED_ARCHIVES"
 done
-cat > "$fixture/bin/yq" <<'STUB'
-#!/usr/bin/env bash
-set -euo pipefail
-if [[ "$REJECT_MODE" == selected-msrv && "$*" == '-p toml -o yaml -r .workspace.package.rust-version Cargo.toml' ]]; then
-    printf '%s\n' "$FIXTURE_MSRV"
-else
-    exec "$REAL_YQ" "$@"
-fi
-STUB
 cat > "$fixture/bin/cargo" <<'STUB'
 #!/usr/bin/env bash
 set -euo pipefail
@@ -88,14 +79,18 @@ cat > "$fixture/bin/rustup" <<'STUB'
 #!/usr/bin/env bash
 set -euo pipefail
 if [[ "$REJECT_MODE" == selected-msrv ]]; then
-    [[ $# == 4 && "$1" == run && "$3" == rustc && "$4" == --version ]] || exit 99
-    printf '%s\n' "$2" >> "$MSRV_ADMISSION_EVENTS"
-    printf 'rustc %s\n' "$2"
+    [[ $# == 4 && "$1" == run && "$2" == "$FIXTURE_MSRV" ]] || exit 99
+    printf '%s\n' "$3" >> "$MSRV_ADMISSION_EVENTS"
+    case "$3:$4" in
+        rustc:-Vv) printf 'rustc %s (fixture)\nrelease: %s\n' "$2" "$2" ;;
+        cargo:--version) printf 'cargo %s (fixture)\n' "$2" ;;
+        *) exit 99 ;;
+    esac
 else
     exec "$REAL_RUSTUP" "$@"
 fi
 STUB
-chmod +x "$fixture/bin/cargo" "$fixture/bin/yq" "$fixture/bin/rustup"
+chmod +x "$fixture/bin/cargo" "$fixture/bin/rustup"
 # One real orchestration probe proves rejection occurs before compilation.
 if REJECT_MODE=drift PATH="$fixture/bin:$PATH" bash scripts/ci/package-workspace.sh "$pin" --allow-dirty > "$fixture/drift.log" 2>&1; then
     echo "Incorrectly admitted drift; see $fixture/drift.log" >&2; exit 1
@@ -105,17 +100,17 @@ if rg -q 'unexpected compilation' "$fixture/drift.log"; then
 fi
 rg -q 'resolved package is not the exact extracted payload' "$fixture/drift.log"
 echo 'Build admission refuses a substituted payload before consumer compilation'
-# Alter only the fixture's catalog observation. Real archive extraction and
+# Keep the actual compiler/support-floor policy. Real archive extraction and
 # graph admission run; compiler checks/build/run effects are substitutes.
-export FIXTURE_MSRV=1.90.0 MSRV_EVENTS="$fixture/msrv-events" MSRV_ADMISSION_EVENTS="$fixture/msrv-admission"
+export FIXTURE_MSRV="$pin" MSRV_EVENTS="$fixture/msrv-events" MSRV_ADMISSION_EVENTS="$fixture/msrv-admission"
 REJECT_MODE=selected-msrv PATH="$fixture/bin:$PATH" bash scripts/ci/package-workspace.sh "$pin" --allow-dirty > "$fixture/msrv.log" 2>&1
-printf '%s\n' "$pin" "$FIXTURE_MSRV" > "$fixture/expected-admission"
+printf 'rustc\ncargo\n' > "$fixture/expected-admission"
 cmp "$fixture/expected-admission" "$MSRV_ADMISSION_EVENTS"
 {
     for package in "${packages[@]}"; do printf '+%s\n' "$pin"; done
-    printf '+%s\n' "$pin" "$FIXTURE_MSRV" "$pin"
+    printf '+%s\n' "$pin" "$pin"
 } > "$fixture/expected-compilers"
 cut -d ' ' -f 1 "$MSRV_EVENTS" > "$fixture/observed-compilers"
 cmp "$fixture/expected-compilers" "$fixture/observed-compilers"
-echo 'Archive fixture metadata and compiler dispatch follow the admitted catalog MSRV (substitutes only).'
+echo 'Archive fixture metadata and single native dispatch follow the admitted compiler (substitutes only).'
 shasum -a 256 -c "$PREPARED_ARCHIVES"

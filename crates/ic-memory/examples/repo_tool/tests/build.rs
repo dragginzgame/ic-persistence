@@ -39,9 +39,9 @@ impl BuildEffects {
         git: &mut GitState,
     ) -> Result<String> {
         match program {
-            "rustc" => Ok(format!("fixture-rustc {}\n", args[0])),
+            "rustc" => Ok(format!("rustc {} (fixture)\n", fixture_toolchain())),
             "cargo" if args.get(1) == Some(&"--version") => {
-                Ok(format!("fixture-cargo {}\n", args[0]))
+                Ok(format!("cargo {} (fixture)\n", fixture_toolchain()))
             }
             "cargo" if args.get(1) == Some(&"build") => Self::probe_build(root, args),
             "cargo" if args.get(1) == Some(&"update") => self.update(root),
@@ -68,7 +68,7 @@ impl BuildEffects {
                     == [
                         "--no-print-directory",
                         "validate",
-                        "VALIDATION_TOOLCHAIN=1.99.0",
+                        &format!("VALIDATION_TOOLCHAIN={}", fixture_toolchain()),
                     ] =>
             {
                 self.gate(BuildFault::Validate, "fixture validation failure")?;
@@ -82,7 +82,7 @@ impl BuildEffects {
                     == [
                         "--no-print-directory",
                         "fmt-check",
-                        "VALIDATION_TOOLCHAIN=1.99.0",
+                        &format!("VALIDATION_TOOLCHAIN={}", fixture_toolchain()),
                     ] =>
             {
                 self.gate(BuildFault::Formatting, "fixture formatting failure")

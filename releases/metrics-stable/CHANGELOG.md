@@ -3,6 +3,14 @@
 Independent releases begin after the coordinated 0.58.1 release. Earlier history
 is retained once in the [shared historical ledger](../history.md#0581---2026-10-31).
 
+## [0.65.0] - Unreleased
+
+### ⚠️ Breaking
+
+- Require Rust 1.99.1, matching the pinned compiler and core supplier's support
+  floor. Upgrade older build environments; metric records, arithmetic and
+  checkpoint contracts are unchanged. [Details](0.65.md).
+
 ## [0.64.0] - 2026-11-01
 
 ### ⚠️ Breaking

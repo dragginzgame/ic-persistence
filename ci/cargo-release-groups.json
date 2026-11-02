@@ -15,7 +15,7 @@
         "ic-storage"
       ],
       "metadata_files": [
-        "releases/persistence/0.62.md"
+        "releases/persistence/0.63.md"
       ]
     },
     {
@@ -30,7 +30,7 @@
         "ic-metrics-stable"
       ],
       "metadata_files": [
-        "releases/metrics-stable/0.64.md"
+        "releases/metrics-stable/0.65.md"
       ]
     },
     {

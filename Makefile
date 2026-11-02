@@ -179,13 +179,13 @@ ensure-clean:
 # Full release suite; release/publication remain separately authorized.
 validate:
 	$(MAKE) --no-print-directory validate-toolchain
-	+msrv="$$($(TOOL) msrv)" && \
-	  cargo "+$$msrv" check --workspace --locked --offline --all-targets
 
 validate-toolchain:
 	$(MAKE) --no-print-directory shared-tooling-check tools-check format-tools-check
 	$(MAKE) --no-print-directory validation-compilers-check
 	+cargo +$(VALIDATION_TOOLCHAIN) clippy --workspace --locked --offline --all-targets -- -D warnings
+	# Retains the former MSRV job's distinct feature-enabled native graph.
+	+cargo +$(VALIDATION_TOOLCHAIN) check --workspace --locked --offline --all-targets --features test-support
 	$(MAKE) --no-print-directory check-production-graph check-pins check-storage-boundary check-license check-doc-links test-release-adapters
 	$(MAKE) --no-print-directory test-tools test-tooling test-hooks fmt-check test-fixture-cell test-package-admission
 	# test-tooling already ran the repo-tool fixtures in parallel; keep product tests serial.

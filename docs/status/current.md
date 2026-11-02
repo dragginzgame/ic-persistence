@@ -1,105 +1,77 @@
 # Current handoff
 
-Delivery selected: Persistence 0.62.1, Metrics Stable 0.64.0 and Logging Stable
-0.62.1 to crates.io and GitHub `dragginzgame/ic-persistence`, `main`, supplier-first.
-Standard full gates, final archive receipts and registry/tag readback establish
-completion under `target/delivery/metrics-testkit-wire-2026-11-01/`. The preparation
-descriptions below predate this delivery selection. The Metrics detail ledger is
-declared as owned release metadata for dated finalization with its root entry.
+Delivery selected: Persistence 0.63.0, Metrics Stable 0.65.0 and Logging Stable
+0.63.0 to crates.io and GitHub `dragginzgame/ic-persistence`, `main`, followed by
+closure of #151 after verified publication. Standard group gates and final
+registry/tag readback own delivery evidence under `target/delivery/rust-1.99.1-2026-11-02/`.
+Preparation-only wording below predates this explicit delivery selection.
 
-The first core gate refused before version mutation: a release fixture lacked
-Metrics' newly declared detail metadata. Fixtures now seed every declared group
-metadata path; the focused three-group rollback/publication test and formatting
-passed. Retain failed gate `verify.7uETZU` and the focused `fixture-repair.log`
-under the delivery evidence directory. The clean repaired source requires a fresh
-standard gate; no receipt or release effect from the failed gate is reused.
+Current work implements [#151](https://github.com/dragginzgame/ic-persistence/issues/151):
+the maintainer selected Rust 1.99.1 as both support floor and pinned compiler.
+Root and independent runtime catalogs now declare 1.99.1; all five packages
+inherit their owning catalog and the pin already selected 1.99.1. Local instructions
+record the explicit exception to the reviewed baseline's earlier floor guidance;
+no vendored policy or sibling checkout changed.
 
-Published on crates.io and GitHub: Persistence 0.62.0 (Memory/Storage), Metrics
-Stable 0.63.0 and Logging Stable 0.62.0. Normal main is at `319dce0`. All three
-standard full gates, final archive qualification, registry checksums, Wire/core
-requirements and annotated remote tags passed. Delivery evidence remains under
-`target/delivery/wire-0.14-2026-11-01/verification.json` and its retained logs.
+Compiler admission checks both catalogs, package inheritance and the pin before
+probing actual Cargo/rustc identities once each. The release helper refuses
+mismatched policy or observed versions and preserves its receipt roles without
+repeating the same rustc observation. Extracted libraries still compile separately;
+the feature-enabled native archive consumer runs once, followed by Wasm.
 
-Current local work adopts published Metrics 0.25.0 in the root catalog/lock.
-Default native schema support now shares Wire 0.14 with the adapter. Wire/Derive
-0.13 leave the root lock without feature suppression, overrides or conversion
-wrappers. The independent qualifier lock and all executable pins are unchanged.
-That describes the Metrics-only step; the subsequent Testkit/Wire refresh below
-updates the independent Wire lock and selected qualification CLI.
-Metrics Stable's public measurement and restoration-error types now carry Metrics
-0.25 identity. Hosts must align their direct Metrics requirement before passing
-these values to checkpoint/load APIs. Stored rows, arithmetic, bounds and
-checkpoint continuity remain unchanged; no reset is needed.
+The duplicate MSRV CI matrix and second compiler installation are removed. Existing
+native and installed-runtime jobs retain Linux and both macOS hosts. The old
+MSRV job's distinct native `--all-targets --features test-support` proof is now
+in `validate-toolchain`, after Clippy. Default compilation, proc macros, Wasm test
+compilation, raw size budgets, archive integration and installed-runtime/optimizer
+obligations remain. `validate` delegates once rather than replaying a default graph.
+Classic branch protection returned unprotected and active branch rules were empty;
+no required-check reference needed remote modification. CI fixtures retain
+classification/docs failure propagation and both three-host matrices.
 
-Pending notes select Metrics Stable 0.64.0 for this public dependency identity
-change. Memory/Storage and Logging Stable need no release for this adoption.
-Package versions, staging, commits, release execution and publication remain
-unchanged. Locked metadata/native graph confirm one Wire 0.14 identity. Affected
-Clippy, all 29 adapter tests, Rust 1.91 native/Wasm and graph/pin/format/docs checks
-passed. Focused evidence is retained under `target/metrics-0.25-adoption/`.
-The previous native Wire 0.13 caveat is retired by this supplier adoption;
-published release notes remain historical evidence and are not rewritten.
+Support-floor changes select pending minor notes: Persistence 0.63.0, Metrics
+Stable 0.65.0 and Logging Stable 0.63.0. Hosts using older Rust must upgrade.
+Public runtime APIs, stable formats and custody are unchanged. Package versions,
+staging, commits, publication and issue closure are not selected by this fix.
 
-The subsequent local refresh selects Testkit Native 0.78.0 and Wire/Derive 0.14.1
-in the root lock, with Wire/Derive 0.14.1 in the independent qualifier lock.
-Compatible Wire 0.14.0 catalog requirements remain unchanged. The Testkit CLI pin
-is now 0.78.0; explicit setup reused its admitted published installation and
-authenticated the unchanged PocketIC server 16.1.0 selection. No Platform/runtime
-owner, product limits or stored format changed. The pending Metrics adoption is
-preserved. Compatible notes select Persistence 0.62.1 and Logging Stable 0.62.1;
-Metrics Stable retains its pending 0.64.0 identity cut. Current package versions,
-staging, commits and publication remain unchanged. Evidence is retained under
-`target/testkit-0.78-wire-0.14.1/`.
+Focused evidence is retained under `target/issue-151/`. Compiler admission/refusal
+fixtures, release Make adapters, workflow selection, selected ShellCheck and
+Actionlint, helper Clippy, configuration tests and note-finalization tests passed.
+All 77 release-helper tests passed across the focused selections and remaining
+regression run. Production graph guards and release-note links also passed.
+Native all-target `test-support`, Wasm workspace test graphs and the independent
+qualifier compiled on 1.99.1 with locked dependencies. Real archive qualification
+passed under `target/package-qualification/attempt.jYwzvw/`: four library checks,
+one native consumer and one Wasm consumer, with final source/archive custody.
+The archive fixture confirms one native dispatch and early substituted-payload
+refusal. Full release gates and installed/native macOS execution were not replayed.
+Earlier failed subset ShellCheck attempts are retained; the proper source
+companions were included in the passing invocation.
 
-Both graph/Clippy selections, pins/production admission, 33 codec tests and nine
-memory-accounting tests passed. Rust 1.91 native/Wasm and formatting/docs checks
-passed. The new CLI passed installed Linux Logging retention/reopen and
-update/upgrade rollback in `target/qualification/runtime/attempt.KvhNVn/`;
-post-run input hashes verified unchanged. The earlier sandbox attempt
-`attempt.3bCN7R/` refused localhost binding before runtime checks and is retained.
-Full release gates, other installed suites and native macOS were not replayed.
+Incoming `Cargo.lock` edits (crc32fast, Metrics and Wire patches) remain unchanged;
+the original lock and patch are retained in `target/issue-151/`. The independent
+lockfile and all tool/server selections are unchanged. No cache or artifact was
+removed. Existing installed qualification remains scoped to its recorded inputs.
 
-The published Wire 0.14 hard cut changes public codec-error identities while
-preserving durable bytes and admission. Its focused proof passed 33 codec and
-three qualifier tests, selected Clippy/graph checks and Rust 1.91 native/Wasm
-checks. Evidence remains under `target/wire-0.14-adoption/`. The release also
-includes Testkit Native 0.77.0, sharing Platform 0.17.0 for metered-memory helpers;
-its focused proof and saved incoming lock are under
-`target/testkit-native-0.77-adoption/`.
+Latest publication is Persistence 0.62.1 (Memory/Storage), Metrics Stable 0.64.0
+and Logging Stable 0.62.1, with all group gates, final checksums, requirements and
+tags verified. Evidence remains under
+`target/delivery/metrics-testkit-wire-2026-11-01/verification.json`. The retained
+failed gate `verify.7uETZU` was repaired by seeding declared group metadata in
+fixtures; its source-bound retry and later delivery passed. The first failed
+Persistence 0.61.0 plan is superseded evidence and must not be resumed.
 
-The preceding Platform 0.17/Wire 0.13.5 releases remain retained under
-`target/delivery/platform-wire-2026-11-01/`. Stable-structures 0.7.2 is unchanged.
-The native qualifier uses owned `ic-platform-pocket-ic` 0.17.0 with server 16.1.0;
-Logging's Wasm fixture uses Runtime/macros/guard 0.17.1 and Types 0.16.0.
-That proof selected Testkit CLI 0.76.0. Installed Linux IO, Storage, custody, Logging
-retention and update/upgrade rollback passed with unchanged post-run input hashes
-under `target/platform-0.17-adoption/`. Native macOS and installed optimizer
-variants retain their separate acceptance.
+Earlier Wire/Platform and public API hard-cut delivery/qualification evidence
+remains in its original `target/delivery/`, `target/wire-0.14-adoption/`,
+`target/platform-0.17-adoption/` and `target/hard-cut-api-2026-11-01/` directories.
+See [the public API migration](../migration/0.61-public-api.md) for constructor/key
+changes. Stored formats remain unchanged by the compiler decision.
 
-The earlier public API hard cut uses explicit Storage `create`/`load`/`reset`, one
-bound-enforcing `StableCell`, parsed `StableKey` runtime lookup/open and nonzero
-bucket configuration. See [the migration](../migration/0.61-public-api.md).
-Earlier focused/installed proof remains under `target/hard-cut-api-2026-11-01/`
-and `target/complexity-followup-2026-11-01/`.
-
-The first hard-cut releases used retained isolated delivery checkout
-`target/delivery/hard-cut-observability-2026-11-01/checkout/` to preserve incoming
-lock work. Its completed receipts/readback own delivery; the original failed
-Persistence 0.61.0 plan is superseded evidence and must not be resumed. Preserve
-autostash backups, failed attempts, receipts and content-addressed archives.
-
-Build owns extracted archive graph admission/input custody; the consumer owns
-its library/native/MSRV/Wasm roster. Shared's grouped bootstrap observer is
-adopted from [PR #336](https://github.com/dragginzgame/shared-tooling/pull/336).
-The merged destination-adoption check covers independent graphs for
-[Shared #335](https://github.com/dragginzgame/shared-tooling/issues/335).
-Opt-in ShellCheck reuse retains complete gates and fresh group admissions.
-PR #150 admits macOS tool bytes within 64 MiB and preserves failure logs/status.
-Native CI remains separate acceptance for
-[Shared #334](https://github.com/dragginzgame/shared-tooling/issues/334); retain
-failed run 41314835837 and existing local proof. See
-[adoption](../shared-tooling-adoption.md#exact-input-shellcheck-reuse).
-
-The reviewed Shared snapshot remains
-`9275bf0de39ed941d81c47bab97eef7f6fc38df2` (VERSION 0.27.24), with 81 roots and
-136 payloads. Never patch vendored files or adopt dirty sibling rules.
+Build owns extracted archive admission/input custody; the consumer owns its
+qualification roster. Shared's grouped observer is adopted from
+[PR #336](https://github.com/dragginzgame/shared-tooling/pull/336). The merged
+native destination check covers [Shared #335](https://github.com/dragginzgame/shared-tooling/issues/335).
+Opt-in ShellCheck proof reuse and native acceptance remain tracked by
+[Shared #334](https://github.com/dragginzgame/shared-tooling/issues/334).
+The reviewed snapshot remains `9275bf0de39ed941d81c47bab97eef7f6fc38df2`
+(VERSION 0.27.24), with 81 roots and 136 payloads. Never patch vendored files.

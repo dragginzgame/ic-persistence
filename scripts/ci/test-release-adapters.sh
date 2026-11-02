@@ -308,6 +308,7 @@ printf '%s\n' \
     > "$FIXTURE/lint-failure-expected"
 cp "$FIXTURE/lint-failure-expected" "$FIXTURE/lint-success-expected"
 printf '%s\n' \
+    "cargo +$FIXTURE_TOOLCHAIN check --workspace --locked --offline --all-targets --features test-support" \
     'make --no-print-directory check-production-graph check-pins check-storage-boundary check-license check-doc-links test-release-adapters' \
     'make --no-print-directory test-tools test-tooling test-hooks fmt-check test-fixture-cell test-package-admission' \
     "cargo +$FIXTURE_TOOLCHAIN test --workspace --locked --offline -- --test-threads=1 --skip repo_tool::tests::" \
@@ -320,56 +321,23 @@ printf '%s\n' \
     make_probe_lint_order "$(command -v make)" "$FIXTURE/Makefile" "$FIXTURE" \
     "$FIXTURE/lint-events" validate-toolchain \
     "$FIXTURE/lint-failure-expected" "$FIXTURE/lint-success-expected")
-# MSRV output is usable only when its helper succeeds. Substitute the preceding
-# recursive command while retaining the actual consumer's single validate recipe.
-mkdir "$FIXTURE/msrv-bin"
-cat > "$FIXTURE/msrv-gate" <<'STUB'
+# The consolidated validate target delegates once and preserves gate failure.
+cat > "$FIXTURE/compiler-gate" <<'STUB'
 #!/usr/bin/env bash
 [[ "$#" == 2 && "$*" == '--no-print-directory validate-toolchain' ]] || exit 1
-printf '%s\n' "$*" > msrv-gate-events
-exit "$MSRV_GATE_STATUS"
+printf '%s\n' "$*" > compiler-gate-events
+exit "$COMPILER_GATE_STATUS"
 STUB
-cat > "$FIXTURE/msrv-helper" <<'STUB'
-#!/usr/bin/env bash
-[[ "$#" == 1 && "$1" == msrv ]] || exit 1
-printf '%s\n' "$*" >> msrv-helper-events
-printf '1.88.0\n'
-exit "$MSRV_OBSERVATION_STATUS"
-STUB
-cat > "$FIXTURE/msrv-bin/cargo" <<'STUB'
-#!/usr/bin/env bash
-[[ "$#" == 6 && "$*" == '+1.88.0 check --workspace --locked --offline --all-targets' ]] || exit 1
-printf '%s\n' "$*" >> msrv-cargo-events
-exit "$MSRV_CARGO_STATUS"
-STUB
-chmod +x "$FIXTURE/msrv-gate" "$FIXTURE/msrv-helper" "$FIXTURE/msrv-bin/cargo"
-for result in gate-failure read-failure success compiler-failure; do
-    gate=0
-    observation=0
-    compilation=0
-    case "$result" in gate-failure) gate=27 ;; read-failure) observation=23 ;; compiler-failure) compilation=19 ;; esac
-    rm -f "$FIXTURE/msrv-gate-events" "$FIXTURE/msrv-helper-events" "$FIXTURE/msrv-cargo-events"
+chmod +x "$FIXTURE/compiler-gate"
+for gate in 0 27; do
     status=0
-    (cd "$FIXTURE"; PATH="$FIXTURE/msrv-bin:$PATH" \
-        MSRV_GATE_STATUS="$gate" MSRV_OBSERVATION_STATUS="$observation" MSRV_CARGO_STATUS="$compilation" \
-        make --no-print-directory validate TOOL=./msrv-helper MAKE=./msrv-gate) \
-        > "$FIXTURE/msrv-$result.log" 2>&1 || status=$?
-    [[ "$(cat "$FIXTURE/msrv-gate-events")" == '--no-print-directory validate-toolchain' ]] || exit 1
-    if [[ "$result" == gate-failure ]]; then
-        [[ "$status" == 2 && ! -e "$FIXTURE/msrv-helper-events" && ! -e "$FIXTURE/msrv-cargo-events" ]] || exit 1
-    elif [[ "$result" == read-failure ]]; then
-        [[ "$status" == 2 && ! -e "$FIXTURE/msrv-cargo-events" ]] || exit 1
-    else
-        [[ "$(cat "$FIXTURE/msrv-cargo-events")" == '+1.88.0 check --workspace --locked --offline --all-targets' ]] || exit 1
-        if [[ "$result" == success ]]; then [[ "$status" == 0 ]] || exit 1
-        else [[ "$status" == 2 ]] || exit 1; fi
-    fi
-    if [[ "$result" != gate-failure ]]; then
-        [[ "$(cat "$FIXTURE/msrv-helper-events")" == msrv ]] || exit 1
-    fi
+    (cd "$FIXTURE"; COMPILER_GATE_STATUS="$gate" make --no-print-directory validate MAKE=./compiler-gate) > "$FIXTURE/compiler-$gate.log" 2>&1 || status=$?
+    [[ "$(cat "$FIXTURE/compiler-gate-events")" == '--no-print-directory validate-toolchain' ]] || exit 1
+    if [[ "$gate" == 0 ]]; then [[ "$status" == 0 ]] || exit 1
+    else [[ "$status" == 2 ]] || exit 1; fi
 done
 # Diagnostics stay intact; unintended duplicate recipes must still be visible.
-if grep -E 'warning: (overriding|ignoring old) recipe' "$FIXTURE/tool-ordering.log" "$FIXTURE"/lint-*.log "$FIXTURE"/msrv-*.log; then
+if grep -E 'warning: (overriding|ignoring old) recipe' "$FIXTURE/tool-ordering.log" "$FIXTURE"/lint-*.log "$FIXTURE"/compiler-*.log; then
     echo 'consumer admission fixtures replaced a production recipe' >&2; exit 1
 fi
 (cd "$FIXTURE"; make --no-print-directory release-patch)
@@ -649,7 +617,7 @@ cat > Cargo.toml <<'MANIFEST'
 [workspace]
 members = ["crates/ic-memory", "crates/ic-storage", "crates/ic-metrics-stable", "crates/ic-logging-stable"]
 [workspace.package]
-rust-version = "1.91.0"
+rust-version = "1.99.1"
 [workspace.dependencies]
 ic-memory = { path = "crates/ic-memory", version = "0.12.3" }
 ic-storage = { path = "crates/ic-storage", version = "0.12.3" }
@@ -863,7 +831,7 @@ cat > expected-manifest <<'MANIFEST'
 [workspace]
 members = ["crates/ic-memory", "crates/ic-storage", "crates/ic-metrics-stable", "crates/ic-logging-stable"]
 [workspace.package]
-rust-version = "1.91.0"
+rust-version = "1.99.1"
 [workspace.dependencies]
 ic-memory = { path = "crates/ic-memory", version = "0.13.0" }
 ic-storage = { path = "crates/ic-storage", version = "0.13.0" }
@@ -950,7 +918,7 @@ cat > Cargo.toml <<'MANIFEST'
 [workspace]
 members = ["crates/ic-memory", "crates/ic-storage", "crates/ic-metrics-stable", "crates/ic-logging-stable"]
 [ workspace.package ] # selected metadata
-  rust-version   = "1.91.0" # keep this comment
+  rust-version   = "1.99.1" # keep this comment
 [workspace.dependencies]
 ic-memory = { path = "crates/ic-memory", version = "0.12.3" }
 ic-storage = { path = "crates/ic-storage", version = "0.12.3" }
@@ -963,7 +931,7 @@ cat > expected-manifest <<'MANIFEST'
 [workspace]
 members = ["crates/ic-memory", "crates/ic-storage", "crates/ic-metrics-stable", "crates/ic-logging-stable"]
 [ workspace.package ] # selected metadata
-  rust-version   = "1.91.0" # keep this comment
+  rust-version   = "1.99.1" # keep this comment
 [workspace.dependencies]
 ic-memory = { path = "crates/ic-memory", version = "0.13.0" }
 ic-storage = { path = "crates/ic-storage", version = "0.13.0" }
@@ -1004,7 +972,7 @@ for input in Cargo.toml Cargo.lock crates/ic-memory/Cargo.toml crates/ic-storage
 done
 # Cargo admits manifest syntax before projection, including duplicate-key refusal.
 sed '/keep this comment/a\
-  rust-version = "1.91.0"' formatted-manifest > Cargo.toml
+  rust-version = "1.99.1"' formatted-manifest > Cargo.toml
 cp Cargo.toml duplicate-manifest
 cp calls saved-parser-calls
 if bash scripts/dev/run-repo-tool.sh "$FIXTURE_TOOLCHAIN" version > duplicate-manifest.log 2>&1; then
