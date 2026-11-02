@@ -16,9 +16,10 @@ fn main() {
     let rows = StableVec::<[u8; 1024], _>::create(
         host.open_memory(&StableKey::parse("measure.rows.v1").unwrap())
             .unwrap(),
-    );
+    )
+    .expect("create measurement vector");
     for _ in 0..8192 {
-        rows.push(&[7; 1024]);
+        rows.push(&[7; 1024]).expect("append measurement row");
     }
     println!("{:#?}", host.memory_allocations().unwrap());
 }
