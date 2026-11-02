@@ -1,19 +1,22 @@
 # Current handoff
 
-## Selected delivery
+## Delivered Storage 0.65.0
 
-The authorized core release is Storage **0.65.0**, from `main` at `23deb81` plus
-the requested Wire adoption and intentional history-file removal. The standard `RELEASE_GROUP=storage` minor
-release and publication workflow owns validation, version preparation, Git effects
-and registry admission. This handoff records preparation, not successful delivery;
-the annotated tag, retained final receipt and registry checksum establish that.
+Storage **0.65.0** is published with Wire 0.15.0 and Runtime 0.18.0. Release commit
+`84a7ecf6ed6517b989848c8e953d93fb5f561505` and annotated tag `storage-v0.65.0`
+were atomically pushed through the standard group release workflow. The complete
+local gate passed in 200 seconds, followed by prepared/final archive qualification.
+Fresh sparse-index and downloaded registry archive checks agree with the receipt:
+`c60314281e24c326e9dc938a29122763be56e6c3d76031be64221f38a6b5fb42`.
+Version 0.65.0 is unyanked. Evidence is in `target/storage-065-deploy/` and
+`target/release-validation/storage-0.65.0.json`; do not repeat release/upload.
 Metrics Storage 0.66.0 and Logging Storage 0.64.0 remain separate pending releases.
 No sibling release or migration is included. Preserve all earlier release plans,
 archives, failure logs and caches.
 
 The first release gate was interrupted before version preparation or push;
-its log remains at `target/release-validation/attempts/verify.Pjm5qj`. Restart
-from the final committed source; do not claim that incomplete gate as acceptance.
+its log remains at `target/release-validation/attempts/verify.Pjm5qj`. The successful
+replacement gate is `verify.XZLTRM`; no failed or interrupted evidence was removed.
 The retired history directories remain available through the current ledgers'
 revision-bound Git links; the maintainer explicitly approved their local deletion.
 
@@ -32,11 +35,12 @@ the owner, while IC traps retain host rollback. See the
 
 Runtime 0.18 is selected directly on Wasm; native production excludes Platform,
 Runtime, Types and the executor guard. This addresses
-[Storage #152](https://github.com/dragginzgame/ic-storage/issues/152) in source.
-The separate unpublished composition fixture verifies candidate Storage plus
-published Platform 0.18 with one Runtime/guard on native and Wasm, and tests
-native governed-cell create/reopen. Registry Storage 0.64 still has the old
-executor-guard conflict; verify the delivered archive before closing the issue.
+[Storage #152](https://github.com/dragginzgame/ic-storage/issues/152), now closed.
+The isolated registry-only consumer of Storage 0.65.0 and Platform 0.18 passes
+native governed-cell create/reopen and Wasm compilation with one Runtime/exact
+guard 0.18.0 and Wire 0.15.0. It has no path overrides. The maintained source
+composition fixture retains its own graph checks; registry Storage 0.64 still
+has the old executor-guard conflict. Consumers must adopt the corrected release.
 
 Wasm still enables Runtime's execution feature: the selected 0.18 API only exposes
 stable-memory size publicly through IC0. [Platform #135](https://github.com/dragginzgame/ic-platform/issues/135)

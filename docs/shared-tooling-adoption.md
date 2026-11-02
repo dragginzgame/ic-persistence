@@ -68,8 +68,8 @@ records and runtime ownership remain unchanged.
 
 The library and selected metadata editor use Build 0.74.0. Host Artifacts, FS and
 Process select 0.74.1. Testkit Native and the installed CLI select 0.79.0, with
-server 16.1.0 unchanged. Local package versions are unchanged; this is dependency
-and source adoption, not a release.
+server 16.1.0 unchanged. Storage 0.65.0 delivers this source adoption; the adapter
+versions and their separate pending publication requirements remain unchanged.
 
 The library [dependency catalog](../Cargo.toml) owns direct package requirements
 and feature selections; its [lockfile](../Cargo.lock) owns resolved identities.
