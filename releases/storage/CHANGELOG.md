@@ -3,7 +3,7 @@
 Current releases use the Storage naming. [Earlier published history](../persistence/CHANGELOG.md)
 retains its original package and release identities.
 
-## [0.64.0] - Unreleased
+## [0.64.0] - 2026-11-02
 
 ### ⚠️ Breaking
 
