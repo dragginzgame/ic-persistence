@@ -15,6 +15,12 @@ mkdir -p "$fixture/docs"
 cp -R docs/changelog "$fixture/docs/"
 cp -R releases "$fixture/"
 cp -R crates "$fixture/"
+# Group metadata includes the independent benchmark's catalog and lockfile.
+# Copy the declared roster so Shared can admit the same files as a real release.
+while IFS= read -r path; do
+    mkdir -p "$(dirname "$fixture/$path")"
+    cp "$path" "$fixture/$path"
+done < <(jq -r '.groups[].metadata_files[]?' ci/cargo-release-groups.json)
 mkdir -p "$fixture/scripts/dev" "$fixture/scripts/ci" "$fixture/ci"
 cp scripts/dev/run-repo-tool.sh "$fixture/scripts/dev/"
 bash scripts/ci/prepare-script-fixture.sh "$root" "$fixture" scripts/ci/observe-cargo-release-bootstrap.sh
