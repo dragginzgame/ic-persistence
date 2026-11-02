@@ -5,6 +5,79 @@ mod generated;
 
 #[cfg(not(target_arch = "wasm32"))]
 #[test]
+fn deletion_repairs_each_sibling_once_and_reopens_after_root_collapse() {
+    // Both borrowing directions and both merge directions, with cold routing.
+    for (left_count, right_count, remove_left) in
+        [(6, 5, false), (5, 6, true), (5, 5, false), (5, 5, true)]
+    {
+        let backing = crate::testing::MeteredMemory::<VectorMemory>::default();
+        let mut tree = Tree::<u64, u64, _>::reset(backing.clone()).unwrap();
+        let entry = |key: u64| Entry {
+            key: key.to_le_bytes().to_vec(),
+            value: Value::Inline(key.to_le_bytes().to_vec()),
+        };
+        let mut tx = Transaction::new(&tree);
+        let left = tx
+            .save(
+                None,
+                &Node {
+                    entries: (0..left_count).map(entry).collect(),
+                    children: vec![],
+                },
+            )
+            .unwrap();
+        let right = tx
+            .save(
+                None,
+                &Node {
+                    entries: (100..100 + right_count).map(entry).collect(),
+                    children: vec![],
+                },
+            )
+            .unwrap();
+        tx.root.top = Some(
+            tx.save(
+                None,
+                &Node {
+                    entries: vec![entry(50)],
+                    children: vec![left, right],
+                },
+            )
+            .unwrap(),
+        );
+        tx.root.length = left_count + right_count + 1;
+        tx.commit().unwrap();
+        backing.reset();
+        let removed = if remove_left { 0 } else { 100 };
+        assert_eq!(tree.remove(&removed).unwrap(), Some(removed));
+        // One prefix/payload pair for the root, child and sibling. Repair must
+        // not revisit the sibling after discovering it cannot lend an entry.
+        assert_eq!(backing.counts().reads, 6);
+        drop(tree);
+        let tree = Tree::<u64, u64, _>::load(backing).unwrap();
+        let expected: Vec<_> = (0..left_count)
+            .chain([50])
+            .chain(100..100 + right_count)
+            .filter(|key| *key != removed)
+            .map(|key| (key, key))
+            .collect();
+        assert_eq!(tree.len(), expected.len() as u64);
+        assert_eq!(
+            tree.range(..)
+                .map(|e| e.unwrap().into_pair().unwrap())
+                .collect::<Vec<_>>(),
+            expected
+        );
+        let root = tree.node(tree.root.borrow().top.unwrap()).unwrap();
+        assert_eq!(
+            root.children.is_empty(),
+            left_count == 5 && right_count == 5
+        );
+    }
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+#[test]
 fn routing_cache_keeps_repeated_right_edge_misses_in_heap() {
     let memory = crate::testing::MeteredMemory::<VectorMemory>::default();
     let mut tree = Tree::<u64, u64, _>::reset(memory.clone()).unwrap();
@@ -92,7 +165,8 @@ fn mutations_without_structural_changes_do_not_stage_ancestors() {
     tx.commit().unwrap();
     read::OWNED_NODES.set(0);
     let mut tx = Transaction::new(&tree);
-    let (_, old, _) = tx.remove(root, &199, 0).unwrap();
+    let (changed, old) = tx.remove(root, &199, 0).unwrap();
+    assert!(changed.is_none());
     assert_eq!(decode::<u64>(old.unwrap()).unwrap(), 1);
     assert!(!tx.writes.contains_key(&root.offset));
     assert_eq!(

@@ -82,7 +82,7 @@ fn validation_lock_cannot_be_rebound_to_an_uncommitted_graph() {
             .exec
             .state
             .borrow()
-            .has_call(|call| { is_cargo_call(call, "update") || is_package_call(call) })
+            .has_call(|call| is_cargo_call(call, "fetch") || is_package_call(call))
     );
 }
 
@@ -323,14 +323,19 @@ fn lockfile_changes_during_post_validation_remote_inspection_stop_before_mutatio
             .unwrap()
             .exists()
     );
-    assert!(
-        !fixture
-            .repo
-            .exec
-            .state
-            .borrow()
-            .has_call(|call| { is_cargo_call(call, "update") || is_package_call(call) })
+    let state = fixture.repo.exec.state.borrow();
+    // Each preflight admits the cache before its final unchanged-lock check.
+    // The second check refuses the foreign edit: no third (prepared) admission
+    // or archive qualification runs.
+    assert_eq!(
+        state
+            .calls
+            .iter()
+            .filter(|call| is_cargo_call(call, "fetch"))
+            .count(),
+        2
     );
+    assert!(!state.has_call(is_package_call));
 }
 
 #[test]

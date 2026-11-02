@@ -9,7 +9,8 @@ fn version_preparation_failures_restore_files_and_preserve_evidence_and_artifact
         BuildFault::Validate,
         BuildFault::Formatting,
         BuildFault::Package,
-        BuildFault::DependencyUpdate,
+        BuildFault::ConcurrentLockEdit,
+        BuildFault::LockAdmission,
     ] {
         let fixture = Fixture::new();
         let receipt = fixture.repo.receipt_path("0.13.0", Final).unwrap();
@@ -20,7 +21,7 @@ fn version_preparation_failures_restore_files_and_preserve_evidence_and_artifact
         fixture.fail_build(failure.clone());
         assert!(fixture.prepare().is_err());
         assert_eq!(fixture.repo.version(None).unwrap(), "0.12.3");
-        if failure == BuildFault::DependencyUpdate {
+        if failure == BuildFault::ConcurrentLockEdit {
             assert!(
                 fs::read_to_string(fixture.repo.root.join("Cargo.lock"))
                     .unwrap()
@@ -30,7 +31,7 @@ fn version_preparation_failures_restore_files_and_preserve_evidence_and_artifact
             fixture.assert_original();
         }
         for (path, text) in &fixture.repo.exec.state.borrow().git.source {
-            if failure == BuildFault::DependencyUpdate && path == "Cargo.lock" {
+            if failure == BuildFault::ConcurrentLockEdit && path == "Cargo.lock" {
                 continue;
             }
             assert_eq!(
@@ -370,7 +371,7 @@ fn preparation_restart_recovers_from_validation_receipt_publication_errors() {
                 .exec
                 .state
                 .borrow()
-                .has_call(|call| { is_cargo_call(call, "update") || is_package_call(call) })
+                .has_call(|call| { is_cargo_call(call, "fetch") || is_package_call(call) })
         );
 
         // Retry through fresh validation, regardless of whether publication
@@ -474,7 +475,7 @@ fn interrupted_preparation_finishes_saved_candidate_without_revalidating() {
         assert!(
             !fixture.repo.exec.state.borrow().calls[start..]
                 .iter()
-                .any(|call| is_cargo_call(call, "update")
+                .any(|call| is_cargo_call(call, "fetch")
                     || is_package_call(call)
                     || is_make_call(call, "fmt-check")
                     || is_make_call(call, "validate"))
@@ -553,7 +554,7 @@ fn preparation_recovery_preserves_conflicting_inputs_and_corrupted_evidence() {
         assert!(
             !fixture.repo.exec.state.borrow().calls[start..]
                 .iter()
-                .any(|call| is_cargo_call(call, "update") || is_package_call(call))
+                .any(|call| is_cargo_call(call, "fetch") || is_package_call(call))
         );
     }
 }

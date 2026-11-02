@@ -71,8 +71,7 @@ impl<M: Memory> Owner<M> {
         {
             return Ok(());
         }
-        let candidate = store.prepare(keys, &[])?;
-        store.commit(candidate)
+        store.mutate(keys, &[])
     }
 
     pub fn lease(&self, key: &StableKey) -> Result<Lease<M>, Error> {
@@ -104,8 +103,7 @@ impl<M: Memory> Lease<M> {
             .checked_add(pages)
             .ok_or(Error::ArithmeticOverflow)?;
         if pages != 0 {
-            let prepared = store.prepare(vec![], &[(self.id, pages)])?;
-            store.commit(prepared)?;
+            store.mutate(vec![], &[(self.id, pages)])?;
         }
         Ok(previous)
     }

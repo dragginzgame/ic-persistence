@@ -32,9 +32,11 @@ space. The u64 ID width does not promise billions of supported allocations.
 
 Wire owns logical serialization and resource admission. Structural recovery
 validates key grammar, canonical unique IDs, unique names, identity watermarks,
-physical bounds, arithmetic and pairwise extent disjointness. Candidates carry
-their exact base image; stale publication refuses. The receiving owner's budgets
-are enforced before reservation. Preparation failure leaves the base unchanged.
+physical bounds, arithmetic and pairwise extent disjointness. One exclusive store
+borrow covers backing verification, candidate preparation and publication; no
+candidate is transferred between owners or retained across mutations. Preparation
+failure leaves the base unchanged. The owner's budgets are enforced before
+physical growth or writes.
 
 ## Durable commit
 
@@ -81,13 +83,16 @@ its new extents durably before increasing a lease's visible size.
 
 ## Costs and qualification
 
-The directory clones, validates and writes a complete snapshot per mutation.
+The directory clones one candidate image and writes a complete snapshot per mutation.
+Metadata reservation encodes that image under Wire limits until the selected arena
+fits, then validates it and constructs its lookup indexes once. Backing verification
+still independently validates the retained snapshot at the mutation boundary.
 Inactive arenas are reused; a stable snapshot size needs two arenas. Superseded
 smaller arenas remain reserved and may be reused if a later snapshot fits.
 Contiguous growth coalesces allocation extents, limiting snapshot growth.
 All metadata and abandoned tails count in the physical budget; application
 allocation reclamation remains future work. Ordinary data IO does not reread the directory.
-Map, Set and regions share the owned reusable-block AVL engine; Vector uses
+Map, Set and regions share the owned reusable-block B-tree engine; Vector uses
 bounded indexed slots. These engines use Storage's own Memory/Storable traits.
 There is no upstream stable-structures dependency or legacy-format fallback.
 

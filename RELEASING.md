@@ -111,6 +111,13 @@ and unrelated requirements are preserved. An unchanged root manifest can be in
 that plan without becoming a changed staged file. The index check requires exactly
 the resulting changed bytes, including file modes; unrelated work is refused.
 
+The saved source determines the exact lockfile version projection. After publishing
+that projection, `cargo fetch --locked --offline` admits the selected graph and
+cache without updating dependencies. Formatting and archive qualification follow;
+their lockfile checks still reject external changes. Existing attempts remain
+bound to their original source and recorded command plan; recover those attempts
+from that source rather than changing their receipts to match newer tooling.
+
 Returned preparation failures restore only admitted owned edits and retain all
 rollback failures. Conflicting writes and independent dependency changes are
 preserved and refused. For interrupted lock-first or manifest-first writes, the

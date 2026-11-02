@@ -3,6 +3,20 @@
 Current releases use the Storage naming. [Earlier published history](https://github.com/dragginzgame/ic-storage/blob/23deb81c48d58558ac3b0ce36bf266ddc25dca91/releases/persistence/CHANGELOG.md)
 retains its original package and release identities.
 
+## [0.65.4] - Unreleased
+
+### 🔧 Changed
+
+- Prepare and publish directory mutations under one exclusive store borrow,
+  removing the copied base image and intermediate candidate indexes. Preserve
+  backing verification, resource limits, poisoning and root-last publication.
+- Admit source-projected release lockfiles with locked, offline Cargo fetching
+  instead of a second dependency-update step. Keep exact source and archive checks.
+  Public APIs and stored formats are unchanged. [Details](0.65.md).
+- Reuse modified nodes and inspected siblings through B-tree deletion repair,
+  and read external values into one checked payload buffer. Preserve staged
+  publication, checksums and the current collection formats.
+
 ## [0.65.3] - 2026-11-02
 
 ### 🔧 Changed

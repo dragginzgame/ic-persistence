@@ -50,12 +50,16 @@ pub fn decode_payload(magic: [u8; 8], bytes: &[u8]) -> Result<&[u8]> {
         Error::Budget,
     )?;
     let payload = &bytes[PREFIX..];
-    let digest = u64::from_le_bytes(bytes[12..20].try_into().unwrap());
+    check_digest(&bytes[..PREFIX], payload)?;
+    Ok(payload)
+}
+
+fn check_digest(prefix: &[u8], payload: &[u8]) -> Result<()> {
+    let digest = u64::from_le_bytes(prefix[12..20].try_into().unwrap());
     ensure(
         hash::fnv64(hash::FNV_OFFSET, payload) == digest,
         Error::Checksum,
-    )?;
-    Ok(payload)
+    )
 }
 
 pub fn read<T: DeserializeOwned>(
@@ -74,6 +78,34 @@ pub fn read_bytes(
     capacity: u64,
     magic: [u8; 8],
 ) -> Result<Vec<u8>> {
+    let (prefix, length) = read_prefix(memory, offset, capacity, magic)?;
+    let mut bytes = vec![0; PREFIX + length];
+    bytes[..PREFIX].copy_from_slice(&prefix);
+    memory.read(offset + PREFIX as u64, &mut bytes[PREFIX..]);
+    Ok(bytes)
+}
+
+// External values need an owned payload, not an owned frame followed by a
+// second allocation/copy. Keep admission and checksum policy shared with frames.
+pub fn read_payload(
+    memory: &impl Memory,
+    offset: u64,
+    capacity: u64,
+    magic: [u8; 8],
+) -> Result<Vec<u8>> {
+    let (prefix, length) = read_prefix(memory, offset, capacity, magic)?;
+    let mut payload = vec![0; length];
+    memory.read(offset + PREFIX as u64, &mut payload);
+    check_digest(&prefix, &payload)?;
+    Ok(payload)
+}
+
+fn read_prefix(
+    memory: &impl Memory,
+    offset: u64,
+    capacity: u64,
+    magic: [u8; 8],
+) -> Result<([u8; PREFIX], usize)> {
     ensure(capacity >= PREFIX as u64, Error::Budget)?;
     let end = offset.checked_add(capacity).ok_or(Error::Budget)?;
     ensure(
@@ -88,10 +120,7 @@ pub fn read_bytes(
         length <= MAX_RECORD && (PREFIX + length) as u64 <= capacity,
         Error::Budget,
     )?;
-    let mut bytes = vec![0; PREFIX + length];
-    bytes[..PREFIX].copy_from_slice(&prefix);
-    memory.read(offset + PREFIX as u64, &mut bytes[PREFIX..]);
-    Ok(bytes)
+    Ok((prefix, length))
 }
 
 pub fn reserve(memory: &impl Memory, bytes: u64) -> Result<()> {
@@ -110,5 +139,45 @@ pub fn bound<T: super::Storable>() -> Option<(u32, bool)> {
             max_size,
             is_fixed_size,
         } => Some((max_size, is_fixed_size)),
+    }
+}
+
+#[cfg(all(test, not(target_arch = "wasm32")))]
+mod tests {
+    use super::*;
+    use crate::{VectorMemory, testing::MeteredMemory};
+
+    #[test]
+    fn payload_reads_admit_lengths_before_io_and_check_integrity() {
+        let memory = MeteredMemory::<VectorMemory>::default();
+        memory.grow(1);
+        let magic = *b"PAYLOAD1";
+        let payload = vec![7; 4096];
+        let frame = encode_payload(magic, &payload).unwrap();
+        memory.write(0, &frame);
+        memory.reset();
+        assert_eq!(read_payload(&memory, 0, PAGE, magic).unwrap(), payload);
+        assert_eq!(memory.counts().read_bytes, frame.len() as u64);
+        for (offset, replacement, reads) in [
+            (0, vec![0], 1),
+            (8, u32::MAX.to_le_bytes().to_vec(), 1),
+            (8, 8192_u32.to_le_bytes().to_vec(), 1),
+            (12, vec![0; 8], 2),
+            (PREFIX as u64, vec![8], 2),
+        ] {
+            memory.write(0, &frame);
+            memory.write(offset, &replacement);
+            let before = memory.backing().borrow().clone();
+            memory.reset();
+            assert!(read_payload(&memory, 0, frame.len() as u64, magic).is_err());
+            assert_eq!(memory.counts().reads, reads);
+            assert_eq!(memory.counts().writes, 0);
+            assert_eq!(*memory.backing().borrow(), before);
+        }
+        for (offset, capacity) in [(0, 19), (0, PAGE + 1), (u64::MAX, PAGE)] {
+            memory.reset();
+            assert!(read_payload(&memory, offset, capacity, magic).is_err());
+            assert_eq!(memory.counts().reads, 0);
+        }
     }
 }

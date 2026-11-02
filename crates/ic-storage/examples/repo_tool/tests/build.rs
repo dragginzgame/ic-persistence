@@ -4,7 +4,8 @@ use super::*;
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(rename_all = "kebab-case")]
 pub(super) enum BuildFault {
-    DependencyUpdate,
+    ConcurrentLockEdit,
+    LockAdmission,
     Formatting,
     MakeExecution,
     Metadata,
@@ -44,8 +45,7 @@ impl BuildEffects {
                 Ok(format!("cargo {} (fixture)\n", fixture_toolchain()))
             }
             "cargo" if args.get(1) == Some(&"build") => Self::probe_build(root, args),
-            "cargo" if args.get(1) == Some(&"update") => self.update(root),
-            "cargo" if args.get(1) == Some(&"fetch") => Ok(String::new()),
+            "cargo" if args.get(1) == Some(&"fetch") => self.admit_lock(root, args),
             "cargo" | "bash"
                 if args.get(1) == Some(&"package")
                     || args.first() == Some(&"scripts/ci/package-workspace.sh") =>
@@ -137,22 +137,43 @@ impl BuildEffects {
             "version",
         )
     }
-    fn update(&self, root: &Path) -> Result<String> {
-        let mut lock = fs::read_to_string(root.join("Cargo.lock"))?.replacen(
-            "name = \"ic-storage\"\nversion = \"0.12.3\"",
-            &format!(
-                "name = \"ic-storage\"\nversion = \"{}\"",
-                Self::version(root)?
-            ),
-            1,
-        );
-        if self.fail.as_ref() == Some(&BuildFault::DependencyUpdate) {
-            lock = lock.replace(
-                "name = \"other\"\nversion = \"0.12.3\"",
-                "name = \"other\"\nversion = \"0.12.4\"",
-            );
+    fn admit_lock(&self, root: &Path, args: &[&str]) -> Result<String> {
+        require(
+            args[2..] == ["--locked", "--offline"],
+            "unlocked cache admission",
+        )?;
+        let text = fs::read_to_string(root.join("Cargo.lock"))?;
+        let lock: toml::Value = toml::from_str(&text)?;
+        let entries = lock["package"].as_array().ok_or("missing lock packages")?;
+        let mut prepared = false;
+        for name in packages() {
+            let version = Self::package_version(root, name)?;
+            let entry = entries
+                .iter()
+                .find(|entry| entry["name"].as_str() == Some(name))
+                .ok_or("missing locked member")?;
+            require(
+                entry["version"].as_str() == Some(version.as_str()),
+                "incoherent locked member",
+            )?;
+            prepared |= version != "0.12.3";
         }
-        fs::write(root.join("Cargo.lock"), lock)?;
+        if prepared {
+            self.gate(
+                BuildFault::LockAdmission,
+                "fixture locked cache unavailable",
+            )?;
+            if self.fail == Some(BuildFault::ConcurrentLockEdit) {
+                // A foreign writer is distinct from Cargo's read-only admission.
+                fs::write(
+                    root.join("Cargo.lock"),
+                    text.replace(
+                        "name = \"other\"\nversion = \"0.12.3\"",
+                        "name = \"other\"\nversion = \"0.12.4\"",
+                    ),
+                )?;
+            }
+        }
         Ok(String::new())
     }
     fn package(&self, root: &Path, git: &mut GitState) -> Result<String> {

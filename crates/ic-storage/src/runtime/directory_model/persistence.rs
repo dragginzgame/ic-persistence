@@ -1,7 +1,7 @@
 //! Reusable snapshot arenas with a fixed protected root.
 //! The owner is poisoned before fallible backing IO and must be dropped after
 //! a panic. Native partial root writes are detected, not repaired or rolled back.
-use super::{AllocationId, Directory, Error, Image, Prepared, StorageConfig, hash};
+use super::{AllocationId, Directory, Error, Image, StorageConfig, hash};
 use crate::{Memory, WASM_PAGE_SIZE_BYTES as PAGE};
 use std::cell::Cell;
 
@@ -115,11 +115,11 @@ impl Commit {
                 image.metadata.push(arena.clone());
                 arena
             };
-            let directory = Directory::validate(image, budget, 1)?;
-            let payload = directory.encode()?;
+            let payload = image.encode(budget)?;
             let length = u64::try_from(payload.len()).map_err(|_| Error::Budget)?;
             let required = length.div_ceil(PAGE);
             if required <= arena.pages {
+                let directory = Directory::validate(image, budget, 1)?;
                 let root = Root {
                     generation: directory.image.generation,
                     start: arena.start,
@@ -135,7 +135,6 @@ impl Commit {
                 });
             }
             pages = required.checked_next_power_of_two().ok_or(Error::Budget)?;
-            image = directory.image;
         }
         Err(Error::Invalid("metadata reservation did not converge"))
     }
@@ -170,57 +169,21 @@ impl<M: Memory> Store<M> {
         })
     }
 
-    pub(super) fn prepare(
-        &self,
+    // The exclusive store borrow covers verification, preparation and publication.
+    // No prepared candidate escapes to another owner or a later generation.
+    pub(super) fn mutate(
+        &mut self,
         keys: Vec<super::StableKey>,
         growth: &[(super::AllocationId, u64)],
-    ) -> Result<Prepared, Error> {
-        self.healthy()?;
-        // A native interrupted write may leave an uncommitted physical tail.
-        // Never reuse those pages as new (supposedly zeroed) application data.
-        self.directory
-            .prepare_at(keys, growth, self.backing_pages()?)
-    }
-
-    pub(super) fn commit(&mut self, prepared: Prepared) -> Result<(), Error> {
-        self.healthy()?;
-        if prepared.base != self.directory.image || prepared.candidate.data_start != 1 {
-            return Err(Error::Stale);
-        }
+    ) -> Result<(), Error> {
         self.verify()?;
-        let candidate = prepared.candidate;
-        let physical_end = self.backing_pages()?;
-        if candidate.image.next_page < physical_end {
-            return Err(Error::Stale);
-        }
-        for entry in &candidate.image.entries {
-            let retained = self.directory.by_id.get(&entry.id).map_or(0, |&index| {
-                self.directory.image.entries[index].extents.len()
-            });
-            if entry
-                .extents
-                .iter()
-                .skip(retained)
-                .any(|extent| extent.start < physical_end)
-            {
-                return Err(Error::Invalid("new data would reuse an uncommitted tail"));
-            }
-        }
-        if candidate.image.generation
-            != self
-                .directory
-                .image
-                .generation
-                .checked_add(1)
-                .ok_or(Error::Budget)?
-        {
-            return Err(Error::Stale);
-        }
-        // The candidate is private owned state, not an external byte boundary.
-        // Final preparation validates and encodes under this owner's budgets,
-        // including its metadata reservation, before any backing mutation.
+        // Native interrupted writes may leave nonzero bytes past the committed
+        // watermark. Allocate new data beyond that tail, never inside it.
+        let image = self
+            .directory
+            .candidate_image(keys, growth, self.backing_pages()?)?;
         let commit = Commit::prepare(
-            candidate.image,
+            image,
             self.directory.budget,
             Some(Root::decode(&self.root)?.start),
         )?;

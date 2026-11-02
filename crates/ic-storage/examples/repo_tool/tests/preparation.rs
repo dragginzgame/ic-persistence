@@ -121,7 +121,7 @@ fn release_tool_setup_and_offline_admission_precede_gates_and_version_mutation()
         fixture.assert_original();
         assert!(!fixture.repo.exec.state.borrow().has_call(|call| {
             call.iter()
-                .any(|argument| argument == "validate" || argument == "update")
+                .any(|argument| argument == "validate" || argument == "fmt-check")
         }));
     }
     let fixture = Fixture::new();
@@ -132,7 +132,14 @@ fn release_tool_setup_and_offline_admission_precede_gates_and_version_mutation()
     assert!(position("fetch") < position("install-tools"));
     assert!(position("install-tools") < position("tools-check"));
     assert!(position("tools-check") < position("validate"));
-    assert!(position("validate") < position("update"));
+    let admission = state
+        .calls
+        .iter()
+        .rposition(|call| is_cargo_call(call, "fetch"))
+        .unwrap();
+    assert!(position("validate") < admission);
+    assert!(admission < position("fmt-check"));
+    assert!(!state.has_call(|call| is_cargo_call(call, "update")));
 }
 
 #[test]
@@ -546,7 +553,7 @@ fn selected_older_release_reuses_exact_receipts_and_archives_after_a_fix() {
                 call[0] == "make"
                     || is_package_call(call)
                     || is_cargo_call(call, "publish")
-                    || is_cargo_call(call, "update")
+                    || is_cargo_call(call, "fetch")
             })
     );
 

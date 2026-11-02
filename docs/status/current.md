@@ -1,5 +1,46 @@
 # Current handoff
 
+## Pending Storage 0.65.4 simplifications
+
+Local changes collapse directory preparation/publication into one exclusive
+mutation flow, removing the copied base and intermediate candidate indexes.
+Release preparation now admits its source-projected lock with
+`cargo fetch --locked --offline`; exact projection/recovery checks remain.
+Collection changes retain modified nodes through deletion repair, reuse inspected
+siblings and read external values into one checksummed payload buffer.
+Public APIs and formats are unchanged. Notes are pending in
+[0.65.4](../../releases/storage/0.65.md); no new version, commit or release was made.
+
+Focused evidence lives in `target/storage-simplification/`: 27 directory and four
+public-runtime tests, native/product-Wasm lint, real offline Cargo admission for
+all three groups, and installed original-Wasm IO, directory faults, custody,
+upgrades and rollback pass. Release-helper recovery coverage and corrected
+source-admission assertions are retained there. Optimizer variants and the full
+release gate were not rerun. Qualification used the separately pending root
+dependency selections; those lockfile bytes remain unchanged by this work.
+
+Collection evidence is in `target/storage-delete-read/`: 52 adapter tests,
+including 24,000 generated model operations, strict native/product-Wasm Clippy,
+and installed original-Wasm IO, custody, directory faults, upgrades and rollback
+pass. The pre-edit Wasm and source archive are retained for matched comparisons.
+The independent benchmark graph stays locked; root dependency edits are preserved.
+
+Matched installed runs validate 3,744 calls across baseline/candidate pairs.
+For 4,096 shuffled integer-map rows, three rounds and 128 KiB Storage caching,
+uniform batch-32 cleanup falls 3,099,426→2,693,876 instructions (13.1%);
+DFINITY ic-stable-structures `b5d1650`, with 32 cache slots, uses 1,565,667.
+Baseline: `target/storage-delete-read/baseline-head/`; candidate:
+`target/storage-comparison/attempt.ZZrBC2/`. For 64-row byte maps, three rounds,
+uniform access and caches disabled, batch-32 4 KiB reads fall
+3,015,914→2,743,232 (9.0%) and scans 1,479,522→1,247,383 (15.7%);
+published ic-stable-structures 0.7.2 uses 2,086,854 and 1,039,055 respectively.
+Baseline: `target/storage-delete-read/baseline-072/`; candidate:
+`target/storage-comparison/attempt.HCtMxn/`. Each pair uses identical reference
+Wasm and dependencies; reference medians match. Some non-target phases regress
+by up to 3%; single-call removal is essentially unchanged. These are selected
+collection intervals with one population seed, not whole-call or 2× claims.
+Cell checksum throughput remains a profiling follow-up; its format is unchanged.
+
 ## Delivered Storage 0.65.3
 
 Storage **0.65.3** is published and unyanked. Release commit

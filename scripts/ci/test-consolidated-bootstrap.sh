@@ -74,6 +74,9 @@ while IFS= read -r group; do
     # unaffected core consumer while retaining other groups' exact identities.
     while IFS= read -r path; do cp "$path.candidate" "$path"; done < <(jq -r '.manifests[].path' "$group.plan.json")
     cp "$group.lock" Cargo.lock
+    shasum -a 256 Cargo.toml Cargo.lock crates/*/Cargo.toml > "$group.admission.inputs.sha256"
+    cargo "+$pin" fetch --locked --offline
+    shasum -a 256 -c "$group.admission.inputs.sha256"
     cargo "+$pin" metadata --locked --offline --format-version 1 > "$group.metadata.json"
     jq -e --slurpfile before baseline-metadata.json --slurpfile plan "$group.plan.json" '
       def unrelated($m): [$m.packages[] | select(.name as $n | $plan[0].members | index($n) | not) | {id,version}] | sort_by(.id);

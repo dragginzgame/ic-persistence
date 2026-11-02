@@ -51,7 +51,7 @@ fn compiler_environment_overrides_refuse_preparation_and_release_effects() {
         fixture.assert_original();
         assert_eq!(fs::read(receipt).unwrap(), b"previous evidence");
         assert!(!fixture.repo.exec.state.borrow().has_call(|call| {
-            call[0] == "make" || is_cargo_call(call, "update") || is_package_call(call)
+            call[0] == "make" || is_cargo_call(call, "fetch") || is_package_call(call)
         }));
 
         let repo = Repository {
@@ -266,7 +266,7 @@ fn included_compiler_configuration_refuses_preparation() {
             .exec
             .state
             .borrow()
-            .has_call(|call| { call[0] == "make" || is_cargo_call(call, "update") })
+            .has_call(|call| { call[0] == "make" || is_cargo_call(call, "fetch") })
     );
 }
 

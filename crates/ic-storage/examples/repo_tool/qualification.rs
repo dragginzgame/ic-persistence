@@ -11,7 +11,7 @@ pub(super) enum LockState {
 use super::preparation::ReleasePlan;
 
 // Reconstructed from the current admitted toolchain at each phase boundary.
-// Receipt JSON remains the exact argv arrays used before this internal refactor.
+// Receipts retain the exact read-only admission and qualification commands.
 pub(super) struct ReleaseCommands {
     validation: Vec<String>,
     pub(super) preparation: [Vec<String>; 3],
@@ -41,8 +41,8 @@ impl ReleaseCommands {
                 vec![
                     "cargo".to_owned(),
                     format!("+{toolchain}"),
-                    "update".to_owned(),
-                    "--workspace".to_owned(),
+                    "fetch".to_owned(),
+                    "--locked".to_owned(),
                     "--offline".to_owned(),
                 ],
                 make("fmt-check"),
@@ -422,8 +422,10 @@ impl<E: Execute> Repository<E> {
             return self.verify_evidence(selection, &selection.source, Prepared, Working);
         }
         let commands = self.command_plan()?.preparation;
-        let [refresh, formatting, packaging] = &commands;
-        self.run_command(refresh)?;
+        let [admission, formatting, packaging] = &commands;
+        // The source projection already owns every version edit. Cargo only
+        // admits that locked graph and its prepared cache; it never selects one.
+        self.run_command(admission)?;
         self.check_lock_update(
             &validation.lock,
             &fs::read_to_string(self.root.join("Cargo.lock"))?,
