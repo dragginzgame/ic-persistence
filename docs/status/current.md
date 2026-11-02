@@ -1,22 +1,50 @@
 # Current handoff
 
-## Pending Storage 0.65.4 simplifications
+## Delivered Storage 0.65.4
 
-Local changes collapse directory preparation/publication into one exclusive
+Storage **0.65.4** is published and unyanked. Release commit
+`70720ded47643f98fec850f5580394abab781afc` and annotated tag `storage-v0.65.4`
+were atomically pushed to `origin/main`. The downloaded registry archive and
+sparse-index entry match the final receipt's SHA-256:
+`c9ea8338f14d8db0cb2551ff005de50345a0b734e51a96fb67a9c8e9b63414dc`.
+Do not repeat release/upload. Evidence is in `target/storage-0654-deploy/` and
+`target/release-validation/storage-0.65.4.json`.
+
+Source commit `542a670` passed the complete gate in 203.444 seconds
+(`target/release-validation/attempts/verify.iVFrKc`). Final release archive
+integration passed in `target/package-qualification/attempt.dCTtqm/`.
+Installed original/O3/Os/Oz IO, growth/refusal, bounds, directory faults, custody,
+all five collection forms, Logging, upgrades and rollback passed against the exact
+release in `target/qualification/runtime/attempt.FITlwP/`. These are Linux-local
+proofs; they do not establish native macOS execution.
+
+The first attempt stopped after validation and before version preparation because
+the root lockfile changed to the same unselected upgrades already set aside.
+Its writer remains unconfirmed. The failed log, changed bytes and original receipt
+are retained. Restoring the exact source/receipt lock allowed standard resume;
+no check or receipt was weakened. Those dependency edits remain separate from
+0.65.4, preserved in stash `storage-0654-unselected-lock-edits` and a retained patch,
+and restored after publication with only Storage's own version advanced.
+Metrics Storage remains 0.66.0 and Logging Storage 0.63.0; neither was published
+by this delivery. Shared/toolchain selections remain unchanged.
+
+## Storage 0.65.4 implementation and benchmark evidence
+
+The changes collapse directory preparation/publication into one exclusive
 mutation flow, removing the copied base and intermediate candidate indexes.
 Release preparation now admits its source-projected lock with
 `cargo fetch --locked --offline`; exact projection/recovery checks remain.
 Collection changes retain modified nodes through deletion repair, reuse inspected
 siblings and read external values into one checksummed payload buffer.
-Public APIs and formats are unchanged. Notes are pending in
-[0.65.4](../../releases/storage/0.65.md); no new version, commit or release was made.
+Public APIs and formats are unchanged. See the
+[0.65.4 release notes](../../releases/storage/0.65.md).
 
 Focused evidence lives in `target/storage-simplification/`: 27 directory and four
 public-runtime tests, native/product-Wasm lint, real offline Cargo admission for
 all three groups, and installed original-Wasm IO, directory faults, custody,
 upgrades and rollback pass. Release-helper recovery coverage and corrected
-source-admission assertions are retained there. Optimizer variants and the full
-release gate were not rerun. Qualification used the separately pending root
+source-admission assertions are retained there. This development qualification
+preceded the full gate and optimizer matrix above. It used the separately pending root
 dependency selections; those lockfile bytes remain unchanged by this work.
 
 Collection evidence is in `target/storage-delete-read/`: 52 adapter tests,
@@ -41,7 +69,7 @@ by up to 3%; single-call removal is essentially unchanged. These are selected
 collection intervals with one population seed, not whole-call or 2× claims.
 Cell checksum throughput remains a profiling follow-up; its format is unchanged.
 
-## Delivered Storage 0.65.3
+## Previous Storage 0.65.3 delivery
 
 Storage **0.65.3** is published and unyanked. Release commit
 `8c749ca2cd3859dfe4545f1792d7e8d2ff460002` and annotated tag `storage-v0.65.3`
