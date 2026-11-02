@@ -1,12 +1,14 @@
 # Metrics Storage release notes
 
-Current releases use the Storage naming. [Earlier published history](../metrics-stable/CHANGELOG.md)
+Current releases use the Storage naming. [Earlier published history](https://github.com/dragginzgame/ic-storage/blob/23deb81c48d58558ac3b0ce36bf266ddc25dca91/releases/metrics-stable/CHANGELOG.md)
 retains its original package and release identities.
 
 ## [0.66.0] - Unreleased
 
 ### ⚠️ Breaking
 
+- Expose Wire 0.15 codec errors while preserving checkpoint bytes and budgets.
+  Native Metrics schema alignment awaits its separately published supplier.
 - Adopt fallible Storage map operations and propagate collection admission errors
   through `StoreError::Storage`; host map constructors now return `Result`.
 

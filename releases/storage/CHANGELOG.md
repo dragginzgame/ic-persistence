@@ -1,12 +1,14 @@
 # Storage release notes
 
-Current releases use the Storage naming. [Earlier published history](../persistence/CHANGELOG.md)
+Current releases use the Storage naming. [Earlier published history](https://github.com/dragginzgame/ic-storage/blob/23deb81c48d58558ac3b0ce36bf266ddc25dca91/releases/persistence/CHANGELOG.md)
 retains its original package and release identities.
 
 ## [0.65.0] - Unreleased
 
 ### ⚠️ Breaking
 
+- Adopt Wire 0.15 for public codec errors; hosts exchanging those types must
+  align their Wire dependency. Codec bytes and budgets are unchanged.
 - Replace the AVL engine with a multi-entry B-tree shared by Map, Set and regions.
   The new `ICMAP002` format requires explicit fresh/reset collection state and
   updated region framing admission. Public Rust APIs remain unchanged. [Details](0.65.md).

@@ -48,15 +48,18 @@ for Platform 0.17, with only its `stable-structures` feature. Its system calls u
 Runtime 0.18 and its native driver uses Platform 0.18. Production has no upstream
 collection dependency. Optional crypto/certification profiles remain unselected.
 
-Both catalogs retain compatible Wire 0.14.0 requirements; their lockfiles select
-Wire/Derive 0.14.2. The library graph selects Testkit Native 0.79.0; installed
-qualification selects Testkit CLI 0.79.0. Wire endpoint and platform-types
-integration remain unselected. Public
-codec errors now expose the Wire 0.14 Rust identity; bytes, budgets and restoration
-contracts remain unchanged. Metrics 0.26.0 aligns default native schema
-support with Wire 0.14, removing the former native-only Wire/Derive 0.13 packages
-without feature suppression or supplier overrides. Production Wasm, the native
-library and the independent native qualifier each select one Wire 0.14 provider.
+Both catalogs require published Wire 0.15.0 and select Wire/Derive 0.15.0.
+Public codec errors carry the new Wire Rust identity; hosts matching those errors
+must align their dependency. Codec bytes, budgets and restoration contracts are
+unchanged. Core Storage, production Wasm and the independent native qualifier
+each select one Wire 0.15 provider. Metrics' published 0.26.1 supplier still enables
+Wire 0.14.2 for its default native schema traits, so the combined native adapter
+graph contains both versions. These traits are not used by Storage's Serde codec;
+native Metrics schema consumers need the separately prepared Metrics 0.27 release
+before combining those schemas with Wire 0.15. No defaults are suppressed and no
+supplier overrides are selected. Adapter publication remains separate.
+The library graph selects Testkit Native 0.79.0; installed qualification selects
+Testkit CLI 0.79.0. Wire endpoint and platform-types integration remain unselected.
 Metrics Storage's public measurement/error types carry Metrics 0.26 identity;
 Logging Storage's public log/limit/restoration-error types carry Logging 0.24
 identity. Hosts must align their direct supplier dependencies. Both suppliers now

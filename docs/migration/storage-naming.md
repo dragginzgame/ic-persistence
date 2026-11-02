@@ -19,8 +19,9 @@ Release automation selects `RELEASE_GROUP=storage`, `metrics-storage` or
 `logging-storage`. Current source lives under the matching `crates/ic-*` paths;
 pending ledgers and detailed notes live under `releases/<group>/`.
 
-Published histories remain in `releases/persistence/`, `releases/metrics-stable/`
-and `releases/logging-stable/`, with their original versions and package names.
+The maintainer retired the old history directories from the working tree.
+Each current group ledger links to its published history at the preserved Git
+revision, retaining the original versions and package names.
 Previously saved release attempts and receipts keep their original source/group
 identity and must not be resumed under the new policy. Numeric manifest versions
 are unchanged by the rename; pending minor releases include the existing hard cut.

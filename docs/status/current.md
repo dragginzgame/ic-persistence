@@ -2,14 +2,20 @@
 
 ## Selected delivery
 
-The authorized core release is Storage **0.65.0**, from `main` at `a9e6fe6` plus
-this session's pending changes. The standard `RELEASE_GROUP=storage` minor
+The authorized core release is Storage **0.65.0**, from `main` at `23deb81` plus
+the requested Wire adoption and intentional history-file removal. The standard `RELEASE_GROUP=storage` minor
 release and publication workflow owns validation, version preparation, Git effects
 and registry admission. This handoff records preparation, not successful delivery;
 the annotated tag, retained final receipt and registry checksum establish that.
 Metrics Storage 0.66.0 and Logging Storage 0.64.0 remain separate pending releases.
 No sibling release or migration is included. Preserve all earlier release plans,
 archives, failure logs and caches.
+
+The first release gate was interrupted before version preparation or push;
+its log remains at `target/release-validation/attempts/verify.Pjm5qj`. Restart
+from the final committed source; do not claim that incomplete gate as acceptance.
+The retired history directories remain available through the current ledgers'
+revision-bound Git links; the maintainer explicitly approved their local deletion.
 
 ## Contracts and completed source work
 
@@ -46,6 +52,20 @@ tests, strict native/Wasm Clippy and formatting evidence are retained in
 `target/metered-memory-adoption/`. Scheduling's separate migration was not applied.
 
 ## Tooling and qualification
+
+Both catalogs now select published Wire/derive 0.15.0. Public codec error identities
+change, while codec bytes and budgets remain unchanged. Core Storage, production
+Wasm and the independent qualifier each use one Wire 0.15. Native Metrics schema
+support still brings Wire 0.14 through published Metrics 0.26.1; its separate
+Metrics 0.27 adoption is prepared upstream but was not published at inspection.
+This does not affect Storage's Serde codec or authorize feature suppression,
+an upstream override or an adapter publication. Native product tests (112), eight
+benchmark/composition tests and the selected native/Wasm graph/Clippy checks pass;
+source comparison and registry evidence are in `target/wire-015-adoption/`.
+The rebuilt original-Wasm installed IO, growth/refusal, reopen, upgrade, rollback,
+custody, all five structures and Logging checks pass with Wire 0.15 in its
+`runtime/` directory. Benchmark native and both Wasm backend Clippy pass; earlier
+timing matrices retain their old dependency selection and were not rerun.
 
 Shared Tooling 0.27.27 (`651f5f7`) was exported from clean committed source and
 verified across 144 payloads. Build/metadata CLI are 0.74.0, Host libraries 0.74.1,
