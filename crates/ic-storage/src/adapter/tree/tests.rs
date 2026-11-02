@@ -3,6 +3,7 @@ use crate::VectorMemory;
 use std::collections::BTreeSet;
 mod generated;
 
+#[cfg(not(target_arch = "wasm32"))]
 #[test]
 fn routing_cache_reuses_reads_and_invalidates_mutations_and_clear() {
     let backing = crate::testing::MeteredMemory::<VectorMemory>::default();
