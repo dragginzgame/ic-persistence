@@ -295,7 +295,7 @@ mod canister {
                             std::hint::black_box(&key);
                             None
                         }
-                        Operation::Get | Operation::Miss => checked!(self.map.get(&key)),
+                        Operation::Get | Operation::MissAbove => checked!(self.map.get(&key)),
                         Operation::Replace
                         | Operation::Insert
                         | Operation::Reinsert
@@ -303,7 +303,7 @@ mod canister {
                         | Operation::Shrink => {
                             checked!(self.map.insert(key, value.unwrap()))
                         }
-                        Operation::Remove | Operation::RemoveMiss => {
+                        Operation::Remove | Operation::RemoveMiss | Operation::RemoveInserted => {
                             checked!(self.map.remove(&key))
                         }
                         Operation::Contains => {

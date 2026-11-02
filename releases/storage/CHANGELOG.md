@@ -3,6 +3,24 @@
 Current releases use the Storage naming. [Earlier published history](https://github.com/dragginzgame/ic-storage/blob/23deb81c48d58558ac3b0ce36bf266ddc25dca91/releases/persistence/CHANGELOG.md)
 retains its original package and release identities.
 
+## [0.65.3] - Unreleased
+
+### 🔧 Changed
+
+- Scale optional map cache capacity with its byte budget and protect upper routing
+  nodes from deeper-node collisions. Keep cache accounting and owner poison checks.
+- Materialize mutable routing nodes only when they change; propagate child counts
+  to avoid redundant rebalance probes. Public APIs and stored formats are unchanged.
+  [Details](0.65.md).
+
+### 🧪 Testing
+
+- Correct comparison phase semantics: missing removals use separate keys, value
+  growth precedes removal, and reinsertion follows removal. Check phase preconditions
+  before execution and explicitly clean up inserted keys between rounds.
+- Name above-population lookups `MissAbove`; retain historical mixed-trace results
+  without reinterpreting their old labels. Add native cache and node-copy counters.
+
 ## [0.65.2] - 2026-11-02
 
 ### 🐛 Fixed

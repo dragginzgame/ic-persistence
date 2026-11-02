@@ -5,6 +5,9 @@ use super::{
 };
 use std::{borrow::Cow, cmp::Ordering, ops::Range, rc::Rc};
 
+#[cfg(test)]
+thread_local! { pub(super) static OWNED_NODES: std::cell::Cell<usize> = const { std::cell::Cell::new(0) }; }
+
 struct ReadEntry {
     key: Range<usize>,
     value: ReadValue,
@@ -91,6 +94,8 @@ impl ReadNode {
         }
     }
     pub fn owned(&self) -> Node {
+        #[cfg(test)]
+        OWNED_NODES.with(|count| count.set(count.get() + 1));
         Node {
             entries: (0..self.len()).map(|i| self.entry(i)).collect(),
             children: self.children.clone(),
@@ -108,17 +113,31 @@ impl ReadNode {
 struct Cached {
     pointer: Pointer,
     node: Rc<ReadNode>,
+    depth: usize,
+}
+#[cfg(test)]
+#[derive(Default, Debug)]
+pub(super) struct CacheMetrics {
+    pub hits: u64,
+    pub cold_misses: u64,
+    pub collision_misses: u64,
+    pub protected_rejections: u64,
+    pub budget_rejections: u64,
 }
 #[derive(Default)]
 pub(super) struct NodeCache {
     slots: Vec<Option<Cached>>,
     limit: usize,
     used: usize,
+    #[cfg(test)]
+    pub metrics: CacheMetrics,
 }
 impl NodeCache {
     pub fn configure(&mut self, bytes: usize) {
         *self = Self::default();
-        let slots = (bytes / size_of::<Option<Cached>>()).min(32);
+        // Reserve most of the budget for node buffers, with roughly one slot
+        // per KiB. Actual buffer capacities, not this estimate, bound admission.
+        let slots = bytes / (1024 + size_of::<Option<Cached>>());
         self.slots = Vec::with_capacity(slots);
         self.slots.resize_with(slots, || None);
         self.used = self.slots.capacity() * size_of::<Option<Cached>>();
@@ -128,14 +147,33 @@ impl NodeCache {
         usize::try_from(((pointer.offset >> 8) ^ (pointer.offset >> 17)) % self.slots.len() as u64)
             .unwrap()
     }
-    pub fn get(&self, pointer: Pointer) -> Option<Rc<ReadNode>> {
+    pub fn get(&mut self, pointer: Pointer, depth: usize) -> Option<Rc<ReadNode>> {
         if self.slots.is_empty() {
             return None;
         }
-        self.slots[self.index(pointer)]
-            .as_ref()
-            .filter(|entry| entry.pointer == pointer)
-            .map(|entry| Rc::clone(&entry.node))
+        let index = self.index(pointer);
+        match &mut self.slots[index] {
+            Some(entry) if entry.pointer == pointer => {
+                entry.depth = depth;
+                #[cfg(test)]
+                {
+                    self.metrics.hits += 1;
+                }
+                Some(Rc::clone(&entry.node))
+            }
+            slot => {
+                #[cfg(test)]
+                {
+                    if slot.is_some() {
+                        self.metrics.collision_misses += 1;
+                    } else {
+                        self.metrics.cold_misses += 1;
+                    }
+                }
+                let _ = slot;
+                None
+            }
+        }
     }
     pub fn invalidate(&mut self, offset: u64) {
         if self.slots.is_empty() {
@@ -153,18 +191,37 @@ impl NodeCache {
         self.slots.iter_mut().for_each(|slot| *slot = None);
         self.used = self.slots.capacity() * size_of::<Option<Cached>>();
     }
-    pub fn put(&mut self, pointer: Pointer, node: Rc<ReadNode>) {
+    pub fn put(&mut self, pointer: Pointer, node: Rc<ReadNode>, depth: usize) {
         if self.slots.is_empty() {
             return;
         }
         let index = self.index(pointer);
+        if self.slots[index]
+            .as_ref()
+            .is_some_and(|old| old.pointer != pointer && old.depth <= 1 && depth > old.depth)
+        {
+            #[cfg(test)]
+            {
+                self.metrics.protected_rejections += 1;
+            }
+            return;
+        }
         let old_bytes = self.slots[index]
             .as_ref()
             .map_or(0, |entry| entry.node.heap_bytes());
         let used = self.used - old_bytes + node.heap_bytes();
         if used <= self.limit {
-            self.slots[index] = Some(Cached { pointer, node });
+            self.slots[index] = Some(Cached {
+                pointer,
+                node,
+                depth,
+            });
             self.used = used;
+        } else {
+            #[cfg(test)]
+            {
+                self.metrics.budget_rejections += 1;
+            }
         }
     }
 }
@@ -172,6 +229,41 @@ impl NodeCache {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn capacity_scales_and_routing_nodes_survive_leaf_collisions() {
+        let mut cache = NodeCache::default();
+        cache.configure(32 * 1024);
+        let small = cache.slots.len();
+        cache.configure(128 * 1024);
+        assert!(cache.slots.len() > small && cache.slots.len() > 32);
+        let root = Pointer {
+            offset: 4096,
+            order: 8,
+        };
+        let other = (4352..1_000_000)
+            .step_by(256)
+            .map(|offset| Pointer { offset, order: 8 })
+            .find(|p| cache.index(*p) == cache.index(root))
+            .unwrap();
+        let node = Rc::new(
+            ReadNode::decode::<u64, u64>(Node::default().encode().unwrap(), 1_000_000).unwrap(),
+        );
+        cache.put(root, Rc::clone(&node), 0);
+        cache.put(other, Rc::clone(&node), 3);
+        assert!(cache.get(root, 0).is_some());
+        assert!(cache.get(other, 3).is_none());
+        assert_eq!(cache.metrics.protected_rejections, 1);
+        assert_eq!(cache.metrics.hits, 1);
+        assert_eq!(cache.metrics.collision_misses, 1);
+        cache.invalidate(root.offset);
+        cache.put(other, node, 1);
+        assert!(cache.get(other, 1).is_some());
+        assert!(cache.used <= cache.limit);
+        cache.clear();
+        assert!(cache.get(other, 1).is_none());
+        assert_eq!(cache.metrics.cold_misses, 1);
+    }
 
     #[test]
     fn tiny_cache_budgets_include_the_slot_table() {
@@ -188,6 +280,7 @@ mod tests {
                     order: 8,
                 },
                 node,
+                0,
             );
             assert!(cache.used <= budget);
             cache.clear();

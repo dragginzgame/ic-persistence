@@ -59,9 +59,9 @@ impl<K: BenchKey + Storable> Benchmark for TypedSet<K> {
                         std::hint::black_box(&k);
                         None
                     }
-                    Operation::Get | Operation::Miss => Some(checked!(self.set.contains(&k))),
+                    Operation::Get | Operation::MissAbove => Some(checked!(self.set.contains(&k))),
                     Operation::Insert | Operation::Reinsert => Some(checked!(self.set.insert(k))),
-                    Operation::Remove | Operation::RemoveMiss => {
+                    Operation::Remove | Operation::RemoveMiss | Operation::RemoveInserted => {
                         Some(checked!(self.set.remove(&k)))
                     }
                     _ => unreachable!(),
@@ -153,7 +153,7 @@ impl<V: BenchValue + Storable> Benchmark for TypedVector<V> {
                         std::hint::black_box(id);
                         None
                     }
-                    Operation::Get | Operation::Miss => checked!(self.vector.get(id)),
+                    Operation::Get | Operation::MissAbove => checked!(self.vector.get(id)),
                     Operation::Set => {
                         checked!(self.vector.set(id, &value.unwrap()));
                         None
@@ -373,13 +373,15 @@ impl Benchmark for Region {
                         std::hint::black_box(id);
                         None
                     }
-                    Operation::Get | Operation::Miss => self.get(&id),
+                    Operation::Get | Operation::MissAbove => self.get(&id),
                     Operation::Insert
                     | Operation::Replace
                     | Operation::Reinsert
                     | Operation::Grow
                     | Operation::Shrink => self.insert(id, value.unwrap()),
-                    Operation::Remove | Operation::RemoveMiss => self.remove(&id),
+                    Operation::Remove | Operation::RemoveMiss | Operation::RemoveInserted => {
+                        self.remove(&id)
+                    }
                     _ => unreachable!(),
                 };
                 entries.push((id, result));

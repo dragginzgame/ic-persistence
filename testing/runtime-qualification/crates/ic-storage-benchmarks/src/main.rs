@@ -143,6 +143,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                                         seed: u64::from(sample) + 1 + u64::from(round) * 7919,
                                         pattern,
                                     };
+                                    // Admit the intended phase before executing either backend.
+                                    let expected = expected(&mut model, request);
                                     let reply = pic
                                         .update_call(
                                             canister,
@@ -161,7 +163,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                                         serde_json::json!({"backend":name,"sample":sample,"round":round,"request":request,"response":actual})
                                     )?;
                                     raw.flush()?;
-                                    let expected = expected(&mut model, request);
                                     assert_eq!(
                                         actual.entries, expected,
                                         "{name} {operation:?}: result mismatch"
@@ -268,6 +269,7 @@ fn population(rows: u32, shuffled: bool, mut state: u64) -> Vec<u64> {
 }
 fn expected(model: &mut BTreeMap<u64, Vec<u8>>, r: Request) -> Vec<(u64, Option<Vec<u8>>)> {
     use Operation::*;
+    admit_phase(model, r);
     let ids = keys(r);
     let structure = r.case.structure();
     if matches!(r.operation, First | Last) {
@@ -325,7 +327,7 @@ fn expected(model: &mut BTreeMap<u64, Vec<u8>>, r: Request) -> Vec<(u64, Option<
             };
             let result = match r.operation {
                 Control => None,
-                Get | Miss => {
+                Get | MissAbove => {
                     if structure == "Set" {
                         Some(vec![u8::from(model.contains_key(&key))])
                     } else {
@@ -345,7 +347,7 @@ fn expected(model: &mut BTreeMap<u64, Vec<u8>>, r: Request) -> Vec<(u64, Option<
                         old
                     }
                 }
-                Remove | RemoveMiss | Pop => {
+                Remove | RemoveMiss | RemoveInserted | Pop => {
                     let old = model.remove(&key);
                     if structure == "Set" {
                         Some(vec![u8::from(old.is_some())])
@@ -367,9 +369,103 @@ fn expected(model: &mut BTreeMap<u64, Vec<u8>>, r: Request) -> Vec<(u64, Option<
         })
         .collect()
 }
+// Preconditions apply at phase entry. Repeated hot keys can legitimately turn
+// later removals/reinsertions in the same batch into misses/replacements.
+fn admit_phase(model: &BTreeMap<u64, Vec<u8>>, r: Request) {
+    use Operation::*;
+    for key in keys(r) {
+        match r.operation {
+            MissAbove | RemoveMiss | Insert | Reinsert => {
+                assert!(
+                    !model.contains_key(&key),
+                    "{:?}: key {key} must be absent",
+                    r.operation
+                );
+            }
+            Get | Contains | Replace | Set | Remove | RemoveInserted | Grow | Shrink => {
+                let old = model
+                    .get(&key)
+                    .unwrap_or_else(|| panic!("{:?}: key {key} must exist", r.operation));
+                if matches!(r.operation, Grow | Shrink) {
+                    let previous_payload = if r.operation == Grow {
+                        r.payload
+                    } else {
+                        payload_for(Request {
+                            operation: Grow,
+                            ..r
+                        })
+                    };
+                    assert_eq!(
+                        *old,
+                        r.case.expected_value(key, previous_payload, true),
+                        "{:?}: unexpected previous value",
+                        r.operation
+                    );
+                }
+            }
+            _ => {}
+        }
+    }
+}
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn mixed_mutation_rounds_preserve_phase_preconditions_and_population() {
+        for case in CASES {
+            for &payload in case.payloads() {
+                for pattern in [Pattern::Uniform, Pattern::Hot16, Pattern::Zipf] {
+                    let rows = case.rows(7);
+                    let mut model: BTreeMap<_, _> = (0..u64::from(rows))
+                        .map(|key| (key, case.expected_value(key, payload, false)))
+                        .collect();
+                    for round in 0..3 {
+                        for operation in case.operations() {
+                            expected(
+                                &mut model,
+                                Request {
+                                    case,
+                                    rows,
+                                    payload,
+                                    pattern,
+                                    operation,
+                                    count: 32,
+                                    seed: 1 + round * 7919,
+                                },
+                            );
+                        }
+                        assert_eq!(model.len(), rows as usize);
+                        assert!(model.keys().copied().eq(0..u64::from(rows)));
+                    }
+                }
+            }
+        }
+    }
+    #[test]
+    fn mislabeled_removal_and_growth_are_rejected_before_execution() {
+        let r = Request {
+            case: Case::U64Bytes,
+            rows: 7,
+            payload: 33,
+            pattern: Pattern::Uniform,
+            operation: Operation::RemoveMiss,
+            count: 1,
+            seed: 1,
+        };
+        let mut model = BTreeMap::from([(keys(r)[0], vec![])]);
+        assert!(std::panic::catch_unwind(|| admit_phase(&model, r)).is_err());
+        model.clear();
+        assert!(
+            std::panic::catch_unwind(|| admit_phase(
+                &model,
+                Request {
+                    operation: Operation::Grow,
+                    ..r
+                }
+            ))
+            .is_err()
+        );
+    }
     #[test]
     fn endpoint_and_bounded_scan_models_admit_empty_and_exclude_upper_bound() {
         let mut model = BTreeMap::from([(0, vec![10]), (1, vec![11]), (2, vec![12])]);
@@ -414,7 +510,7 @@ mod tests {
                     pattern: Pattern::Hot16,
                 };
                 let results = expected(&mut model, r);
-                if operation == Operation::Miss {
+                if operation == Operation::MissAbove {
                     assert!(results.iter().all(|(_, value)| value.is_none()));
                 }
                 if operation == Operation::Replace {
@@ -446,7 +542,7 @@ mod tests {
                         pattern: Pattern::Hot16,
                     };
                     let entries = expected(&mut model, r);
-                    if operation == Operation::Miss {
+                    if operation == Operation::MissAbove {
                         assert!(entries.iter().all(|(_, v)| if case.structure() == "Set" {
                             *v == Some(vec![0])
                         } else {

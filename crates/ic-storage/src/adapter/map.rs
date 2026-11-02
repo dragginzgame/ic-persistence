@@ -53,6 +53,8 @@ impl<K: Storable + Ord + Clone, V: Storable, M: Memory> StableBTreeMap<K, V, M> 
     /// allocator overhead and nodes retained by an active iterator. External
     /// values are never cached. Writes invalidate affected nodes; reloads start
     /// cold. The exclusive backing-custody contract applies while caching.
+    /// Slot capacity scales with the budget; upper routing nodes take priority
+    /// over deeper colliding nodes. Very small budgets may retain no nodes.
     pub fn set_node_cache_budget(&mut self, bytes: usize) {
         self.inner.set_cache_budget(bytes);
     }

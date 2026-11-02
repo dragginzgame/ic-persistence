@@ -5,6 +5,33 @@ mod generated;
 
 #[cfg(not(target_arch = "wasm32"))]
 #[test]
+fn routing_cache_keeps_repeated_right_edge_misses_in_heap() {
+    let memory = crate::testing::MeteredMemory::<VectorMemory>::default();
+    let mut tree = Tree::<u64, u64, _>::reset(memory.clone()).unwrap();
+    let mut keys: Vec<_> = (0..4096).collect();
+    let mut seed = 1_u64;
+    for end in (1..keys.len()).rev() {
+        seed = seed.wrapping_mul(6_364_136_223_846_793_005).wrapping_add(1);
+        keys.swap(end, usize::try_from(seed % (end as u64 + 1)).unwrap());
+    }
+    for key in keys {
+        tree.insert(key, key).unwrap();
+    }
+    tree.set_cache_budget(128 * 1024);
+    assert_eq!(tree.get(&4096).unwrap(), None);
+    memory.reset();
+    for _ in 0..32 {
+        assert_eq!(tree.get(&4096).unwrap(), None);
+    }
+    assert_eq!(memory.counts().reads, 0);
+    eprintln!(
+        "right-edge cache diagnostics: {:?}",
+        tree.cache.borrow().metrics
+    );
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+#[test]
 fn routing_cache_reuses_reads_and_invalidates_mutations_and_clear() {
     let backing = crate::testing::MeteredMemory::<VectorMemory>::default();
     let mut tree = Tree::<u64, u64, _>::reset(backing.clone()).unwrap();
@@ -42,6 +69,7 @@ fn mutations_without_structural_changes_do_not_stage_ancestors() {
         tree.insert(key * 2, key).unwrap();
     }
     let root = tree.root.borrow().top.unwrap();
+    read::OWNED_NODES.set(0);
     let mut tx = Transaction::new(&tree);
     let (top, split, old) = tx
         .insert(
@@ -55,17 +83,35 @@ fn mutations_without_structural_changes_do_not_stage_ancestors() {
     assert_eq!(top, root);
     assert!(split.is_none() && old.is_none());
     assert!(!tx.writes.contains_key(&root.offset));
+    assert_eq!(
+        read::OWNED_NODES.get(),
+        1,
+        "only the inserted leaf is copied"
+    );
     tx.root.top = Some(top);
     tx.commit().unwrap();
+    read::OWNED_NODES.set(0);
     let mut tx = Transaction::new(&tree);
-    let (_, old) = tx.remove(root, &199, 0).unwrap();
+    let (_, old, _) = tx.remove(root, &199, 0).unwrap();
     assert_eq!(decode::<u64>(old.unwrap()).unwrap(), 1);
     assert!(!tx.writes.contains_key(&root.offset));
+    assert_eq!(
+        read::OWNED_NODES.get(),
+        1,
+        "no ancestor or rebalance probe copies"
+    );
     // Root length publication is still required even without routing changes.
     tx.root.length -= 1;
     tx.commit().unwrap();
     assert_eq!(tree.len(), 100);
     assert_eq!(tree.get(&199).unwrap(), None);
+    read::OWNED_NODES.set(0);
+    assert_eq!(tree.remove(&199).unwrap(), None);
+    assert_eq!(
+        read::OWNED_NODES.get(),
+        0,
+        "missing removal is read-only traversal"
+    );
 }
 
 #[test]

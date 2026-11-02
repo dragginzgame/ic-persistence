@@ -1,5 +1,13 @@
 # Current handoff
 
+## Storage 0.65.3 delivery in progress
+
+The maintainer selected 0.65.3 for cache capacity/routing retention, lazy mutation
+copies and corrected comparison phases. These changes are integrated on the
+published 0.65.2 IC0-only backing. Public APIs and formats remain unchanged.
+The release runner will qualify the integrated source before version preparation;
+publication is not yet complete. Evidence: `target/storage-0653-deploy/`.
+
 ## Delivered Storage 0.65.2
 
 Storage **0.65.2** is published and unyanked. Release commit
@@ -63,7 +71,46 @@ checkpoints retain discriminator 3 and an explicit retained-text ceiling. Hosts
 retire earlier rows explicitly. Storage 0.65.1's diagnostics, free-block reuse,
 optional node caching, bounded scans and vector/extent IO improvements remain.
 
-## Tooling, benchmark work and history
+## Validation and benchmark evidence
+
+Current evidence is in `target/storage-hotspots/`: 87 library tests, four public
+runtime tests, nine benchmark model tests, 24,000 generated model operations,
+strict native/product-Wasm Clippy and Wasm test compilation pass. Installed
+original-Wasm IO, upgrade, rollback, directory faults, backing custody, all five
+structures and Logging pass in `runtime/`. The full-matrix smoke passes 4,408
+calls: 64 rows, uniform keys, two rounds, caches disabled, upstream 0.7.2.
+An overly broad Wasm Clippy selection hit the existing helper example's
+`missing_const_for_fn`; product Wasm linting and full Wasm test compilation pass.
+An earlier lock refusal during concurrent Platform edits is also retained.
+No full release gate was run for this pending work. Linux evidence does not
+establish native macOS or an optimizer runtime matrix.
+
+The comparison covers 28 cases / 46 type-size combinations across all five
+structures. The published control uses upstream 0.7.2 through Platform 0.17;
+an optional comparison-only Git control pins upstream `b5d1650`. Production has
+no upstream dependency. See the [benchmark methodology](../../testing/runtime-qualification/crates/ic-storage-benchmarks/README.md).
+
+Controlled evidence lives under
+`target/storage-hotspots/qualification/target/storage-comparison/`:
+`attempt.lrdVtZ` is unchanged 0.65.1 with corrected phases, `attempt.oFKN07` adds
+cache changes, and `attempt.gVYkXo` adds lazy mutation copies. Each passes 576
+calls and final models on 4,096 shuffled integer-map rows, one population seed,
+three rounds, uniform/hot-16/Zipf keys and batches 1/32. Storage uses 128 KiB;
+upstream Git `b5d1650` uses 32 slots. These are not equal heap budgets. The
+isolated checkout at `a82de9b` holds dependency selections fixed. The complete
+default matrix is `attempt.42gavZ`.
+
+Uniform single-call instructions before/after: Get 174,176/173,911, above-range
+miss 177,502/2,990, Replace 211,053/185,423, Remove 416,728/349,677 and true
+RemoveMiss 217,403/90,094. Uniform batch-32 Remove falls 3,958,383→1,828,227;
+Replace 2,379,548→1,338,588; RemoveMiss 1,098,962→228,281. Upstream single Get
+still costs 95,965. These are collection intervals, not whole endpoints.
+Historical runs remain under `target/storage-comparison/`; their RemoveMiss
+and grow/shrink labels did not establish the intended phase preconditions.
+New traces enforce those preconditions and clean up inserted keys each round.
+No general superiority, GiB qualification or 2× whole-call guarantee exists.
+
+## Tooling and history
 
 Shared Tooling 0.27.27 (`651f5f7`) remains the reviewed executable snapshot;
 AGENTS' revision-bound policy remains authoritative. Rust 1.99.1 is the support
@@ -77,4 +124,3 @@ the [0.65.1 handoff](https://github.com/dragginzgame/ic-storage/blob/a82de9b8682
 and [comparison provenance](../storage/upstreams.md). Benchmark results remain
 mixed; large-record slack, directory snapshots and unreclaimed tails remain
 costs. This release makes no superiority, GiB-scale or whole-call speed claim.
-Concurrent benchmark changes are separate work, excluded from this delivery.

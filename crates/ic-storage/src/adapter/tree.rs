@@ -13,7 +13,6 @@ use serde::{Deserialize, Serialize};
 use std::{
     borrow::Cow,
     cell::{Cell, RefCell},
-    cmp::Ordering,
     collections::BTreeMap,
     marker::PhantomData,
     ops::{Bound, RangeBounds},
@@ -86,18 +85,6 @@ struct Node {
     children: Vec<Pointer>,
 }
 impl Node {
-    fn search<K: Storable + Ord>(&self, key: &K) -> Result<std::result::Result<usize, usize>> {
-        let (mut low, mut high) = (0, self.entries.len());
-        while low < high {
-            let mid = low + (high - low) / 2;
-            match key.cmp(&K::from_bytes(Cow::Borrowed(&self.entries[mid].key))?) {
-                Ordering::Less => high = mid,
-                Ordering::Greater => low = mid + 1,
-                Ordering::Equal => return Ok(Ok(mid)),
-            }
-        }
-        Ok(Err(low))
-    }
     fn encode(&self) -> Result<Vec<u8>> {
         ensure(
             self.entries.len() <= MAX_ENTRIES,
@@ -148,9 +135,6 @@ impl Node {
             }
         }
         record::encode_payload(NODE, &bytes)
-    }
-    fn decode<K: Storable, V: Storable>(bytes: Vec<u8>, cursor: u64) -> Result<Self> {
-        Ok(ReadNode::decode::<K, V>(bytes, cursor)?.owned())
     }
 }
 struct Reader<'a>(&'a [u8]);
@@ -262,23 +246,24 @@ impl<K: Storable + Ord + Clone, V: Storable, M: Memory> Tree<K, V, M> {
         self.healthy().expect("map owner is poisoned");
         self.root.borrow().length
     }
+    #[cfg(test)]
     fn node(&self, p: Pointer) -> Result<Node> {
-        Ok(self.read_node(p)?.owned())
+        Ok(self.read_node(p, MAX_DEPTH)?.owned())
     }
     pub fn set_cache_budget(&mut self, bytes: usize) {
         self.cache.get_mut().configure(bytes);
     }
-    fn read_node(&self, p: Pointer) -> Result<Rc<ReadNode>> {
+    fn read_node(&self, p: Pointer, depth: usize) -> Result<Rc<ReadNode>> {
         let cursor = self.root.borrow().cursor;
         p.check(cursor)?;
-        if let Some(node) = self.cache.borrow().get(p) {
+        if let Some(node) = self.cache.borrow_mut().get(p, depth) {
             return Ok(node);
         }
         let node = Rc::new(ReadNode::decode::<K, V>(
             record::read_bytes(&self.memory, p.offset, p.capacity(), NODE)?,
             cursor,
         )?);
-        self.cache.borrow_mut().put(p, Rc::clone(&node));
+        self.cache.borrow_mut().put(p, Rc::clone(&node), depth);
         Ok(node)
     }
     fn value(&self, v: Value) -> Result<Vec<u8>> {
@@ -296,9 +281,9 @@ impl<K: Storable + Ord + Clone, V: Storable, M: Memory> Tree<K, V, M> {
     fn find(&self, key: &K) -> Result<Option<Value>> {
         self.healthy()?;
         let mut p = self.root.borrow().top;
-        for _ in 0..MAX_DEPTH {
+        for depth in 0..MAX_DEPTH {
             let Some(current) = p else { return Ok(None) };
-            let node = self.read_node(current)?;
+            let node = self.read_node(current, depth)?;
             match node.search(key)? {
                 Ok(i) => return Ok(Some(node.value(i))),
                 Err(i) => p = node.children.get(i).copied(),
@@ -340,11 +325,11 @@ impl<K: Storable + Ord + Clone, V: Storable, M: Memory> Tree<K, V, M> {
         let Some(top) = tx.root.top else {
             return Ok(None);
         };
-        let (p, old) = tx.remove(top, key, 0)?;
+        let (p, old, entries) = tx.remove(top, key, 0)?;
         let Some(old) = old else { return Ok(None) };
         let value = decode(old)?;
-        let root = tx.node(p)?;
-        tx.root.top = if root.entries.is_empty() {
+        tx.root.top = if entries == 0 {
+            let root = tx.read_node(p, 0)?;
             tx.free(p)?;
             root.children.first().copied()
         } else {
@@ -372,7 +357,7 @@ impl<K: Storable + Ord + Clone, V: Storable, M: Memory> Tree<K, V, M> {
                 path.len() < MAX_DEPTH,
                 Error::Corrupt("map cursor exceeds height bound"),
             )?;
-            let node = self.read_node(p)?;
+            let node = self.read_node(p, path.len())?;
             let index = match bound {
                 Bound::Unbounded => {
                     if forward {
@@ -422,7 +407,7 @@ impl<K: Storable + Ord + Clone, V: Storable, M: Memory> Tree<K, V, M> {
                         path.len() < MAX_DEPTH,
                         Error::Corrupt("map cursor exceeds height bound"),
                     )?;
-                    let node = self.read_node(p)?;
+                    let node = self.read_node(p, path.len())?;
                     let index = if forward { 0 } else { node.len() };
                     child = node.children.get(index).copied();
                     path.push(Frame {
@@ -518,11 +503,17 @@ impl<'a, K: Storable + Ord + Clone, V: Storable, M: Memory> Transaction<'a, K, V
             record::read_bytes(&self.tree.memory, p.offset, p.capacity(), magic)
         }
     }
-    fn node(&self, p: Pointer) -> Result<Node> {
+    fn node(&self, p: Pointer, depth: usize) -> Result<Node> {
+        Ok(self.read_node(p, depth)?.owned())
+    }
+    fn read_node(&self, p: Pointer, depth: usize) -> Result<Rc<ReadNode>> {
         if let Some(bytes) = self.writes.get(&p.offset) {
-            Node::decode::<K, V>(bytes.clone(), self.root.cursor)
+            Ok(Rc::new(ReadNode::decode::<K, V>(
+                bytes.clone(),
+                self.root.cursor,
+            )?))
         } else {
-            self.tree.node(p)
+            self.tree.read_node(p, depth)
         }
     }
     fn value(&self, v: &Value) -> Result<Vec<u8>> {
@@ -637,25 +628,42 @@ impl<'a, K: Storable + Ord + Clone, V: Storable, M: Memory> Transaction<'a, K, V
             depth < MAX_DEPTH,
             Error::Corrupt("map path exceeds height bound"),
         )?;
-        let mut node = if let Some(p) = p {
-            self.node(p)?
-        } else {
-            Node::default()
-        };
-        let old = match node.search(key)? {
+        let read = p.map(|p| self.read_node(p, depth)).transpose()?;
+        let search = read.as_ref().map_or(Ok(Err(0)), |node| node.search(key))?;
+        let (mut node, old) = match search {
             Ok(i) => {
-                let old = self.value(&node.entries[i].value)?;
-                let value = self.save_value(Some(&node.entries[i].value), bytes)?;
-                let same_pointer = matches!((&node.entries[i].value,&value),(Value::External(a),Value::External(b)) if a==b);
-                node.entries[i].value = value;
+                let read = read.as_ref().unwrap();
+                let previous = read.value(i);
+                let old = self.value(&previous)?;
+                let value = self.save_value(Some(&previous), bytes)?;
+                let same_pointer =
+                    matches!((&previous,&value),(Value::External(a),Value::External(b)) if a==b);
                 if same_pointer {
                     return Ok((p.unwrap(), None, Some(old)));
                 }
-                Some(old)
+                let mut node = read.owned();
+                node.entries[i].value = value;
+                (node, Some(old))
             }
             Err(i) => {
-                if node.children.is_empty() {
+                if let Some(child) = read.as_ref().and_then(|node| node.children.get(i)).copied() {
+                    let (next, split, old) =
+                        self.insert(Some(child), key, key_bytes, bytes, depth + 1)?;
+                    if split.is_none() && next == child {
+                        return Ok((p.unwrap(), None, old));
+                    }
+                    let mut node = read.as_ref().unwrap().owned();
+                    node.children[i] = next;
+                    if let Some((entry, right)) = split {
+                        node.entries.insert(i, entry);
+                        node.children.insert(i + 1, right);
+                    }
+                    (node, old)
+                } else {
                     let value = self.save_value(None, bytes)?;
+                    let mut node = read
+                        .as_ref()
+                        .map_or_else(Node::default, |node| node.owned());
                     node.entries.insert(
                         i,
                         Entry {
@@ -664,19 +672,7 @@ impl<'a, K: Storable + Ord + Clone, V: Storable, M: Memory> Transaction<'a, K, V
                         },
                     );
                     self.root.length = self.root.length.checked_add(1).ok_or(Error::Budget)?;
-                    None
-                } else {
-                    let (child, split, old) =
-                        self.insert(Some(node.children[i]), key, key_bytes, bytes, depth + 1)?;
-                    if split.is_none() && child == node.children[i] {
-                        return Ok((p.unwrap(), None, old));
-                    }
-                    node.children[i] = child;
-                    if let Some((entry, right)) = split {
-                        node.entries.insert(i, entry);
-                        node.children.insert(i + 1, right);
-                    }
-                    old
+                    (node, None)
                 }
             }
         };
@@ -701,14 +697,20 @@ impl<'a, K: Storable + Ord + Clone, V: Storable, M: Memory> Transaction<'a, K, V
         };
         Ok((self.save(p, &node)?, split, old))
     }
-    fn remove(&mut self, p: Pointer, key: &K, depth: usize) -> Result<(Pointer, Option<Vec<u8>>)> {
+    fn remove(
+        &mut self,
+        p: Pointer,
+        key: &K,
+        depth: usize,
+    ) -> Result<(Pointer, Option<Vec<u8>>, usize)> {
         ensure(
             depth < MAX_DEPTH,
             Error::Corrupt("map path exceeds height bound"),
         )?;
-        let mut node = self.node(p)?;
-        let old = match node.search(key)? {
+        let read = self.read_node(p, depth)?;
+        let (node, old) = match read.search(key)? {
             Ok(i) => {
+                let mut node = read.owned();
                 let old = self.value(&node.entries[i].value)?;
                 if let Value::External(p) = node.entries[i].value {
                     self.free(p)?;
@@ -716,65 +718,72 @@ impl<'a, K: Storable + Ord + Clone, V: Storable, M: Memory> Transaction<'a, K, V
                 if node.children.is_empty() {
                     node.entries.remove(i);
                 } else {
-                    let (child, entry) = self.extract_min(node.children[i + 1], depth + 1)?;
+                    let (child, entry, entries) =
+                        self.extract_min(node.children[i + 1], depth + 1)?;
                     node.entries[i] = entry;
                     node.children[i + 1] = child;
-                    self.rebalance(&mut node, i + 1)?;
+                    if entries < MIN_ENTRIES {
+                        self.rebalance(&mut node, i + 1, depth)?;
+                    }
                 }
-                Some(old)
+                (node, Some(old))
             }
             Err(i) => {
-                let Some(child) = node.children.get(i).copied() else {
-                    return Ok((p, None));
+                let Some(child) = read.children.get(i).copied() else {
+                    return Ok((p, None, read.len()));
                 };
-                let (child, old) = self.remove(child, key, depth + 1)?;
+                let (next, old, entries) = self.remove(child, key, depth + 1)?;
                 if old.is_none() {
-                    return Ok((p, None));
+                    return Ok((p, None, read.len()));
                 }
-                let moved = node.children[i] != child;
-                node.children[i] = child;
-                let rebalanced = self.rebalance(&mut node, i)?;
-                if !moved && !rebalanced {
-                    return Ok((p, old));
+                if next == child && entries >= MIN_ENTRIES {
+                    return Ok((p, old, read.len()));
                 }
-                old
+                let mut node = read.owned();
+                node.children[i] = next;
+                if entries < MIN_ENTRIES {
+                    self.rebalance(&mut node, i, depth)?;
+                }
+                (node, old)
             }
         };
-        Ok((self.save(Some(p), &node)?, old))
+        Ok((self.save(Some(p), &node)?, old, node.entries.len()))
     }
-    fn extract_min(&mut self, p: Pointer, depth: usize) -> Result<(Pointer, Entry)> {
+    fn extract_min(&mut self, p: Pointer, depth: usize) -> Result<(Pointer, Entry, usize)> {
         ensure(
             depth < MAX_DEPTH,
             Error::Corrupt("map path exceeds height bound"),
         )?;
-        let mut node = self.node(p)?;
-        ensure(
-            !node.entries.is_empty(),
-            Error::Corrupt("empty successor node"),
-        )?;
-        let entry = if node.children.is_empty() {
-            node.entries.remove(0)
+        let read = self.read_node(p, depth)?;
+        ensure(read.len() != 0, Error::Corrupt("empty successor node"))?;
+        let (node, entry) = if read.children.is_empty() {
+            let mut node = read.owned();
+            let entry = node.entries.remove(0);
+            (node, entry)
         } else {
-            let (child, entry) = self.extract_min(node.children[0], depth + 1)?;
-            let moved = node.children[0] != child;
-            node.children[0] = child;
-            let rebalanced = self.rebalance(&mut node, 0)?;
-            if !moved && !rebalanced {
-                return Ok((p, entry));
+            let (child, entry, entries) = self.extract_min(read.children[0], depth + 1)?;
+            if read.children[0] == child && entries >= MIN_ENTRIES {
+                return Ok((p, entry, read.len()));
             }
-            entry
+            let mut node = read.owned();
+            node.children[0] = child;
+            if entries < MIN_ENTRIES {
+                self.rebalance(&mut node, 0, depth)?;
+            }
+            (node, entry)
         };
-        Ok((self.save(Some(p), &node)?, entry))
+        Ok((self.save(Some(p), &node)?, entry, node.entries.len()))
     }
-    fn rebalance(&mut self, parent: &mut Node, i: usize) -> Result<bool> {
+    fn rebalance(&mut self, parent: &mut Node, i: usize, parent_depth: usize) -> Result<()> {
+        let depth = parent_depth + 1;
         let p = parent.children[i];
-        let mut child = self.node(p)?;
+        let mut child = self.node(p, depth)?;
         if child.entries.len() >= MIN_ENTRIES {
-            return Ok(false);
+            return Ok(());
         }
         if i > 0 {
             let left_p = parent.children[i - 1];
-            let mut left = self.node(left_p)?;
+            let mut left = self.node(left_p, depth)?;
             ensure(
                 left.children.is_empty() == child.children.is_empty(),
                 Error::Corrupt("B-tree sibling levels"),
@@ -789,12 +798,12 @@ impl<'a, K: Storable + Ord + Clone, V: Storable, M: Memory> Transaction<'a, K, V
                 }
                 parent.children[i - 1] = self.save(Some(left_p), &left)?;
                 parent.children[i] = self.save(Some(p), &child)?;
-                return Ok(true);
+                return Ok(());
             }
         }
         if i + 1 < parent.children.len() {
             let right_p = parent.children[i + 1];
-            let mut right = self.node(right_p)?;
+            let mut right = self.node(right_p, depth)?;
             ensure(
                 right.children.is_empty() == child.children.is_empty(),
                 Error::Corrupt("B-tree sibling levels"),
@@ -809,7 +818,7 @@ impl<'a, K: Storable + Ord + Clone, V: Storable, M: Memory> Transaction<'a, K, V
                 }
                 parent.children[i + 1] = self.save(Some(right_p), &right)?;
                 parent.children[i] = self.save(Some(p), &child)?;
-                return Ok(true);
+                return Ok(());
             }
         }
         let left_index = if i > 0 { i - 1 } else { i };
@@ -819,8 +828,8 @@ impl<'a, K: Storable + Ord + Clone, V: Storable, M: Memory> Transaction<'a, K, V
         )?;
         let left_p = parent.children[left_index];
         let right_p = parent.children[left_index + 1];
-        let mut left = self.node(left_p)?;
-        let right = self.node(right_p)?;
+        let mut left = self.node(left_p, depth)?;
+        let right = self.node(right_p, depth)?;
         ensure(
             left.children.is_empty() == right.children.is_empty(),
             Error::Corrupt("B-tree sibling levels"),
@@ -831,7 +840,7 @@ impl<'a, K: Storable + Ord + Clone, V: Storable, M: Memory> Transaction<'a, K, V
         self.free(right_p)?;
         parent.children[left_index] = self.save(Some(left_p), &left)?;
         parent.children.remove(left_index + 1);
-        Ok(true)
+        Ok(())
     }
     fn commit(self) -> Result<()> {
         let changed = self.root != *self.tree.root.borrow();
@@ -845,7 +854,9 @@ impl<'a, K: Storable + Ord + Clone, V: Storable, M: Memory> Transaction<'a, K, V
         }
         record::reserve(&self.tree.memory, self.root.cursor)?;
         self.tree.poisoned.set(true);
-        if self.root.cursor < self.tree.root.borrow().cursor {
+        if self.root.cursor < self.tree.root.borrow().cursor
+            || self.root.top != self.tree.root.borrow().top
+        {
             self.tree.cache.borrow_mut().clear();
         }
         for (offset, bytes) in self.writes {

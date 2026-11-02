@@ -87,30 +87,37 @@ u128 keys vary their upper 64 bits, and 64-byte keys share a 56-byte prefix befo
 the ordered ID. Float vectors preserve exact IEEE bits, including signed zeros,
 subnormals, infinities and a NaN payload; floats are never ordering keys.
 
-By default each case uses uniform or hot-16 keys, one or 32 operations per execution, and
+By default each case uses uniform or hot-16 hit keys, one or 32 operations per execution, and
 seeds 1 through the requested sample count. Backend order alternates by sample.
 Default population is ascending, in batches of 128. Each complete case/sample/
 backend gets fresh state; operations within it share the preceding operation's
 committed state. This is a trace, not an independent reset per operation.
 
-- Map: control, hit, miss, replacement, forward scan, insertion, removal,
-  membership, reverse scan, key-only scan, growth, shrink, missing removal,
-  reinsertion, first/last entry lookups and bounded forward ranges.
+- Map: control, hit, miss, replacement, forward scan, insertion,
+  membership, reverse scan, key-only scan, growth, shrink, removal, missing removal,
+  reinsertion, inserted-key cleanup, first/last entry lookups and bounded forward ranges.
   Growth/shrink apply only to variable byte/string values.
 - Set: control, membership hit/miss, forward iteration, insertion, removal,
-  missing removal and reinsertion. DFINITY's Set iterator is not double-ended;
+  missing removal, reinsertion and inserted-key cleanup. DFINITY's Set iterator is not double-ended;
   reverse Set iteration remains native correctness coverage, not a fake comparison.
 - Vector: control, indexed hit/miss, indexed set, forward/reverse iteration,
   push and pop. Pushes extend the current length; pops remove those appended slots.
 - Cell: control, cached get and replacement; byte cells also grow/shrink. Gets
   clone the cached value on both sides to retain a result, so they include cloning.
 - Region: control, hit/miss, replacement, bounded key snapshot, insertion,
-  removal, missing removal, reinsertion, growth and shrink.
+  growth/shrink, removal, missing removal, reinsertion and inserted-key cleanup.
 
 Growth replaces values with four times the initial size (minimum 128 bytes);
-shrink uses empty bytes/strings. Fresh inserts and missing removals address keys
-beyond the initial population. Reinsert revisits the earlier removed original
-keys. Repeated keys, missing removals and partial scans are intentional.
+shrink uses empty bytes/strings. Growth/shrink run while selected original keys
+still exist; removal follows, then reinsertion restores them. `RemoveInserted`
+cleans up the insertion range so later rounds start with the original population.
+`RemoveMiss` uses a separate never-inserted range. `MissAbove` probes beyond the
+population; these misses and insertion/cleanup keys are sequential regardless of
+the hit-pattern label. Below-population and interior misses are not represented.
+Phase-entry assertions admit existence/absence and previous grow/shrink values
+before either backend executes. Duplicate hot keys remain intentional: later
+removals/reinsertions within a batch can be misses/replacements. This is still a
+stateful mixed trace, not an independent reset per operation.
 Map forward/reverse scans seek from the generated key; Map key-only scans and
 Set/Vector iteration start at their respective ends. Region key snapshots seek
 from the generated key and enforce the limit within the operation. Bounded Map
@@ -119,8 +126,9 @@ this exercises an exclusive upper bound independently of the output limit.
 First/last lookups run `count` times and retain every result. These three new
 operations run after the existing mutation trace, so they observe its final values.
 
-The full matrix has **2,080 comparison rows and 12,480 measured calls** with three
-seeds. The one-seed smoke matrix has 4,160 calls. These totals include controls.
+Call counts follow the operations and payload sizes recorded in each run's
+configuration, multiplied by batches, patterns, samples, rounds and backends.
+Controls are included. The extra cleanup phase changes counts from older runs.
 
 ## Comparison boundaries
 
@@ -179,3 +187,9 @@ New cases, endpoint/range operations and result handling change the harness from
 the earlier map-only and 14-case experiments. Older results are historical evidence, not a controlled before/after
 speedup for the library. Compare the two backends within a matched current run;
 retain per-case regressions rather than averaging them into one score.
+
+The phase-correctness repair also changes work ordering and cache history. Earlier
+`RemoveMiss` rows actually removed the just-inserted keys; variable-value `Grow`
+reinserted removed keys, and `Reinsert` replaced values restored by growth. Their
+timings remain valid for those historical mixed traces, not for the old labels.
+Use corrected baseline/candidate runs to attribute new implementation gains.

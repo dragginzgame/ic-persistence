@@ -72,7 +72,7 @@ pub fn population_ids(setup: &Setup) -> Vec<u64> {
 pub enum Operation {
     Control,
     Get,
-    Miss,
+    MissAbove,
     Replace,
     Scan,
     Insert,
@@ -83,6 +83,7 @@ pub enum Operation {
     Grow,
     Shrink,
     RemoveMiss,
+    RemoveInserted,
     Reinsert,
     Set,
     Push,
@@ -91,21 +92,22 @@ pub enum Operation {
     Last,
     BoundedScan,
 }
-pub const OPERATIONS: [Operation; 17] = [
+pub const OPERATIONS: [Operation; 18] = [
     Operation::Control,
     Operation::Get,
-    Operation::Miss,
+    Operation::MissAbove,
     Operation::Replace,
     Operation::Scan,
     Operation::Insert,
-    Operation::Remove,
     Operation::Contains,
     Operation::ReverseScan,
     Operation::KeysScan,
     Operation::Grow,
     Operation::Shrink,
+    Operation::Remove,
     Operation::RemoveMiss,
     Operation::Reinsert,
+    Operation::RemoveInserted,
     Operation::First,
     Operation::Last,
     Operation::BoundedScan,
@@ -168,9 +170,11 @@ pub fn keys(request: Request) -> Vec<u64> {
                 .wrapping_mul(6_364_136_223_846_793_005)
                 .wrapping_add(1);
             match request.operation {
-                Operation::Miss | Operation::Insert | Operation::RemoveMiss | Operation::Push => {
-                    u64::from(request.rows) + u64::from(index)
-                }
+                Operation::RemoveMiss => u64::from(request.rows) + 64 + u64::from(index),
+                Operation::MissAbove
+                | Operation::Insert
+                | Operation::RemoveInserted
+                | Operation::Push => u64::from(request.rows) + u64::from(index),
                 _ => {
                     if request.pattern == Pattern::Zipf {
                         let fraction =
@@ -245,9 +249,10 @@ mod tests {
                 assert!(a.iter().all(|&key| {
                     if matches!(
                         operation,
-                        Operation::Miss
+                        Operation::MissAbove
                             | Operation::Insert
                             | Operation::RemoveMiss
+                            | Operation::RemoveInserted
                             | Operation::Push
                     ) {
                         key >= 101
