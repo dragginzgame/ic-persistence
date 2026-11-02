@@ -23,7 +23,7 @@ ic-platform-runtime = { version = "0.18.0", default-features = false }
 # Platform 0.18 removed the upstream collection facade. Keep it solely for
 # the unpublished DFINITY comparison; production and native clients use 0.18.
 ic-platform-stable-benchmark = { package = "ic-platform", version = "0.17.0", default-features = false }
-ic-storage = { path = "../../crates/ic-storage", version = "0.64.0" }
+ic-storage = { path = "../../crates/ic-storage", version = "0.65.0" }
 ic-wire = "0.15.0"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
