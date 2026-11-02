@@ -247,12 +247,25 @@ impl Directory {
         Ok(bytes)
     }
 
+    #[cfg(test)]
     fn prepare(
         &self,
         keys: Vec<StableKey>,
         growth: &[(AllocationId, u64)],
     ) -> Result<Prepared, Error> {
+        self.prepare_at(keys, growth, self.image.next_page)
+    }
+
+    // Extend the validated base directly; no second indexed Directory is needed
+    // merely to account for a native write's uncommitted physical tail.
+    fn prepare_at(
+        &self,
+        keys: Vec<StableKey>,
+        growth: &[(AllocationId, u64)],
+        physical_end: u64,
+    ) -> Result<Prepared, Error> {
         let mut image = self.image.clone();
+        image.next_page = image.next_page.max(physical_end);
         let keys: BTreeSet<_> = keys.into_iter().collect();
         for key in keys {
             if self.by_key.contains_key(&key) {
@@ -307,6 +320,7 @@ impl Directory {
         Ok(())
     }
 
+    #[cfg(test)]
     fn page_span(&self, id: AllocationId, logical: u64) -> Option<(u64, u64)> {
         let index = *self.by_id.get(&id)?;
         let ends = &self.logical_ends[index];

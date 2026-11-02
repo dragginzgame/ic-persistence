@@ -57,6 +57,11 @@ impl<M: Memory> Owner<M> {
     pub fn verify(&self) -> Result<(), Error> {
         self.0.store.borrow().verify()
     }
+    pub fn diagnostics(&self) -> Result<crate::StorageDiagnostics, Error> {
+        let mut report = self.0.store.borrow().diagnostics()?;
+        report.live_leases = self.0.live.borrow().len();
+        Ok(report)
+    }
     pub fn bind(&self, keys: Vec<StableKey>) -> Result<(), Error> {
         let mut store = self.0.store.borrow_mut();
         store.healthy()?;

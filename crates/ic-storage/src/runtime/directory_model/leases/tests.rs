@@ -206,6 +206,30 @@ fn backing_panics_and_boundary_corruption_poison_all_live_leases() {
 }
 
 #[test]
+fn cached_collection_reads_still_observe_poisoning_from_another_lease() {
+    let memory = Faults::default();
+    let owner = Owner::init(memory.clone(), StorageConfig::default()).unwrap();
+    owner.bind(vec![key(0), key(1)]).unwrap();
+    let handle = crate::RuntimeMemory {
+        lease: owner.lease(&key(0)).unwrap(),
+    };
+    let mut map = crate::adapter::StableBTreeMap::<u64, u64, _>::create(handle).unwrap();
+    map.set_node_cache_budget(16 * 1024);
+    map.insert(1, 2).unwrap();
+    map.insert(2, 3).unwrap();
+    assert_eq!(map.get(&1).unwrap(), Some(2));
+    let mut iterator = map.iter();
+    assert!(iterator.next().unwrap().is_ok());
+    let other = owner.lease(&key(1)).unwrap();
+    other.try_grow(1).unwrap();
+    memory.fail_io.set(true);
+    assert!(catch_unwind(AssertUnwindSafe(|| other.write(0, &[1]))).is_err());
+    memory.fail_io.set(false);
+    assert!(catch_unwind(AssertUnwindSafe(|| map.get(&1))).is_err());
+    assert!(catch_unwind(AssertUnwindSafe(|| iterator.next())).is_err());
+}
+
+#[test]
 fn construction_failures_release_claim_without_resetting_backing() {
     let memory = Faults::default();
     memory.refuse_growth.set(true);

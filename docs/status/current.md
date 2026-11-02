@@ -71,6 +71,42 @@ tests, strict native/Wasm Clippy and formatting evidence are retained in
 
 ## Tooling and qualification
 
+The pending 0.65.1 draft removes unused Native 0.79: Storage owns the memory
+metering replacement and has no allocation-measurement callers. Original proof
+is in `target/testkit-native-080-adoption/`. Package versions and the independent
+Testkit CLI 0.79 selection are unchanged; cleanup remains uncommitted/unpublished.
+
+The accepted audit fixes are implemented locally under the same 0.65.1 draft:
+checked `MemoryRuntime::diagnostics()` reports current capacity and custody;
+directory preparation drops the temporary indexed clone and carries its owned
+image through metadata sizing; B-tree reuse splits oversized free blocks into
+the requested block and reusable halves. Formats remain unchanged. Canic still
+owns its diagnostic response migration; no sibling API or stored image was changed.
+Original diagnostics/allocation evidence remains in
+`target/storage-audit-improvements/`. The upstream follow-through adds optional
+byte-budgeted map node caching, single-buffer routing views, unchanged-ancestor
+write avoidance, `keys_range`, conservative live-record shrink reuse, fixed-slot
+vector reads, reusable iterator buffers and cached extent translation. Generated
+histories check 24,000 operations against an ordered model and cold live/free
+range validation. Cache hits retain shared-owner poison checks. Formats remain
+unchanged and ordinary map caching starts disabled.
+
+`target/upstream-improvements/` retains 85 passing library tests, four public
+runtime tests, strict native Clippy, earlier native/Wasm benchmark checks and
+pins/production-graph checks. Final original-Wasm qualification passes IO,
+growth/refusal, all five structures, upgrade/rollback, directory faults, custody
+and Logging in `runtime-final-qualified/`. It uses root Runtime 0.18.1 and the
+independent 0.18.0 client graph with Testkit CLI 0.79 / server 16.1.0. The prior
+artifact-path failure remains in `runtime-final/`. No full release gate, commit
+or publication was made; previously pending changes remain preserved.
+
+The follow-up iterator fix checks range bounds before external value IO and
+defers the following subtree until another step is requested. Two regressions
+failed before repair; forward/reverse and mixed-direction coverage now passes.
+`target/storage-scan-audit/` retains those failures, all 40 collection test results,
+strict native/Wasm Clippy and rebuilt original-Wasm installed qualification.
+Traversal still reports corruption when the requested range actually reaches it.
+
 Both catalogs now select published Wire/derive 0.15.0. Public codec error identities
 change, while codec bytes and budgets remain unchanged. Core Storage, production
 Wasm and the independent qualifier each use one Wire 0.15. The subsequent
@@ -79,56 +115,56 @@ removes the old Wire/derive 0.14 entries. This updates Metrics Storage's public
 arithmetic/error identity; hosts must align direct Metrics dependencies. The
 delivered 0.66.0 notes include this adoption. Source and
 qualification evidence is retained in `target/metrics-027-adoption/`.
-All 30 Metrics Storage tests and three doctests pass, including native schema
-composition through the adapter's Wire identity. Strict native/Wasm Clippy,
-single-Metrics/single-Wire graph admission on both targets, production boundaries,
-pins, formatting and documentation checks pass. The independent workspace lock
-is unchanged; only Metrics and obsolete Wire records change in the root lock.
-The preceding Wire adoption passed native product tests (112), eight
-benchmark/composition tests and the selected native/Wasm graph/Clippy checks pass;
-source comparison and registry evidence are in `target/wire-015-adoption/`.
-The rebuilt original-Wasm installed IO, growth/refusal, reopen, upgrade, rollback,
-custody, all five structures and Logging checks pass with Wire 0.15 in its
-`runtime/` directory. Benchmark native and both Wasm backend Clippy pass; earlier
-timing matrices retain their old dependency selection and were not rerun.
+Its 30-test/doctest, graph and native/Wasm Clippy proof remains there. Earlier Wire
+source/installed qualification remains in `target/wire-015-adoption/`; timing
+matrices retain their original dependency selection and were not rerun.
 
 Shared Tooling 0.27.27 (`651f5f7`) was exported from clean committed source and
 verified across 144 payloads. Build/metadata CLI are 0.74.0, Host libraries 0.74.1,
-Testkit Native/CLI 0.79.0, and Platform/PocketIC 0.18 with server 16.1.0. Rust
+Testkit CLI 0.79.0, and Platform/PocketIC 0.18 with server 16.1.0. Rust
 1.99.1 remains the pinned compiler and support floor. Optional group validation
 plans and historical-cache reclamation are not enabled. See the
 [adoption boundary](../shared-tooling-adoption.md) for authoritative selections.
 
-Focused native product tests, release-helper tests, production graph/refusal
-checks and selected Clippy passed. Latest original-Wasm installed IO, zero/refused
-growth, same-format reopen/upgrade, rollback, custody, all five structures across
-1,031 allocations and Logging passed in `target/issue-152-runtime.bvHm54/`.
-Composition and graph evidence is in `target/issue-152/`; earlier tooling and
-B-tree proof remains under `target/tooling-platform-adoption/` and
-`target/btree-runtime.WUAr9L/`. These earlier proofs do not assert a completed
-release gate, optimized-Wasm matrix or native macOS qualification.
+Earlier composition and installed proof remains in `target/issue-152/` and
+`target/issue-152-runtime.bvHm54/`; tooling and B-tree proof remains under
+`target/tooling-platform-adoption/` and `target/btree-runtime.WUAr9L/`.
+New Linux qualification does not establish native macOS or optimizer-matrix results.
 
 ## Benchmark evidence and remaining costs
 
 The independent benchmark covers 28 cases / 46 type-size combinations and all
 five supported structures. It model-checks complete results and reports physical
-stable pages as well as instructions. Only its DFINITY control retains Platform
-0.17's stable-structures facade. See the
+stable pages as well as instructions. Published 0.7.2 uses Platform 0.17's facade;
+the optional comparison-only Git control pins upstream `b5d1650`. Production has
+no upstream dependency. See the
 [methodology](../../testing/runtime-qualification/crates/ic-storage-benchmarks/README.md).
 
-Expanded smoke: `target/storage-comparison/attempt.97I6WQ/`, 4,160 calls.
-Expanded 256-row/three-seed run: `target/storage-comparison/attempt.RfU4TW/`,
-12,480 calls and 2,080 summary rows, with source checks before and after execution.
-The initial Wire response-budget failure is retained in `attempt.X5CMF4/`;
-bounded allowances and largest-response regression tests corrected the harness.
-No expanded 4,096-row run was performed. Earlier 14-case 4,096-row results remain
-in `attempt.NJabku/` and do not qualify the expanded matrix.
+Final matched upstream-HEAD comparisons: `target/storage-comparison/attempt.ey0896/`
+(Storage cache 128 KiB, upstream 32 slots) and `attempt.PkfT47/` (both disabled).
+Each passes 4,212 measured calls and final model checks using identical Wasm hashes:
+4,096 rows, integer maps plus six byte-value sizes through 4 KiB, one shuffled
+population seed, three mutation rounds, uniform/hot-16/Zipf keys, batches 1/32.
+The cache controls are not equal heap budgets. Storage's single-read cache gains
+are 1.09× uniform, 30.02× hot-16 and 2.06× Zipf; batch-32 gains are 1.46×, 9.54×
+and 2.07×. These measure collection intervals, not complete endpoint throughput.
 
-No universal speedup is claimed. In the expanded matrix Storage/DFINITY ratios
-include 1.2257 for signed single reads, 1.9490 for fixed-256-byte single reads,
-4.4260 for batched last-entry lookup and 6.9840 for 4 KiB Cell growth.
-Whole-canister stable pages include reservation, not just live payload. Directory
-snapshot mutation and unreclaimed allocation tails remain known costs.
+With caches enabled, Storage/upstream ratios for uniform single operations are
+1.8125 for integer Get, 1.1092 for Replace, 0.4806 for a one-entry bounded scan,
+and 0.3987 for a 4 KiB-value Get. Upstream wins others decisively: the 4 KiB-value
+missing-key trace costs Storage 176,082 instructions versus 2,502. Integer maps
+reserve 6 versus 129 stable pages, but 4 KiB values reserve 519 versus 385.
+Whole-canister reservation is not live payload. Cache placement, large-record
+slack, directory snapshots and unreclaimed tails remain costs; no general
+superiority, GiB-scale qualification or 2× whole-call guarantee is established.
+
+Earlier draft proof remains in `attempt.NgZs3N/` and `attempt.VWaeMi/` (cached/
+uncached Map and Vector, 828 calls each) and `attempt.i6I874/` (all 28 cases,
+64 rows, uniform, published 0.7.2, 2,080 calls). These precede the final conservative
+shrink adjustment. Historical expanded evidence remains in `attempt.97I6WQ/`
+(4,160 calls) and `attempt.RfU4TW/` (256 rows, three seeds, 12,480 calls).
+The original response-budget failure remains in `attempt.X5CMF4/`; old 14-case
+4,096-row results in `attempt.NJabku/` do not qualify the expanded matrix.
 
 The pre-delivery handoff and complete dirty-source backups are retained in
 `target/storage-065-deploy/`. No build or historical evidence was removed.

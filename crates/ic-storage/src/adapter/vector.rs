@@ -112,27 +112,48 @@ impl<T: Storable, M: Memory> StableVec<T, M> {
     /// # Panics
     /// Propagates backing panics or a faulty caller codec.
     pub fn get(&self, index: u64) -> Result<Option<T>> {
-        self.healthy()?;
-        if index >= self.length.get() {
+        let mut bytes = Vec::new();
+        if !self.read_slot(index, &mut bytes)? {
             return Ok(None);
         }
+        Ok(Some(T::from_bytes(Cow::Owned(bytes))?))
+    }
+    fn read_slot(&self, index: u64, bytes: &mut Vec<u8>) -> Result<bool> {
+        self.healthy()?;
+        if index >= self.length.get() {
+            return Ok(false);
+        }
         let offset = Self::end(index)?;
+        let (maximum, fixed) = Self::bound()?;
         let mut header = [0; SLOT_HEADER];
-        self.memory.read(offset, &mut header);
+        if fixed {
+            let size = SLOT_HEADER
+                .checked_add(maximum as usize)
+                .ok_or(Error::Budget)?;
+            bytes.resize(size, 0);
+            self.memory.read(offset, bytes);
+            header.copy_from_slice(&bytes[..SLOT_HEADER]);
+            bytes.copy_within(SLOT_HEADER.., 0);
+            bytes.truncate(maximum as usize);
+        } else {
+            self.memory.read(offset, &mut header);
+        }
         let length = u32::from_le_bytes(header[..4].try_into().unwrap());
         ensure(
-            length <= Self::bound()?.0,
+            length <= maximum && (!fixed || length == maximum),
             Error::Corrupt("vector slot length exceeds bound"),
         )?;
-        let mut bytes = vec![0; length as usize];
-        self.memory.read(offset + SLOT_HEADER as u64, &mut bytes);
+        if !fixed {
+            bytes.resize(length as usize, 0);
+            self.memory.read(offset + SLOT_HEADER as u64, bytes);
+        }
         let digest = u64::from_le_bytes(header[4..].try_into().unwrap());
         ensure(
-            checksum(index, &header[..4], &bytes) == digest,
+            checksum(index, &header[..4], bytes) == digest,
             Error::Checksum,
         )?;
-        T::check_bounds(&bytes)?;
-        Ok(Some(T::from_bytes(Cow::Owned(bytes))?))
+        T::check_bounds(bytes)?;
+        Ok(true)
     }
     /// Replace an existing value. Encoding and bounds admission precede writes.
     ///
@@ -205,7 +226,11 @@ impl<T: Storable, M: Memory> StableVec<T, M> {
     }
     /// Decode slots lazily, returning errors without panicking on malformed data.
     pub fn iter(&self) -> impl DoubleEndedIterator<Item = Result<T>> + '_ {
-        (0..self.len()).map(|index| self.get(index)?.ok_or(Error::Bounds))
+        let mut bytes = Vec::new();
+        (0..self.len()).map(move |index| {
+            ensure(self.read_slot(index, &mut bytes)?, Error::Bounds)?;
+            Ok(T::from_bytes(Cow::Borrowed(&bytes))?)
+        })
     }
 }
 

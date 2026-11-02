@@ -64,6 +64,15 @@ pub struct Store<M: Memory> {
     pub(super) directory: Directory,
     root: [u8; ROOT_BYTES],
     poisoned: Cell<bool>,
+    last_span: Cell<Option<Span>>,
+}
+
+#[derive(Clone, Copy)]
+struct Span {
+    id: AllocationId,
+    start: u64,
+    end: u64,
+    physical: u64,
 }
 
 // The immutable candidate includes the reservation for its own metadata bytes.
@@ -74,13 +83,22 @@ struct Commit {
 }
 
 impl Commit {
-    fn prepare(image: Image, budget: StorageConfig, active: Option<u64>) -> Result<Self, Error> {
+    fn prepare(
+        mut image: Image,
+        budget: StorageConfig,
+        active: Option<u64>,
+    ) -> Result<Self, Error> {
         // Never overwrite the active snapshot. Reuse only arenas explicitly
         // reserved by the committed directory; abandoned tails remain excluded.
         let mut pages = 1_u64;
+        let next_page = image.next_page;
+        let metadata_len = image.metadata.len();
         for _ in 0..64 {
-            let mut candidate = image.clone();
-            let reusable = candidate
+            // Undo only this attempt's metadata reservation before resizing.
+            // Carry the owned image forward instead of cloning every entry.
+            image.next_page = next_page;
+            image.metadata.truncate(metadata_len);
+            let reusable = image
                 .metadata
                 .iter()
                 .filter(|arena| Some(arena.start) != active && arena.pages >= pages)
@@ -90,14 +108,14 @@ impl Commit {
                 arena
             } else {
                 let arena = super::Extent {
-                    start: candidate.next_page,
+                    start: image.next_page,
                     pages,
                 };
-                candidate.next_page = arena.start.checked_add(pages).ok_or(Error::Budget)?;
-                candidate.metadata.push(arena.clone());
+                image.next_page = arena.start.checked_add(pages).ok_or(Error::Budget)?;
+                image.metadata.push(arena.clone());
                 arena
             };
-            let directory = Directory::validate(candidate, budget, 1)?;
+            let directory = Directory::validate(image, budget, 1)?;
             let payload = directory.encode()?;
             let length = u64::try_from(payload.len()).map_err(|_| Error::Budget)?;
             let required = length.div_ceil(PAGE);
@@ -117,6 +135,7 @@ impl Commit {
                 });
             }
             pages = required.checked_next_power_of_two().ok_or(Error::Budget)?;
+            image = directory.image;
         }
         Err(Error::Invalid("metadata reservation did not converge"))
     }
@@ -134,6 +153,7 @@ impl<M: Memory> Store<M> {
             directory,
             root: [0; ROOT_BYTES],
             poisoned: Cell::new(false),
+            last_span: Cell::new(None),
         };
         owner.install(commit)?;
         Ok(owner)
@@ -146,6 +166,7 @@ impl<M: Memory> Store<M> {
             directory,
             root,
             poisoned: Cell::new(false),
+            last_span: Cell::new(None),
         })
     }
 
@@ -157,12 +178,8 @@ impl<M: Memory> Store<M> {
         self.healthy()?;
         // A native interrupted write may leave an uncommitted physical tail.
         // Never reuse those pages as new (supposedly zeroed) application data.
-        let mut base = self.directory.image.clone();
-        base.next_page = base.next_page.max(self.backing_pages()?);
-        let planning = Directory::validate(base, self.directory.budget, 1)?;
-        let mut prepared = planning.prepare(keys, growth)?;
-        prepared.base = self.directory.image.clone();
-        Ok(prepared)
+        self.directory
+            .prepare_at(keys, growth, self.backing_pages()?)
     }
 
     pub(super) fn commit(&mut self, prepared: Prepared) -> Result<(), Error> {
@@ -238,6 +255,32 @@ impl<M: Memory> Store<M> {
         Ok(pages)
     }
 
+    pub(super) fn diagnostics(&self) -> Result<crate::StorageDiagnostics, Error> {
+        self.verify()?;
+        let physical_pages = self.backing_pages()?;
+        let image = &self.directory.image;
+        let metadata_pages: u64 = image.metadata.iter().map(|e| e.pages).sum();
+        let data_pages: u64 = image
+            .entries
+            .iter()
+            .flat_map(|e| &e.extents)
+            .map(|e| e.pages)
+            .sum();
+        // Validation proves disjoint extents within the physical watermark.
+        Ok(crate::StorageDiagnostics {
+            generation: image.generation,
+            allocations: image.entries.len(),
+            admitted_allocations: 0,
+            live_leases: 0,
+            extents: image.entries.iter().map(|e| e.extents.len()).sum(),
+            data_pages,
+            metadata_pages,
+            directory_bytes: Root::decode(&self.root)?.length,
+            physical_pages,
+            unassigned_pages: physical_pages - 1 - metadata_pages - data_pages,
+        })
+    }
+
     pub(super) fn pages(&self, id: AllocationId) -> Result<u64, Error> {
         self.healthy()?;
         let index = *self.directory.by_id.get(&id).ok_or(Error::Missing)?;
@@ -255,9 +298,29 @@ impl<M: Memory> Store<M> {
         length: usize,
         mut io: impl FnMut(u64, std::ops::Range<usize>),
     ) -> Result<(), Error> {
-        let capacity = self.pages(id)?.checked_mul(PAGE).ok_or(Error::Bounds)?;
+        self.healthy()?;
         let length64 = u64::try_from(length).map_err(|_| Error::Bounds)?;
         let end = offset.checked_add(length64).ok_or(Error::Bounds)?;
+        if let Some(span) = self.last_span.get()
+            && span.id == id
+            && offset >= span.start
+            && end <= span.end
+        {
+            self.poisoned.set(true);
+            if length != 0 {
+                io(span.physical + offset - span.start, 0..length);
+            }
+            self.poisoned.set(false);
+            return Ok(());
+        }
+        let index = *self.directory.by_id.get(&id).ok_or(Error::Missing)?;
+        let ends = &self.directory.logical_ends[index];
+        let capacity = ends
+            .last()
+            .copied()
+            .unwrap_or(0)
+            .checked_mul(PAGE)
+            .ok_or(Error::Bounds)?;
         if end > capacity {
             return Err(Error::Bounds);
         }
@@ -267,14 +330,18 @@ impl<M: Memory> Store<M> {
         let mut done = 0;
         while done < length {
             let logical = offset + u64::try_from(done).unwrap();
-            let within = logical % PAGE;
-            let (physical, remaining_pages) = self
-                .directory
-                .page_span(id, logical / PAGE)
-                .ok_or(Error::Bounds)?;
-            let available = remaining_pages * PAGE - within;
+            let slot = ends.partition_point(|&end| end <= logical / PAGE);
+            let extent = &self.directory.image.entries[index].extents[slot];
+            let span = Span {
+                id,
+                start: if slot == 0 { 0 } else { ends[slot - 1] * PAGE },
+                end: ends[slot] * PAGE,
+                physical: extent.start * PAGE,
+            };
+            self.last_span.set(Some(span));
+            let available = span.end - logical;
             let count = (length - done).min(usize::try_from(available).unwrap_or(usize::MAX));
-            io(physical * PAGE + within, done..done + count);
+            io(span.physical + logical - span.start, done..done + count);
             done += count;
         }
         self.poisoned.set(false);
@@ -305,6 +372,7 @@ impl<M: Memory> Store<M> {
 
     fn install(&mut self, commit: Commit) -> Result<(), Error> {
         self.poisoned.set(true);
+        self.last_span.set(None);
         let pages = self.memory.size();
         if commit.root.end > pages && self.memory.grow(commit.root.end - pages) == -1 {
             self.poisoned.set(false);

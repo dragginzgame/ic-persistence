@@ -51,3 +51,33 @@ results do not isolate the B-tree algorithm from allocation or integrity costs.
 There is no legacy reader, implicit repair or automatic reset. Root loading
 validates framing and bounds without scanning all nodes. Key-only operations
 check routing records but deliberately do not audit external value payloads.
+
+## Follow-through from upstream comparison
+
+The 0.65.1 draft additionally studies upstream commit
+[`b5d1650`](https://github.com/dfinity/stable-structures/commit/b5d1650463f477affb3d358e86b1113953fc9937),
+including its configurable node cache, mutation invalidation, property tests and
+cache-sensitive benchmarks. Published 0.7.2 remains a separate comparison control.
+
+Local changes apply those mechanisms within Storage's current contracts:
+
+- Validated routing buffers can be cached under an opt-in byte budget. Accounting
+  uses retained vector capacities and cache bookkeeping rather than upstream's
+  slot count and approximate heap estimate. Allocator overhead and iterator-held
+  nodes remain outside that budget; this is not a whole-canister heap limit.
+- One checksummed buffer supplies read-only entry views. Storage continues to
+  check the complete routing record, while upstream can defer individual keys.
+- Unchanged ancestors stay unwritten. Substantially shrinking records reuse an
+  available smaller block and free the original whole block through staged free
+  lists. Otherwise capacity stays reserved, preserving reuse under size churn.
+  This differs from upstream's page-based unused overflow reclamation.
+- Fixed-size vector IO and reusable iterator buffers retain Storage's per-slot
+  length/index checksum; upstream's lighter encoding has different integrity costs.
+- Translation caching retains allocation admission, range validation and global
+  poisoning. It does not adopt upstream's fixed memory-ID/bucket manager.
+
+These are independently implemented adaptations, not imported source or a claim
+of general superiority. Bounded key-only ranges and generated model histories
+close existing gaps. The matched installed comparison must establish performance
+for each workload; removing instructions or reads locally does not prove a 2×
+whole-call improvement. Production has no upstream dependency or format migration.

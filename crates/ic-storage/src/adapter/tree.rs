@@ -17,7 +17,10 @@ use std::{
     collections::BTreeMap,
     marker::PhantomData,
     ops::{Bound, RangeBounds},
+    rc::Rc,
 };
+mod read;
+use read::{NodeCache, ReadNode};
 
 pub const MAGIC: [u8; 8] = *b"ICMAP002";
 const NODE: [u8; 8] = *b"ICBTND01";
@@ -146,40 +149,8 @@ impl Node {
         }
         record::encode_payload(NODE, &bytes)
     }
-    fn decode<K: Storable, V: Storable>(bytes: &[u8], cursor: u64) -> Result<Self> {
-        let mut r = Reader(record::decode_payload(NODE, bytes)?);
-        let count = usize::from(r.byte()?);
-        let branch = r.byte()?;
-        ensure(
-            count <= MAX_ENTRIES && branch <= 1,
-            Error::Corrupt("B-tree node header"),
-        )?;
-        let mut node = Self::default();
-        if branch == 1 {
-            for _ in 0..=count {
-                node.children.push(r.pointer(cursor)?);
-            }
-        }
-        for _ in 0..count {
-            let len = u32::from_le_bytes(r.take(4)?.try_into().unwrap()) as usize;
-            let key = r.take(len)?.to_vec();
-            K::check_bounds(&key)?;
-            let size = r.byte()?;
-            let value = if size == 255 {
-                Value::External(r.pointer(cursor)?)
-            } else {
-                ensure(
-                    usize::from(size) <= INLINE,
-                    Error::Corrupt("B-tree inline value"),
-                )?;
-                let bytes = r.take(usize::from(size))?.to_vec();
-                V::check_bounds(&bytes)?;
-                Value::Inline(bytes)
-            };
-            node.entries.push(Entry { key, value });
-        }
-        ensure(r.0.is_empty(), Error::Corrupt("B-tree node trailing bytes"))?;
-        Ok(node)
+    fn decode<K: Storable, V: Storable>(bytes: Vec<u8>, cursor: u64) -> Result<Self> {
+        Ok(ReadNode::decode::<K, V>(bytes, cursor)?.owned())
     }
 }
 struct Reader<'a>(&'a [u8]);
@@ -208,6 +179,7 @@ pub struct Tree<K, V, M: Memory> {
     pub memory: M,
     root: RefCell<Root>,
     poisoned: Cell<bool>,
+    cache: RefCell<NodeCache>,
     types: PhantomData<(K, V)>,
 }
 impl<K: Storable + Ord + Clone, V: Storable, M: Memory> Tree<K, V, M> {
@@ -228,6 +200,7 @@ impl<K: Storable + Ord + Clone, V: Storable, M: Memory> Tree<K, V, M> {
             memory,
             root: RefCell::new(root),
             poisoned: Cell::new(false),
+            cache: RefCell::default(),
             types: PhantomData,
         })
     }
@@ -267,23 +240,46 @@ impl<K: Storable + Ord + Clone, V: Storable, M: Memory> Tree<K, V, M> {
             memory,
             root: RefCell::new(root),
             poisoned: Cell::new(false),
+            cache: RefCell::default(),
             types: PhantomData,
         })
     }
     fn healthy(&self) -> Result<()> {
-        ensure(!self.poisoned.get(), Error::Poisoned)
+        ensure(!self.poisoned.get(), Error::Poisoned)?;
+        // A different allocation can poison the shared governed backing. This
+        // also covers iterator entries already held in a routing frame.
+        let capacity = self
+            .memory
+            .size()
+            .checked_mul(crate::WASM_PAGE_SIZE_BYTES)
+            .ok_or(Error::Budget)?;
+        ensure(
+            self.root.borrow().cursor <= capacity,
+            Error::Corrupt("map allocator bounds"),
+        )
     }
     pub fn len(&self) -> u64 {
         self.healthy().expect("map owner is poisoned");
         self.root.borrow().length
     }
     fn node(&self, p: Pointer) -> Result<Node> {
+        Ok(self.read_node(p)?.owned())
+    }
+    pub fn set_cache_budget(&mut self, bytes: usize) {
+        self.cache.get_mut().configure(bytes);
+    }
+    fn read_node(&self, p: Pointer) -> Result<Rc<ReadNode>> {
         let cursor = self.root.borrow().cursor;
         p.check(cursor)?;
-        Node::decode::<K, V>(
-            &record::read_bytes(&self.memory, p.offset, p.capacity(), NODE)?,
+        if let Some(node) = self.cache.borrow().get(p) {
+            return Ok(node);
+        }
+        let node = Rc::new(ReadNode::decode::<K, V>(
+            record::read_bytes(&self.memory, p.offset, p.capacity(), NODE)?,
             cursor,
-        )
+        )?);
+        self.cache.borrow_mut().put(p, Rc::clone(&node));
+        Ok(node)
     }
     fn value(&self, v: Value) -> Result<Vec<u8>> {
         let bytes = match v {
@@ -302,9 +298,9 @@ impl<K: Storable + Ord + Clone, V: Storable, M: Memory> Tree<K, V, M> {
         let mut p = self.root.borrow().top;
         for _ in 0..MAX_DEPTH {
             let Some(current) = p else { return Ok(None) };
-            let node = self.node(current)?;
+            let node = self.read_node(current)?;
             match node.search(key)? {
-                Ok(i) => return Ok(Some(node.entries[i].value.clone())),
+                Ok(i) => return Ok(Some(node.value(i))),
                 Err(i) => p = node.children.get(i).copied(),
             }
         }
@@ -376,13 +372,13 @@ impl<K: Storable + Ord + Clone, V: Storable, M: Memory> Tree<K, V, M> {
                 path.len() < MAX_DEPTH,
                 Error::Corrupt("map cursor exceeds height bound"),
             )?;
-            let node = self.node(p)?;
+            let node = self.read_node(p)?;
             let index = match bound {
                 Bound::Unbounded => {
                     if forward {
                         0
                     } else {
-                        node.entries.len()
+                        node.len()
                     }
                 }
                 Bound::Included(k) => match node.search(k)? {
@@ -407,18 +403,36 @@ impl<K: Storable + Ord + Clone, V: Storable, M: Memory> Tree<K, V, M> {
                 },
             };
             pointer = node.children.get(index).copied();
-            path.push(Frame { node, index });
+            path.push(Frame {
+                node,
+                index,
+                descend: false,
+            });
         }
         Ok(path)
     }
-    fn advance_path(
-        &self,
-        path: &mut Vec<Frame>,
-        forward: bool,
-        keys_only: bool,
-    ) -> Result<Option<MapEntry<K, V>>> {
+    fn advance_path(&self, path: &mut Vec<Frame>, forward: bool) -> Result<Option<Entry>> {
         self.healthy()?;
         while let Some(frame) = path.last_mut() {
+            if frame.descend {
+                frame.descend = false;
+                let mut child = frame.node.children.get(frame.index).copied();
+                while let Some(p) = child {
+                    ensure(
+                        path.len() < MAX_DEPTH,
+                        Error::Corrupt("map cursor exceeds height bound"),
+                    )?;
+                    let node = self.read_node(p)?;
+                    let index = if forward { 0 } else { node.len() };
+                    child = node.children.get(index).copied();
+                    path.push(Frame {
+                        node,
+                        index,
+                        descend: false,
+                    });
+                }
+                continue;
+            }
             let index = if forward {
                 frame.index
             } else {
@@ -428,32 +442,16 @@ impl<K: Storable + Ord + Clone, V: Storable, M: Memory> Tree<K, V, M> {
                 }
                 frame.index - 1
             };
-            if index >= frame.node.entries.len() {
+            if index >= frame.node.len() {
                 path.pop();
                 continue;
             }
-            let entry = frame.node.entries[index].clone();
+            let entry = frame.node.entry(index);
             frame.index = if forward { index + 1 } else { index };
-            let mut child = frame.node.children.get(frame.index).copied();
-            while let Some(p) = child {
-                ensure(
-                    path.len() < MAX_DEPTH,
-                    Error::Corrupt("map cursor exceeds height bound"),
-                )?;
-                let node = self.node(p)?;
-                let index = if forward { 0 } else { node.entries.len() };
-                child = node.children.get(index).copied();
-                path.push(Frame { node, index });
-            }
-            return Ok(Some(MapEntry {
-                key: decode(entry.key)?,
-                bytes: if keys_only {
-                    vec![]
-                } else {
-                    self.value(entry.value)?
-                },
-                value: PhantomData,
-            }));
+            // A caller may stop at this entry. Read the following subtree only
+            // when another step in this direction is actually requested.
+            frame.descend = !frame.node.children.is_empty();
+            return Ok(Some(entry));
         }
         Ok(None)
     }
@@ -489,8 +487,9 @@ impl<K: Storable + Ord + Clone, V: Storable, M: Memory> Tree<K, V, M> {
     }
 }
 struct Frame {
-    node: Node,
+    node: Rc<ReadNode>,
     index: usize,
+    descend: bool,
 }
 fn decode<T: Storable>(bytes: Vec<u8>) -> Result<T> {
     T::check_bounds(&bytes)?;
@@ -520,7 +519,11 @@ impl<'a, K: Storable + Ord + Clone, V: Storable, M: Memory> Transaction<'a, K, V
         }
     }
     fn node(&self, p: Pointer) -> Result<Node> {
-        Node::decode::<K, V>(&self.bytes(p, NODE)?, self.root.cursor)
+        if let Some(bytes) = self.writes.get(&p.offset) {
+            Node::decode::<K, V>(bytes.clone(), self.root.cursor)
+        } else {
+            self.tree.node(p)
+        }
     }
     fn value(&self, v: &Value) -> Result<Vec<u8>> {
         let bytes = match v {
@@ -545,7 +548,7 @@ impl<'a, K: Storable + Ord + Clone, V: Storable, M: Memory> Transaction<'a, K, V
         let order = size.trailing_zeros() as usize;
         ensure(order < BINS, Error::Budget)?;
         for bin in order..BINS {
-            if let Some(p) = self.root.free[bin] {
+            if let Some(mut p) = self.root.free[bin] {
                 let next: Option<Pointer> = record::decode(FREE, &self.bytes(p, FREE)?)?;
                 if let Some(next) = next {
                     next.check(self.root.cursor)?;
@@ -555,6 +558,16 @@ impl<'a, K: Storable + Ord + Clone, V: Storable, M: Memory> Transaction<'a, K, V
                     )?;
                 }
                 self.root.free[bin] = next;
+                // Return only the requested capacity. Each unused half remains
+                // an ordinary free-list block, staged with the same mutation.
+                while usize::from(p.order) > order {
+                    p.order -= 1;
+                    let sibling = Pointer {
+                        offset: p.offset + p.capacity(),
+                        order: p.order,
+                    };
+                    self.free(sibling)?;
+                }
                 return Ok(p);
             }
         }
@@ -571,7 +584,19 @@ impl<'a, K: Storable + Ord + Clone, V: Storable, M: Memory> Transaction<'a, K, V
     }
     fn save_bytes(&mut self, previous: Option<Pointer>, bytes: Vec<u8>) -> Result<Pointer> {
         let p = if let Some(p) = previous.filter(|p| p.capacity() >= bytes.len() as u64) {
-            p
+            let needed = bytes.len().max(256).next_power_of_two() as u64;
+            // Reclaim only into already reusable smaller capacity. Splitting the
+            // live block itself loses its large size class and causes unbounded
+            // growth under repeated large/small replacements without coalescing.
+            let smaller_available = (needed.trailing_zeros() as usize..usize::from(p.order))
+                .any(|order| self.root.free[order].is_some());
+            if p.capacity() / needed >= 4 && smaller_available {
+                let smaller = self.allocate(bytes.len())?;
+                self.free(p)?;
+                smaller
+            } else {
+                p
+            }
         } else {
             if let Some(p) = previous {
                 self.free(p)?;
@@ -643,7 +668,7 @@ impl<'a, K: Storable + Ord + Clone, V: Storable, M: Memory> Transaction<'a, K, V
                 } else {
                     let (child, split, old) =
                         self.insert(Some(node.children[i]), key, key_bytes, bytes, depth + 1)?;
-                    if old.is_some() && split.is_none() && child == node.children[i] {
+                    if split.is_none() && child == node.children[i] {
                         return Ok((p.unwrap(), None, old));
                     }
                     node.children[i] = child;
@@ -706,8 +731,12 @@ impl<'a, K: Storable + Ord + Clone, V: Storable, M: Memory> Transaction<'a, K, V
                 if old.is_none() {
                     return Ok((p, None));
                 }
+                let moved = node.children[i] != child;
                 node.children[i] = child;
-                self.rebalance(&mut node, i)?;
+                let rebalanced = self.rebalance(&mut node, i)?;
+                if !moved && !rebalanced {
+                    return Ok((p, old));
+                }
                 old
             }
         };
@@ -727,17 +756,21 @@ impl<'a, K: Storable + Ord + Clone, V: Storable, M: Memory> Transaction<'a, K, V
             node.entries.remove(0)
         } else {
             let (child, entry) = self.extract_min(node.children[0], depth + 1)?;
+            let moved = node.children[0] != child;
             node.children[0] = child;
-            self.rebalance(&mut node, 0)?;
+            let rebalanced = self.rebalance(&mut node, 0)?;
+            if !moved && !rebalanced {
+                return Ok((p, entry));
+            }
             entry
         };
         Ok((self.save(Some(p), &node)?, entry))
     }
-    fn rebalance(&mut self, parent: &mut Node, i: usize) -> Result<()> {
+    fn rebalance(&mut self, parent: &mut Node, i: usize) -> Result<bool> {
         let p = parent.children[i];
         let mut child = self.node(p)?;
         if child.entries.len() >= MIN_ENTRIES {
-            return Ok(());
+            return Ok(false);
         }
         if i > 0 {
             let left_p = parent.children[i - 1];
@@ -756,7 +789,7 @@ impl<'a, K: Storable + Ord + Clone, V: Storable, M: Memory> Transaction<'a, K, V
                 }
                 parent.children[i - 1] = self.save(Some(left_p), &left)?;
                 parent.children[i] = self.save(Some(p), &child)?;
-                return Ok(());
+                return Ok(true);
             }
         }
         if i + 1 < parent.children.len() {
@@ -776,7 +809,7 @@ impl<'a, K: Storable + Ord + Clone, V: Storable, M: Memory> Transaction<'a, K, V
                 }
                 parent.children[i + 1] = self.save(Some(right_p), &right)?;
                 parent.children[i] = self.save(Some(p), &child)?;
-                return Ok(());
+                return Ok(true);
             }
         }
         let left_index = if i > 0 { i - 1 } else { i };
@@ -798,7 +831,7 @@ impl<'a, K: Storable + Ord + Clone, V: Storable, M: Memory> Transaction<'a, K, V
         self.free(right_p)?;
         parent.children[left_index] = self.save(Some(left_p), &left)?;
         parent.children.remove(left_index + 1);
-        Ok(())
+        Ok(true)
     }
     fn commit(self) -> Result<()> {
         let changed = self.root != *self.tree.root.borrow();
@@ -812,7 +845,11 @@ impl<'a, K: Storable + Ord + Clone, V: Storable, M: Memory> Transaction<'a, K, V
         }
         record::reserve(&self.tree.memory, self.root.cursor)?;
         self.tree.poisoned.set(true);
+        if self.root.cursor < self.tree.root.borrow().cursor {
+            self.tree.cache.borrow_mut().clear();
+        }
         for (offset, bytes) in self.writes {
+            self.tree.cache.borrow_mut().invalidate(offset);
             self.tree.memory.write(offset, &bytes);
         }
         if let Some(h) = header {
@@ -869,7 +906,7 @@ impl<K, V: Storable> MapEntry<K, V> {
 /// `TreeIter`
 ///
 /// Lazy bidirectional traversal with bounded routing-node stacks. External values
-/// are read for scan candidates and decoded when requested by the caller.
+/// are read only for in-range entries and decoded when requested by the caller.
 ///
 pub struct TreeIter<'a, K, V, M: Memory> {
     tree: &'a Tree<K, V, M>,
@@ -884,6 +921,17 @@ pub struct TreeIter<'a, K, V, M: Memory> {
 impl<K: Storable + Ord + Clone, V: Storable, M: Memory> TreeIter<'_, K, V, M> {
     fn step(&mut self, forward: bool) -> Result<Option<MapEntry<K, V>>> {
         ensure(!self.invalid, Error::Bounds)?;
+        self.tree.healthy()?;
+        let empty = match (&self.lower, &self.upper) {
+            (Bound::Included(a), Bound::Included(b)) => a > b,
+            (Bound::Included(a) | Bound::Excluded(a), Bound::Included(b) | Bound::Excluded(b)) => {
+                a >= b
+            }
+            _ => false,
+        };
+        if empty {
+            return Ok(None);
+        }
         let (path, bound) = if forward {
             (&mut self.front, &self.lower)
         } else {
@@ -892,19 +940,18 @@ impl<K: Storable + Ord + Clone, V: Storable, M: Memory> TreeIter<'_, K, V, M> {
         if path.is_none() {
             *path = Some(self.tree.seek_path(bound, forward)?);
         }
-        let entry = self
-            .tree
-            .advance_path(path.as_mut().unwrap(), forward, self.keys_only)?;
-        if let Some(entry) = &entry {
+        let entry = self.tree.advance_path(path.as_mut().unwrap(), forward)?;
+        if let Some(entry) = entry {
+            let key: K = decode(entry.key)?;
             let after = match &self.lower {
                 Bound::Unbounded => true,
-                Bound::Included(k) => entry.key >= *k,
-                Bound::Excluded(k) => entry.key > *k,
+                Bound::Included(k) => key >= *k,
+                Bound::Excluded(k) => key > *k,
             };
             let before = match &self.upper {
                 Bound::Unbounded => true,
-                Bound::Included(k) => entry.key <= *k,
-                Bound::Excluded(k) => entry.key < *k,
+                Bound::Included(k) => key <= *k,
+                Bound::Excluded(k) => key < *k,
             };
             ensure(
                 if forward { after } else { before },
@@ -914,12 +961,21 @@ impl<K: Storable + Ord + Clone, V: Storable, M: Memory> TreeIter<'_, K, V, M> {
                 return Ok(None);
             }
             if forward {
-                self.lower = Bound::Excluded(entry.key.clone());
+                self.lower = Bound::Excluded(key.clone());
             } else {
-                self.upper = Bound::Excluded(entry.key.clone());
+                self.upper = Bound::Excluded(key.clone());
             }
+            return Ok(Some(MapEntry {
+                key,
+                bytes: if self.keys_only {
+                    vec![]
+                } else {
+                    self.tree.value(entry.value)?
+                },
+                value: PhantomData,
+            }));
         }
-        Ok(entry)
+        Ok(None)
     }
     fn advance(&mut self, forward: bool) -> Option<Result<MapEntry<K, V>>> {
         if self.exhausted {

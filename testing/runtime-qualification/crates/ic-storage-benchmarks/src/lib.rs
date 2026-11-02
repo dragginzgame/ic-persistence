@@ -1,7 +1,34 @@
 //! Matched map workload and bounded benchmark protocol; not a production API.
 use serde::{Deserialize, Serialize};
 mod types;
+#[cfg(all(
+    target_arch = "wasm32",
+    feature = "dfinity",
+    not(feature = "dfinity-head")
+))]
+pub use ic_platform_stable_benchmark::stable_structures as upstream;
+#[cfg(all(target_arch = "wasm32", feature = "dfinity-head"))]
+pub use ic_stable_structures_head as upstream;
 pub use types::*;
+
+pub const MAX_ROWS: u32 = 1_000_000;
+
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq, Ord, PartialOrd, Serialize, Deserialize)]
+#[cfg_attr(not(target_arch = "wasm32"), derive(clap::ValueEnum))]
+pub enum Pattern {
+    #[default]
+    Uniform,
+    Hot16,
+    Zipf,
+}
+
+#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
+pub struct Initialization {
+    pub case: Case,
+    pub cache_bytes: usize,
+    pub upstream_cache_slots: usize,
+    pub cold_cache: bool,
+}
 
 pub const SETUP_ID: u64 = 1;
 pub const RUN_ID: u64 = 2;
@@ -19,11 +46,21 @@ pub const LIMITS: ic_wire::Limits = ic_wire::Limits {
 /// Bounded setup or final verification request.
 ///
 
-#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Setup {
     pub start: u64,
     pub count: u32,
     pub payload: u32,
+    pub ids: Vec<u64>,
+}
+
+pub fn population_ids(setup: &Setup) -> Vec<u64> {
+    if setup.ids.is_empty() {
+        (setup.start..setup.start + u64::from(setup.count)).collect()
+    } else {
+        assert_eq!(setup.ids.len(), setup.count as usize);
+        setup.ids.clone()
+    }
 }
 ///
 /// Operation
@@ -87,7 +124,7 @@ pub struct Request {
     pub payload: u32,
     pub count: u32,
     pub seed: u64,
-    pub hot: bool,
+    pub pattern: Pattern,
 }
 ///
 /// Response
@@ -110,10 +147,21 @@ pub fn value(key: u64, length: u32, replacement: bool) -> Vec<u8> {
 }
 /// Generate the complete trace outside the measured interval.
 pub fn keys(request: Request) -> Vec<u64> {
-    assert!((1..=16_384).contains(&request.rows));
+    assert!((1..=MAX_ROWS).contains(&request.rows));
     assert!((1..=32).contains(&request.count));
     assert!(request.payload <= 65_536);
     let mut state = request.seed;
+    let cdf = if request.pattern == Pattern::Zipf {
+        let mut sum = 0.0;
+        (1..=request.rows)
+            .map(|rank| {
+                sum += 1.0 / f64::from(rank);
+                sum
+            })
+            .collect::<Vec<_>>()
+    } else {
+        Vec::new()
+    };
     (0..request.count)
         .map(|index| {
             state = state
@@ -124,8 +172,14 @@ pub fn keys(request: Request) -> Vec<u64> {
                     u64::from(request.rows) + u64::from(index)
                 }
                 _ => {
+                    if request.pattern == Pattern::Zipf {
+                        let fraction =
+                            f64::from((state >> 32) as u32) / (f64::from(u32::MAX) + 1.0);
+                        return cdf.partition_point(|&sum| sum <= fraction * cdf.last().unwrap())
+                            as u64;
+                    }
                     (state >> 32)
-                        % u64::from(if request.hot {
+                        % u64::from(if request.pattern == Pattern::Hot16 {
                             request.rows.min(16)
                         } else {
                             request.rows
@@ -174,7 +228,7 @@ mod tests {
     }
     #[test]
     fn traces_are_bounded_repeatable_and_missing_keys_are_disjoint() {
-        for hot in [false, true] {
+        for pattern in [Pattern::Uniform, Pattern::Hot16, Pattern::Zipf] {
             for operation in OPERATIONS {
                 let r = Request {
                     case: Case::U64Bytes,
@@ -183,7 +237,7 @@ mod tests {
                     payload: 1024,
                     count: 32,
                     seed: 7,
-                    hot,
+                    pattern,
                 };
                 let a = keys(r);
                 assert_eq!(a, keys(r));
@@ -198,7 +252,7 @@ mod tests {
                     ) {
                         key >= 101
                     } else {
-                        key < if hot { 16 } else { 101 }
+                        key < if pattern == Pattern::Hot16 { 16 } else { 101 }
                     }
                 }));
                 let bytes = ic_wire::native::encode_request(RUN_ID, &r, LIMITS).unwrap();

@@ -48,6 +48,15 @@ for Platform 0.17, with only its `stable-structures` feature. Its system calls u
 Runtime 0.18 and its native driver uses Platform 0.18. Production has no upstream
 collection dependency. Optional crypto/certification profiles remain unselected.
 
+The maintainer-requested upstream comparison additionally selects the immutable
+DFINITY revision `b5d1650463f477affb3d358e86b1113953fc9937` through the optional
+`dfinity-head` benchmark feature. This research control is declared only in the
+approved independent workspace: the published facade cannot expose unpublished
+upstream code. It is not a production integration, local fork, supplier adoption
+or permission for other direct IC dependencies. The default published comparison
+still uses the Platform 0.17 facade. Both identities are retained in that
+workspace's lockfile; normal product graphs remain upstream-free.
+
 Both catalogs require published Wire 0.15.0 and select Wire/Derive 0.15.0.
 Public codec errors carry the new Wire Rust identity; hosts matching those errors
 must align their dependency. Codec bytes, budgets and restoration contracts are
@@ -58,8 +67,10 @@ and removing Wire/derive 0.14 from the root lockfile. The combined native adapte
 graph also has one Wire identity. No defaults are suppressed and no supplier
 overrides are selected. Metrics Storage publication is verified separately from
 Storage; Logging Storage retains its pending release.
-The library graph selects Testkit Native 0.79.0; installed qualification selects
-Testkit CLI 0.79.0. Wire endpoint and platform-types integration remain unselected.
+The library graph no longer selects Testkit Native: it has no allocation API
+callers, and Storage owns backing IO metering. Native 0.80's memory-module removal
+therefore requires no API migration here. Installed qualification selects Testkit
+CLI 0.79.0 independently. Wire endpoint and platform-types integration remain unselected.
 Metrics Storage's public measurement/error types carry Metrics 0.27 identity;
 Logging Storage's public log/limit/restoration-error types carry Logging 0.24
 identity. Hosts must align their direct supplier dependencies. Both suppliers now
@@ -67,7 +78,7 @@ share this repository's Rust 1.99.1 floor; arithmetic, logging semantics, encode
 records and runtime ownership remain unchanged.
 
 The library and selected metadata editor use Build 0.74.0. Host Artifacts, FS and
-Process select 0.74.1. Testkit Native and the installed CLI select 0.79.0, with
+Process select 0.74.1. The installed Testkit CLI selects 0.79.0, with
 server 16.1.0 unchanged. Storage 0.65.0 and Metrics Storage 0.66.0 deliver this source
 adoption. Logging Storage retains its separate pending publication requirements.
 

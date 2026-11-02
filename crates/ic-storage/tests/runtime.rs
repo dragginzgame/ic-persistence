@@ -12,6 +12,65 @@ fn grants() -> AllocationGrants {
 }
 
 #[test]
+fn diagnostics_are_read_only_and_account_for_retained_data_metadata_and_unassigned_pages() {
+    let backing = VectorMemory::default();
+    let mut host = MemoryRuntime::new(backing.clone()).unwrap();
+    let before = backing.borrow().clone();
+    let initial = host.diagnostics().unwrap();
+    assert_eq!(initial.allocations, 0);
+    assert_eq!(initial.admitted_allocations, 0);
+    assert_eq!(*backing.borrow(), before);
+    host.bootstrap(
+        &source(&["app.a.v1", "app.b.v1"]),
+        &grants(),
+        &GenericAllocationPolicy,
+    )
+    .unwrap();
+    let a = host
+        .open_memory(&StableKey::parse("app.a.v1").unwrap())
+        .unwrap();
+    let b = host
+        .open_memory(&StableKey::parse("app.b.v1").unwrap())
+        .unwrap();
+    a.grow(2).unwrap();
+    b.grow(3).unwrap();
+    let before = backing.borrow().clone();
+    let report = host.diagnostics().unwrap();
+    assert_eq!(report.allocations, 2);
+    assert_eq!(report.admitted_allocations, 2);
+    assert_eq!(report.live_leases, 2);
+    assert_eq!(report.data_pages, 5);
+    assert_eq!(report.extents, 2);
+    assert!(report.metadata_pages >= 2);
+    assert!(report.directory_bytes > 0);
+    assert_eq!(
+        report.physical_pages,
+        1 + report.data_pages + report.metadata_pages + report.unassigned_pages
+    );
+    assert_eq!(*backing.borrow(), before);
+    drop(a);
+    drop(b);
+    drop(host);
+    // Model an abandoned tail left by a native host, outside any active custody.
+    backing.grow(2);
+    let mut host = MemoryRuntime::new(backing.clone()).unwrap();
+    host.bootstrap(&source(&["app.a.v1"]), &grants(), &GenericAllocationPolicy)
+        .unwrap();
+    let reopened = host.diagnostics().unwrap();
+    assert_eq!(reopened.generation, report.generation);
+    assert_eq!(reopened.allocations, 2);
+    assert_eq!(reopened.admitted_allocations, 1);
+    assert_eq!(reopened.live_leases, 0);
+    assert_eq!(reopened.data_pages, report.data_pages);
+    assert_eq!(reopened.metadata_pages, report.metadata_pages);
+    assert_eq!(reopened.unassigned_pages, report.unassigned_pages + 2);
+    // Corruption is a checked-boundary failure, not a successful cached report.
+    backing.borrow_mut()[0] ^= 1;
+    assert!(host.diagnostics().is_err());
+    assert!(matches!(host.diagnostics(), Err(DirectoryError::Poisoned)));
+}
+
+#[test]
 fn public_runtime_retains_omitted_names_and_requires_current_admission() {
     let memory = VectorMemory::default();
     let mut host = MemoryRuntime::new(memory.clone()).unwrap();

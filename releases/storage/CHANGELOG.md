@@ -3,6 +3,39 @@
 Current releases use the Storage naming. [Earlier published history](https://github.com/dragginzgame/ic-storage/blob/23deb81c48d58558ac3b0ce36bf266ddc25dca91/releases/persistence/CHANGELOG.md)
 retains its original package and release identities.
 
+## [0.65.1] - Unreleased
+
+### 🔧 Changed
+
+- Add checked, read-only allocation and physical-capacity diagnostics, including
+  directory reservations and live lease counts. [Details](0.65.md).
+- Simplify directory preparation by removing temporary indexed state and carrying
+  the owned snapshot through reservation sizing.
+- Split oversized free B-tree blocks when reusing them for smaller records,
+  retaining the unused halves for later allocations. Stored formats are unchanged.
+- Add opt-in byte-budgeted map node caching and bounded key-only map ranges.
+  Read traversal retains one validated node buffer; mutations avoid unchanged
+  ancestor writes and release excess capacity after substantial record shrinkage.
+- Read fixed-size vector slots in one operation and reuse iteration buffers.
+  Cache adjacent extent translations while preserving custody and bounds checks.
+
+### 🧪 Testing
+
+- Generate and minimize mutation/reopen histories with live/free range checks.
+  Extend comparisons with a pinned upstream-head control, shuffled populations,
+  Zipf access, repeated mutation rounds and explicit map cache controls.
+
+### 🐛 Fixed
+
+- Stop bounded scans before reading excluded external values, and defer reading
+  following subtrees until another entry is requested. Unrelated corruption no
+  longer fails an otherwise valid bounded scan.
+
+### 🧹 Cleanup
+
+- Remove the unused Testkit Native development dependency. Native backing IO
+  metering already uses Storage's `test-support` helpers. [Details](0.65.md).
+
 ## [0.65.0] - 2026-11-02
 
 ### ⚠️ Breaking

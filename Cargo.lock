@@ -285,9 +285,9 @@ dependencies = [
 
 [[package]]
 name = "ic-logging"
-version = "0.24.1"
+version = "0.24.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b57f8628fc49c3dc70b644a6566ea5d02cdee57bdc5f3382c501c8799e485a4d"
+checksum = "c2c39b9656c998f08d2f5da3fc936ea394c809bc631b373d15df1e762ed0aad0"
 
 [[package]]
 name = "ic-logging-storage"
@@ -303,9 +303,9 @@ dependencies = [
 
 [[package]]
 name = "ic-metrics"
-version = "0.27.0"
+version = "0.27.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fbb69e3a49a4cbef33407cc47073685ae9bfadb07e30c34db36e08913ad3f7ac"
+checksum = "1301c37815b711164dbef141437570f737abb63dd0f9531586067a4649411b86"
 dependencies = [
  "ic-wire",
  "serde",
@@ -324,9 +324,9 @@ dependencies = [
 
 [[package]]
 name = "ic-platform-macros"
-version = "0.18.0"
+version = "0.18.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "510b03d62a3834122a99c0aac95c0b8751d6797273c95728d02e7fc27cc58860"
+checksum = "22e2d253a1d5a08d920f975d4f9a169a8e04d873600c616ca59786c3d81f5674"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -335,9 +335,9 @@ dependencies = [
 
 [[package]]
 name = "ic-platform-runtime"
-version = "0.18.0"
+version = "0.18.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4fdb0b3fee215166a704b9eb6be076adbf9d406e1b9156e65a9ee53abe6b5489"
+checksum = "890d920056096da50ef4f30886a19c5b89e3f4c331732b8a68d72c169a13a4e9"
 dependencies = [
  "ic-platform-macros",
  "ic-platform-runtime-guard",
@@ -350,9 +350,9 @@ dependencies = [
 
 [[package]]
 name = "ic-platform-runtime-guard"
-version = "0.18.0"
+version = "0.18.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "090fa416214c28a07a51cb87da73e4dc125f32b9fdbb05cd5af7907ec890b414"
+checksum = "300a34ce6432af592231b7a2c4cf548180f5b77a9487ef0d065d13a8c83b3dd1"
 
 [[package]]
 name = "ic-platform-types"
@@ -376,7 +376,6 @@ dependencies = [
  "ic-host-fs",
  "ic-host-process",
  "ic-platform-runtime",
- "ic-testkit-native",
  "ic-wire",
  "serde",
  "serde_json",
@@ -384,12 +383,6 @@ dependencies = [
  "toml",
  "trybuild",
 ]
-
-[[package]]
-name = "ic-testkit-native"
-version = "0.79.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "44723e730d836cb558315f5b7c58b6b74b01a386c6af7bb0bf2466be15ee367f"
 
 [[package]]
 name = "ic-wire"

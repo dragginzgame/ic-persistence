@@ -15,7 +15,7 @@ make benchmark-storage BENCH_ROWS=4096 BENCH_SAMPLES=3
 make benchmark-storage BENCH_ROWS=64 BENCH_SAMPLES=1 # quick complete smoke matrix
 ```
 
-Rows accept 1–16384, samples 1–20. Cell always has one value, regardless of the
+Rows accept 1–1,000,000, samples 1–20. Cell always has one value, regardless of the
 selected population. Builds are locked/offline on Rust 1.99.1; the command never
 installs tools or changes locks. Testkit 0.79.0 manages the prepared PocketIC
 16.1.0 server through Platform 0.18's owned native client. Platform 0.18 removed
@@ -23,6 +23,38 @@ its stable-structures facade, so only the DFINITY backend retains the named
 `ic-platform-stable-benchmark` alias for Platform 0.17. Both backends use Runtime
 0.18 for system calls. The production graph has no DFINITY dependency. Both Wasm backends use the same comparison profile:
 optimization level 3, fat LTO, one codegen unit, abort panics, no Binaryen pass.
+
+### Extended controls
+
+The independent workspace also pins upstream Git revision
+`b5d1650463f477affb3d358e86b1113953fc9937` as an explicitly optional research
+control. `BENCH_REFERENCE=dfinity-head` selects it; the default `dfinity` control
+remains published 0.7.2. The Git control does not enter production qualification
+graphs. Prepare its locked source with the existing explicit fetch command.
+
+```sh
+BENCH_REFERENCE=dfinity-head BENCH_CASES=U64U64,VectorU64 \
+BENCH_PATTERNS=uniform,hot16,zipf BENCH_SHUFFLED=1 BENCH_ROUNDS=3 \
+BENCH_CACHE_BYTES=131072 BENCH_UPSTREAM_CACHE_SLOTS=32 \
+make benchmark-storage BENCH_ROWS=4096 BENCH_SAMPLES=1
+```
+
+Case selection uses the exact case names from `types.rs`. Cache settings apply
+to ordinary maps only: Storage accepts a byte budget and current upstream accepts
+a slot count. These are different limits, not equivalent heap budgets. Both
+default to zero in the comparison; published 0.7.2 has no node-cache setting.
+Other structures retain their implementation defaults. `BENCH_COLD_CACHE=1`
+clears ordinary-map caches before each timed call; clearing cost is excluded.
+This measures cold routing, not collection reopening or whole-call cost.
+
+Shuffling uses a deterministic Fisher–Yates permutation for Map, Set and Region
+population; Vector/Cell setup retains its semantics. Zipf uses a discrete
+harmonic CDF with exponent one, generated outside timing on both backends.
+Trace generation can warm heap regions. `BENCH_ROUNDS=1..20` repeats the complete
+operation sequence on existing state with different access seeds. Raw samples
+retain the round; summaries take the upper median across samples and rounds.
+Configuration records every selection. Larger supported populations are opt-in
+and must be qualified separately; use selected cases to bound runtime and memory.
 
 ## Supported structures and concrete types
 
@@ -55,9 +87,9 @@ u128 keys vary their upper 64 bits, and 64-byte keys share a 56-byte prefix befo
 the ordered ID. Float vectors preserve exact IEEE bits, including signed zeros,
 subnormals, infinities and a NaN payload; floats are never ordering keys.
 
-Each case uses uniform or hot-16 keys, one or 32 operations per execution, and
+By default each case uses uniform or hot-16 keys, one or 32 operations per execution, and
 seeds 1 through the requested sample count. Backend order alternates by sample.
-Initial population is ascending, in batches of 128. Each complete case/sample/
+Default population is ascending, in batches of 128. Each complete case/sample/
 backend gets fresh state; operations within it share the preceding operation's
 committed state. This is a trace, not an independent reset per operation.
 
@@ -124,7 +156,7 @@ Native regression tests round-trip the largest verification and grown-value
 responses under the same limits. Setup cost is excluded, but its allocation history remains.
 
 This matrix does not measure cold reopening for ordinary collections, setup,
-upgrades, rollback, randomized population histories, GiB maps, retained heap or
+upgrades, rollback, GiB maps, retained heap or
 complete application endpoints. Native B-tree tests additionally cover shuffled
 insert/delete histories; installed lifecycle qualification is a separate suite.
 

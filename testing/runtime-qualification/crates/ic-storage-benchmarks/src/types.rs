@@ -418,8 +418,8 @@ impl BenchValue for WireRecord {
 #[cfg(target_arch = "wasm32")]
 mod codec {
     use super::{Signed64, WireRecord};
-    #[cfg(feature = "dfinity")]
-    use ic_platform_stable_benchmark::stable_structures::{Storable, storable::Bound};
+    #[cfg(any(feature = "dfinity", feature = "dfinity-head"))]
+    use crate::upstream::{Storable, storable::Bound};
     #[cfg(feature = "owned")]
     use ic_storage::adapter::{Bound, CodecError, Storable};
     use std::borrow::Cow;
@@ -441,15 +441,15 @@ mod codec {
                     .map_err(|_| CodecError::Invalid("benchmark signed width"))?,
             )))
         }
-        #[cfg(feature = "dfinity")]
+        #[cfg(any(feature = "dfinity", feature = "dfinity-head"))]
         fn to_bytes(&self) -> Cow<'_, [u8]> {
             Cow::Owned(self.0.to_le_bytes().to_vec())
         }
-        #[cfg(feature = "dfinity")]
+        #[cfg(any(feature = "dfinity", feature = "dfinity-head"))]
         fn into_bytes(self) -> Vec<u8> {
             self.0.to_le_bytes().to_vec()
         }
-        #[cfg(feature = "dfinity")]
+        #[cfg(any(feature = "dfinity", feature = "dfinity-head"))]
         fn from_bytes(bytes: Cow<'_, [u8]>) -> Self {
             Self(i64::from_le_bytes(bytes.as_ref().try_into().unwrap()))
         }
@@ -469,15 +469,15 @@ mod codec {
         fn from_bytes(bytes: Cow<'_, [u8]>) -> Result<Self, CodecError> {
             Self::decode(&bytes).map_err(|_| CodecError::Invalid("benchmark Wire record"))
         }
-        #[cfg(feature = "dfinity")]
+        #[cfg(any(feature = "dfinity", feature = "dfinity-head"))]
         fn to_bytes(&self) -> Cow<'_, [u8]> {
             Cow::Owned(self.encode().unwrap())
         }
-        #[cfg(feature = "dfinity")]
+        #[cfg(any(feature = "dfinity", feature = "dfinity-head"))]
         fn into_bytes(self) -> Vec<u8> {
             self.encode().unwrap()
         }
-        #[cfg(feature = "dfinity")]
+        #[cfg(any(feature = "dfinity", feature = "dfinity-head"))]
         fn from_bytes(bytes: Cow<'_, [u8]>) -> Self {
             Self::decode(&bytes).unwrap()
         }

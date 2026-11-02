@@ -46,6 +46,16 @@ impl<K: Storable + Ord + Clone, V: Storable, M: Memory> StableBTreeMap<K, V, M> 
     pub fn clear(&mut self) -> Result<()> {
         self.inner.clear()
     }
+    /// Set the heap budget for cached, validated routing nodes; zero disables it.
+    ///
+    /// Caching is disabled initially. Changing the budget discards cached nodes.
+    /// The budget accounts for buffer capacities and cache bookkeeping, excluding
+    /// allocator overhead and nodes retained by an active iterator. External
+    /// values are never cached. Writes invalidate affected nodes; reloads start
+    /// cold. The exclusive backing-custody contract applies while caching.
+    pub fn set_node_cache_budget(&mut self, bytes: usize) {
+        self.inner.set_cache_budget(bytes);
+    }
     /// Reserve a minimum virtual extent without exposing or duplicating the lease.
     ///
     /// Returns the map on both success and ordinary growth refusal. Entries are
@@ -146,6 +156,16 @@ impl<K: Storable + Ord + Clone, V: Storable, M: Memory> StableBTreeMap<K, V, M> 
     /// Perform `keys` on the governed ordered map.
     pub fn keys(&self) -> impl DoubleEndedIterator<Item = Result<K>> + '_ {
         self.inner.keys_range(..)
+    }
+    /// Traverse bounded keys without reading external value records.
+    ///
+    /// Routing records and key codecs remain checked. External value integrity
+    /// is checked only by operations that request values.
+    pub fn keys_range(
+        &self,
+        bounds: impl RangeBounds<K>,
+    ) -> impl DoubleEndedIterator<Item = Result<K>> + '_ {
+        self.inner.keys_range(bounds)
     }
     /// Perform `values` on the governed ordered map.
     pub fn values(&self) -> impl DoubleEndedIterator<Item = Result<V>> + '_ {

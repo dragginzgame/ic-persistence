@@ -42,6 +42,16 @@ poisons the shared owner.
 
 ## Limits and persistence
 
+`MemoryRuntime::diagnostics()` verifies current backing and reports generation,
+retained/admitted allocations, live leases, data capacity, directory reservations,
+physical capacity and unassigned pages without writing or opening a lease.
+It is available before bootstrap, with zero admitted names. The protected root
+uses one page; root, data, metadata and unassigned pages sum to physical pages.
+These totals are capacity rather than payload occupancy. Unassigned pages are
+not automatically reusable. Corrupt/poisoned owners return an error rather than
+an apparently healthy cached report. Hosts own namespace/authority presentation
+and external diagnostic protocols; no retired manager recovery image is decoded.
+
 `StorageConfig` selects allocation count, extent count, physical page and Wire
 resource limits. Defaults are 4,096 allocations, 16,384 extents, 1,048,576 physical
 pages, 4 MiB directory bytes, 16 MiB decode allocation, 262,144 nodes and depth 16.

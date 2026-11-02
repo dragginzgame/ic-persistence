@@ -2,16 +2,16 @@
 use super::*;
 #[cfg(feature = "owned")]
 type Set<K> = ic_storage::adapter::StableBTreeSet<K>;
-#[cfg(feature = "dfinity")]
-type Set<K> = ic_platform_stable_benchmark::stable_structures::BTreeSet<K, BenchMemory>;
+#[cfg(any(feature = "dfinity", feature = "dfinity-head"))]
+type Set<K> = ic_storage_benchmarks::upstream::BTreeSet<K, BenchMemory>;
 #[cfg(feature = "owned")]
 type Vector<V> = ic_storage::adapter::StableVec<V>;
-#[cfg(feature = "dfinity")]
-type Vector<V> = ic_platform_stable_benchmark::stable_structures::Vec<V, BenchMemory>;
+#[cfg(any(feature = "dfinity", feature = "dfinity-head"))]
+type Vector<V> = ic_storage_benchmarks::upstream::Vec<V, BenchMemory>;
 #[cfg(feature = "owned")]
 type StableCell<V> = ic_storage::adapter::StableCell<V>;
-#[cfg(feature = "dfinity")]
-type StableCell<V> = ic_platform_stable_benchmark::stable_structures::Cell<V, BenchMemory>;
+#[cfg(any(feature = "dfinity", feature = "dfinity-head"))]
+type StableCell<V> = ic_storage_benchmarks::upstream::Cell<V, BenchMemory>;
 
 pub(super) struct TypedSet<K: BenchKey + Storable> {
     case: Case,
@@ -21,14 +21,14 @@ impl<K: BenchKey + Storable> TypedSet<K> {
     pub(super) fn new(case: Case) -> Self {
         #[cfg(feature = "owned")]
         let set = Set::create(new_memory()).unwrap();
-        #[cfg(feature = "dfinity")]
+        #[cfg(any(feature = "dfinity", feature = "dfinity-head"))]
         let set = Set::new(new_memory());
         Self { case, set }
     }
 }
 impl<K: BenchKey + Storable> Benchmark for TypedSet<K> {
     fn setup(&mut self, r: Setup) -> u64 {
-        for id in r.start..r.start + u64::from(r.count) {
+        for id in population_ids(&r) {
             assert!(checked!(self.set.insert(K::from_id(id))));
         }
         self.set.len()
@@ -95,7 +95,7 @@ impl<V: BenchValue + Storable> TypedVector<V> {
     pub(super) fn new(case: Case) -> Self {
         #[cfg(feature = "owned")]
         let vector = Vector::create(new_memory()).unwrap();
-        #[cfg(feature = "dfinity")]
+        #[cfg(any(feature = "dfinity", feature = "dfinity-head"))]
         let vector = Vector::new(new_memory());
         Self { case, vector }
     }
@@ -196,7 +196,7 @@ impl<V: BenchValue + Storable> Benchmark for TypedCell<V> {
         let value = V::make(0, r.payload, false);
         #[cfg(feature = "owned")]
         let cell = StableCell::create(new_memory(), value).unwrap();
-        #[cfg(feature = "dfinity")]
+        #[cfg(any(feature = "dfinity", feature = "dfinity-head"))]
         let cell = StableCell::new(new_memory(), value);
         self.cell = Some(cell);
         1
@@ -250,7 +250,7 @@ impl<V: BenchValue + Storable> Benchmark for TypedCell<V> {
 pub(super) struct Region {
     #[cfg(feature = "owned")]
     map: ic_storage::adapter::BTreeMapRegion<u64, Vec<u8>>,
-    #[cfg(feature = "dfinity")]
+    #[cfg(any(feature = "dfinity", feature = "dfinity-head"))]
     memory: BenchMemory,
 }
 impl Region {
@@ -264,7 +264,7 @@ impl Region {
             map.initialize().unwrap();
             Self { map }
         }
-        #[cfg(feature = "dfinity")]
+        #[cfg(any(feature = "dfinity", feature = "dfinity-head"))]
         {
             let memory = new_memory();
             drop(Map::<u64, Vec<u8>>::new(memory.clone()));
@@ -276,7 +276,7 @@ impl Region {
         {
             self.map.get(key).unwrap()
         }
-        #[cfg(feature = "dfinity")]
+        #[cfg(any(feature = "dfinity", feature = "dfinity-head"))]
         {
             Map::<u64, Vec<u8>>::load(self.memory.clone()).get(key)
         }
@@ -286,7 +286,7 @@ impl Region {
         {
             self.map.insert(key, value).unwrap()
         }
-        #[cfg(feature = "dfinity")]
+        #[cfg(any(feature = "dfinity", feature = "dfinity-head"))]
         {
             Map::<u64, Vec<u8>>::load(self.memory.clone()).insert(key, value)
         }
@@ -296,7 +296,7 @@ impl Region {
         {
             self.map.remove(key).unwrap()
         }
-        #[cfg(feature = "dfinity")]
+        #[cfg(any(feature = "dfinity", feature = "dfinity-head"))]
         {
             Map::<u64, Vec<u8>>::load(self.memory.clone()).remove(key)
         }
@@ -306,7 +306,7 @@ impl Region {
         {
             self.map.len().unwrap()
         }
-        #[cfg(feature = "dfinity")]
+        #[cfg(any(feature = "dfinity", feature = "dfinity-head"))]
         {
             Map::<u64, Vec<u8>>::load(self.memory.clone()).len()
         }
@@ -319,7 +319,7 @@ impl Region {
                 .unwrap()
                 .collect()
         }
-        #[cfg(feature = "dfinity")]
+        #[cfg(any(feature = "dfinity", feature = "dfinity-head"))]
         {
             Map::<u64, Vec<u8>>::load(self.memory.clone())
                 .keys_range(start..)
@@ -330,7 +330,7 @@ impl Region {
 }
 impl Benchmark for Region {
     fn setup(&mut self, r: Setup) -> u64 {
-        for id in r.start..r.start + u64::from(r.count) {
+        for id in population_ids(&r) {
             assert!(self.insert(id, value(id, r.payload, false)).is_none());
         }
         self.len()

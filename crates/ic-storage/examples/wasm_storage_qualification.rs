@@ -82,6 +82,19 @@ mod canister {
         .unwrap();
         let high_key = ic_storage::StableKey::parse("storage.extra.n1023.v1").unwrap();
         assert!(runtime.allocation_id(&high_key).unwrap().get() > 255);
+        let report = runtime.diagnostics().unwrap();
+        assert_eq!(report.allocations, names.len());
+        assert_eq!(report.admitted_allocations, names.len());
+        assert_eq!(report.live_leases, 0);
+        assert_eq!(report.generation, runtime.committed_generation().unwrap());
+        assert_eq!(
+            report.physical_pages,
+            ic_storage::Memory::size(&DefaultMemoryImpl::default())
+        );
+        assert_eq!(
+            report.physical_pages,
+            1 + report.metadata_pages + report.data_pages + report.unassigned_pages
+        );
         RUNTIME.with(|slot| *slot.borrow_mut() = Some(runtime));
     }
 
@@ -171,6 +184,9 @@ mod canister {
                     .unwrap(),
             )
             .unwrap();
+            map.set_node_cache_budget(16 * 1024);
+            // Warm routing before the mutation exercised by update/rollback.
+            let _ = map.get(&10).unwrap();
             let previous = set.iter().next().unwrap().unwrap();
             assert!(set.remove(&previous).unwrap());
             set.insert(value).unwrap();

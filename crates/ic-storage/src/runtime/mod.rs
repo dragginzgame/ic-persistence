@@ -260,6 +260,51 @@ impl<M: Memory> MemoryRuntime<M> {
             })
             .collect())
     }
+
+    /// Validate the current directory and report physical capacity and custody.
+    /// Available before bootstrap; collecting diagnostics never admits or opens a key.
+    /// Page totals describe reserved capacity, not application payload occupancy.
+    ///
+    /// # Errors
+    /// Rejects a poisoned owner or backing that no longer matches its directory.
+    pub fn diagnostics(&self) -> Result<StorageDiagnostics, DirectoryError> {
+        let mut report = self.owner.diagnostics()?;
+        report.admitted_allocations = self.binding.as_ref().map_or(0, |b| b.admitted.len());
+        Ok(report)
+    }
+}
+
+///
+/// StorageDiagnostics
+///
+/// Read-only totals from the validated current directory and physical backing.
+/// The protected root occupies one additional page: data, metadata, unassigned
+/// and root pages sum to physical pages. Unassigned pages are not reclaimable
+/// through this API. Diagnostics grant no allocation authority.
+///
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq, serde::Serialize)]
+pub struct StorageDiagnostics {
+    /// Committed directory generation.
+    pub generation: u64,
+    /// Retained named allocations, including currently omitted names.
+    pub allocations: usize,
+    /// Names admitted by this runtime's bootstrap, or zero before bootstrap.
+    pub admitted_allocations: usize,
+    /// Currently live exclusive allocation leases.
+    pub live_leases: usize,
+    /// Total application data extents.
+    pub extents: usize,
+    /// Logical data capacity across retained allocations, in 64 KiB pages.
+    pub data_pages: u64,
+    /// Reserved active and inactive directory arenas, in 64 KiB pages.
+    pub metadata_pages: u64,
+    /// Encoded byte length of the active directory snapshot.
+    pub directory_bytes: u64,
+    /// Actual physical backing extent, in 64 KiB pages.
+    pub physical_pages: u64,
+    /// Physical pages outside data, metadata arenas and the protected root.
+    pub unassigned_pages: u64,
 }
 
 ///

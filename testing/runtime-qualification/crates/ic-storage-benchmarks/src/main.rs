@@ -13,26 +13,61 @@ struct Arguments {
     dfinity_wasm: PathBuf,
     #[arg(long)]
     output: PathBuf,
-    #[arg(long, default_value_t = 256, value_parser = clap::value_parser!(u32).range(1..=16_384))]
+    #[arg(long, default_value_t = 256, value_parser = clap::value_parser!(u32).range(1..=1_000_000))]
     rows: u32,
     #[arg(long, default_value_t = 3, value_parser = clap::value_parser!(u32).range(1..=20))]
     samples: u32,
+    /// Optional concrete case names, e.g. U64U64,VectorU64.
+    #[arg(long, value_delimiter = ',')]
+    cases: Vec<String>,
+    #[arg(
+        long,
+        value_enum,
+        value_delimiter = ',',
+        default_value = "uniform,hot16"
+    )]
+    patterns: Vec<Pattern>,
+    #[arg(long)]
+    shuffled: bool,
+    #[arg(long, default_value_t = 0)]
+    cache_bytes: usize,
+    #[arg(long, default_value_t = 0)]
+    upstream_cache_slots: usize,
+    #[arg(long)]
+    cold_cache: bool,
+    #[arg(long, default_value_t = 1, value_parser = clap::value_parser!(u32).range(1..=20))]
+    rounds: u32,
+    #[arg(long, default_value = "0.7.2")]
+    reference_revision: String,
 }
 struct Measurement {
     instructions: u64,
     stable_pages: u64,
 }
-type Samples = BTreeMap<(Case, u32, u32, bool, String, String), Vec<Measurement>>;
+type Samples = BTreeMap<(Case, u32, u32, Pattern, String, String), Vec<Measurement>>;
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args = Arguments::parse();
+    let cases: Vec<_> = CASES
+        .into_iter()
+        .filter(|case| args.cases.is_empty() || args.cases.contains(&format!("{case:?}")))
+        .collect();
+    assert!(
+        !cases.is_empty()
+            && args
+                .cases
+                .iter()
+                .all(|name| cases.iter().any(|case| name == &format!("{case:?}"))),
+        "unknown or empty case selection"
+    );
     let url = std::env::var("IC_TESTKIT_POCKET_IC_URL")?;
     let wasm = [fs::read(&args.owned_wasm)?, fs::read(&args.dfinity_wasm)?];
     fs::create_dir(&args.output)?;
     fs::write(
         args.output.join("configuration.json"),
         serde_json::to_vec_pretty(&serde_json::json!({
-            "rows": args.rows, "structures": ["Map","Set","Vector","Cell","Region"], "samples": args.samples, "cases": CASES.map(|case| serde_json::json!({"case":case, "key_type":case.key_type(), "value_type":case.value_type(), "logical_value_bytes":case.payloads(), "structure":case.structure(), "operations":case.operations(), "population_rows":case.rows(args.rows)})), "batch_sizes": [1,32],
-            "patterns": ["uniform", "hot-16"], "seed": "sample index + 1", "population": "ascending keys in batches of 128",
+            "rows": args.rows, "structures": ["Map","Set","Vector","Cell","Region"], "samples": args.samples, "cases": cases.iter().map(|case| serde_json::json!({"case":case, "key_type":case.key_type(), "value_type":case.value_type(), "logical_value_bytes":case.payloads(), "structure":case.structure(), "operations":case.operations(), "population_rows":case.rows(args.rows)})).collect::<Vec<_>>(), "batch_sizes": [1,32],
+            "patterns": args.patterns, "seed": "sample + 1 + round * 7919", "shuffled": args.shuffled,
+            "cache_bytes": args.cache_bytes, "upstream_cache_slots": args.upstream_cache_slots, "cold_cache": args.cold_cache, "cache_scope": "ordinary Map only", "rounds": args.rounds, "reference_revision": args.reference_revision,
             "backend_order": "alternates each sample", "measurement": "performance_counter(0) around operations; setup, trace/value creation, validation and Wire response excluded",
             "owned_wasm_bytes": wasm[0].len(), "dfinity_wasm_bytes": wasm[1].len(),
             "state": "fresh canister per case/sample/backend; operations run in declared order"
@@ -44,10 +79,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .build();
     let mut raw = fs::File::create(args.output.join("samples.jsonl"))?;
     let mut timings: Samples = BTreeMap::new();
-    for case in CASES {
+    for case in cases {
         for &payload in case.payloads() {
             for count in [1, 32] {
-                for hot in [false, true] {
+                for &pattern in &args.patterns {
                     for sample in 0..args.samples {
                         for backend in if sample % 2 == 0 { [0, 1] } else { [1, 0] } {
                             let name = ["ic-storage", "ic-stable-structures"][backend];
@@ -56,14 +91,31 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                             pic.install_canister(
                                 canister,
                                 wasm[backend].clone(),
-                                ic_wire::native::encode_request(0, &case, LIMITS)?,
+                                ic_wire::native::encode_request(
+                                    0,
+                                    &Initialization {
+                                        case,
+                                        cache_bytes: args.cache_bytes,
+                                        upstream_cache_slots: args.upstream_cache_slots,
+                                        cold_cache: args.cold_cache,
+                                    },
+                                    LIMITS,
+                                )?,
                                 None,
                             );
+                            let ids = population(
+                                case.rows(args.rows),
+                                args.shuffled
+                                    && matches!(case.structure(), "Map" | "Set" | "Region"),
+                                u64::from(sample) + 1,
+                            );
                             for start in (0..case.rows(args.rows)).step_by(128) {
+                                let count = (case.rows(args.rows) - start).min(128);
                                 let setup = Setup {
                                     start: u64::from(start),
-                                    count: (case.rows(args.rows) - start).min(128),
+                                    count,
                                     payload,
+                                    ids: ids[start as usize..(start + count) as usize].to_vec(),
                                 };
                                 let reply = pic
                                     .update_call(
@@ -80,52 +132,56 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                             let mut model: BTreeMap<_, _> = (0..u64::from(case.rows(args.rows)))
                                 .map(|key| (key, case.expected_value(key, payload, false)))
                                 .collect();
-                            for operation in case.operations() {
-                                let request = Request {
-                                    case,
-                                    operation,
-                                    rows: case.rows(args.rows),
-                                    payload,
-                                    count,
-                                    seed: u64::from(sample) + 1,
-                                    hot,
-                                };
-                                let reply = pic
-                                    .update_call(
-                                        canister,
-                                        ExternalPrincipal::anonymous(),
-                                        "benchmark",
-                                        ic_wire::native::encode_request(RUN_ID, &request, LIMITS)?,
-                                    )
-                                    .map_err(|e| format!("{name} {operation:?}: {e:?}"))?;
-                                let actual: Response =
-                                    ic_wire::native::decode_response(RUN_ID, &reply, LIMITS)?;
-                                writeln!(
-                                    raw,
-                                    "{}",
-                                    serde_json::json!({"backend":name,"sample":sample,"request":request,"response":actual})
-                                )?;
-                                raw.flush()?;
-                                let expected = expected(&mut model, request);
-                                assert_eq!(
-                                    actual.entries, expected,
-                                    "{name} {operation:?}: result mismatch"
-                                );
-                                assert_eq!(actual.length, model.len() as u64);
-                                timings
-                                    .entry((
+                            for round in 0..args.rounds {
+                                for operation in case.operations() {
+                                    let request = Request {
                                         case,
+                                        operation,
+                                        rows: case.rows(args.rows),
                                         payload,
                                         count,
-                                        hot,
-                                        format!("{operation:?}"),
-                                        name.into(),
-                                    ))
-                                    .or_default()
-                                    .push(Measurement {
-                                        instructions: actual.instructions,
-                                        stable_pages: actual.stable_pages,
-                                    });
+                                        seed: u64::from(sample) + 1 + u64::from(round) * 7919,
+                                        pattern,
+                                    };
+                                    let reply = pic
+                                        .update_call(
+                                            canister,
+                                            ExternalPrincipal::anonymous(),
+                                            "benchmark",
+                                            ic_wire::native::encode_request(
+                                                RUN_ID, &request, LIMITS,
+                                            )?,
+                                        )
+                                        .map_err(|e| format!("{name} {operation:?}: {e:?}"))?;
+                                    let actual: Response =
+                                        ic_wire::native::decode_response(RUN_ID, &reply, LIMITS)?;
+                                    writeln!(
+                                        raw,
+                                        "{}",
+                                        serde_json::json!({"backend":name,"sample":sample,"round":round,"request":request,"response":actual})
+                                    )?;
+                                    raw.flush()?;
+                                    let expected = expected(&mut model, request);
+                                    assert_eq!(
+                                        actual.entries, expected,
+                                        "{name} {operation:?}: result mismatch"
+                                    );
+                                    assert_eq!(actual.length, model.len() as u64);
+                                    timings
+                                        .entry((
+                                            case,
+                                            payload,
+                                            count,
+                                            pattern,
+                                            format!("{operation:?}"),
+                                            name.into(),
+                                        ))
+                                        .or_default()
+                                        .push(Measurement {
+                                            instructions: actual.instructions,
+                                            stable_pages: actual.stable_pages,
+                                        });
+                                }
                             }
                             let expected_rows: Vec<_> = model.into_iter().collect();
                             for chunk in expected_rows.chunks(128) {
@@ -133,6 +189,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                                     start: chunk[0].0,
                                     count: chunk.len() as u32,
                                     payload: 0,
+                                    ids: Vec::new(),
                                 };
                                 let reply = pic
                                     .query_call(
@@ -159,7 +216,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         summary,
         "rows,structure,case,key_type,value_type,logical_value_bytes,batch_or_scan_limit,pattern,operation,storage_median_instructions,dfinity_median_instructions,storage_over_dfinity,storage_median_stable_pages,dfinity_median_stable_pages"
     )?;
-    for ((case, payload, count, hot, operation, backend), samples) in &timings {
+    for ((case, payload, count, pattern, operation, backend), samples) in &timings {
         if backend != "ic-storage" {
             continue;
         }
@@ -167,7 +224,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             *case,
             *payload,
             *count,
-            *hot,
+            *pattern,
             operation.clone(),
             "ic-stable-structures".into(),
         )];
@@ -177,12 +234,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let b_pages = median(&other.iter().map(|s| s.stable_pages).collect::<Vec<_>>());
         writeln!(
             summary,
-            "{},{},{case:?},{},{},{payload},{count},{},{operation},{a},{b},{:.4},{a_pages},{b_pages}",
+            "{},{},{case:?},{},{},{payload},{count},{pattern:?},{operation},{a},{b},{:.4},{a_pages},{b_pages}",
             case.rows(args.rows),
             case.structure(),
             case.key_type(),
             case.value_type(),
-            if *hot { "hot-16" } else { "uniform" },
             a as f64 / b as f64
         )?;
     }
@@ -196,6 +252,19 @@ fn median(values: &[u64]) -> u64 {
     let mut values = values.to_vec();
     values.sort_unstable();
     values[values.len() / 2]
+}
+fn population(rows: u32, shuffled: bool, mut state: u64) -> Vec<u64> {
+    let mut ids: Vec<_> = (0..u64::from(rows)).collect();
+    if shuffled {
+        for end in (1..ids.len()).rev() {
+            state = state
+                .wrapping_mul(6_364_136_223_846_793_005)
+                .wrapping_add(1);
+            let slot = usize::try_from(state % (end as u64 + 1)).unwrap();
+            ids.swap(end, slot);
+        }
+    }
+    ids
 }
 fn expected(model: &mut BTreeMap<u64, Vec<u8>>, r: Request) -> Vec<(u64, Option<Vec<u8>>)> {
     use Operation::*;
@@ -311,7 +380,7 @@ mod tests {
             payload: 8,
             count: 4,
             seed: 0,
-            hot: false,
+            pattern: Pattern::Uniform,
         };
         assert_eq!(keys(r)[0], 0);
         assert_eq!(
@@ -342,7 +411,7 @@ mod tests {
                     payload,
                     count: 32,
                     seed: 1,
-                    hot: true,
+                    pattern: Pattern::Hot16,
                 };
                 let results = expected(&mut model, r);
                 if operation == Operation::Miss {
@@ -374,7 +443,7 @@ mod tests {
                         operation,
                         count: 32,
                         seed: 1,
-                        hot: true,
+                        pattern: Pattern::Hot16,
                     };
                     let entries = expected(&mut model, r);
                     if operation == Operation::Miss {

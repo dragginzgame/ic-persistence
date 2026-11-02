@@ -7,25 +7,26 @@ mod canister {
     use std::cell::RefCell;
 
     #[cfg(any(
-        all(feature = "owned", feature = "dfinity"),
-        not(any(feature = "owned", feature = "dfinity"))
+        all(feature = "owned", any(feature = "dfinity", feature = "dfinity-head")),
+        all(feature = "dfinity", feature = "dfinity-head"),
+        not(any(feature = "owned", feature = "dfinity", feature = "dfinity-head"))
     ))]
     compile_error!("select exactly one backend: owned or dfinity");
 
     #[cfg(feature = "owned")]
     type Map<K, V> = ic_storage::adapter::StableBTreeMap<K, V>;
-    #[cfg(feature = "dfinity")]
-    type Map<K, V> = ic_platform_stable_benchmark::stable_structures::BTreeMap<
+    #[cfg(any(feature = "dfinity", feature = "dfinity-head"))]
+    type Map<K, V> = ic_storage_benchmarks::upstream::BTreeMap<
         K,
         V,
-        ic_platform_stable_benchmark::stable_structures::memory_manager::VirtualMemory<
-            ic_platform_stable_benchmark::stable_structures::DefaultMemoryImpl,
+        ic_storage_benchmarks::upstream::memory_manager::VirtualMemory<
+            ic_storage_benchmarks::upstream::DefaultMemoryImpl,
         >,
     >;
-    #[cfg(feature = "dfinity")]
-    use ic_platform_stable_benchmark::stable_structures::Storable;
     #[cfg(feature = "owned")]
     use ic_storage::adapter::Storable;
+    #[cfg(any(feature = "dfinity", feature = "dfinity-head"))]
+    use ic_storage_benchmarks::upstream::Storable;
     thread_local! { static MAP: RefCell<Option<Box<dyn Benchmark>>> = const { RefCell::new(None) }; }
 
     // A failed Storage operation fails the benchmark; upstream reports failures
@@ -36,7 +37,7 @@ mod canister {
             {
                 $operation.expect("benchmark Storage operation")
             }
-            #[cfg(feature = "dfinity")]
+            #[cfg(any(feature = "dfinity", feature = "dfinity-head"))]
             {
                 $operation
             }
@@ -46,6 +47,7 @@ mod canister {
     struct TypedMap<K: BenchKey + Storable, V: BenchValue + Storable> {
         case: Case,
         map: Map<K, V>,
+        settings: Initialization,
     }
     trait Benchmark {
         fn setup(&mut self, request: Setup) -> u64;
@@ -69,11 +71,10 @@ mod canister {
     }
     #[cfg(feature = "owned")]
     type BenchMemory = ic_storage::RuntimeMemory<ic_storage::DefaultMemoryImpl>;
-    #[cfg(feature = "dfinity")]
-    type BenchMemory =
-        ic_platform_stable_benchmark::stable_structures::memory_manager::VirtualMemory<
-            ic_platform_stable_benchmark::stable_structures::DefaultMemoryImpl,
-        >;
+    #[cfg(any(feature = "dfinity", feature = "dfinity-head"))]
+    type BenchMemory = ic_storage_benchmarks::upstream::memory_manager::VirtualMemory<
+        ic_storage_benchmarks::upstream::DefaultMemoryImpl,
+    >;
     fn new_memory() -> BenchMemory {
         #[cfg(feature = "owned")]
         {
@@ -94,9 +95,9 @@ mod canister {
                 .open_memory(&StableKey::parse("benchmark.rows.v1").unwrap())
                 .unwrap()
         }
-        #[cfg(feature = "dfinity")]
+        #[cfg(any(feature = "dfinity", feature = "dfinity-head"))]
         {
-            use ic_platform_stable_benchmark::stable_structures::{
+            use ic_storage_benchmarks::upstream::{
                 DefaultMemoryImpl,
                 memory_manager::{MemoryId, MemoryManager},
             };
@@ -108,21 +109,41 @@ mod canister {
         {
             Map::create(new_memory()).unwrap()
         }
-        #[cfg(feature = "dfinity")]
+        #[cfg(any(feature = "dfinity", feature = "dfinity-head"))]
         {
             Map::init(new_memory())
         }
+    }
+    fn configure_cache<K: BenchKey + Storable, V: BenchValue + Storable>(
+        map: &mut Map<K, V>,
+        settings: Initialization,
+    ) {
+        #[cfg(feature = "owned")]
+        map.set_node_cache_budget(settings.cache_bytes);
+        #[cfg(feature = "dfinity-head")]
+        map.node_cache_resize(settings.upstream_cache_slots);
+        #[cfg(feature = "dfinity")]
+        let _ = (map, settings);
+    }
+    fn configured_map<K: BenchKey + Storable, V: BenchValue + Storable>(
+        settings: Initialization,
+    ) -> Map<K, V> {
+        let mut map = new_map();
+        configure_cache(&mut map, settings);
+        map
     }
     mod collections;
     use collections::{Region, TypedCell, TypedSet, TypedVector};
     #[unsafe(export_name = "canister_init")]
     extern "C" fn init() {
-        let case: Case = argument(0);
+        let settings: Initialization = argument(0);
+        let case = settings.case;
         macro_rules! typed {
             ($key:ty, $value:ty) => {
                 Box::new(TypedMap::<$key, $value> {
                     case,
-                    map: new_map(),
+                    map: configured_map(settings),
+                    settings,
                 }) as Box<dyn Benchmark>
             };
         }
@@ -161,7 +182,8 @@ mod canister {
     #[unsafe(export_name = "canister_update setup")]
     extern "C" fn setup() {
         let r: Setup = argument(SETUP_ID);
-        assert!(r.count <= 128 && r.start + u64::from(r.count) <= 16_384);
+        assert!(r.count <= 128 && r.start + u64::from(r.count) <= u64::from(MAX_ROWS));
+        assert!(r.ids.iter().all(|&id| id < u64::from(MAX_ROWS)));
         MAP.with(|slot| reply(SETUP_ID, &slot.borrow_mut().as_mut().unwrap().setup(r)));
     }
     #[unsafe(export_name = "canister_query verify")]
@@ -178,7 +200,7 @@ mod canister {
     impl<K: BenchKey + Storable, V: BenchValue + Storable> Benchmark for TypedMap<K, V> {
         fn setup(&mut self, r: Setup) -> u64 {
             assert!(self.case.payloads().contains(&r.payload));
-            for id in r.start..r.start + u64::from(r.count) {
+            for id in population_ids(&r) {
                 assert!(
                     checked!(
                         self.map
@@ -200,6 +222,9 @@ mod canister {
                 .collect()
         }
         fn run(&mut self, r: Request) -> Response {
+            if self.settings.cold_cache {
+                configure_cache(&mut self.map, self.settings);
+            }
             assert_eq!(r.case, self.case);
             assert!(self.case.payloads().contains(&r.payload));
             let ids = keys(r);
@@ -233,7 +258,7 @@ mod canister {
                 for key in self.map.keys().take(r.count as usize) {
                     key_entries.push(checked!(key));
                 }
-                #[cfg(feature = "dfinity")]
+                #[cfg(any(feature = "dfinity", feature = "dfinity-head"))]
                 for key in self.map.keys().take(r.count as usize) {
                     key_entries.push(key);
                 }

@@ -14,6 +14,70 @@ fn runtime(backing: VectorMemory) -> crate::MemoryRuntime<VectorMemory> {
 }
 
 #[test]
+fn bounded_map_keys_skip_external_values_and_support_both_directions() {
+    let backing = crate::testing::MeteredMemory::<VectorMemory>::default();
+    let runtime = fixture_runtime(
+        backing.clone(),
+        "test",
+        "test.",
+        &["test.map.v1"],
+        StorageConfig::default(),
+    )
+    .unwrap();
+    let mut map = StableBTreeMap::<u64, Vec<u8>, _>::create(
+        runtime
+            .open_memory(&StableKey::parse("test.map.v1").unwrap())
+            .unwrap(),
+    )
+    .unwrap();
+    for key in 0..40 {
+        map.insert(key, vec![3; 16_384]).unwrap();
+    }
+    backing.reset();
+    let mut keys = map.keys_range(10..14);
+    assert_eq!(keys.next().unwrap().unwrap(), 10);
+    assert_eq!(keys.next_back().unwrap().unwrap(), 13);
+    assert_eq!(keys.collect::<Result<Vec<_>, _>>().unwrap(), vec![11, 12]);
+    assert!(backing.counts().read_bytes < 16_384);
+    assert_eq!(backing.counts().writes, 0);
+}
+
+#[test]
+fn fixed_vector_reads_once_per_slot_and_reuses_iteration_buffer() {
+    let backing = crate::testing::MeteredMemory::<VectorMemory>::default();
+    let runtime = fixture_runtime(
+        backing.clone(),
+        "test",
+        "test.",
+        &["test.vector.v1"],
+        StorageConfig::default(),
+    )
+    .unwrap();
+    let vector = StableVec::<u64, _>::create(
+        runtime
+            .open_memory(&StableKey::parse("test.vector.v1").unwrap())
+            .unwrap(),
+    )
+    .unwrap();
+    for value in 0..20 {
+        vector.push(&value).unwrap();
+    }
+    backing.reset();
+    assert_eq!(vector.get(7).unwrap(), Some(7));
+    assert_eq!(backing.counts().reads, 1);
+    assert_eq!(backing.counts().read_bytes, 20);
+    backing.reset();
+    let mut iter = vector.iter();
+    assert_eq!(iter.next().unwrap().unwrap(), 0);
+    assert_eq!(iter.next_back().unwrap().unwrap(), 19);
+    assert_eq!(
+        iter.collect::<Result<Vec<_>, _>>().unwrap(),
+        (1..19).collect::<Vec<_>>()
+    );
+    assert_eq!(backing.counts().reads, 20);
+}
+
+#[test]
 fn cell_budget_and_checksum_rejections_are_read_only_and_release_leases() {
     let backing = VectorMemory::default();
     let runtime = runtime(backing.clone());

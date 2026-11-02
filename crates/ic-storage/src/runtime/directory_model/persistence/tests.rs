@@ -48,6 +48,61 @@ fn key(index: usize) -> StableKey {
 }
 
 #[test]
+fn translation_cache_checks_bounds_and_is_cleared_by_directory_publication() {
+    let memory = Observed::default();
+    let mut store = Store::create(memory, StorageConfig::default()).unwrap();
+    store
+        .commit(store.prepare(vec![key(0), key(1)], &[]).unwrap())
+        .unwrap();
+    let a = store.directory.by_key[&key(0)];
+    let b = store.directory.by_key[&key(1)];
+    store
+        .commit(store.prepare(vec![], &[(a, 1), (b, 1), (a, 1)]).unwrap())
+        .unwrap();
+    store.write_data(a, PAGE - 2, &[1, 2, 3, 4]).unwrap();
+    let mut bytes = [0; 4];
+    store.read_data(a, PAGE - 2, &mut bytes).unwrap();
+    assert_eq!(bytes, [1, 2, 3, 4]);
+    assert!(store.last_span.get().is_some());
+    assert!(matches!(
+        store.read_data(a, 2 * PAGE, &mut bytes),
+        Err(Error::Bounds)
+    ));
+    store.read_data(b, 0, &mut bytes).unwrap();
+    assert_eq!(bytes, [0; 4]);
+    store
+        .commit(store.prepare(vec![], &[(a, 1)]).unwrap())
+        .unwrap();
+    assert!(store.last_span.get().is_none());
+    store.read_data(a, 2 * PAGE, &mut bytes).unwrap();
+    assert_eq!(bytes, [0; 4]);
+    store.poisoned.set(true);
+    assert!(matches!(
+        store.read_data(a, 2 * PAGE, &mut bytes),
+        Err(Error::Poisoned)
+    ));
+}
+
+#[test]
+fn diagnostics_never_write_or_grow_the_backing() {
+    let memory = Observed::default();
+    let mut store = Store::create(memory.clone(), StorageConfig::default()).unwrap();
+    store
+        .commit(store.prepare(vec![key(0)], &[]).unwrap())
+        .unwrap();
+    let id = store.directory.by_key[&key(0)];
+    store
+        .commit(store.prepare(vec![], &[(id, 3)]).unwrap())
+        .unwrap();
+    let before = (memory.writes.get(), memory.grows.get());
+    let report = store.diagnostics().unwrap();
+    assert_eq!(report.allocations, 1);
+    assert_eq!(report.data_pages, 3);
+    assert_eq!(report.physical_pages, memory.size());
+    assert_eq!((memory.writes.get(), memory.grows.get()), before);
+}
+
+#[test]
 fn multi_page_directory_reserves_its_complete_record_before_application_growth() {
     let memory = Observed::default();
     let budget = StorageConfig::default();
