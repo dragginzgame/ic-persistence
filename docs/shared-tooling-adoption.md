@@ -52,11 +52,12 @@ Both catalogs require published Wire 0.15.0 and select Wire/Derive 0.15.0.
 Public codec errors carry the new Wire Rust identity; hosts matching those errors
 must align their dependency. Codec bytes, budgets and restoration contracts are
 unchanged. Core Storage, production Wasm and the independent native qualifier
-each select one Wire 0.15 provider. The pending Metrics Storage adoption selects
+each select one Wire 0.15 provider. Metrics Storage 0.66.0 selects
 published Metrics 0.27.0, aligning its default native schema traits with Wire 0.15
 and removing Wire/derive 0.14 from the root lockfile. The combined native adapter
 graph also has one Wire identity. No defaults are suppressed and no supplier
-overrides are selected. Adapter publication remains separate.
+overrides are selected. Metrics Storage publication is verified separately from
+Storage; Logging Storage retains its pending release.
 The library graph selects Testkit Native 0.79.0; installed qualification selects
 Testkit CLI 0.79.0. Wire endpoint and platform-types integration remain unselected.
 Metrics Storage's public measurement/error types carry Metrics 0.27 identity;
@@ -67,8 +68,8 @@ records and runtime ownership remain unchanged.
 
 The library and selected metadata editor use Build 0.74.0. Host Artifacts, FS and
 Process select 0.74.1. Testkit Native and the installed CLI select 0.79.0, with
-server 16.1.0 unchanged. Storage 0.65.0 delivers this source adoption; the adapter
-versions and their separate pending publication requirements remain unchanged.
+server 16.1.0 unchanged. Storage 0.65.0 and Metrics Storage 0.66.0 deliver this source
+adoption. Logging Storage retains its separate pending publication requirements.
 
 The library [dependency catalog](../Cargo.toml) owns direct package requirements
 and feature selections; its [lockfile](../Cargo.lock) owns resolved identities.

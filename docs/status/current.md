@@ -10,7 +10,7 @@ Fresh sparse-index and downloaded registry archive checks agree with the receipt
 `c60314281e24c326e9dc938a29122763be56e6c3d76031be64221f38a6b5fb42`.
 Version 0.65.0 is unyanked. Evidence is in `target/storage-065-deploy/` and
 `target/release-validation/storage-0.65.0.json`; do not repeat release/upload.
-Metrics Storage 0.66.0 and Logging Storage 0.64.0 remain separate pending releases.
+Metrics Storage 0.66.0 is also delivered below; Logging Storage 0.64.0 remains pending.
 No sibling release or migration is included. Preserve all earlier release plans,
 archives, failure logs and caches.
 
@@ -19,6 +19,20 @@ its log remains at `target/release-validation/attempts/verify.Pjm5qj`. The succe
 replacement gate is `verify.XZLTRM`; no failed or interrupted evidence was removed.
 The retired history directories remain available through the current ledgers'
 revision-bound Git links; the maintainer explicitly approved their local deletion.
+
+## Delivered Metrics Storage 0.66.0
+
+Published `ic-metrics-storage` 0.66.0 selects Metrics 0.27, Wire 0.15 and Storage
+0.65. Release commit `64777ae7a5ca916ecfcf7db94342b22008dc02c9` and annotated tag
+`metrics-storage-v0.66.0` were atomically pushed. The complete local gate passed
+in 216 seconds, followed by final archive qualification. Fresh index/download
+checks match the qualified checksum, and the version is unyanked:
+`8745c24fa8f8cd30635edf97d27644aae7c677e560826051e651e57f68729645`.
+A registry-only consumer passes metric save/reopen and native Wire schema tests,
+Wasm compilation and single-provider graph checks on native/Wasm. Evidence is in
+`target/metrics-storage-066-deploy/` and the group final receipt under
+`target/release-validation/`. Do not repeat release/upload. Core Storage and
+Logging versions are unchanged; no sibling deployment or data migration ran.
 
 ## Contracts and completed source work
 
@@ -59,12 +73,11 @@ tests, strict native/Wasm Clippy and formatting evidence are retained in
 
 Both catalogs now select published Wire/derive 0.15.0. Public codec error identities
 change, while codec bytes and budgets remain unchanged. Core Storage, production
-Wasm and the independent qualifier each use one Wire 0.15. The subsequent local
+Wasm and the independent qualifier each use one Wire 0.15. The subsequent
 Metrics 0.27.0 adoption aligns default native schema support with Wire 0.15 and
 removes the old Wire/derive 0.14 entries. This updates Metrics Storage's public
-arithmetic/error identity; hosts must align direct Metrics dependencies. Its
-pending 0.66.0 notes include this adoption; no package version, commit, adapter
-publication or sibling checkout is changed by this follow-up. Source and
+arithmetic/error identity; hosts must align direct Metrics dependencies. The
+delivered 0.66.0 notes include this adoption. Source and
 qualification evidence is retained in `target/metrics-027-adoption/`.
 All 30 Metrics Storage tests and three doctests pass, including native schema
 composition through the adapter's Wire identity. Strict native/Wasm Clippy,
