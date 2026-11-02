@@ -1,5 +1,16 @@
 # Current handoff
 
+## Storage 0.65.2 delivery in progress
+
+The compatible IC0-only backing fix is prepared in an isolated checkout while
+benchmark work continues in the main working tree. Only Storage is selected for
+release/publication. Runtime >=0.18.1 supplies all four safe stable64 wrappers;
+native production has no Runtime dependency and default Wasm selects only `ic0`.
+The Memory growth sentinel, bounds traps and all retained formats are unchanged.
+Default external and explicitly runtime-enabled consumers are separately checked
+on native and Wasm. Evidence is under `target/storage-0652-deploy/`; full release,
+installed runtime and registry-only verification remain separate delivery gates.
+
 ## Delivered Storage 0.65.1
 
 Storage **0.65.1** is published and unyanked. Release commit
@@ -26,7 +37,7 @@ production code is unchanged by the repair. The failed log remains at
 passed in 192 seconds (`verify.wcDBds`), followed by prepared/final archive
 qualification. Final package proof is `target/package-qualification/attempt.y2Xkok/`.
 The earlier implementation source is `14e9187`; all accepted source work is committed.
-No subsequent release is selected. Build artifacts and failed evidence remain.
+Build artifacts and failed evidence remain.
 
 ## Independent groups and current contracts
 
@@ -49,9 +60,9 @@ and [the allocation contract](../current-ledger.md).
 Wire 0.15 owns current codec errors. Metrics Storage uses Metrics 0.27. Logging
 Storage's maintained checkpoint contract uses discriminator 3 and a retained-text
 ceiling; hosts retire earlier rows explicitly. No sibling edits are included.
-Storage #152 is resolved by the published native dependency boundary. Wasm still
-selects Runtime's execution feature; narrowing that integration remains separate
-from this release. Track [Platform #135](https://github.com/dragginzgame/ic-platform/issues/135)
+Storage #152 is resolved by the published native dependency boundary. The prepared
+0.65.2 Wasm fix removes Runtime's execution feature. Track
+[Platform #135](https://github.com/dragginzgame/ic-platform/issues/135)
 and downstream [Relay #21](https://github.com/dragginzgame/ic-relay/issues/21).
 
 ## Validation and benchmark evidence
@@ -94,7 +105,8 @@ Shared Tooling 0.27.27 (`651f5f7`) remains the reviewed executable snapshot;
 the AGENTS policy reference remains authoritative. Rust 1.99.1 is the support
 floor and pinned compiler. Build/metadata CLI 0.74.0, Host 0.74.1, Testkit CLI 0.79
 and server 16.1.0 are unchanged. Root locks retain Runtime 0.18.1, Metrics 0.27.1
-and Logging 0.24.2; the independent qualifier retains its 0.18.0 client graph.
+and Logging 0.24.2; the independent qualifier selects Runtime/guard 0.18.1 while
+retaining its 0.18.0 native client graph and 16.1.0 server pairing.
 Unused Testkit Native was removed; Storage owns memory metering under test-support.
 See [adoption boundaries](../shared-tooling-adoption.md) for exact selections.
 

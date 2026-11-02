@@ -136,6 +136,8 @@ check-production-graph:
 		--forbid-pattern '^clap(?:_|$$)' \
 		--forbid pocket-ic --forbid serde_json --forbid toml --forbid trybuild \
 		--forbid-feature ic-storage/test-support \
+		--forbid-feature ic-platform-runtime/runtime --forbid-feature ic-platform-runtime/executor --forbid-feature ic-platform-runtime/cdk \
+		--forbid ic-platform-runtime-guard --forbid ic-platform-types --forbid candid --forbid-pattern '^ic-cdk' \
 		--forbid ic-stable-structures --require ic-storage=1 --forbid ic-platform --require ic-platform-runtime=1 --require ic-metrics=1 --require ic-logging=1 --require ic-wire=1
 
 	+RUSTUP_TOOLCHAIN=$(VALIDATION_TOOLCHAIN) RUSTUP_AUTO_INSTALL=0 perl scripts/ci/check-cargo-graph.pl \

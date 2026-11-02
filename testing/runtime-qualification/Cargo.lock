@@ -827,9 +827,9 @@ dependencies = [
 
 [[package]]
 name = "ic-platform-runtime"
-version = "0.18.0"
+version = "0.18.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4fdb0b3fee215166a704b9eb6be076adbf9d406e1b9156e65a9ee53abe6b5489"
+checksum = "890d920056096da50ef4f30886a19c5b89e3f4c331732b8a68d72c169a13a4e9"
 dependencies = [
  "ic-platform-runtime-guard",
  "ic-platform-types",
@@ -841,9 +841,9 @@ dependencies = [
 
 [[package]]
 name = "ic-platform-runtime-guard"
-version = "0.18.0"
+version = "0.18.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "090fa416214c28a07a51cb87da73e4dc125f32b9fdbb05cd5af7907ec890b414"
+checksum = "300a34ce6432af592231b7a2c4cf548180f5b77a9487ef0d065d13a8c83b3dd1"
 
 [[package]]
 name = "ic-platform-types"
@@ -898,6 +898,13 @@ dependencies = [
  "ic-wire",
  "serde",
  "serde_json",
+]
+
+[[package]]
+name = "ic-storage-default-qualification"
+version = "0.0.0"
+dependencies = [
+ "ic-storage",
 ]
 
 [[package]]

@@ -109,14 +109,17 @@ impl Memory for DefaultMemoryImpl {
         ic_platform_runtime::ic0::stable64_size()
     }
     fn grow(&self, pages: u64) -> i64 {
-        ic_platform_runtime::cdk::stable::stable_grow(pages).map_or(-1, |previous| {
+        let previous = ic_platform_runtime::ic0::stable64_grow(pages);
+        if previous == u64::MAX {
+            -1
+        } else {
             i64::try_from(previous).expect("IC page count")
-        })
+        }
     }
     fn read(&self, offset: u64, bytes: &mut [u8]) {
-        ic_platform_runtime::cdk::stable::stable_read(offset, bytes);
+        ic_platform_runtime::ic0::stable64_read(bytes, offset);
     }
     fn write(&self, offset: u64, bytes: &[u8]) {
-        ic_platform_runtime::cdk::stable::stable_write(offset, bytes);
+        ic_platform_runtime::ic0::stable64_write(bytes, offset);
     }
 }

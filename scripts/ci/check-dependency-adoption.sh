@@ -22,7 +22,9 @@ perl "$shared/check-cargo-graph.pl" --consumer "$PWD" \
     --package ic-storage --package ic-metrics-storage --package ic-logging-storage \
     --target wasm32-unknown-unknown --edges normal --explain \
     --forbid pocket-ic --forbid-feature ic-storage/test-support \
-    --require ic-storage=1 --forbid ic-platform --require ic-platform-runtime=1 --require ic-wire=1
+    --require ic-storage=1 --forbid ic-platform --require ic-platform-runtime=1 --require ic-wire=1 \
+    --forbid-feature ic-platform-runtime/runtime --forbid-feature ic-platform-runtime/executor --forbid-feature ic-platform-runtime/cdk \
+    --forbid ic-platform-runtime-guard --forbid ic-platform-types --forbid candid --forbid-pattern '^ic-cdk'
 perl "$shared/check-cargo-graph.pl" --consumer "$PWD" \
     --package ic-storage --package ic-metrics-storage --package ic-logging-storage \
     --target "$host" --edges normal --explain \
@@ -32,6 +34,20 @@ perl "$shared/check-cargo-graph.pl" --consumer "$PWD" \
 perl "$shared/check-cargo-graph.pl" --consumer "$PWD/testing/runtime-qualification" \
     --package ic-storage-runtime-qualification --target "$host" --edges normal --explain \
     --require ic-platform=1 --require ic-wire=1
+# Observe default Storage independently: selecting a runtime-enabled root alongside
+# it would unify features and conceal the production boundary.
+for target in "$host" wasm32-unknown-unknown; do
+    runtime_policy=(--forbid ic-platform-runtime)
+    if [[ "$target" == wasm32-unknown-unknown ]]; then
+        runtime_policy=(--require ic-platform-runtime=1)
+    fi
+    perl "$shared/check-cargo-graph.pl" --consumer "$PWD/testing/runtime-qualification" \
+        --package ic-storage-default-qualification --target "$target" --edges normal --explain \
+        --require ic-storage=1 "${runtime_policy[@]}" --forbid ic-platform \
+        --forbid-feature ic-storage/test-support \
+        --forbid-feature ic-platform-runtime/runtime --forbid-feature ic-platform-runtime/executor --forbid-feature ic-platform-runtime/cdk \
+        --forbid ic-platform-runtime-guard --forbid ic-platform-types --forbid candid --forbid-pattern '^ic-cdk'
+done
 # A separate consumer selects the published facade runtime as an application would.
 # Keep this out of production-library graphs and the opaque-Wasm native driver.
 for target in "$host" wasm32-unknown-unknown; do
@@ -47,6 +63,8 @@ cargo clippy --locked --offline --manifest-path Cargo.toml --target wasm32-unkno
 cargo clippy --locked --offline --manifest-path testing/runtime-qualification/Cargo.toml \
     --package ic-storage-runtime-qualification --target "$host" --all-targets -- -D warnings
 for target in "$host" wasm32-unknown-unknown; do
+    cargo clippy --locked --offline --manifest-path testing/runtime-qualification/Cargo.toml \
+        --package ic-storage-default-qualification --target "$target" --all-targets -- -D warnings
     cargo clippy --locked --offline --manifest-path testing/runtime-qualification/Cargo.toml \
         --package ic-storage-platform-qualification --target "$target" --all-targets -- -D warnings
 done

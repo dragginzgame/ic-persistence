@@ -164,9 +164,9 @@ requirements. This does not authorize other nested workspaces. Follow
 
 Registry requirements remain compatible ranges. Storage uses IC Platform Runtime's
 owned stable-memory API for Wasm backing IO. Native production has no
-Platform/Runtime, runtime-guard or Types dependency. Wasm still selects `runtime`
-until [Platform #135](https://github.com/dragginzgame/ic-platform/issues/135) exposes
-stable-memory IO through `ic0` alone; do not claim Wasm execution isolation yet. No `ic-stable-structures` dependency is
+Platform/Runtime, runtime-guard or Types dependency. Wasm selects only `ic0` from
+published Runtime >=0.18.1 for safe stable64 IO; it must not activate runtime,
+executor, CDK, guard, Types or Candid. No `ic-stable-structures` dependency is
 allowed in the production graph. Memory, codec traits, allocation metadata and
 collection layouts are owned here. Changes require appropriate native corruption,
 growth, custody and installed IO/upgrade qualification. Do not restore old manager

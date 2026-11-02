@@ -21,6 +21,9 @@ cargo test --locked --offline --manifest-path testing/runtime-qualification/Carg
 The same public helper compiles the deployed `DefaultMemoryImpl` path on Wasm.
 Installed IO, bounds/growth refusal, upgrades and rollback remain the separate
 Storage runtime suite; compilation alone does not qualify those behaviors.
-This tests the working candidate, not a repaired registry Storage 0.64.0 archive.
-A newly published Storage release is required before published-only composition
-can pass. IC0-only backing is separate Platform #135 work.
+The sibling `ic-storage-default-qualification` consumer selects only default
+Storage. The same gate observes and compiles it separately on native and Wasm,
+forbidding Runtime on native and execution/Types/Candid on Wasm. This prevents
+runtime-enabled composition from masking missing features in the IC0-only backing.
+These fixtures test the working candidate; registry-only verification remains a
+separate post-publication proof.
