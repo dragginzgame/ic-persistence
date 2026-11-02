@@ -23,7 +23,7 @@ the projection. Current report guidance is in [Operations and diagnostics](opera
 The following signatures summarize the API; they are not a standalone program.
 
 ```rust,ignore
-impl<M: ic_memory::ic_stable_structures::Memory> MemoryRuntime<M> {
+impl<M: ic_storage::ic_stable_structures::Memory> MemoryRuntime<M> {
     pub fn memory_allocations(&self)
         -> Result<MemoryAllocations, RuntimeDiagnosticError>;
     pub fn memory_allocation_summary(&self)
@@ -154,12 +154,12 @@ the integration. A complete upstream collection example is:
 
 ```rust
 fn allocation_snapshot()
-    -> Result<ic_memory::MemoryAllocations, ic_memory::RuntimeDiagnosticError>
+    -> Result<ic_storage::MemoryAllocations, ic_storage::RuntimeDiagnosticError>
 {
-    let report = ic_memory::default_memory_manager_memory_allocations()?;
+    let report = ic_storage::default_memory_manager_memory_allocations()?;
     // A protected integration may require completed bootstrap.
     if report.summary.current_generation.is_none() {
-        return Err(ic_memory::RuntimeDiagnosticError::NotBootstrapped);
+        return Err(ic_storage::RuntimeDiagnosticError::NotBootstrapped);
     }
     Ok(report)
 }
@@ -194,8 +194,8 @@ metadata for retry. The upstream `Memory` trait adapter alone maps these errors
 to the trait's required `-1` result.
 
 `RuntimeOpenError` and policy validation govern opens. Stable-store annotations
-use `Cell<T, ic_memory::RuntimeMemory<DefaultMemoryImpl>>`; import collections
-and backing traits through `ic_memory::ic_stable_structures`. The macros obtain
+use `Cell<T, ic_storage::RuntimeMemory<DefaultMemoryImpl>>`; import collections
+and backing traits through `ic_storage::ic_stable_structures`. The macros obtain
 the current handle from the default runtime.
 
 Canic's owner selects the artifact's configured bucket size and composes
@@ -204,9 +204,9 @@ than creating another runtime or bootstrapping with an unrelated policy. The
 equivalent upstream pattern for a host-selected 16-page configuration is:
 
 ```rust,ignore
-let config = ic_memory::MemoryManagerConfig::new(16)
-    .map_err(ic_memory::RuntimeStateError::from)?;
-ic_memory::bootstrap_default_memory_manager_with_config(
+let config = ic_storage::MemoryManagerConfig::new(16)
+    .map_err(ic_storage::RuntimeStateError::from)?;
+ic_storage::bootstrap_default_memory_manager_with_config(
     config,
     &host_policy,
 )?;
@@ -221,7 +221,7 @@ recovery or doctor inspection with explicit configuration, construct an owned
 explicitly rejects 16; it is not reduced in place. Use the same setting on later
 bootstrap calls. Current Canic source selects 16 pages; ic-memory itself retains
 128 pages as the fresh-state default. This review does not change any consumer
-or deployed memory. The [composed-host example](../crates/ic-memory/examples/composed_host.rs)
+or deployed memory. The [composed-host example](../crates/ic-storage/examples/composed_host.rs)
 qualifies native thread ordering and repeated substrate reopens; Canic owns its
 participant/store-restoration lifecycle proof.
 

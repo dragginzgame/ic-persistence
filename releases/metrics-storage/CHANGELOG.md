@@ -24,3 +24,4 @@ retains its original package and release identities.
 - Adopt Metrics 0.26.0 for public measurement and restoration-error types. Hosts
   exchanging these values must align their Metrics dependency. Arithmetic,
   snapshots, limits and the Rust 1.99.1 support floor are unchanged. [Details](0.66.md).
+

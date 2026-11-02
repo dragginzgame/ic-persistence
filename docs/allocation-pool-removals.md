@@ -6,13 +6,13 @@ The repeated numeric macro callbacks occurred in two retired arms; each name is 
 
 ## Deletions
 
-### crates/ic-memory/examples/key_only.rs
+### crates/ic-storage/examples/key_only.rs
 
 Remove the old per-owner range fixture builder; the host constructs MemoryAllocationPool directly.
 
 - `grant` (fn).
 
-### crates/ic-memory/src/diagnostics.rs
+### crates/ic-storage/src/diagnostics.rs
 
 Replace fixed/range projections and constructors with source MemoryRequest values and the tested MemoryAllocationPool.
 
@@ -21,7 +21,7 @@ Replace fixed/range projections and constructors with source MemoryRequest value
 - `DiagnosticRangeAuthority` (struct).
 - `DiagnosticRangeAuthority::new` (fn).
 
-### crates/ic-memory/src/lib.rs
+### crates/ic-storage/src/lib.rs
 
 Retire numeric/range macro forms and their generated callbacks. The current macro registers key-only MemoryRequest metadata.
 
@@ -31,7 +31,7 @@ Retire numeric/range macro forms and their generated callbacks. The current macr
 - `ic_memory_range::__ic_memory_register_static_range` (fn).
 - `ic_memory_range::__ic_memory_defer_static_range` (fn).
 
-### crates/ic-memory/src/registry.rs
+### crates/ic-storage/src/registry.rs
 
 Remove fixed component input and range registration/sealing paths. Source snapshots accept only requests; host pool policy is separate and runtime-owned.
 
@@ -52,7 +52,7 @@ Remove fixed component input and range registration/sealing paths. Source snapsh
 - `register_static_memory_manager_declaration_with_schema` (fn).
 - `internal_ledger_range` (fn).
 
-### crates/ic-memory/src/registry/tests.rs
+### crates/ic-storage/src/registry/tests.rs
 
 Retire fixed/range-only fixtures. Canonical request tests, lifecycle tests and checked host pool tests cover the maintained boundaries.
 
@@ -65,32 +65,32 @@ Retire fixed/range-only fixtures. Canonical request tests, lifecycle tests and c
 - `equal_fixed_sort_keys_reject_independently_of_label_and_schema_order` (fn).
 - `resolved_history_permutations_match_fully_sealed_declarations_and_fingerprints` (fn).
 
-### crates/ic-memory/src/runtime/allocations.rs
+### crates/ic-storage/src/runtime/allocations.rs
 
 Remove per-range diagnostic ownership. MemoryAllocation.pool_eligible reports current host membership without claiming historic custody.
 
 - `AllocationRangeClaim` (struct).
 
-### crates/ic-memory/src/runtime/default.rs
+### crates/ic-storage/src/runtime/default.rs
 
 Consolidate opens into open_default_memory_manager_memory(key); no alternate name remains.
 
 - `open_default_memory_manager_memory_by_key` (fn).
 
-### crates/ic-memory/src/runtime/mod.rs
+### crates/ic-storage/src/runtime/mod.rs
 
 Consolidate opens into MemoryRuntime::open_memory(key); no alternate name remains.
 
 - `MemoryRuntime::open_memory_by_key` (fn).
 
-### crates/ic-memory/src/runtime/policy.rs
+### crates/ic-storage/src/runtime/policy.rs
 
 Replace numeric-range validation with validate_runtime_claim, checking current namespace ownership and pool eligibility.
 
 - `RuntimeMemoryManagerPolicy::validate_runtime_range` (fn, renamed to
   `validate_runtime_claim` with namespace and pool checks).
 
-### crates/ic-memory/src/runtime/request_tests.rs
+### crates/ic-storage/src/runtime/request_tests.rs
 
 Replace partition/fixed-contract fixtures with shared-pool/cold-reopen tests. Existing admission regressions own persistence retry, reserved activation, retirement and custom rejection; duplicate Limited/Revoked implementations are removed.
 
@@ -112,13 +112,13 @@ Replace partition/fixed-contract fixtures with shared-pool/cold-reopen tests. Ex
 - `current_custom_policy_can_reject_a_recovered_logical_key::Revoked[AllocationPolicy]::validate_reserved_slot` (fn).
 - `current_custom_policy_can_reject_a_recovered_logical_key::Revoked[RuntimeBootstrapPolicy]::runtime_bootstrap_identity` (fn).
 
-### crates/ic-memory/src/runtime/tests.rs
+### crates/ic-storage/src/runtime/tests.rs
 
 Remove the fixed-range ordering fixture; request/pool admission tests retain custom-policy rejection and before-commit ordering.
 
 - `fixed_range_checks_preserve_custom_policy_admission_and_rejection_order` (fn).
 
-### crates/ic-memory/src/slot/mod.rs
+### crates/ic-storage/src/slot/mod.rs
 
 Remove owner-range/mode/coverage fixtures. Physical bounds tests remain; pool constructor/decode and runtime tests qualify namespace admission and exclusions.
 
@@ -143,7 +143,7 @@ Remove owner-range/mode/coverage fixtures. Physical bounds tests remain; pool co
 - `tests::memory_manager_range_authority_deserialization_rejects_overlap` (fn).
 - `tests::memory_manager_range_authority_diagnostic_export_is_stable` (fn).
 
-### crates/ic-memory/src/slot/range_authority.rs
+### crates/ic-storage/src/slot/range_authority.rs
 
 Retire owner partitions, modes, their DTOs/decoders, coverage and overlap helpers. MemoryAuthority and MemoryAllocationPool check current namespace grants and physical exclusions.
 
@@ -172,14 +172,14 @@ Retire owner partitions, modes, their DTOs/decoders, coverage and overlap helper
 - `ranges_overlap` (fn).
 - `validate_diagnostic_string` (fn).
 
-### crates/ic-memory/tests/diagnostic_metadata.rs
+### crates/ic-storage/tests/diagnostic_metadata.rs
 
 Replace range-record decode fixtures with checked MemoryAuthority decode fixtures for the current diagnostic contract.
 
 - `range_record_decode_rejects_invalid_metadata_before_table_assembly` (fn).
 - `range_record_decode_preserves_current_shape_and_explicit_null` (fn).
 
-### crates/ic-memory/tests/runtime_macros.rs
+### crates/ic-storage/tests/runtime_macros.rs
 
 Remove the placeholder numeric-macro type; current macros register owner/key requests without a storage label type.
 
@@ -204,14 +204,14 @@ From `src/slot/range_authority.rs` to `src/slot/id_range.rs`, unchanged physical
 
 The following were renamed and narrowed; they are not additional allocators:
 
-- `adoption_checks_fixed_and_logical_requirements_without_replaying_host` → `adoption_checks_logical_requirements_without_replaying_host` in `crates/ic-memory/src/runtime/adoption_tests.rs`.
-- `adoption_rejects_missing_keys_wrong_authorities_ids_and_metadata` → `adoption_rejects_missing_keys_wrong_authorities_and_metadata` in `crates/ic-memory/src/runtime/adoption_tests.rs`.
-- `GenericRangePolicy` → `GenericAllocationPolicy` in `crates/ic-memory/src/runtime/policy.rs`.
-- `GenericRangePolicy[AllocationPolicy]::Error` → `GenericAllocationPolicy[AllocationPolicy]::Error` in `crates/ic-memory/src/runtime/policy.rs`.
-- `GenericRangePolicy[AllocationPolicy]::validate_key` → `GenericAllocationPolicy[AllocationPolicy]::validate_key` in `crates/ic-memory/src/runtime/policy.rs`.
-- `GenericRangePolicy[AllocationPolicy]::validate_slot` → `GenericAllocationPolicy[AllocationPolicy]::validate_slot` in `crates/ic-memory/src/runtime/policy.rs`.
-- `GenericRangePolicy[AllocationPolicy]::validate_reserved_slot` → `GenericAllocationPolicy[AllocationPolicy]::validate_reserved_slot` in `crates/ic-memory/src/runtime/policy.rs`.
-- `GenericRangePolicy[RuntimeBootstrapPolicy]::runtime_bootstrap_identity` → `GenericAllocationPolicy[RuntimeBootstrapPolicy]::runtime_bootstrap_identity` in `crates/ic-memory/src/runtime/policy.rs`.
+- `adoption_checks_fixed_and_logical_requirements_without_replaying_host` → `adoption_checks_logical_requirements_without_replaying_host` in `crates/ic-storage/src/runtime/adoption_tests.rs`.
+- `adoption_rejects_missing_keys_wrong_authorities_ids_and_metadata` → `adoption_rejects_missing_keys_wrong_authorities_and_metadata` in `crates/ic-storage/src/runtime/adoption_tests.rs`.
+- `GenericRangePolicy` → `GenericAllocationPolicy` in `crates/ic-storage/src/runtime/policy.rs`.
+- `GenericRangePolicy[AllocationPolicy]::Error` → `GenericAllocationPolicy[AllocationPolicy]::Error` in `crates/ic-storage/src/runtime/policy.rs`.
+- `GenericRangePolicy[AllocationPolicy]::validate_key` → `GenericAllocationPolicy[AllocationPolicy]::validate_key` in `crates/ic-storage/src/runtime/policy.rs`.
+- `GenericRangePolicy[AllocationPolicy]::validate_slot` → `GenericAllocationPolicy[AllocationPolicy]::validate_slot` in `crates/ic-storage/src/runtime/policy.rs`.
+- `GenericRangePolicy[AllocationPolicy]::validate_reserved_slot` → `GenericAllocationPolicy[AllocationPolicy]::validate_reserved_slot` in `crates/ic-storage/src/runtime/policy.rs`.
+- `GenericRangePolicy[RuntimeBootstrapPolicy]::runtime_bootstrap_identity` → `GenericAllocationPolicy[RuntimeBootstrapPolicy]::runtime_bootstrap_identity` in `crates/ic-storage/src/runtime/policy.rs`.
 
 The follow-up audit also removes `StaticMemoryDeclaration`'s pending-only
 replacement `ResolvedMemoryDeclaration` and its `authority`/`declaration` methods.

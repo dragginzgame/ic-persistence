@@ -24,3 +24,4 @@ retains its original package and release identities.
 - Adopt Logging 0.24.0 for public log, limit and restoration-error types. Hosts
   exchanging these values must align their Logging dependency. Checkpoint bytes,
   retention, limits and the Rust 1.99.1 support floor are unchanged. [Details](0.64.md).
+

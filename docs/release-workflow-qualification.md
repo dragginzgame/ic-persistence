@@ -899,14 +899,14 @@ On 2026-10-07, prepare the authorized
 0.29.0 source `7a20c685cc83949b7c0e6af9b16816c3a8e7cdd6`. Preserve the preceding
 uncommitted native-CI confirmation. The new numbered pending entry is 0.30.0:
 checkout path dependencies and package-specific manifest references must select
-`crates/ic-memory/`. Package versions remain 0.29.0 and 0.0.0; this preparation
+`crates/ic-storage/`. Package versions remain 0.29.0 and 0.0.0; this preparation
 does not execute a release or change dependency selections.
 
 The maintained manifest inventory contains two approved roots and two packages:
 
 | Owner | Former package manifest | New package manifest | Selected lockfile |
 | --- | --- | --- | --- |
-| Library workspace | `Cargo.toml` | `crates/ic-memory/Cargo.toml` | `Cargo.lock` |
+| Library workspace | `Cargo.toml` | `crates/ic-storage/Cargo.toml` | `Cargo.lock` |
 | Independent installed qualification | `testing/runtime-qualification/Cargo.toml` | `testing/runtime-qualification/crates/ic-memory-runtime-qualification/Cargo.toml` | `testing/runtime-qualification/Cargo.lock` |
 
 Both former manifests become virtual roots with explicit resolver 3, members,
@@ -2612,7 +2612,7 @@ in `target/qualification/0.31.8-host-review/`.
 Under the request to work through issues,
 [#32](https://github.com/dragginzgame/ic-memory/issues/32) is fixed locally by
 changing only the published 0.15.4 example hyperlink's destination to
-`crates/ic-memory/examples/composed_host.rs`. No historical prose, version,
+`crates/ic-storage/examples/composed_host.rs`. No historical prose, version,
 date or order changed. Before the correction, the canonical committed Shared
 local-link checker refuses the old destination; afterwards all root/detail note
 links pass. The failed result remains in `links-before.log` with its status.

@@ -658,7 +658,7 @@ speedup is inferred from that complexity change.
 ## Native allocation measurements
 
 Linux x86-64, Rust 1.99.0, selected root lockfile, standard Cargo release profile,
-one test thread. The [maintained harness](../../crates/ic-memory/src/allocation_measurements_tests.rs)
+one test thread. The [maintained harness](../../crates/ic-storage/src/allocation_measurements_tests.rs)
 counts this thread's System allocation requests. Existing input/fixture memory is
 excluded; measured results are dropped and the counter verifies zero live bytes
 at each boundary. This is requested heap, not RSS or IC instructions/cycles.

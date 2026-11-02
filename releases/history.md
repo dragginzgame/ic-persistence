@@ -33,7 +33,7 @@ This historical ledger receives no new releases.
   checkpoints ([#141](https://github.com/dragginzgame/ic-persistence/issues/141)).
   Old Logging rows require host-owned retirement or a fresh
   allocation; no compatibility reader or automatic reset is included.
-  [Upgrade disposition](../crates/ic-logging-stable/README.md#upgrade-disposition).
+  [Upgrade disposition](../crates/ic-logging-storage/README.md#upgrade-disposition).
 
 ### ⬆️ Dependencies
 
@@ -155,7 +155,7 @@ This historical ledger receives no new releases.
   All old metrics data is explicitly retired: hosts must clear their metrics map
   before upgrading or supply a fresh governed map, and advance reset epochs.
   There is no legacy decoder or automatic reset. Allocation and collection formats
-  remain unchanged. [Upgrade guide](../crates/ic-metrics-stable/README.md#upgrade-disposition).
+  remain unchanged. [Upgrade guide](../crates/ic-metrics-storage/README.md#upgrade-disposition).
 
 ### 🧹 Cleanup
 
@@ -170,7 +170,7 @@ This historical ledger receives no new releases.
 - Add unpublished `ic-logging-stable` with bounded governed checkpoints using
   published Logging 0.17.2. Reopening preserves sequence/time watermarks;
   checkpoint admission rejects regression and rewritten history before mutation.
-  [Guide](../crates/ic-logging-stable/README.md).
+  [Guide](../crates/ic-logging-storage/README.md).
 
 ### ⬆️ Dependencies
 

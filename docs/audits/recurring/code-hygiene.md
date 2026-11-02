@@ -12,13 +12,13 @@ the crate-specific obligations below. An audit does not authorize fixes.
 - Current [safety contract](../../../SAFETY.md), [advanced API](../../../ADVANCED.md),
   [current ledger](../../current-ledger.md) and [operations](../../operations.md).
   Review current contracts; historical reports do not establish present behavior.
-- Public API roots: `crates/ic-memory/src/lib.rs`, `crates/ic-memory/src/capability.rs`, `crates/ic-memory/src/declaration.rs`,
-  `crates/ic-memory/src/policy.rs`, `crates/ic-memory/src/slot/`, `crates/ic-memory/src/runtime/`, and `crates/ic-memory/examples/composed_host.rs`.
+- Public API roots: `crates/ic-storage/src/lib.rs`, `crates/ic-storage/src/capability.rs`, `crates/ic-storage/src/declaration.rs`,
+  `crates/ic-storage/src/policy.rs`, `crates/ic-storage/src/slot/`, `crates/ic-storage/src/runtime/`, and `crates/ic-storage/examples/composed_host.rs`.
   Inventory constructors separately from inert/diagnostic DTOs and runtime owners.
 - Trust transitions: declarations/decoded DTOs → validation → staged ledger →
   physical persistence → committed capability → runtime publication. Trace
-  `crates/ic-memory/src/cbor.rs`, `crates/ic-memory/src/validation.rs`, `crates/ic-memory/src/ledger/`, `crates/ic-memory/src/physical.rs`,
-  `crates/ic-memory/src/stable_cell.rs`, `crates/ic-memory/src/bootstrap.rs`, `crates/ic-memory/src/requests.rs` and `crates/ic-memory/src/runtime/`.
+  `crates/ic-storage/src/cbor.rs`, `crates/ic-storage/src/validation.rs`, `crates/ic-storage/src/ledger/`, `crates/ic-storage/src/physical.rs`,
+  `crates/ic-storage/src/stable_cell.rs`, `crates/ic-storage/src/bootstrap.rs`, `crates/ic-storage/src/requests.rs` and `crates/ic-storage/src/runtime/`.
   Recovery must reject malformed current-format bytes and corrupt/ambiguous slots
   before issuing authority. Keep constructor/deserialization invariants aligned;
   decoded DTOs and diagnostics never grant memory access.
@@ -39,7 +39,7 @@ the crate-specific obligations below. An audit does not authorize fixes.
 
 ## Focused evidence
 
-Inspect `crates/ic-memory/src`, `crates/ic-memory/tests`, `crates/ic-memory/examples`, `crates/ic-memory/fixtures/current`, `testing/runtime-qualification`,
+Inspect `crates/ic-storage/src`, `crates/ic-storage/tests`, `crates/ic-storage/examples`, `crates/ic-storage/fixtures/current`, `testing/runtime-qualification`,
 Make/CI and maintained guides for the selected scope. Trace request factories
 through checked snapshots, explicit host composition, examples and compile-fail consumers. Runtime,
 host release adapters and the independent PocketIC harness have different contracts;
