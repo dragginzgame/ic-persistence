@@ -83,6 +83,14 @@ This repository selects `RELEASE_DELIVERY=direct`; the runner owns commits, tags
 locking, ordered effects and atomic branch/tag push. PR release delivery remains
 unselected. A contribution PR does not change that policy.
 
+Before delivery, disclose the absolute checkout path, branch, source commit,
+remote destination and local versus remote effects. The configured direct path
+does not authorize pushing `main`: obtain explicit authorization for that effect
+and for any alternate delivery checkout, unless already authorized in the task.
+Keep implementation in the requested checkout or an explicitly authorized durable
+contribution location; temporary validation copies must never hold the only copy.
+See the [shared checkout contract](rules/contributions.md#durable-work-and-checkout-location).
+
 Prepare missing caches explicitly with `make fetch-dependencies` and, when needed,
 `cargo fetch --locked --manifest-path testing/runtime-qualification/Cargo.toml`.
 Release commands separately authorize locked cache and selected-tool preparation

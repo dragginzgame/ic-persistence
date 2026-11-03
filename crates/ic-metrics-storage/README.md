@@ -11,7 +11,7 @@ provenance and earlier version selections; the current format cut is described b
 Optional durable counter, aggregate, summary and histogram snapshots in **one stable
 B-tree map per canister**. Multiple components share that map with permanent
 namespace/name keys. Adding this package is the opt-in: `ic-metrics` alone stays
-allocation-free, `no_std` and volatile, with Serde and native IC Wire support.
+allocation-free, `no_std` and volatile, with validated Serde support.
 This adapter uses `std` and IC Storage’s owned governed ordered map,
 allocates bounded records and supports native hosts and Wasm with Rust 1.99.1.
 
@@ -24,8 +24,11 @@ for the selected dependency's declaration and lifecycle APIs.
 Storage owns the core `storage` release identity. This adapter
 owns its independent `metrics-storage` release group; hosts select compatible core
 requirements declared by its package metadata. Hosts exchanging arithmetic values
-also select `ic-metrics = "0.27"` so Rust type identities agree. Native report
-schemas use Wire 0.15 with the default `native-wire` feature. See the adapter's
+also select `ic-metrics = "0.28"` so Rust type identities agree. The adapter
+selects Metrics 0.28, which has no Wire dependency or metadata feature, and owns its stored
+Wire 0.16 codec. Services own frontend/report DTOs and their Wire schemas; this
+package does not require or supply Wire implementations for Metrics types.
+See [Storage #154](https://github.com/dragginzgame/ic-storage/issues/154) and the adapter's
 [release ledger](../../releases/metrics-storage/CHANGELOG.md) and [group commands](../../RELEASING.md#release-groups).
 Stored formats and governed handle requirements are unchanged by release grouping.
 
@@ -39,9 +42,12 @@ hooks.
 
 ## Upgrade disposition
 
-This release adopts Metrics 0.27 and Storage's owned allocator and ordered maps.
-Hosts must rebuild with the matching supplier types and use fresh/reset whole
-backing. The previous manager and collection images have no reader. Do not clear
+Metrics 0.28 and Wire 0.16 change public Rust type identities; align direct
+dependencies when exchanging those types. Existing Storage-owned backing and
+metric rows require no reset or migration for this adoption.
+
+Upgrading from the retired manager/collection implementation to Storage's owned
+allocator and ordered maps still requires fresh/reset whole backing. The previous manager and collection images have no reader. Do not clear
 only governance while retaining application bytes. Increment the host's reset
 epoch when restarting metric history.
 

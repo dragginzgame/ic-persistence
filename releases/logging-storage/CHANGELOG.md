@@ -7,7 +7,7 @@ retains its original package and release identities.
 
 ### ⚠️ Breaking
 
-- Expose Wire 0.15 codec errors while preserving checkpoint bytes and budgets.
+- Expose Wire 0.16 codec errors while preserving checkpoint bytes and budgets.
 - Adopt fallible Storage map operations and propagate collection admission errors
   through `StoreError::Storage`; host map constructors now return `Result`.
 

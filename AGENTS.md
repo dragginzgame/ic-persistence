@@ -1,7 +1,7 @@
 # Repository Instructions
 
 For scope, delegated delivery, validation, compiler support and reporting, use
-[Shared policy at e84252f](https://github.com/dragginzgame/shared-tooling/blob/e84252f5740bacd708359580455ea2b6fd67df38/DRAGGINZGAME.md)
+[Shared policy at 18e7270](https://github.com/dragginzgame/shared-tooling/blob/18e727032237e4a6540fefce66bb1b90beb31644/DRAGGINZGAME.md)
 and its revision-bound references over older snapshot or local-guide wording.
 This includes Rust 1.99.1 as minimum and pinned development/release compiler;
 check local declarations and qualification before claiming adoption is complete.
@@ -142,8 +142,10 @@ to prove adoption.
 
 Follow the reviewed shared [contribution rules](rules/contributions.md),
 [hard-cut baseline](DRAGGINZGAME.md#pre-10-contracts) and
-[changelog rules](rules/changelogs.md). Storage uses direct release delivery;
-an ordinary PR does not select PR release delivery.
+[changelog rules](rules/changelogs.md). Storage configures direct release delivery;
+that default does not authorize an integration-branch push or an alternate delivery
+checkout. Follow the shared explicit authorization and durable-work rules. An
+ordinary PR does not select PR release delivery.
 
 Root `CHANGELOG.md` is an index. Each group owns `releases/<group>/CHANGELOG.md`
 and new detailed notes under that directory; shared coordinated history lives

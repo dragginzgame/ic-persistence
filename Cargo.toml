@@ -33,13 +33,13 @@ ic-logging-storage = { path = "crates/ic-logging-storage", version = "0.63.0" }
 
 # External production dependencies.
 ic-logging = { version = "0.24.0", default-features = false }
-# Default native metadata shares the selected Wire identity.
-ic-metrics = "0.27.0"
+# Storage owns its codec; Metrics supplies arithmetic and validated Serde only.
+ic-metrics = { version = "0.28.0", default-features = false }
 thiserror = "2.0"
 
 # External dependencies with mixed production/test usage; members select features.
 ic-platform-runtime = { version = "0.19.0", default-features = false }
-ic-wire = { version = "0.15.0", default-features = false }
+ic-wire = { version = "0.16.0", default-features = false }
 serde = { version = "1.0", default-features = false, features = [
     "alloc",
     "derive",

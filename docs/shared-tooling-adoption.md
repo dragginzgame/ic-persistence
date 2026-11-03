@@ -9,11 +9,26 @@ local baseline. Future policy changes require reviewed snapshot adoption.
 
 ## Current source selection
 
-IC Storage selects committed Shared Tooling VERSION 0.27.27 at
-`651f5f7acb2e3055abd51ba5f835a2112801666a`. The snapshot was previewed and exported
+IC Storage selects committed Shared Tooling VERSION 0.27.29 at
+`18e727032237e4a6540fefce66bb1b90beb31644`. The snapshot was previewed and exported
 from a clean checkout of that commit; dirty sibling changes are excluded. The
 manifest records the complete selected payload and executable-mode inventory.
 Source verification and native qualification remain separate.
+
+This adoption requires lasting implementation in the requested checkout, an
+authorized durable PR checkout, or another specifically approved durable location.
+Issues record deferred work but do not preserve existing diffs. Never leave the
+only implementation in `/tmp`, `target/` or a cache. Direct integration-branch
+pushes and alternate delivery checkouts need explicit authorization; Storage's
+configured direct-release default is not consent. Existing temporary work must
+be preserved through an authorized route before cleanup.
+
+The executable changes admit path-only private development members in release
+group plans and refuse incomplete owned-tree inventories after traversal errors.
+Storage's three publishable groups keep their existing versioned catalogs and
+complete release gates. The exporter also supplies the missing validation-runner
+guide. Tool versions, compiler pins, dependency selections and runtime behavior
+are unchanged; no tool-store maintenance or cleanup runs during adoption.
 
 This adoption includes Shared's package-scoped native tool identity and explicit
 tool-store maintenance support. Setup may trim its own successful build scratch;
@@ -60,21 +75,29 @@ or permission for other direct IC dependencies. The default published comparison
 still uses the Platform 0.17 facade. Both identities are retained in that
 workspace's lockfile; normal product graphs remain upstream-free.
 
-Both catalogs require published Wire 0.15.0 and select Wire/Derive 0.15.0.
-Public codec errors carry the new Wire Rust identity; hosts matching those errors
-must align their dependency. Codec bytes, budgets and restoration contracts are
-unchanged. Core Storage, production Wasm and the independent native qualifier
-each select one Wire 0.15 provider. Metrics Storage 0.66.0 selects
-published Metrics 0.27.0, aligning its default native schema traits with Wire 0.15
-and removing Wire/derive 0.14 from the root lockfile. The combined native adapter
-graph also has one Wire identity. No defaults are suppressed and no supplier
-overrides are selected. Metrics Storage publication is verified separately from
-Storage; Logging Storage retains its pending release.
+Both catalogs require and select published Wire/Derive 0.16.0. Public codec
+errors and Storage's configured Wire limits carry that Rust identity; hosts
+exchanging those values must align their direct dependency. Storage does not
+select Wire's optional Platform Account schemas. Owned codec bytes, budgets,
+directory/collection framing and restoration contracts are unchanged.
+
+Metrics 0.28.0 supplies arithmetic and validated Serde without a Wire dependency
+or native metadata feature, completing the supplier change under [Storage #154](https://github.com/dragginzgame/ic-storage/issues/154)
+and [Observability #128](https://github.com/dragginzgame/ic-observability/issues/128).
+Storage owns its record codecs; services own report DTO/schema declarations.
+The obsolete direct Metrics schema test is removed, while frozen rows, invalid
+numeric states, continuity and reopen coverage remain. Native production checks
+refuse Metrics metadata feature unification and require one Wire identity;
+the independent qualifier also selects one Wire provider. No foreign trait
+implementations, supplier patches or replacement integration crate are added.
+Metrics 0.28.0 is published; Storage qualification uses that registry supplier.
+This preparation targets Storage 0.66.0, Metrics Storage 0.67.0 and the existing
+Logging Storage 0.64.0 draft; it does not publish any group.
 The library graph no longer selects Testkit Native: it has no allocation API
 callers, and Storage owns backing IO metering. Native 0.80's memory-module removal
 therefore requires no API migration here. Installed qualification selects Testkit
 CLI 0.79.0 independently. Wire endpoint and platform-types integration remain unselected.
-Metrics Storage's public measurement/error types carry Metrics 0.27 identity;
+Metrics Storage's public measurement/error types carry Metrics 0.28 identity;
 Logging Storage's public log/limit/restoration-error types carry Logging 0.24
 identity. Hosts must align their direct supplier dependencies. Both suppliers now
 share this repository's Rust 1.99.1 floor; arithmetic, logging semantics, encoded
@@ -483,7 +506,8 @@ full gates in the earlier investigation.
 
 `make check-dependency-adoption` is a focused, read-only candidate check before
 planning downstream versions or building release artifacts. Prepare proposed
-supplier selections in an isolated checkout with both existing lockfiles, using
+supplier selections in the requested checkout or an explicitly authorized durable
+contribution checkout with both existing lockfiles, using
 source/archive qualification for unpublished suppliers. Record the required
 runtime/public-type/security/minimum-capability alignment and its introducing
 path; classify other refreshes as optional with a reason. An available compatible

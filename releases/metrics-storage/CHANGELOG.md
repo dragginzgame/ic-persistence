@@ -3,6 +3,15 @@
 Current releases use the Storage naming. [Earlier published history](https://github.com/dragginzgame/ic-storage/blob/23deb81c48d58558ac3b0ce36bf266ddc25dca91/releases/metrics-stable/CHANGELOG.md)
 retains its original package and release identities.
 
+## [0.67.0]
+
+### ⚠️ Breaking
+
+- Adopt Wire 0.16 codec errors and Metrics 0.28 measurement/restoration types.
+  Align direct dependencies when exchanging those values. Services own report
+  DTO schemas; stored rows, arithmetic and validated restoration remain unchanged ([#154 — Remove Metrics-native schema coupling](https://github.com/dragginzgame/ic-storage/issues/154)).
+  [Details](0.67.md).
+
 ## [0.66.0] - 2026-11-02
 
 ### ⚠️ Breaking

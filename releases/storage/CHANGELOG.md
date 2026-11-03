@@ -3,6 +3,21 @@
 Current releases use the Storage naming. [Earlier published history](https://github.com/dragginzgame/ic-storage/blob/23deb81c48d58558ac3b0ce36bf266ddc25dca91/releases/persistence/CHANGELOG.md)
 retains its original package and release identities.
 
+## [0.66.0]
+
+### ⚠️ Breaking
+
+- Adopt Wire 0.16 for public codec errors and limits. Hosts exchanging those Rust
+  values must align their Wire dependency; stored bytes and reopening stay unchanged.
+
+### 🔧 Changed
+
+- Adopt Shared Tooling 0.27.29: preserve implementation in authorized durable
+  checkouts, require explicit direct-push and alternate-delivery authority, and
+  reject incomplete tool-store inventories. Release planning supports private
+  path-only development members; the tooling update preserves Storage's package APIs and formats.
+  [Details](0.66.md).
+
 ## [0.65.5] - 2026-11-03
 
 ### 🧪 Testing
