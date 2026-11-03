@@ -51,6 +51,8 @@ case "$1" in
                 [[ "${ADOPTION_FAILURE:-}" != runtime-policy ]] || printf 'ic-platform-runtime v0.17.1\n'
             else
                 [[ "${ADOPTION_FAILURE:-}" != native-runtime ]] || printf 'ic-platform-runtime v0.18.0\n'
+                [[ "${ADOPTION_FAILURE:-}" != native-wire-family ]] || printf 'ic-wire v0.15.0\n'
+                [[ "${ADOPTION_FAILURE:-}" != native-metrics-wire ]] || printf 'ic-metrics feature "native-wire"\n'
             fi
         fi
         [[ "${ADOPTION_FAILURE:-}" != plausible-tree ]] || exit 25
@@ -72,7 +74,7 @@ cd "$fixture/source"
 make -j4 --no-print-directory check-dependency-adoption > "$fixture/success.log" 2>&1
 [[ "$(wc -l < "$ADOPTION_CALLS")" == 15 ]]
 awk 'NR<=2 && $1!="metadata" {exit 1} NR>2 && NR<=9 && $1!="tree" {exit 1} NR>9 && $1!="clippy" {exit 1}' "$ADOPTION_CALLS"
-for failure in root-metadata independent-metadata runtime-policy native-runtime independent-policy default-native default-executor composition-policy plausible-tree root-lint independent-lint default-lint composition-lint; do
+for failure in root-metadata independent-metadata runtime-policy native-runtime native-wire-family native-metrics-wire independent-policy default-native default-executor composition-policy plausible-tree root-lint independent-lint default-lint composition-lint; do
     : > "$ADOPTION_CALLS"
     if ADOPTION_FAILURE="$failure" make -j4 --no-print-directory check-dependency-adoption > "$fixture/$failure.log" 2>&1; then exit 1; fi
     case "$failure" in

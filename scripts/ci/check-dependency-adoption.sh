@@ -28,6 +28,7 @@ perl "$shared/check-cargo-graph.pl" --consumer "$PWD" \
 perl "$shared/check-cargo-graph.pl" --consumer "$PWD" \
     --package ic-storage --package ic-metrics-storage --package ic-logging-storage \
     --target "$host" --edges normal --explain \
+    --require ic-wire=1 --forbid-feature ic-metrics/native-wire \
     --forbid ic-platform --forbid ic-platform-runtime --forbid ic-platform-types --forbid ic-platform-runtime-guard
 # The native qualifier exchanges Platform/Wire types and opaque Wasm bytes;
 # it deliberately has no normal dependency on the local Memory/Storage crates.
