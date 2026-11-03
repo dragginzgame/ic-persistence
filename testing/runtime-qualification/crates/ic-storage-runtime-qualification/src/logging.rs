@@ -92,7 +92,8 @@ pub(super) fn qualify(pic: &PocketIc) {
         "trapped update must roll back heap and checkpoint"
     );
 
-    pic.advance_time(Duration::from_secs(300));
+    pic.advance_time(Duration::from_secs(300))
+        .expect("advance PocketIC time");
     super::assert_trap(
         pic.upgrade_canister(
             canister,
@@ -107,7 +108,8 @@ pub(super) fn qualify(pic: &PocketIc) {
         retained,
         "trapped upgrade must roll back its checkpoint"
     );
-    pic.advance_time(Duration::from_secs(300));
+    pic.advance_time(Duration::from_secs(300))
+        .expect("advance PocketIC time");
     pic.upgrade_canister(
         canister,
         wasm.clone(),
@@ -138,7 +140,8 @@ pub(super) fn qualify(pic: &PocketIc) {
     assert!(pruned.snapshot.rows.is_empty());
     assert_eq!(pruned.snapshot.next_sequence, Some(2));
     assert_eq!(pruned.snapshot.last_created_at_secs, Some(20));
-    pic.advance_time(Duration::from_secs(300));
+    pic.advance_time(Duration::from_secs(300))
+        .expect("advance PocketIC time");
     pic.upgrade_canister(
         canister,
         wasm,
@@ -155,9 +158,9 @@ pub(super) fn qualify(pic: &PocketIc) {
     assert_eq!(resumed.outcome, Outcome::Appended(2));
     assert_eq!(resumed.snapshot.next_sequence, Some(3));
     let wrong_identity = frame(protocol::UPDATE_ID, &None::<Append>);
-    assert!(
+    super::assert_trap(
         pic.query_call(canister, canister, "logging_query", wrong_identity)
-            .is_err()
+            .unwrap_err(),
     );
     assert_eq!(read(pic, canister), resumed.snapshot);
     let budget = update(pic, canister, &Update::TextBudgetProbe);
@@ -173,7 +176,8 @@ pub(super) fn qualify(pic: &PocketIc) {
     );
     assert_eq!(budget.snapshot.next_sequence, Some(4));
     assert_eq!(read(pic, canister), resumed.snapshot);
-    pic.advance_time(Duration::from_secs(300));
+    pic.advance_time(Duration::from_secs(300))
+        .expect("advance PocketIC time");
     pic.upgrade_canister(
         canister,
         fs::read(env::var("IC_LOGGING_QUALIFICATION_WASM").unwrap()).unwrap(),

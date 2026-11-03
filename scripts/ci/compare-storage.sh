@@ -15,7 +15,8 @@ manifest=testing/runtime-qualification/Cargo.toml
 reference="${BENCH_REFERENCE:-dfinity}"
 [[ "$reference" == dfinity || "$reference" == dfinity-head ]]
 arguments=(--patterns "${BENCH_PATTERNS:-uniform,hot16}" --rounds "${BENCH_ROUNDS:-1}"
-    --cache-bytes "${BENCH_CACHE_BYTES:-0}" --upstream-cache-slots "${BENCH_UPSTREAM_CACHE_SLOTS:-0}")
+    --cache-bytes "${BENCH_CACHE_BYTES:-0}" --upstream-cache-slots "${BENCH_UPSTREAM_CACHE_SLOTS:-0}"
+    --upstream-bucket-pages "${BENCH_UPSTREAM_BUCKET_PAGES:-128}")
 [[ -z "${BENCH_CASES:-}" ]] || arguments+=(--cases "$BENCH_CASES")
 [[ "${BENCH_SHUFFLED:-0}" != 1 ]] || arguments+=(--shuffled)
 [[ "${BENCH_COLD_CACHE:-0}" != 1 ]] || arguments+=(--cold-cache)

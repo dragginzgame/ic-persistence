@@ -81,6 +81,12 @@ impl ReadNode {
         }
         Ok(Err(low))
     }
+    pub fn inline_value(&self, index: usize) -> Option<&[u8]> {
+        match &self.entries[index].value {
+            ReadValue::Inline(range) => Some(&self.bytes[range.clone()]),
+            ReadValue::External(_) => None,
+        }
+    }
     pub fn value(&self, index: usize) -> Value {
         match &self.entries[index].value {
             ReadValue::Inline(range) => Value::Inline(self.bytes[range.clone()].to_vec()),

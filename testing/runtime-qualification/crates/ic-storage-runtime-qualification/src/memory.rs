@@ -87,7 +87,8 @@ pub(super) fn qualify(pic: &PocketIc, measure_valid_io: bool) {
         println!("installed invalid IO: 12 traps, neighboring marker and prior mutation preserved");
 
         for mode in [1_u8, 2] {
-            pic.advance_time(Duration::from_secs(300));
+            pic.advance_time(Duration::from_secs(300))
+                .expect("advance PocketIC time");
             super::assert_trap(
                 pic.upgrade_canister(
                     canister,
@@ -103,7 +104,8 @@ pub(super) fn qualify(pic: &PocketIc, measure_valid_io: bool) {
                 "failed upgrade must preserve original state"
             );
         }
-        pic.advance_time(Duration::from_secs(300));
+        pic.advance_time(Duration::from_secs(300))
+            .expect("advance PocketIC time");
         pic.upgrade_canister(
             canister,
             wasm.clone(),
@@ -134,10 +136,10 @@ pub(super) fn qualify(pic: &PocketIc, measure_valid_io: bool) {
                     offset,
                 },
             );
-            let cycles_before = pic.cycle_balance(canister);
+            let cycles_before = pic.cycle_balance(canister).expect("read canister cycles");
             let reply = pic.update_call(canister, canister, "io", args).unwrap();
             let cycles = cycles_before
-                .checked_sub(pic.cycle_balance(canister))
+                .checked_sub(pic.cycle_balance(canister).expect("read canister cycles"))
                 .expect("measured update must not increase the cycle balance");
             let reply: protocol::IoReply =
                 native::decode_response(protocol::IO_ID, &reply, protocol::RESPONSE).unwrap();

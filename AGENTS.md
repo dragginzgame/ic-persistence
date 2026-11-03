@@ -165,7 +165,7 @@ requirements. This does not authorize other nested workspaces. Follow
 Registry requirements remain compatible ranges. Storage uses IC Platform Runtime's
 owned stable-memory API for Wasm backing IO. Native production has no
 Platform/Runtime, runtime-guard or Types dependency. Wasm selects only `ic0` from
-published Runtime >=0.18.1 for safe stable64 IO; it must not activate runtime,
+published Runtime >=0.19.0 for safe stable64 IO; it must not activate runtime,
 executor, CDK, guard, Types or Candid. No `ic-stable-structures` dependency is
 allowed in the production graph. Memory, codec traits, allocation metadata and
 collection layouts are owned here. Changes require appropriate native corruption,
@@ -174,7 +174,7 @@ or collection compatibility paths during the rewrite.
 
 The independent qualification workspace consumes PocketIC through IC Platform's
 optional native client boundary; its lockfile selects owned client
-`ic-platform-pocket-ic` 0.18.0 with the 16.1 protocol. Testkit 0.79.0 owns the reviewed
+`ic-platform-pocket-ic` 0.19.0 with the 16.1 protocol. Testkit 0.79.0 owns the reviewed
 16.1.0 server selection. Changing that pair requires repeating installed
 qualification; historical 16.0.0 client/server evidence cannot qualify the new
 pairing. Keep both lockfiles, sources, features and toolchains unchanged during

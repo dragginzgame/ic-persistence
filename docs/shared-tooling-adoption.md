@@ -24,28 +24,31 @@ The bootstrap observer, source-drift refusal and captured validation-input
 checkpoints remain selected. Common formatter, compiler and host-tool pins are
 unchanged; Rust 1.99.1 remains both the support floor and development compiler.
 
-Production Storage imports `ic-platform-runtime` 0.18.0 only on Wasm. Native
+Production Storage imports `ic-platform-runtime` 0.19.0 only on Wasm. Native
 production selects no Platform/Runtime, runtime guard or Types provider. Wasm
-production still needs `ic0` and `runtime`: Runtime 0.18 publicly exposes only
-stable-memory size through `ic0`; grow/read/write are private there and available
-publicly through CDK. [Platform #135](https://github.com/dragginzgame/ic-platform/issues/135)
-tracks exposing those existing wrappers without execution/type activation. Until
-a published owner release is adopted, Storage's Wasm backing still enables the
-executor, guard and Types; the optional execution boundary is not yet restored.
+production selects `ic0` alone: safe public `stable64_*` wrappers cover size,
+growth, reads and writes. The execution boundary restored in Storage 0.65.2
+remains intact; the default product graph excludes executor, CDK, guard, Types
+and Candid. Platform 0.19's Types 0.18 changes are confined to explicitly selected
+development/runtime-composition graphs, not Storage's public codec types.
 Logging's Wasm qualification entrypoints explicitly select CDK as a dev dependency.
 The separate unpublished `ic-storage-platform-qualification` consumer composes
 candidate Storage with the facade's `runtime` feature for issue #152. Adoption
 checks require one canonical Runtime/guard on native and Wasm and compile both
-graphs; its native test checks governed cell creation/reopen. This is source
-qualification, not evidence that registry Storage 0.64.0 has been repaired.
-The native qualifier uses Platform 0.18.0's
-owned PocketIC client 0.18.0, retaining the 16.1 protocol and Testkit-selected
-server 16.1.0. No direct registry client declarations or conversion layer are added.
+graphs; its native test checks governed cell creation/reopen.
+The native qualifier uses Platform 0.19.0's owned PocketIC client 0.19.0,
+retaining the 16.1 protocol and Testkit-selected server 16.1.0. Fallible build,
+installation, clock and cycle operations propagate or diagnose client errors.
+Rollback assertions accept only canister rejects with the expected trap code;
+transport/protocol errors cannot qualify as rollback evidence. Installed IO,
+all five collection forms, custody, directory faults, upgrades and Logging were
+requalified under this pairing. No direct registry client declarations or
+conversion layer are added. Evidence: `target/platform-019-adoption/`.
 
 Platform 0.18 removed its stable-structures facade. The unpublished comparison
 benchmark alone retains an explicitly named `ic-platform-stable-benchmark` alias
 for Platform 0.17, with only its `stable-structures` feature. Its system calls use
-Runtime 0.18 and its native driver uses Platform 0.18. Production has no upstream
+Runtime 0.19 and its native driver uses Platform 0.19. Production has no upstream
 collection dependency. Optional crypto/certification profiles remain unselected.
 
 The maintainer-requested upstream comparison additionally selects the immutable

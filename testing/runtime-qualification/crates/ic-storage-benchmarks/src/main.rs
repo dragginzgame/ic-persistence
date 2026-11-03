@@ -33,6 +33,9 @@ struct Arguments {
     cache_bytes: usize,
     #[arg(long, default_value_t = 0)]
     upstream_cache_slots: usize,
+    /// ICSS MemoryManager bucket size, in 64 KiB pages; does not affect Storage.
+    #[arg(long, default_value = "128")]
+    upstream_bucket_pages: std::num::NonZeroU16,
     #[arg(long)]
     cold_cache: bool,
     #[arg(long, default_value_t = 1, value_parser = clap::value_parser!(u32).range(1..=20))]
@@ -68,6 +71,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             "rows": args.rows, "structures": ["Map","Set","Vector","Cell","Region"], "samples": args.samples, "cases": cases.iter().map(|case| serde_json::json!({"case":case, "key_type":case.key_type(), "value_type":case.value_type(), "logical_value_bytes":case.payloads(), "structure":case.structure(), "operations":case.operations(), "population_rows":case.rows(args.rows)})).collect::<Vec<_>>(), "batch_sizes": [1,32],
             "patterns": args.patterns, "seed": "sample + 1 + round * 7919", "shuffled": args.shuffled,
             "cache_bytes": args.cache_bytes, "upstream_cache_slots": args.upstream_cache_slots, "cold_cache": args.cold_cache, "cache_scope": "ordinary Map only", "rounds": args.rounds, "reference_revision": args.reference_revision,
+            "upstream_bucket_pages": args.upstream_bucket_pages,
             "backend_order": "alternates each sample", "measurement": "performance_counter(0) around operations; setup, trace/value creation, validation and Wire response excluded",
             "owned_wasm_bytes": wasm[0].len(), "dfinity_wasm_bytes": wasm[1].len(),
             "state": "fresh canister per case/sample/backend; operations run in declared order"
@@ -76,7 +80,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let pic = PocketIcBuilder::new()
         .with_server_url(url.parse()?)
         .with_application_subnet()
-        .build();
+        .build()?;
     let mut raw = fs::File::create(args.output.join("samples.jsonl"))?;
     let mut timings: Samples = BTreeMap::new();
     for case in cases {
@@ -86,8 +90,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     for sample in 0..args.samples {
                         for backend in if sample % 2 == 0 { [0, 1] } else { [1, 0] } {
                             let name = ["ic-storage", "ic-stable-structures"][backend];
-                            let canister = pic.create_canister();
-                            pic.add_cycles(canister, 100_000_000_000_000);
+                            let canister = pic.create_canister()?;
+                            pic.add_cycles(canister, 100_000_000_000_000)?;
                             pic.install_canister(
                                 canister,
                                 wasm[backend].clone(),
@@ -97,12 +101,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                                         case,
                                         cache_bytes: args.cache_bytes,
                                         upstream_cache_slots: args.upstream_cache_slots,
+                                        upstream_bucket_pages: args.upstream_bucket_pages,
                                         cold_cache: args.cold_cache,
                                     },
                                     LIMITS,
                                 )?,
                                 None,
-                            );
+                            )?;
                             let ids = population(
                                 case.rows(args.rows),
                                 args.shuffled
@@ -215,7 +220,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut summary = fs::File::create(args.output.join("summary.csv"))?;
     writeln!(
         summary,
-        "rows,structure,case,key_type,value_type,logical_value_bytes,batch_or_scan_limit,pattern,operation,storage_median_instructions,dfinity_median_instructions,storage_over_dfinity,storage_median_stable_pages,dfinity_median_stable_pages"
+        "rows,structure,case,key_type,value_type,logical_value_bytes,batch_or_scan_limit,pattern,operation,storage_median_instructions,dfinity_median_instructions,storage_over_dfinity,storage_median_stable_pages,dfinity_median_stable_pages,upstream_bucket_pages"
     )?;
     for ((case, payload, count, pattern, operation, backend), samples) in &timings {
         if backend != "ic-storage" {
@@ -235,12 +240,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let b_pages = median(&other.iter().map(|s| s.stable_pages).collect::<Vec<_>>());
         writeln!(
             summary,
-            "{},{},{case:?},{},{},{payload},{count},{pattern:?},{operation},{a},{b},{:.4},{a_pages},{b_pages}",
+            "{},{},{case:?},{},{},{payload},{count},{pattern:?},{operation},{a},{b},{:.4},{a_pages},{b_pages},{}",
             case.rows(args.rows),
             case.structure(),
             case.key_type(),
             case.value_type(),
-            a as f64 / b as f64
+            a as f64 / b as f64,
+            args.upstream_bucket_pages
         )?;
     }
     println!(
@@ -410,6 +416,72 @@ fn admit_phase(model: &BTreeMap<u64, Vec<u8>>, r: Request) {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn bucket_selection_is_nonzero_and_survives_initialization_encoding() {
+        let base = [
+            "bench",
+            "--owned-wasm",
+            "owned.wasm",
+            "--dfinity-wasm",
+            "dfinity.wasm",
+            "--output",
+            "report",
+        ];
+        assert_eq!(
+            Arguments::try_parse_from(base)
+                .unwrap()
+                .upstream_bucket_pages
+                .get(),
+            128
+        );
+        for value in ["0", "65536", "-1"] {
+            assert!(
+                Arguments::try_parse_from(
+                    base.into_iter().chain(["--upstream-bucket-pages", value])
+                )
+                .is_err()
+            );
+        }
+        for value in ["1", "8", "128", "65535"] {
+            let args = Arguments::try_parse_from(
+                base.into_iter().chain(["--upstream-bucket-pages", value]),
+            )
+            .unwrap();
+            let initialization = Initialization {
+                case: Case::U64U64,
+                cache_bytes: 0,
+                upstream_cache_slots: 0,
+                upstream_bucket_pages: args.upstream_bucket_pages,
+                cold_cache: false,
+            };
+            let bytes = ic_wire::native::encode_request(0, &initialization, LIMITS).unwrap();
+            let decoded: Initialization =
+                ic_wire::native::decode_request(0, &bytes, LIMITS).unwrap();
+            assert_eq!(decoded.upstream_bucket_pages, args.upstream_bucket_pages);
+        }
+        #[derive(serde::Serialize)]
+        struct UncheckedInitialization {
+            case: Case,
+            cache_bytes: usize,
+            upstream_cache_slots: usize,
+            upstream_bucket_pages: u16,
+            cold_cache: bool,
+        }
+        for pages in [0, 1] {
+            let input = UncheckedInitialization {
+                case: Case::U64U64,
+                cache_bytes: 0,
+                upstream_cache_slots: 0,
+                upstream_bucket_pages: pages,
+                cold_cache: false,
+            };
+            let bytes = ic_wire::native::encode_request(0, &input, LIMITS).unwrap();
+            assert_eq!(
+                ic_wire::native::decode_request::<Initialization>(0, &bytes, LIMITS).is_ok(),
+                pages != 0
+            );
+        }
+    }
     #[test]
     fn mixed_mutation_rounds_preserve_phase_preconditions_and_population() {
         for case in CASES {

@@ -19,10 +19,10 @@ license = "MIT"
 clap = { version = "4.6", default-features = false, features = ["derive", "std", "help", "usage", "error-context"] }
 # Facade for the native client and explicit runtime-composition fixture.
 # Testkit retains server selection and lifecycle.
-ic-platform = { version = "0.18.0", default-features = false }
-ic-platform-runtime = { version = "0.18.1", default-features = false }
+ic-platform = { version = "0.19.0", default-features = false }
+ic-platform-runtime = { version = "0.19.0", default-features = false }
 # Platform 0.18 removed the upstream collection facade. Keep it solely for
-# the unpublished DFINITY comparison; production and native clients use 0.18.
+# the unpublished DFINITY comparison; production and native clients use 0.19.
 ic-platform-stable-benchmark = { package = "ic-platform", version = "0.17.0", default-features = false }
 # Explicit research control for the maintainer-requested upstream comparison.
 # The facade cannot select unpublished upstream code; no production consumer uses this.

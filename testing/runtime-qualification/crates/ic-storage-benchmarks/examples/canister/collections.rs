@@ -18,11 +18,11 @@ pub(super) struct TypedSet<K: BenchKey + Storable> {
     set: Set<K>,
 }
 impl<K: BenchKey + Storable> TypedSet<K> {
-    pub(super) fn new(case: Case) -> Self {
+    pub(super) fn new(case: Case, bucket_pages: std::num::NonZeroU16) -> Self {
         #[cfg(feature = "owned")]
-        let set = Set::create(new_memory()).unwrap();
+        let set = Set::create(new_memory(bucket_pages)).unwrap();
         #[cfg(any(feature = "dfinity", feature = "dfinity-head"))]
-        let set = Set::new(new_memory());
+        let set = Set::new(new_memory(bucket_pages));
         Self { case, set }
     }
 }
@@ -92,11 +92,11 @@ pub(super) struct TypedVector<V: BenchValue + Storable> {
     vector: Vector<V>,
 }
 impl<V: BenchValue + Storable> TypedVector<V> {
-    pub(super) fn new(case: Case) -> Self {
+    pub(super) fn new(case: Case, bucket_pages: std::num::NonZeroU16) -> Self {
         #[cfg(feature = "owned")]
-        let vector = Vector::create(new_memory()).unwrap();
+        let vector = Vector::create(new_memory(bucket_pages)).unwrap();
         #[cfg(any(feature = "dfinity", feature = "dfinity-head"))]
-        let vector = Vector::new(new_memory());
+        let vector = Vector::new(new_memory(bucket_pages));
         Self { case, vector }
     }
 }
@@ -184,10 +184,15 @@ impl<V: BenchValue + Storable> Benchmark for TypedVector<V> {
 pub(super) struct TypedCell<V: BenchValue + Storable> {
     case: Case,
     cell: Option<StableCell<V>>,
+    bucket_pages: std::num::NonZeroU16,
 }
 impl<V: BenchValue + Storable> TypedCell<V> {
-    pub(super) fn new(case: Case) -> Self {
-        Self { case, cell: None }
+    pub(super) fn new(case: Case, bucket_pages: std::num::NonZeroU16) -> Self {
+        Self {
+            case,
+            cell: None,
+            bucket_pages,
+        }
     }
 }
 impl<V: BenchValue + Storable> Benchmark for TypedCell<V> {
@@ -195,9 +200,9 @@ impl<V: BenchValue + Storable> Benchmark for TypedCell<V> {
         assert!(self.cell.is_none() && r.start == 0 && r.count == 1);
         let value = V::make(0, r.payload, false);
         #[cfg(feature = "owned")]
-        let cell = StableCell::create(new_memory(), value).unwrap();
+        let cell = StableCell::create(new_memory(self.bucket_pages), value).unwrap();
         #[cfg(any(feature = "dfinity", feature = "dfinity-head"))]
-        let cell = StableCell::new(new_memory(), value);
+        let cell = StableCell::new(new_memory(self.bucket_pages), value);
         self.cell = Some(cell);
         1
     }
@@ -254,11 +259,11 @@ pub(super) struct Region {
     memory: BenchMemory,
 }
 impl Region {
-    pub(super) fn new() -> Self {
+    pub(super) fn new(bucket_pages: std::num::NonZeroU16) -> Self {
         #[cfg(feature = "owned")]
         {
             let mut map = ic_storage::adapter::BTreeMapRegion::new(
-                std::rc::Rc::new(new_memory()),
+                std::rc::Rc::new(new_memory(bucket_pages)),
                 0..4_194_304,
             );
             map.initialize().unwrap();
@@ -266,7 +271,7 @@ impl Region {
         }
         #[cfg(any(feature = "dfinity", feature = "dfinity-head"))]
         {
-            let memory = new_memory();
+            let memory = new_memory(bucket_pages);
             drop(Map::<u64, Vec<u8>>::new(memory.clone()));
             Self { memory }
         }

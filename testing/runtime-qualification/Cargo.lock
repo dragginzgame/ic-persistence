@@ -96,12 +96,6 @@ dependencies = [
 
 [[package]]
 name = "base64"
-version = "0.22.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "72b3254f16251a8381aa12e40e3c4d2f0199f8c6508fbecb9d91f575e0fbb8c6"
-
-[[package]]
-name = "base64"
 version = "0.23.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ac07cdecf99051d9a5238b80f35af32cdeba5b336e55d957b318b50137e18da5"
@@ -729,7 +723,7 @@ version = "0.1.21"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ddc03d96684f9226b8a787cdb71488417b53ab5ea8fdb1dac946cb9431cc8bff"
 dependencies = [
- "base64 0.23.1",
+ "base64",
  "bytes",
  "futures-channel",
  "futures-util",
@@ -781,26 +775,24 @@ dependencies = [
 
 [[package]]
 name = "ic-platform"
-version = "0.18.0"
+version = "0.19.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d30f602f1c07916c28ad455050a68b47a71a5ada61a26f163ec8195f6f2acbda"
+checksum = "4c09ed6a8bafe4ba7f13b4ba12091839e85095766fad7b7dcd1640e81b53b346"
 dependencies = [
  "ic-platform-pocket-ic",
  "ic-platform-runtime",
  "ic-platform-types",
- "ic_principal",
  "serde",
- "thiserror 2.0.18",
 ]
 
 [[package]]
 name = "ic-platform-pocket-ic"
-version = "0.18.0"
+version = "0.19.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d2cbf0577257c1aae8666801e9f1eab887762b6d16140a3e1c861c27b824bc15"
+checksum = "929bfd49f776299d7c48e690543b06af02a76cce305360e828bf8d4346abf7b7"
 dependencies = [
  "backon",
- "base64 0.22.1",
+ "base64",
  "candid",
  "flate2",
  "hex",
@@ -827,9 +819,9 @@ dependencies = [
 
 [[package]]
 name = "ic-platform-runtime"
-version = "0.18.1"
+version = "0.19.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "890d920056096da50ef4f30886a19c5b89e3f4c331732b8a68d72c169a13a4e9"
+checksum = "057fa82ee19481d210707f379c088d41bf5d5ae44132d4cb5d50488dce339638"
 dependencies = [
  "ic-platform-runtime-guard",
  "ic-platform-types",
@@ -841,20 +833,21 @@ dependencies = [
 
 [[package]]
 name = "ic-platform-runtime-guard"
-version = "0.18.1"
+version = "0.19.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "300a34ce6432af592231b7a2c4cf548180f5b77a9487ef0d065d13a8c83b3dd1"
+checksum = "d5833c1847deb7fcd326b77a48ecaf96ecde90dcf2c2fb3d3cedb7a7e67d2159"
 
 [[package]]
 name = "ic-platform-types"
-version = "0.17.0"
+version = "0.18.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "93be2c8e9d20de7c0b45960689a5f0cf759a385b470affc7cad5bbf43fb1d892"
+checksum = "f95791d7eff0804a23182f131b976293f0f0184b237a63cfb741c1f63a60fb91"
 dependencies = [
  "crc32fast",
  "data-encoding",
  "ic_principal",
  "serde",
+ "serde_bytes",
  "thiserror 2.0.18",
 ]
 
@@ -891,7 +884,7 @@ version = "0.0.0"
 dependencies = [
  "clap",
  "ic-platform 0.17.0",
- "ic-platform 0.18.0",
+ "ic-platform 0.19.0",
  "ic-platform-runtime",
  "ic-stable-structures 0.7.2 (git+https://github.com/dfinity/stable-structures?rev=b5d1650463f477affb3d358e86b1113953fc9937)",
  "ic-storage",
@@ -911,7 +904,7 @@ dependencies = [
 name = "ic-storage-platform-qualification"
 version = "0.0.0"
 dependencies = [
- "ic-platform 0.18.0",
+ "ic-platform 0.19.0",
  "ic-storage",
 ]
 
@@ -920,7 +913,7 @@ name = "ic-storage-runtime-qualification"
 version = "0.0.0"
 dependencies = [
  "clap",
- "ic-platform 0.18.0",
+ "ic-platform 0.19.0",
  "ic-wire",
  "serde",
 ]
@@ -1578,7 +1571,7 @@ version = "0.13.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "16a1cfa75cc186dd73d5818e510e042e40927bccc9c236b061cea97e1eb08029"
 dependencies = [
- "base64 0.23.1",
+ "base64",
  "bytes",
  "futures-channel",
  "futures-core",
@@ -2026,23 +2019,22 @@ dependencies = [
 
 [[package]]
 name = "strum"
-version = "0.26.3"
+version = "0.28.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8fec0f0aef304996cf250b31b5a10dee7980c85da9d759361292b8bca5a18f06"
+checksum = "9628de9b8791db39ceda2b119bbe13134770b56c138ec1d3af810d045c04f9bd"
 dependencies = [
  "strum_macros",
 ]
 
 [[package]]
 name = "strum_macros"
-version = "0.26.4"
+version = "0.28.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4c6bee85a5a24955dc440386795aa378cd9cf82acd5f764469152d2270e581be"
+checksum = "ab85eea0270ee17587ed4156089e10b9e6880ee688791d45a905f5b1ca36f664"
 dependencies = [
  "heck",
  "proc-macro2",
  "quote",
- "rustversion",
  "syn 2.0.119",
 ]
 

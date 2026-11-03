@@ -27,6 +27,7 @@ pub struct Initialization {
     pub case: Case,
     pub cache_bytes: usize,
     pub upstream_cache_slots: usize,
+    pub upstream_bucket_pages: std::num::NonZeroU16,
     pub cold_cache: bool,
 }
 

@@ -6,7 +6,7 @@ mod protocol {
     ));
 }
 use ic_platform::{
-    pocket_ic::{PocketIc, RejectResponse},
+    pocket_ic::{ClientError, PocketIc},
     principal::ExternalPrincipal,
 };
 use ic_wire::native;
@@ -21,7 +21,7 @@ fn update(
     method: &str,
     id: u64,
     mode: u8,
-) -> Result<(), RejectResponse> {
+) -> Result<(), ClientError> {
     pic.update_call(canister, canister, method, frame(id, &mode))
         .map(|bytes| {
             native::decode_response::<()>(id, &bytes, protocol::RESPONSE).unwrap();
@@ -122,7 +122,8 @@ pub(super) fn qualify(pic: &PocketIc) {
     update(pic, canister, "mutate", protocol::MUTATE_ID, 0_u8).unwrap();
     let committed = snapshot();
     assert_eq!(committed, expected(initial.generation, [100, 101, 102]));
-    pic.advance_time(Duration::from_secs(300));
+    pic.advance_time(Duration::from_secs(300))
+        .expect("advance PocketIC time");
     super::assert_trap(
         pic.upgrade_canister(
             canister,
@@ -137,7 +138,8 @@ pub(super) fn qualify(pic: &PocketIc) {
         committed,
         "failed upgrade preserves collections and generation"
     );
-    pic.advance_time(Duration::from_secs(300));
+    pic.advance_time(Duration::from_secs(300))
+        .expect("advance PocketIC time");
     pic.upgrade_canister(canister, wasm, frame(protocol::UPGRADE_ID, &0_u8), None)
         .unwrap();
     assert_eq!(

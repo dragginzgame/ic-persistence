@@ -3,6 +3,136 @@ use crate::VectorMemory;
 use std::collections::BTreeSet;
 mod generated;
 
+#[test]
+fn lookups_borrow_inline_values_and_membership_skips_value_decoding() {
+    #[derive(Debug, PartialEq)]
+    struct ObservedValue {
+        bytes: Vec<u8>,
+        borrowed: bool,
+    }
+    impl Storable for ObservedValue {
+        const BOUND: crate::storable::Bound = crate::storable::Bound::Unbounded;
+        fn to_bytes(&self) -> std::result::Result<Cow<'_, [u8]>, crate::storable::CodecError> {
+            Ok(Cow::Borrowed(&self.bytes))
+        }
+        fn from_bytes(
+            bytes: Cow<'_, [u8]>,
+        ) -> std::result::Result<Self, crate::storable::CodecError> {
+            if bytes.first() == Some(&255) {
+                return Err(crate::storable::CodecError::Invalid("test value"));
+            }
+            Ok(Self {
+                borrowed: matches!(bytes, Cow::Borrowed(_)),
+                bytes: bytes.into_owned(),
+            })
+        }
+    }
+    for budget in [0, 128 * 1024] {
+        let backing = VectorMemory::default();
+        let mut tree = Tree::<u64, ObservedValue, _>::reset(backing.clone()).unwrap();
+        let lengths = [0, 8, 31, 32, 33, 1024];
+        for key in 0..120 {
+            tree.insert(
+                key,
+                ObservedValue {
+                    bytes: vec![7; lengths[usize::try_from(key % 6).unwrap()]],
+                    borrowed: false,
+                },
+            )
+            .unwrap();
+        }
+        for (key, length) in [(120, 32), (121, 33)] {
+            tree.insert(
+                key,
+                ObservedValue {
+                    bytes: vec![255; length],
+                    borrowed: false,
+                },
+            )
+            .unwrap();
+        }
+        drop(tree);
+        let mut tree = Tree::<u64, ObservedValue, _>::load(backing.clone()).unwrap();
+        tree.set_cache_budget(budget);
+        let before = backing.borrow().clone();
+        // Exercise internal separators and leaves, with both cold and warm views.
+        for _ in 0..2 {
+            for key in 0..120 {
+                let length = lengths[usize::try_from(key % 6).unwrap()];
+                assert!(tree.contains_key(&key).unwrap());
+                assert_eq!(
+                    tree.get(&key).unwrap(),
+                    Some(ObservedValue {
+                        bytes: vec![7; length],
+                        borrowed: length <= INLINE,
+                    })
+                );
+            }
+            for key in [120, 121] {
+                assert!(tree.contains_key(&key).unwrap());
+                assert!(matches!(
+                    tree.get(&key),
+                    Err(Error::Codec(crate::storable::CodecError::Invalid(
+                        "test value"
+                    )))
+                ));
+            }
+            assert!(!tree.contains_key(&122).unwrap());
+            assert_eq!(tree.get(&122).unwrap(), None);
+        }
+        assert_eq!(*backing.borrow(), before);
+    }
+}
+
+#[test]
+fn node_encoding_preserves_current_leaf_and_branch_frames() {
+    let pointer = Pointer {
+        offset: 4096,
+        order: 8,
+    };
+    for branch in [false, true] {
+        let node = Node {
+            entries: vec![
+                Entry {
+                    key: vec![1],
+                    value: Value::Inline(vec![]),
+                },
+                Entry {
+                    key: vec![2],
+                    value: Value::Inline(vec![7; 32]),
+                },
+                Entry {
+                    key: vec![3],
+                    value: Value::External(pointer),
+                },
+            ],
+            children: if branch { vec![pointer; 4] } else { vec![] },
+        };
+        let mut payload = vec![3, u8::from(branch)];
+        if branch {
+            for _ in 0..4 {
+                payload.extend_from_slice(&4096_u64.to_le_bytes());
+                payload.push(8);
+            }
+        }
+        payload.extend_from_slice(&[1, 0, 0, 0, 1, 0]);
+        payload.extend_from_slice(&[1, 0, 0, 0, 2, 32]);
+        payload.extend_from_slice(&[7; 32]);
+        payload.extend_from_slice(&[1, 0, 0, 0, 3, 255]);
+        payload.extend_from_slice(&4096_u64.to_le_bytes());
+        payload.push(8);
+        let mut expected = NODE.to_vec();
+        expected.extend_from_slice(&u32::try_from(payload.len()).unwrap().to_le_bytes());
+        expected.extend_from_slice(
+            &crate::hash::fnv64(crate::hash::FNV_OFFSET, &payload).to_le_bytes(),
+        );
+        expected.extend_from_slice(&payload);
+        assert_eq!(node.encode().unwrap(), expected);
+        let read = ReadNode::decode::<Vec<u8>, Vec<u8>>(expected, 8192).unwrap();
+        assert_eq!(read.owned().encode().unwrap(), node.encode().unwrap());
+    }
+}
+
 #[cfg(not(target_arch = "wasm32"))]
 #[test]
 fn deletion_repairs_each_sibling_once_and_reopens_after_root_collapse() {
@@ -195,12 +325,14 @@ fn shrinking_live_values_reclaims_capacity_and_survives_reopen() {
     tree.insert(1, vec![7; 4096]).unwrap();
     tree.insert(2, vec![3; 80]).unwrap();
     tree.remove(&2).unwrap();
-    let Value::External(original) = tree.find(&1).unwrap().unwrap() else {
+    let (node, index) = tree.find(&1).unwrap().unwrap();
+    let Value::External(original) = node.value(index) else {
         panic!()
     };
     let cursor = tree.root.borrow().cursor;
     assert_eq!(tree.insert(1, vec![8; 80]).unwrap(), Some(vec![7; 4096]));
-    let Value::External(smaller) = tree.find(&1).unwrap().unwrap() else {
+    let (node, index) = tree.find(&1).unwrap().unwrap();
+    let Value::External(smaller) = node.value(index) else {
         panic!()
     };
     assert_ne!(smaller.offset, original.offset);
@@ -245,7 +377,8 @@ fn bounded_scans_do_not_read_excluded_values_in_either_direction() {
         tree.insert(key, vec![u8::try_from(key).unwrap(); 80])
             .unwrap();
     }
-    let Value::External(p) = tree.find(&1).unwrap().unwrap() else {
+    let (node, index) = tree.find(&1).unwrap().unwrap();
+    let Value::External(p) = node.value(index) else {
         panic!()
     };
     backing.borrow_mut()[usize::try_from(p.offset).unwrap() + 12] ^= 1;
@@ -318,7 +451,8 @@ fn splitting_a_corrupt_free_block_refuses_without_publishing_any_halves() {
     let backing = VectorMemory::default();
     let mut tree = Tree::<u64, Vec<u8>, _>::reset(backing.clone()).unwrap();
     tree.insert(1, vec![7; 4096]).unwrap();
-    let Value::External(p) = tree.find(&1).unwrap().unwrap() else {
+    let (node, index) = tree.find(&1).unwrap().unwrap();
+    let Value::External(p) = node.value(index) else {
         panic!()
     };
     tree.insert(1, vec![1]).unwrap();
@@ -335,13 +469,15 @@ fn large_free_blocks_split_without_losing_capacity_or_overlapping_live_records()
     let backing = VectorMemory::default();
     let mut tree = Tree::<u64, Vec<u8>, _>::reset(backing.clone()).unwrap();
     tree.insert(1, vec![7; 4096]).unwrap();
-    let Value::External(original) = tree.find(&1).unwrap().unwrap() else {
+    let (node, index) = tree.find(&1).unwrap().unwrap();
+    let Value::External(original) = node.value(index) else {
         panic!()
     };
     tree.insert(1, vec![1]).unwrap();
     let cursor = tree.root.borrow().cursor;
     tree.insert(2, vec![2; 80]).unwrap();
-    let Value::External(reused) = tree.find(&2).unwrap().unwrap() else {
+    let (node, index) = tree.find(&2).unwrap().unwrap();
+    let Value::External(reused) = node.value(index) else {
         panic!()
     };
     assert_eq!(reused.offset, original.offset);

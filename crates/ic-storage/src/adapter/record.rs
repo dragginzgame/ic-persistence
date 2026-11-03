@@ -22,16 +22,35 @@ pub fn encode<T: Serialize>(magic: [u8; 8], value: &T) -> Result<Vec<u8>> {
 }
 
 pub fn encode_payload(magic: [u8; 8], payload: &[u8]) -> Result<Vec<u8>> {
-    ensure(payload.len() <= MAX_RECORD, Error::Budget)?;
-    let mut bytes = Vec::with_capacity(PREFIX + payload.len());
-    bytes.extend_from_slice(&magic);
-    bytes.extend_from_slice(
-        &u32::try_from(payload.len())
+    encode_payload_with(magic, payload.len(), |bytes| {
+        bytes.extend_from_slice(payload);
+        Ok(())
+    })
+}
+
+// Append directly into the final frame, then seal its admitted payload. The
+// caller supplies the exact size so node serialization needs only one buffer.
+pub fn encode_payload_with(
+    magic: [u8; 8],
+    length: usize,
+    write: impl FnOnce(&mut Vec<u8>) -> Result<()>,
+) -> Result<Vec<u8>> {
+    ensure(length <= MAX_RECORD, Error::Budget)?;
+    let mut bytes = Vec::with_capacity(PREFIX + length);
+    bytes.resize(PREFIX, 0);
+    write(&mut bytes)?;
+    ensure(
+        bytes.len() == PREFIX + length,
+        Error::Corrupt("record payload length"),
+    )?;
+    let digest = hash::fnv64(hash::FNV_OFFSET, &bytes[PREFIX..]);
+    bytes[..8].copy_from_slice(&magic);
+    bytes[8..12].copy_from_slice(
+        &u32::try_from(length)
             .map_err(|_| Error::Budget)?
             .to_le_bytes(),
     );
-    bytes.extend_from_slice(&hash::fnv64(hash::FNV_OFFSET, payload).to_le_bytes());
-    bytes.extend_from_slice(payload);
+    bytes[12..PREFIX].copy_from_slice(&digest.to_le_bytes());
     Ok(bytes)
 }
 

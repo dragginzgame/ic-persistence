@@ -18,10 +18,12 @@ make benchmark-storage BENCH_ROWS=64 BENCH_SAMPLES=1 # quick complete smoke matr
 Rows accept 1–1,000,000, samples 1–20. Cell always has one value, regardless of the
 selected population. Builds are locked/offline on Rust 1.99.1; the command never
 installs tools or changes locks. Testkit 0.79.0 manages the prepared PocketIC
-16.1.0 server through Platform 0.18's owned native client. Platform 0.18 removed
+16.1.0 server through Platform 0.19's owned native client. Platform 0.18 removed
 its stable-structures facade, so only the DFINITY backend retains the named
 `ic-platform-stable-benchmark` alias for Platform 0.17. Both backends use Runtime
-0.18 for system calls. The production graph has no DFINITY dependency. Both Wasm backends use the same comparison profile:
+0.19 for system calls. Client setup and installation failures stop the comparison;
+they are not retried or treated as collection results. The production graph has
+no DFINITY dependency. Both Wasm backends use the same comparison profile:
 optimization level 3, fat LTO, one codegen unit, abort panics, no Binaryen pass.
 
 ### Extended controls
@@ -46,6 +48,28 @@ default to zero in the comparison; published 0.7.2 has no node-cache setting.
 Other structures retain their implementation defaults. `BENCH_COLD_CACHE=1`
 clears ordinary-map caches before each timed call; clearing cost is excluded.
 This measures cold routing, not collection reopening or whole-call cost.
+
+`BENCH_UPSTREAM_BUCKET_PAGES=1..65535` selects the ICSS MemoryManager bucket size
+for every structure; the default remains 128 (8 MiB). One Wasm page is 64 KiB.
+This changes only the DFINITY backend's backing allocation policy, not its node
+size, Storage's growth policy or cache settings. Each fresh comparison canister
+receives the selection during initialization. Existing managers cannot be resized
+by reopening with a different setting. Smaller buckets reduce reservation slack,
+but consume the fixed 32,768-bucket manager limit sooner and can change IO costs.
+
+```sh
+for pages in 1 8 128; do
+    BENCH_UPSTREAM_BUCKET_PAGES=$pages BENCH_CASES=U64U64 \
+    BENCH_PATTERNS=uniform,hot16,zipf BENCH_SHUFFLED=1 BENCH_ROUNDS=3 \
+    make benchmark-storage BENCH_ROWS=4096 BENCH_SAMPLES=1
+done
+```
+
+Compare runs made with the same sources, Wasm files and workload settings.
+`configuration.json` and the appended `upstream_bucket_pages` CSV column record
+the choice. Setup/growth during population remains outside instruction timing;
+reported stable pages include that reservation. This unpublished initialization
+protocol changed, so rebuild both Wasm backends and the driver together.
 
 Shuffling uses a deterministic Fisher–Yates permutation for Map, Set and Region
 population; Vector/Cell setup retains its semantics. Zipf uses a discrete
@@ -174,8 +198,8 @@ Each `target/storage-comparison/attempt.*/` contains:
 
 - `report/summary.csv`: per-case upper-median instructions and
   `storage_over_dfinity` (below 1 means fewer Storage instructions), with explicit
-  structure/type/payload/operation/batch/access-pattern labels. The final two
-  columns report each backend's median physical stable pages after the operation.
+  structure/type/payload/operation/batch/access-pattern labels. The two
+  page columns report each backend's median physical stable pages after the operation.
   Each page is 64 KiB; these are whole-canister high-water sizes, including manager
   metadata and reserved capacity, not live payload bytes or allocation deltas.
 - `report/samples.jsonl`: requests, counts, full results, lengths and stable pages.

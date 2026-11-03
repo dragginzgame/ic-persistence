@@ -3,6 +3,23 @@
 Current releases use the Storage naming. [Earlier published history](https://github.com/dragginzgame/ic-storage/blob/23deb81c48d58558ac3b0ce36bf266ddc25dca91/releases/persistence/CHANGELOG.md)
 retains its original package and release identities.
 
+## [0.65.5] - Unreleased
+
+### 🧪 Testing
+
+- Add an explicit ICSS allocation-bucket setting to the installed comparison
+  across all supported structures; record it beside instruction and memory results.
+
+### 🔧 Changed
+
+- Adopt Platform Runtime 0.19 for IC0-only Wasm backing and Platform 0.19's
+  fallible native qualification client. Preserve the optional execution boundary,
+  public Storage APIs and stored formats; requalify installed lifecycle behavior.
+- Encode B-tree nodes directly into their final checksummed buffer, removing a
+  temporary payload allocation and copy. Membership checks skip value copies,
+  and map reads decode inline values from the checked node buffer. Public APIs,
+  stored formats and staged publication are unchanged. [Details](0.65.md).
+
 ## [0.65.4] - 2026-11-02
 
 ### 🔧 Changed

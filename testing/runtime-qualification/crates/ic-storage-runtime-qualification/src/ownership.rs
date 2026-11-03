@@ -45,7 +45,8 @@ pub(super) fn qualify(pic: &PocketIc) {
             ..initial
         }
     );
-    pic.advance_time(std::time::Duration::from_secs(300));
+    pic.advance_time(std::time::Duration::from_secs(300))
+        .expect("advance PocketIC time");
     pic.upgrade_canister(canister, wasm, frame(protocol::UPGRADE_ID, &0_u8), None)
         .unwrap();
     assert_eq!(

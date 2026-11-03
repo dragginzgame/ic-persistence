@@ -75,9 +75,10 @@ mod canister {
     type BenchMemory = ic_storage_benchmarks::upstream::memory_manager::VirtualMemory<
         ic_storage_benchmarks::upstream::DefaultMemoryImpl,
     >;
-    fn new_memory() -> BenchMemory {
+    fn new_memory(bucket_pages: std::num::NonZeroU16) -> BenchMemory {
         #[cfg(feature = "owned")]
         {
+            let _ = bucket_pages;
             use ic_storage::*;
             let mut runtime = MemoryRuntime::new(DefaultMemoryImpl::default()).unwrap();
             let requests = SealedDeclarationSnapshot::new(vec![
@@ -101,17 +102,20 @@ mod canister {
                 DefaultMemoryImpl,
                 memory_manager::{MemoryId, MemoryManager},
             };
-            MemoryManager::init(DefaultMemoryImpl::default()).get(MemoryId::new(0))
+            MemoryManager::init_with_bucket_size(DefaultMemoryImpl::default(), bucket_pages.get())
+                .get(MemoryId::new(0))
         }
     }
-    fn new_map<K: BenchKey + Storable, V: BenchValue + Storable>() -> Map<K, V> {
+    fn new_map<K: BenchKey + Storable, V: BenchValue + Storable>(
+        settings: Initialization,
+    ) -> Map<K, V> {
         #[cfg(feature = "owned")]
         {
-            Map::create(new_memory()).unwrap()
+            Map::create(new_memory(settings.upstream_bucket_pages)).unwrap()
         }
         #[cfg(any(feature = "dfinity", feature = "dfinity-head"))]
         {
-            Map::init(new_memory())
+            Map::init(new_memory(settings.upstream_bucket_pages))
         }
     }
     fn configure_cache<K: BenchKey + Storable, V: BenchValue + Storable>(
@@ -128,7 +132,7 @@ mod canister {
     fn configured_map<K: BenchKey + Storable, V: BenchValue + Storable>(
         settings: Initialization,
     ) -> Map<K, V> {
-        let mut map = new_map();
+        let mut map = new_map(settings);
         configure_cache(&mut map, settings);
         map
     }
@@ -154,14 +158,32 @@ mod canister {
             Case::Bytes32Bytes32 => typed!([u8; 32], [u8; 32]),
             Case::StringString => typed!(String, String),
             Case::U64Record => typed!(u64, WireRecord),
-            Case::SetU64 => Box::new(TypedSet::<u64>::new(case)),
-            Case::SetString => Box::new(TypedSet::<String>::new(case)),
-            Case::VectorU64 => Box::new(TypedVector::<u64>::new(case)),
-            Case::VectorBytes32 => Box::new(TypedVector::<[u8; 32]>::new(case)),
-            Case::VectorRecord => Box::new(TypedVector::<WireRecord>::new(case)),
-            Case::CellBytes => Box::new(TypedCell::<Vec<u8>>::new(case)),
-            Case::CellRecord => Box::new(TypedCell::<WireRecord>::new(case)),
-            Case::RegionBytes => Box::new(Region::new()),
+            Case::SetU64 => Box::new(TypedSet::<u64>::new(case, settings.upstream_bucket_pages)),
+            Case::SetString => Box::new(TypedSet::<String>::new(
+                case,
+                settings.upstream_bucket_pages,
+            )),
+            Case::VectorU64 => Box::new(TypedVector::<u64>::new(
+                case,
+                settings.upstream_bucket_pages,
+            )),
+            Case::VectorBytes32 => Box::new(TypedVector::<[u8; 32]>::new(
+                case,
+                settings.upstream_bucket_pages,
+            )),
+            Case::VectorRecord => Box::new(TypedVector::<WireRecord>::new(
+                case,
+                settings.upstream_bucket_pages,
+            )),
+            Case::CellBytes => Box::new(TypedCell::<Vec<u8>>::new(
+                case,
+                settings.upstream_bucket_pages,
+            )),
+            Case::CellRecord => Box::new(TypedCell::<WireRecord>::new(
+                case,
+                settings.upstream_bucket_pages,
+            )),
+            Case::RegionBytes => Box::new(Region::new(settings.upstream_bucket_pages)),
             Case::I64I64 => typed!(Signed64, Signed64),
             Case::U128U128 => typed!(u128, u128),
             Case::Bytes64U128 => typed!([u8; 64], u128),
@@ -169,13 +191,33 @@ mod canister {
             Case::U64Fixed32 => typed!(u64, [u8; 32]),
             Case::U64Fixed33 => typed!(u64, [u8; 33]),
             Case::U64Fixed256 => typed!(u64, [u8; 256]),
-            Case::SetI64 => Box::new(TypedSet::<Signed64>::new(case)),
-            Case::SetBytes64 => Box::new(TypedSet::<[u8; 64]>::new(case)),
-            Case::VectorI64 => Box::new(TypedVector::<Signed64>::new(case)),
-            Case::VectorU128 => Box::new(TypedVector::<u128>::new(case)),
-            Case::VectorF64 => Box::new(TypedVector::<f64>::new(case)),
-            Case::CellU128 => Box::new(TypedCell::<u128>::new(case)),
-            Case::CellFixed32 => Box::new(TypedCell::<[u8; 32]>::new(case)),
+            Case::SetI64 => Box::new(TypedSet::<Signed64>::new(
+                case,
+                settings.upstream_bucket_pages,
+            )),
+            Case::SetBytes64 => Box::new(TypedSet::<[u8; 64]>::new(
+                case,
+                settings.upstream_bucket_pages,
+            )),
+            Case::VectorI64 => Box::new(TypedVector::<Signed64>::new(
+                case,
+                settings.upstream_bucket_pages,
+            )),
+            Case::VectorU128 => Box::new(TypedVector::<u128>::new(
+                case,
+                settings.upstream_bucket_pages,
+            )),
+            Case::VectorF64 => Box::new(TypedVector::<f64>::new(
+                case,
+                settings.upstream_bucket_pages,
+            )),
+            Case::CellU128 => {
+                Box::new(TypedCell::<u128>::new(case, settings.upstream_bucket_pages))
+            }
+            Case::CellFixed32 => Box::new(TypedCell::<[u8; 32]>::new(
+                case,
+                settings.upstream_bucket_pages,
+            )),
         };
         MAP.with(|slot| *slot.borrow_mut() = Some(map));
     }

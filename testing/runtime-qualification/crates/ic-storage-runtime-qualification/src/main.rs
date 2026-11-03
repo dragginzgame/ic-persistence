@@ -6,7 +6,7 @@ mod storage;
 
 use clap::Parser;
 use ic_platform::{
-    pocket_ic::{ErrorCode, PocketIc, PocketIcBuilder, RejectResponse},
+    pocket_ic::{ClientError, ErrorCode, PocketIc, PocketIcBuilder},
     principal::ExternalPrincipal,
 };
 use std::env;
@@ -28,7 +28,10 @@ struct Arguments {
     logging_only: bool,
 }
 
-fn assert_trap(error: RejectResponse) {
+fn assert_trap(error: ClientError) {
+    let ClientError::Canister(error) = error else {
+        panic!("expected a canister trap, got client failure: {error:?}");
+    };
     assert!(
         matches!(
             error.error_code,
@@ -46,12 +49,15 @@ fn connect_to_server() -> PocketIc {
         .with_server_url(url.parse().unwrap())
         .with_application_subnet()
         .build()
+        .expect("connect to prepared PocketIC server")
 }
 
 fn install_fixture(pic: &PocketIc, wasm: &[u8], init: Vec<u8>) -> ExternalPrincipal {
-    let canister = pic.create_canister();
-    pic.add_cycles(canister, 100_000_000_000_000);
-    pic.install_canister(canister, wasm.to_vec(), init, None);
+    let canister = pic.create_canister().expect("create fixture canister");
+    pic.add_cycles(canister, 100_000_000_000_000)
+        .expect("fund fixture canister");
+    pic.install_canister(canister, wasm.to_vec(), init, None)
+        .expect("install fixture canister");
     canister
 }
 
@@ -73,6 +79,12 @@ fn main() {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    #[should_panic(expected = "expected a canister trap, got client failure")]
+    fn client_failure_cannot_qualify_as_rollback_trap() {
+        assert_trap(ClientError::Protocol("malformed server response".into()));
+    }
 
     #[test]
     fn memory_wire_frames_admit_extremes_and_refuse_identity_trailing_and_budget_errors() {

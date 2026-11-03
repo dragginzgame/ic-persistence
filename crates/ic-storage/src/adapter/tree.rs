@@ -107,34 +107,34 @@ impl Node {
                         .and_then(|n| n.checked_add(value_size))
                         .ok_or(Error::Budget)
                 })?;
-        ensure(capacity <= record::MAX_RECORD, Error::Budget)?;
-        let mut bytes = Vec::with_capacity(capacity);
-        bytes.extend_from_slice(&[
-            u8::try_from(self.entries.len()).unwrap(),
-            u8::from(!self.children.is_empty()),
-        ]);
-        for p in &self.children {
-            p.put(&mut bytes);
-        }
-        for entry in &self.entries {
-            bytes.extend_from_slice(
-                &u32::try_from(entry.key.len())
-                    .map_err(|_| Error::Budget)?
-                    .to_le_bytes(),
-            );
-            bytes.extend_from_slice(&entry.key);
-            match &entry.value {
-                Value::Inline(value) => {
-                    bytes.push(u8::try_from(value.len()).unwrap());
-                    bytes.extend_from_slice(value);
-                }
-                Value::External(p) => {
-                    bytes.push(255);
-                    p.put(&mut bytes);
+        record::encode_payload_with(NODE, capacity, |bytes| {
+            bytes.extend_from_slice(&[
+                u8::try_from(self.entries.len()).unwrap(),
+                u8::from(!self.children.is_empty()),
+            ]);
+            for p in &self.children {
+                p.put(bytes);
+            }
+            for entry in &self.entries {
+                bytes.extend_from_slice(
+                    &u32::try_from(entry.key.len())
+                        .map_err(|_| Error::Budget)?
+                        .to_le_bytes(),
+                );
+                bytes.extend_from_slice(&entry.key);
+                match &entry.value {
+                    Value::Inline(value) => {
+                        bytes.push(u8::try_from(value.len()).unwrap());
+                        bytes.extend_from_slice(value);
+                    }
+                    Value::External(p) => {
+                        bytes.push(255);
+                        p.put(bytes);
+                    }
                 }
             }
-        }
-        record::encode_payload(NODE, &bytes)
+            Ok(())
+        })
     }
 }
 struct Reader<'a>(&'a [u8]);
@@ -277,21 +277,33 @@ impl<K: Storable + Ord + Clone, V: Storable, M: Memory> Tree<K, V, M> {
         V::check_bounds(&bytes)?;
         Ok(bytes)
     }
-    fn find(&self, key: &K) -> Result<Option<Value>> {
+    fn find(&self, key: &K) -> Result<Option<(Rc<ReadNode>, usize)>> {
         self.healthy()?;
         let mut p = self.root.borrow().top;
         for depth in 0..MAX_DEPTH {
             let Some(current) = p else { return Ok(None) };
             let node = self.read_node(current, depth)?;
             match node.search(key)? {
-                Ok(i) => return Ok(Some(node.value(i))),
+                Ok(i) => return Ok(Some((node, i))),
                 Err(i) => p = node.children.get(i).copied(),
             }
         }
         Err(Error::Corrupt("map path exceeds height bound"))
     }
     pub fn get(&self, key: &K) -> Result<Option<V>> {
-        self.find(key)?.map(|v| decode(self.value(v)?)).transpose()
+        let Some((node, index)) = self.find(key)? else {
+            return Ok(None);
+        };
+        if let Some(bytes) = node.inline_value(index) {
+            V::check_bounds(bytes)?;
+            Ok(Some(V::from_bytes(Cow::Borrowed(bytes))?))
+        } else {
+            let value = node.value(index);
+            // External decoding does not borrow the routing buffer. Release it
+            // before allocating the payload, as in the original lookup path.
+            drop(node);
+            decode(self.value(value)?).map(Some)
+        }
     }
     pub fn contains_key(&self, key: &K) -> Result<bool> {
         Ok(self.find(key)?.is_some())
