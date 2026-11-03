@@ -190,24 +190,54 @@ version:
 ensure-clean:
 	+@$(TOOL) ensure-clean
 
-# Full release suite; release/publication remain separately authorized.
+# The full CI roster is also the exhaustive release-selection policy.
+# ci/release-validation.json is the single full-stage roster.
+.PHONY: validate-admission validate-lint validate-features validate-policy validate-tooling validate-storage-tests validate-metrics-tests validate-logging-tests validate-docs validate-wasm validate-wasm-size validate-archives validate-release-plan
 validate:
 	$(MAKE) --no-print-directory validate-toolchain
 
 validate-toolchain:
-	$(MAKE) --no-print-directory shared-tooling-check tools-check format-tools-check
-	$(MAKE) --no-print-directory validation-compilers-check
+	+bash scripts/ci/validate-storage-workspace.sh
+
+# Only the admitted native release adapter supplies this plan and source identity.
+validate-release-plan:
+	+RELEASE_SOURCE="$(RELEASE_SOURCE)" RELEASE_GROUP="$(RELEASE_GROUP)" VALIDATION_LOG_DIR="$(VALIDATION_LOG_DIR)" bash scripts/ci/run-validation-targets.sh --plan "$(VALIDATION_PLAN)"
+
+validate-admission:
+	$(MAKE) --no-print-directory shared-tooling-check tools-check format-tools-check validation-compilers-check
+
+validate-lint:
 	+cargo +$(VALIDATION_TOOLCHAIN) clippy --workspace --locked --offline --all-targets -- -D warnings
-	# Retains the former MSRV job's distinct feature-enabled native graph.
+
+validate-features:
 	+cargo +$(VALIDATION_TOOLCHAIN) check --workspace --locked --offline --all-targets --features test-support
-	$(MAKE) --no-print-directory check-production-graph check-pins check-storage-boundary check-license check-doc-links test-release-adapters
-	$(MAKE) --no-print-directory test-tools test-tooling test-hooks fmt-check test-fixture-cell test-package-admission
-	# test-tooling already ran the repo-tool fixtures in parallel; keep product tests serial.
-	+cargo +$(VALIDATION_TOOLCHAIN) test --workspace --locked --offline -- --test-threads=1 --skip repo_tool::tests::
+
+validate-policy:
+	$(MAKE) --no-print-directory check-production-graph check-pins check-storage-boundary check-license check-doc-links fmt-check
+
+validate-tooling:
+	$(MAKE) --no-print-directory test-release-adapters test-tools test-tooling test-hooks test-package-admission
+
+validate-storage-tests:
+	$(MAKE) --no-print-directory test-fixture-cell
+	+cargo +$(VALIDATION_TOOLCHAIN) test -p ic-storage --locked --offline -- --test-threads=1 --skip repo_tool::tests::
+
+validate-metrics-tests:
+	+cargo +$(VALIDATION_TOOLCHAIN) test -p ic-metrics-storage --locked --offline -- --test-threads=1
+
+validate-logging-tests:
+	+cargo +$(VALIDATION_TOOLCHAIN) test -p ic-logging-storage --locked --offline -- --test-threads=1
+
+validate-docs:
 	+RUSTDOCFLAGS='-D warnings' cargo +$(VALIDATION_TOOLCHAIN) doc --workspace --locked --offline --no-deps
+
+validate-wasm:
 	+cargo +$(VALIDATION_TOOLCHAIN) check --workspace --locked --offline --target wasm32-unknown-unknown --tests
+
+validate-wasm-size:
 	$(MAKE) --no-print-directory wasm-size
-	# Validate working-tree edits; release admission separately requires clean source.
+
+validate-archives:
 	+bash scripts/ci/package-workspace.sh $(VALIDATION_TOOLCHAIN) --allow-dirty
 
 wasm-size:
@@ -236,7 +266,7 @@ release-verify:
 	log_file="$$(mktemp "$$log_dir/verify.XXXXXX")"; \
 	if $(TOOL) release-verify > "$$log_file" 2>&1; then result=0; else result=$$?; fi; \
 	cat "$$log_file"; \
-	echo "Retained full-gate log: $$log_file"; \
+	echo "Retained release-gate log: $$log_file"; \
 	exit "$$result"
 
 qualify-release:
@@ -262,4 +292,4 @@ check-license:
 	perl scripts/ci/check-license.pl --kind mit --file crates/ic-logging-storage/LICENSE
 
 check-doc-links:
-	perl scripts/ci/check-documentation-links.pl --root "$(CURDIR)" README.md AGENTS.md docs/status/current.md docs/migration/ic-persistence.md docs/migration/ic-metrics-stable.md docs/storage/upstreams.md crates/ic-storage/README.md crates/ic-metrics-storage/README.md crates/ic-logging-storage/README.md docs/archive/private-btree/*.md docs/history/ic-storage/index.md
+	perl scripts/ci/check-documentation-links.pl --root "$(CURDIR)" README.md AGENTS.md docs/status/current.md docs/storage-release-validation.md docs/migration/ic-persistence.md docs/migration/ic-metrics-stable.md docs/storage/upstreams.md crates/ic-storage/README.md crates/ic-metrics-storage/README.md crates/ic-logging-storage/README.md docs/archive/private-btree/*.md docs/history/ic-storage/index.md

@@ -13,7 +13,6 @@ use super::preparation::ReleasePlan;
 // Reconstructed from the current admitted toolchain at each phase boundary.
 // Receipts retain the exact read-only admission and qualification commands.
 pub(super) struct ReleaseCommands {
-    validation: Vec<String>,
     pub(super) preparation: [Vec<String>; 3],
     pub(super) final_package: Vec<String>,
 }
@@ -36,7 +35,6 @@ impl ReleaseCommands {
             ]
         };
         Self {
-            validation: make("validate"),
             preparation: [
                 vec![
                     "cargo".to_owned(),
@@ -165,14 +163,20 @@ impl<E: Execute> Repository<E> {
             &selection.previous,
             &selection.previous,
         )?;
+        let identities = self.identities()?;
+        let (plan_path, plan, context) = self.create_validation_plan(selection)?;
+        let command = validation_run::command(&self.toolchain()?, &plan_path, selection);
+        self.run_command(&command)?;
+        let group_validation = self.collect_validation(selection, &plan_path, plan, context)?;
         let evidence = ValidationEvidence {
+            schema: 2,
+            group_validation,
             selection: selection.clone(),
             lock,
-            identities: self.identities()?,
+            identities,
             configuration,
-            command: self.command_plan()?.validation,
+            command,
         };
-        self.run_command(&evidence.command)?;
         self.clean()?;
         require(
             self.git(&["rev-parse", "HEAD"])? == selection.source,
@@ -264,9 +268,16 @@ impl<E: Execute> Repository<E> {
             "compiler identities differ from release validation",
         )?;
         require(
-            evidence.command == self.command_plan()?.validation,
+            evidence.schema == 2
+                && evidence.command
+                    == validation_run::command(
+                        &self.toolchain()?,
+                        &evidence.group_validation.plan_path,
+                        &evidence.selection,
+                    ),
             "validation evidence has unexpected commands",
         )?;
+        self.admit_validation(&evidence.selection, &evidence.group_validation)?;
         self.check_selection(&evidence.selection)?;
         let current = fs::read(self.root.join("Cargo.lock"))?;
         if current != evidence.lock {

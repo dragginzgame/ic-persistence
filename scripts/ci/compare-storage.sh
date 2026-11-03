@@ -14,12 +14,22 @@ printf 'Storage comparison evidence: %s\n' "$output"
 manifest=testing/runtime-qualification/Cargo.toml
 reference="${BENCH_REFERENCE:-dfinity}"
 [[ "$reference" == dfinity || "$reference" == dfinity-head ]]
-arguments=(--patterns "${BENCH_PATTERNS:-uniform,hot16}" --rounds "${BENCH_ROUNDS:-1}"
-    --cache-bytes "${BENCH_CACHE_BYTES:-0}" --upstream-cache-slots "${BENCH_UPSTREAM_CACHE_SLOTS:-0}"
-    --upstream-bucket-pages "${BENCH_UPSTREAM_BUCKET_PAGES:-128}")
-[[ -z "${BENCH_CASES:-}" ]] || arguments+=(--cases "$BENCH_CASES")
-[[ "${BENCH_SHUFFLED:-0}" != 1 ]] || arguments+=(--shuffled)
-[[ "${BENCH_COLD_CACHE:-0}" != 1 ]] || arguments+=(--cold-cache)
+if [[ -n "${BENCH_WORKLOAD:-}" ]]; then
+    # Named workloads own the knobs below. Refuse silently mixed experiments.
+    for variable in BENCH_CASES BENCH_PATTERNS BENCH_ROUNDS BENCH_SHUFFLED BENCH_CACHE_BYTES BENCH_UPSTREAM_CACHE_SLOTS BENCH_COLD_CACHE; do
+        if [[ -n "${!variable:-}" ]]; then
+            echo "$variable cannot be combined with BENCH_WORKLOAD" >&2; exit 2
+        fi
+    done
+    arguments=(--workload "$BENCH_WORKLOAD")
+else
+    arguments=(--rows "$rows" --patterns "${BENCH_PATTERNS:-uniform,hot16}" --rounds "${BENCH_ROUNDS:-1}"
+        --cache-bytes "${BENCH_CACHE_BYTES:-0}" --upstream-cache-slots "${BENCH_UPSTREAM_CACHE_SLOTS:-0}")
+    [[ -z "${BENCH_CASES:-}" ]] || arguments+=(--cases "$BENCH_CASES")
+    [[ "${BENCH_SHUFFLED:-0}" != 1 ]] || arguments+=(--shuffled)
+    [[ "${BENCH_COLD_CACHE:-0}" != 1 ]] || arguments+=(--cold-cache)
+fi
+arguments+=(--upstream-bucket-pages "${BENCH_UPSTREAM_BUCKET_PAGES:-128}")
 if [[ "$reference" == dfinity-head ]]; then
     arguments+=(--reference-revision b5d1650463f477affb3d358e86b1113953fc9937)
 fi
@@ -56,7 +66,7 @@ env -u POCKET_IC_BIN -u IC_TESTKIT_POCKET_IC_URL "$cli" run --directory "$server
     --server-stdout "$output/server.stdout" --server-stderr "$output/server.stderr" \
     -- "$root/target/runtime-qualification/debug/ic-storage-benchmarks" \
     --owned-wasm "$output/owned.wasm" --dfinity-wasm "$output/$reference.wasm" \
-    --output "$output/report" --rows "$rows" --samples "$samples" "${arguments[@]}" > "$output/runtime.log" 2>&1 || status=$?
+    --output "$output/report" --samples "$samples" "${arguments[@]}" > "$output/runtime.log" 2>&1 || status=$?
 cat "$output/runtime.log"
 [[ "$status" == 0 ]] || exit "$status"
 shasum -a 256 -c "$output/source.sha256" >> "$output/source-check.log"

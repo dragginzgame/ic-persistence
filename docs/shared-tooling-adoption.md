@@ -9,8 +9,8 @@ local baseline. Future policy changes require reviewed snapshot adoption.
 
 ## Current source selection
 
-IC Storage selects committed Shared Tooling VERSION 0.27.29 at
-`18e727032237e4a6540fefce66bb1b90beb31644`. The snapshot was previewed and exported
+IC Storage selects committed Shared Tooling VERSION 0.28.2 at
+`5cf67f81c50c56ac17389ae71a3a87d46e86e8a2`. The snapshot was previewed and exported
 from a clean checkout of that commit; dirty sibling changes are excluded. The
 manifest records the complete selected payload and executable-mode inventory.
 Source verification and native qualification remain separate.
@@ -23,21 +23,34 @@ pushes and alternate delivery checkouts need explicit authorization; Storage's
 configured direct-release default is not consent. Existing temporary work must
 be preserved through an authorized route before cleanup.
 
-The executable changes admit path-only private development members in release
-group plans and refuse incomplete owned-tree inventories after traversal errors.
-Storage's three publishable groups keep their existing versioned catalogs and
-complete release gates. The exporter also supplies the missing validation-runner
-guide. Tool versions, compiler pins, dependency selections and runtime behavior
-are unchanged; no tool-store maintenance or cleanup runs during adoption.
+The 0.28.2 adoption is explicitly requested maintenance. Its selected changes add
+focused-development and batched-adoption guidance; the upstream nesting-depth
+regression fixture fix is outside Storage's selected export closure. No supplier
+or consumer release is implied by this refresh. The consumer-specific proof
+collection/recovery work completes the local implementation for
+[Storage #156](https://github.com/dragginzgame/ic-storage/issues/156).
 
-This adoption includes Shared's package-scoped native tool identity and explicit
-tool-store maintenance support. Setup may trim its own successful build scratch;
-no historical tool generation or retained qualification evidence is reclaimed.
-The new release-group validation plan is opt-in and is not enabled here: the
-consumer retains its existing complete release gate and native release adapter.
-The bootstrap observer, source-drift refusal and captured validation-input
-checkpoints remain selected. Common formatter, compiler and host-tool pins are
-unchanged; Rust 1.99.1 remains both the support floor and development compiler.
+The 152-file snapshot adds Shared's canonical validation evidence, baseline and
+roster interfaces and their companions. Storage invokes the shared verifier for
+initial group admission, retaining its complete proof and checkpoint/log hashes
+inside the existing native receipt. Generic event/timing parsing has been removed.
+Recovery preserves the original proof at its original source location; Storage's
+existing source/configuration/lock projection admission qualifies release-owned
+version edits without reinterpreting or rewriting the old checkpoints.
+
+The ordered full-stage roster lives once in `ci/release-validation.json`.
+Full dispatch uses Shared's roster interface; native product selection derives
+from the same catalog and retains group/package ownership and baseline-version
+checks. Shared observes tag identity/ancestry/changed paths. Unknown or unavailable
+scope keeps the full gate; failed observations refuse. No producer fixture alone
+qualifies this consumer's recovery, host or publication boundaries.
+
+The [consumer mapping](storage-release-validation.md) keeps narrow private adapter
+plans and the full repository CI gate. Group evidence now has schema 2 inside the
+pending schema-2 validation receipt; earlier local group-schema-1 attempts remain
+with their original helper. Historical released receipts and archives are untouched.
+ShellCheck's separate reuse path and tool/compiler/dependency pins remain unchanged.
+Rust 1.99.1 remains both support floor and development/release compiler.
 
 Production Storage imports `ic-platform-runtime` 0.19.0 only on Wasm. Native
 production selects no Platform/Runtime, runtime guard or Types provider. Wasm

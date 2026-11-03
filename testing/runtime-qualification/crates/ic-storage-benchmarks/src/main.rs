@@ -1,12 +1,16 @@
 //! Installed, matched map comparison. Testkit owns the explicitly prepared server.
 use clap::Parser;
 use ic_platform::{pocket_ic::PocketIcBuilder, principal::ExternalPrincipal};
+use ic_storage_benchmarks::workloads::{Workload, transfer_rows};
 use ic_storage_benchmarks::*;
 use std::{collections::BTreeMap, fs, io::Write, path::PathBuf};
 
 #[derive(Parser)]
 #[command(about = "Compare original Wasm map workloads on a prepared PocketIC server")]
 struct Arguments {
+    /// Fixed consumer workload; owns cases, sizes, population, batching and access patterns.
+    #[arg(long, value_enum, conflicts_with_all = ["rows", "cases", "patterns", "shuffled", "cache_bytes", "upstream_cache_slots", "cold_cache", "rounds"])]
+    workload: Option<Workload>,
     #[arg(long)]
     owned_wasm: PathBuf,
     #[arg(long)]
@@ -49,9 +53,31 @@ struct Measurement {
 }
 type Samples = BTreeMap<(Case, u32, u32, Pattern, String, String), Vec<Measurement>>;
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let args = Arguments::parse();
+    let mut args = Arguments::parse();
+    if let Some(workload) = args.workload {
+        args.rows = workload.rows();
+        args.cases = workload
+            .cases()
+            .iter()
+            .map(|case| format!("{case:?}"))
+            .collect();
+        args.patterns = workload.patterns().to_vec();
+        args.shuffled = matches!(workload, Workload::Records);
+        args.rounds = workload.rounds();
+    }
+    let batches: &[u32] = args.workload.map_or(&[1, 32], Workload::counts);
+    let payloads = |case: Case| {
+        args.workload
+            .map_or_else(|| case.payloads(), |workload| workload.payloads(case))
+    };
     let cases: Vec<_> = CASES
         .into_iter()
+        .chain(
+            args.cases
+                .iter()
+                .any(|name| name == "VectorBytes")
+                .then_some(Case::VectorBytes),
+        )
         .filter(|case| args.cases.is_empty() || args.cases.contains(&format!("{case:?}")))
         .collect();
     assert!(
@@ -68,7 +94,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     fs::write(
         args.output.join("configuration.json"),
         serde_json::to_vec_pretty(&serde_json::json!({
-            "rows": args.rows, "structures": ["Map","Set","Vector","Cell","Region"], "samples": args.samples, "cases": cases.iter().map(|case| serde_json::json!({"case":case, "key_type":case.key_type(), "value_type":case.value_type(), "logical_value_bytes":case.payloads(), "structure":case.structure(), "operations":case.operations(), "population_rows":case.rows(args.rows)})).collect::<Vec<_>>(), "batch_sizes": [1,32],
+            "rows": args.rows, "structures": ["Map","Set","Vector","Cell","Region"], "samples": args.samples, "cases": cases.iter().map(|case| serde_json::json!({"case":case, "key_type":case.key_type(), "value_type":case.value_type(), "logical_value_bytes":payloads(*case), "structure":case.structure(), "operations":case.operations(), "population_rows":case.rows(args.rows)})).collect::<Vec<_>>(), "batch_sizes": batches, "workload": args.workload,
             "patterns": args.patterns, "seed": "sample + 1 + round * 7919", "shuffled": args.shuffled,
             "cache_bytes": args.cache_bytes, "upstream_cache_slots": args.upstream_cache_slots, "cold_cache": args.cold_cache, "cache_scope": "ordinary Map only", "rounds": args.rounds, "reference_revision": args.reference_revision,
             "upstream_bucket_pages": args.upstream_bucket_pages,
@@ -84,8 +110,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut raw = fs::File::create(args.output.join("samples.jsonl"))?;
     let mut timings: Samples = BTreeMap::new();
     for case in cases {
-        for &payload in case.payloads() {
-            for count in [1, 32] {
+        for &payload in payloads(case) {
+            for &count in batches {
                 for &pattern in &args.patterns {
                     for sample in 0..args.samples {
                         for backend in if sample % 2 == 0 { [0, 1] } else { [1, 0] } {
@@ -114,8 +140,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                                     && matches!(case.structure(), "Map" | "Set" | "Region"),
                                 u64::from(sample) + 1,
                             );
-                            for start in (0..case.rows(args.rows)).step_by(128) {
-                                let count = (case.rows(args.rows) - start).min(128);
+                            for start in
+                                (0..case.rows(args.rows)).step_by(transfer_rows(payload as usize))
+                            {
+                                let count = (case.rows(args.rows) - start)
+                                    .min(transfer_rows(payload as usize) as u32);
                                 let setup = Setup {
                                     start: u64::from(start),
                                     count,
@@ -190,7 +219,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                                 }
                             }
                             let expected_rows: Vec<_> = model.into_iter().collect();
-                            for chunk in expected_rows.chunks(128) {
+                            let largest = expected_rows
+                                .iter()
+                                .map(|(_, bytes)| bytes.len())
+                                .max()
+                                .unwrap_or(0);
+                            for chunk in expected_rows.chunks(transfer_rows(largest)) {
                                 let request = Setup {
                                     start: chunk[0].0,
                                     count: chunk.len() as u32,
@@ -416,6 +450,56 @@ fn admit_phase(model: &BTreeMap<u64, Vec<u8>>, r: Request) {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn named_workloads_refuse_mixed_knobs_and_preserve_operation_semantics() {
+        let base = [
+            "bench",
+            "--owned-wasm",
+            "owned",
+            "--dfinity-wasm",
+            "dfinity",
+            "--output",
+            "report",
+        ];
+        for name in ["control", "records", "bulk"] {
+            let args =
+                Arguments::try_parse_from(base.into_iter().chain(["--workload", name])).unwrap();
+            let workload = args.workload.unwrap();
+            assert!(
+                Arguments::try_parse_from(base.into_iter().chain([
+                    "--workload",
+                    name,
+                    "--rows",
+                    "7"
+                ]))
+                .is_err()
+            );
+            for &case in workload.cases() {
+                for &payload in workload.payloads(case) {
+                    let rows = case.rows(7);
+                    let mut model = (0..u64::from(rows))
+                        .map(|key| (key, case.expected_value(key, payload, false)))
+                        .collect();
+                    for operation in case.operations() {
+                        let request = Request {
+                            case,
+                            rows,
+                            payload,
+                            pattern: Pattern::Uniform,
+                            count: 1,
+                            operation,
+                            seed: 1,
+                        };
+                        if operation == Operation::Grow {
+                            assert!(payload_for(request) >= payload);
+                        }
+                        expected(&mut model, request);
+                    }
+                    assert_eq!(model.len(), rows as usize);
+                }
+            }
+        }
+    }
     #[test]
     fn bucket_selection_is_nonzero_and_survives_initialization_encoding() {
         let base = [

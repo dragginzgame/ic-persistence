@@ -121,7 +121,7 @@ fn release_tool_setup_and_offline_admission_precede_gates_and_version_mutation()
         fixture.assert_original();
         assert!(!fixture.repo.exec.state.borrow().has_call(|call| {
             call.iter()
-                .any(|argument| argument == "validate" || argument == "fmt-check")
+                .any(|argument| argument == "validate-release-plan" || argument == "fmt-check")
         }));
     }
     let fixture = Fixture::new();
@@ -131,13 +131,13 @@ fn release_tool_setup_and_offline_admission_precede_gates_and_version_mutation()
         |argument: &str| state.call_position(|call| call.iter().any(|value| value == argument));
     assert!(position("fetch") < position("install-tools"));
     assert!(position("install-tools") < position("tools-check"));
-    assert!(position("tools-check") < position("validate"));
+    assert!(position("tools-check") < position("validate-release-plan"));
     let admission = state
         .calls
         .iter()
         .rposition(|call| is_cargo_call(call, "fetch"))
         .unwrap();
-    assert!(position("validate") < admission);
+    assert!(position("validate-release-plan") < admission);
     assert!(admission < position("fmt-check"));
     assert!(!state.has_call(|call| is_cargo_call(call, "update")));
 }

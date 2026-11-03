@@ -126,7 +126,7 @@ fn failed_release_fixture_retains_receipts_and_command_state() {
         state
             .calls
             .iter()
-            .any(|call| is_make_call(call, "validate"))
+            .any(|call| is_make_call(call, "validate-release-plan"))
     );
     assert_eq!(
         fs::read_to_string(retained.join("Cargo.lock")).unwrap(),
@@ -251,15 +251,9 @@ fn streamed_receipts_preserve_json_and_reject_partial_serialization() {
 
     let fixture = Fixture::new();
     let path = fixture.repo.root.join("receipts/validated.json");
-    // Encoding passive receipts needs no simulated validation, package, commit
-    // or tag. Lifecycle admission is exercised by the release/recovery tests.
-    let validation = ValidationEvidence {
-        selection: fixture.selection.clone(),
-        lock: fixture_lock().as_bytes().to_vec(),
-        identities: ["cargo", "rustc", "msrv"].map(str::to_owned),
-        configuration: BTreeMap::new(),
-        command: vec!["validate".to_owned()],
-    };
+    fixture.repo.verify(&fixture.selection).unwrap();
+    let validation = fixture.validation_evidence();
+    let calls = fixture.repo.exec.state.borrow().calls.clone();
     Processes.write_json(&path, &validation).unwrap();
     let original = fs::read(&path).unwrap();
     Processes.write_json(&path, &validation).unwrap();
@@ -319,10 +313,7 @@ fn streamed_receipts_preserve_json_and_reject_partial_serialization() {
     ));
     assert_eq!(fs::read(&path).unwrap(), original);
     assert_eq!(entries(), before);
-    assert_eq!(
-        fixture.repo.exec.state.borrow().calls,
-        Vec::<Vec<String>>::new()
-    );
+    assert_eq!(fixture.repo.exec.state.borrow().calls, calls);
 }
 
 #[test]

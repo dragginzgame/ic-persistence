@@ -100,9 +100,12 @@ ordinary validation/helper calls never fetch automatically or repair lockfiles.
 owns its published selection. Build 0.73 supplies the group-aware renderer.
 Toolchain/formatter and installed server preparation retain their separate owners.
 
-Every group runs the same complete `make validate` release gate. Group selection
-does not narrow Clippy, compiler-floor, Wasm, runtime prerequisites or whole-workspace
-archive integration. Development validation may qualify dirty source; release
+The native release adapter selects a complete group plan under the
+[Storage validation mapping](docs/storage-release-validation.md). Core, shared and
+uncertain changes retain all stages; qualified private adapter-only changes omit
+unaffected stages with explicit reasons. Repository CI and `make validate` still
+run the full roster. Clippy, compiler-floor, Wasm, runtime prerequisites and
+whole-workspace archive integration remain required. Development validation may qualify dirty source; release
 admission and `make package` retain clean-source checks. `package-workspace.sh` delegates archive admission to Build 0.73.5 and the native
 `repo-tool qualify-archives` consumer roster. It qualifies all three current archives as one integration graph with each package's
 own version. The selected group is then packaged alone: published suppliers use
@@ -148,7 +151,10 @@ attempt under changed version ownership or ledger paths.
 Native validation/preparation/final receipts live under Cargo's selected target:
 `release-validation/GROUP-X.Y.Z-validated.json`, `GROUP-X.Y.Z-prepared.json` and
 `GROUP-X.Y.Z.json`. They bind group selection and exact source/destination; the
-source commit binds the group policy. An admitted archive map must contain exactly
+source commit binds the group policy. New validation receipts use schema 2 and
+bind the selected plan, baseline, input checkpoint and retained stage evidence;
+recovery refuses missing, failed or changed records. Historical receipts remain
+with their original source/helper, never reinterpreted as group proofs. An admitted archive map must contain exactly
 the selected members. Retained archives remain content-addressed under
 `release-validation/artifacts/`; earlier attempts, logs, receipts and tools are
 preserved. The common runner's saved intent, validation, prepared and final stages

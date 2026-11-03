@@ -546,6 +546,15 @@ contracts; ordinary development does not require rereading these mechanics.
   unknown scope refuses or uses the existing full gate. Keep full repository CI,
   source/archive admission and recovery intact. Group selection alone grants no
   omission; qualify the mapping before enabling it in a release adapter.
+- Keep group validation modular under the
+  [shared-mechanics boundary](../docs/release-group-validation.md#shared-mechanics-and-local-policy).
+  Consumers own product mappings and one full-stage roster; Shared owns reusable
+  dispatch, checkpoint and evidence mechanics. Raise missing shared capabilities
+  at their owner instead of multiplying local frameworks. Full CI must not loop
+  over group gates and repeat common checks; full-versus-selected qualification
+  comparisons must have an explicit lifecycle rather than run indefinitely on
+  every ordinary change. Preserve distinct host/feature obligations and existing
+  admission until an equivalent replacement is qualified.
 - Standard release entrypoints must select their required prepared executables
   through the consumer's offline admission interface; do not require maintainers
   to export tool paths in each shell. Fresh preflight prepares missing selections
@@ -909,6 +918,22 @@ contracts; ordinary development does not require rereading these mechanics.
 
 ### Shared dependency findings
 
+- A pending sibling release, registry publication, tag or deployment is a user
+  coordination matter, not a new engineering issue. Do not create or reopen
+  supplier, consumer or Shared issues, or post repeated release requests, solely
+  because a needed version is not yet available. This includes "publish the fix",
+  "release group X" and "blocked until sibling Y deploys" trackers, even when
+  the dependency genuinely blocks the current task.
+- Report that blocker directly to the user: name the repository and release
+  group/package, the needed version or source commit, observed delivery state,
+  and the affected work. Distinguish committed code, pushed tags, registry
+  availability and deployed applications. Do not invent an unpublished version
+  or start sibling delivery. Continue independent authorized work where possible.
+- Actual source defects, missing APIs and substantive consumer migrations still
+  belong in their owning issues. A code fix's existing implementation and required
+  acceptance criteria remain valid; this rule does not close unfinished fixes or
+  waive qualification. Routine version/lock/snapshot updates and publication
+  requests alone do not justify another issue.
 - Keep **one active remediation issue per shared dependency root cause**, at the
   repository that owns the supplying dependency or capability. A matching
   advisory or inherited defect in multiple consumer graphs does not create

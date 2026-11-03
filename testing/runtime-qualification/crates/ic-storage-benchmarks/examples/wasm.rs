@@ -171,6 +171,10 @@ mod canister {
                 case,
                 settings.upstream_bucket_pages,
             )),
+            Case::VectorBytes => Box::new(TypedVector::<ChunkBytes>::new(
+                case,
+                settings.upstream_bucket_pages,
+            )),
             Case::VectorRecord => Box::new(TypedVector::<WireRecord>::new(
                 case,
                 settings.upstream_bucket_pages,
@@ -241,7 +245,7 @@ mod canister {
     }
     impl<K: BenchKey + Storable, V: BenchValue + Storable> Benchmark for TypedMap<K, V> {
         fn setup(&mut self, r: Setup) -> u64 {
-            assert!(self.case.payloads().contains(&r.payload));
+            assert!(self.case.accepts_payload(r.payload));
             for id in population_ids(&r) {
                 assert!(
                     checked!(
@@ -268,7 +272,7 @@ mod canister {
                 configure_cache(&mut self.map, self.settings);
             }
             assert_eq!(r.case, self.case);
-            assert!(self.case.payloads().contains(&r.payload));
+            assert!(self.case.accepts_payload(r.payload));
             let ids = keys(r);
             let scan_start = K::from_id(ids[0]);
             let scan_end = K::from_id(ids[0] + u64::from(r.count.div_ceil(2)));

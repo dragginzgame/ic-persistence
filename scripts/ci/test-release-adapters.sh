@@ -51,8 +51,10 @@ mkdir -p "$directory/ci" "$directory/make"
 cp "$ROOT/Makefile" "$ROOT/rust-toolchain.toml" "$directory/"
 cp "$ROOT/ci/release-tools.env" "$ROOT/ci/runtime-tools.env" "$ROOT/ci/tool-versions.env" "$directory/ci/"
 cp "$ROOT/make/consumer.mk" "$ROOT/make/tools.mk" "$ROOT/make/release.mk" "$ROOT/make/rust-format.mk" "$ROOT/make/execution.mk" "$directory/make/"
+cp "$ROOT/ci/release-validation.json" "$ROOT/ci/cargo-release-groups.json" "$directory/ci/"
 mkdir -p "$directory/scripts/ci"
 cp "$ROOT/scripts/ci/check-make-execution.sh" "$ROOT/scripts/ci/check-release-delivery.sh" "$directory/scripts/ci/"
+cp "$ROOT/scripts/ci/validate-storage-workspace.sh" "$ROOT/scripts/ci/validation-evidence.pl" "$ROOT/scripts/ci/run-validation-targets.sh" "$ROOT/scripts/ci/verify-file-checksum.sh" "$ROOT/scripts/ci/validation-input-checkpoint.pl" "$ROOT/scripts/ci/release-validation-plan.pl" "$ROOT/scripts/ci/ValidationPlan.pm" "$directory/scripts/ci/"
 }
 
 test_make_admission() (
@@ -258,16 +260,18 @@ cat > "$FIXTURE/scripts/ci/package-workspace.sh" <<'STUB'
 printf 'package %s\n' "$*" >> "$MAKE_PROBE_EVENTS"
 STUB
 printf '%s\n' \
-    'make --no-print-directory shared-tooling-check tools-check format-tools-check' \
-    'make --no-print-directory validation-compilers-check' \
+    'make --no-print-directory shared-tooling-check tools-check format-tools-check validation-compilers-check' \
     "cargo +$FIXTURE_TOOLCHAIN clippy --workspace --locked --offline --all-targets -- -D warnings" \
     > "$FIXTURE/lint-failure-expected"
 cp "$FIXTURE/lint-failure-expected" "$FIXTURE/lint-success-expected"
 printf '%s\n' \
     "cargo +$FIXTURE_TOOLCHAIN check --workspace --locked --offline --all-targets --features test-support" \
-    'make --no-print-directory check-production-graph check-pins check-storage-boundary check-license check-doc-links test-release-adapters' \
-    'make --no-print-directory test-tools test-tooling test-hooks fmt-check test-fixture-cell test-package-admission' \
-    "cargo +$FIXTURE_TOOLCHAIN test --workspace --locked --offline -- --test-threads=1 --skip repo_tool::tests::" \
+    'make --no-print-directory check-production-graph check-pins check-storage-boundary check-license check-doc-links fmt-check' \
+    'make --no-print-directory test-release-adapters test-tools test-tooling test-hooks test-package-admission' \
+    'make --no-print-directory test-fixture-cell' \
+    "cargo +$FIXTURE_TOOLCHAIN test -p ic-storage --locked --offline -- --test-threads=1 --skip repo_tool::tests::" \
+    "cargo +$FIXTURE_TOOLCHAIN test -p ic-metrics-storage --locked --offline -- --test-threads=1" \
+    "cargo +$FIXTURE_TOOLCHAIN test -p ic-logging-storage --locked --offline -- --test-threads=1" \
     "cargo +$FIXTURE_TOOLCHAIN doc --workspace --locked --offline --no-deps" \
     "cargo +$FIXTURE_TOOLCHAIN check --workspace --locked --offline --target wasm32-unknown-unknown --tests" \
     'make --no-print-directory wasm-size' \

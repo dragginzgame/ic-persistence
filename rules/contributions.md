@@ -206,6 +206,10 @@ an audit finding or a blocked downstream build do not authorize those PRs.
 Report the supplying version, concrete required source migration and focused
 evidence; use an existing owning issue for actionable follow-up. Do not create
 waiting issues or PRs merely because another repository is not on the latest version.
+Likewise, do not file an issue asking a sibling to publish, tag, release or deploy
+an already identified change. Report the required supplier/version and blocker
+directly to the user under the [dependency finding rules](engineering-details.md#shared-dependency-findings).
+An actual missing capability or code defect remains an owning engineering issue.
 
 Cross-repository source work requires an explicit request covering that
 destination and change. A PR additionally requires an explicit PR request or

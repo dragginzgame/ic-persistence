@@ -80,6 +80,46 @@ retain the round; summaries take the upper median across samples and rounds.
 Configuration records every selection. Larger supported populations are opt-in
 and must be qualified separately; use selected cases to bound runtime and memory.
 
+## Consumer workloads
+
+The [local memory inventory](../../../../docs/local-memory-audit.md#complete-declaration-inventory-and-repeatable-workloads)
+selects three fixed recipes. Use a name instead of repeating a collection of
+flags; these are benchmark selections, not new Storage runtime parameters.
+
+| `BENCH_WORKLOAD` | Population | Values / structures | Access |
+| --- | --- | --- | --- |
+| `control` | 16 records; Cell has one | 256 B / 4 KiB, Map and Cell | Single, uniform, three rounds |
+| `records` | 4,096 records | Bytes at 31/32/33/256/1,024/4,096 B; fixed 32-byte Map, 64-byte Set, WireRecord Vector | Batches 1/32, uniform/hot16/Zipf, shuffled Map/Set, three rounds |
+| `bulk` | Eight records; Cell has one | 64 KiB / 1 MiB, Map/Vector/Cell/Region | Single, uniform, one round |
+
+```sh
+make benchmark-storage BENCH_WORKLOAD=records BENCH_SAMPLES=1 BENCH_UPSTREAM_BUCKET_PAGES=8
+# Same recipe and binaries, varying only the ICSS bucket control:
+for pages in 1 8 128; do
+    make benchmark-storage BENCH_WORKLOAD=bulk BENCH_SAMPLES=1 BENCH_UPSTREAM_BUCKET_PAGES=$pages
+done
+```
+
+A recipe owns population (so `BENCH_ROWS` is unused), cases, payload sizes,
+batches, patterns, ordering, rounds and disabled caches. Combining it with the
+other detailed workload environment knobs refuses. Samples and ICSS bucket size
+remain explicit experimental controls. Configuration records the recipe and all
+resolved settings; original manual selections remain available without a recipe.
+
+Large byte values are opt-in; the ordinary matrix retains its previous payload
+sizes. Setup and final verification target at most 512 KiB per call, except for
+one indivisible 1 MiB value. Protocol tests qualify that value under bounded Wire
+limits. The measured bulk call contains one operation; `Grow` at/above 64 KiB
+replaces at the same size, while `Shrink` still writes an empty payload. This
+preserves the old trace's growth ceiling without shrinking a 1 MiB value in the
+phase named `Grow`. Encoding and setup remain outside the measured interval.
+
+These are synthetic collection traces informed by actual declarations. They do
+not reproduce a complete canister, concurrently open allocations, actual live
+populations or the 2–32 MiB upper bounds of some control snapshots. The inventory
+explains which consumers and bounds are covered; no production default follows
+from a successful smoke run.
+
 ## Supported structures and concrete types
 
 | Structure | Types | Logical value bytes |
@@ -100,7 +140,11 @@ generation and 32-byte tag, using the same IC Wire codec on both backends. Its
 60 field bytes are not its encoded size; the declared encoding ceiling is 256
 bytes. Fixed array keys and zero-padded string keys preserve logical ID order.
 String values use two-byte UTF-8 characters. Scalars exercise high bits.
-There are 28 concrete cases and 46 type/size combinations. The 31/32/33-byte
+There are 28 concrete cases and 46 type/size combinations in the ordinary matrix.
+The additional `VectorBytes` case is opt-in: both backends declare a variable-length
+1 MiB maximum (`ChunkBytes`), matching Canic’s chunk vector. ICSS slots reserve
+that maximum even for shorter values; this is part of the comparison, not an
+equal-layout claim. The 31/32/33-byte
 fixed and variable Map values straddle Storage's inline-value threshold; fixed
 256-byte values and 4 KiB variable values extend the payload comparison.
 
@@ -181,8 +225,8 @@ compare all remaining contents. Raw samples are flushed before validation; a
 mismatch or trap fails the run, and no successful summary is written. Typed
 normalization happens after timing; Wire records normalize fields without their
 storage codec. Physical stable pages include metadata and reservation, not just
-payload bytes. The benchmark protocol admits four million traversal nodes and
-128 MiB of conservative allocation allowance so 512 KiB full-result responses fit;
+payload bytes. The benchmark protocol admits eight million traversal nodes and
+256 MiB of conservative allocation allowance so bounded responses including a single 1 MiB bulk value fit;
 this allowance is not an actual allocation. Request/reply encoding is outside timing.
 Native regression tests round-trip the largest verification and grown-value
 responses under the same limits. Setup cost is excluded, but its allocation history remains.

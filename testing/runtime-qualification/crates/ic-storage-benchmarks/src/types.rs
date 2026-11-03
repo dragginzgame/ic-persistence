@@ -18,6 +18,7 @@ pub enum Case {
     SetU64,
     SetString,
     VectorU64,
+    VectorBytes,
     VectorBytes32,
     VectorRecord,
     CellBytes,
@@ -75,6 +76,7 @@ impl Case {
         match self {
             Self::SetU64 | Self::SetString | Self::SetI64 | Self::SetBytes64 => "Set",
             Self::VectorU64
+            | Self::VectorBytes
             | Self::VectorBytes32
             | Self::VectorRecord
             | Self::VectorI64
@@ -143,6 +145,7 @@ impl Case {
     pub fn value_type(self) -> &'static str {
         match self {
             Self::U64Bytes | Self::CellBytes | Self::RegionBytes => "Vec<u8>",
+            Self::VectorBytes => "ChunkBytes(max=1MiB)",
             Self::U64U64 | Self::VectorU64 => "u64",
             Self::U64U128
             | Self::U128U128
@@ -161,10 +164,20 @@ impl Case {
             Self::VectorBytes32 | Self::U64Fixed32 | Self::CellFixed32 => "[u8;32]",
         }
     }
+    /// Larger byte records are opt-in through the consumer workload profiles.
+    pub fn accepts_payload(self, payload: u32) -> bool {
+        self.payloads().contains(&payload)
+            || matches!(
+                self,
+                Self::U64Bytes | Self::CellBytes | Self::RegionBytes | Self::VectorBytes
+            ) && [256, 65_536, 1_048_576].contains(&payload)
+    }
     /// Logical value sizes; WireRecord has 60 field bytes, with variable encoding.
     pub fn payloads(self) -> &'static [u32] {
         match self {
-            Self::U64Bytes | Self::CellBytes | Self::RegionBytes => &[0, 31, 32, 33, 1024, 4096],
+            Self::U64Bytes | Self::CellBytes | Self::RegionBytes | Self::VectorBytes => {
+                &[0, 31, 32, 33, 1024, 4096]
+            }
             Self::StringString => &[0, 32, 1024, 4096],
             Self::I64I64 | Self::VectorI64 | Self::VectorF64 => &[8],
             Self::U64Fixed31 => &[31],
@@ -185,7 +198,7 @@ impl Case {
     }
     pub fn expected_value(self, key: u64, payload: u32, replacement: bool) -> Vec<u8> {
         match self {
-            Self::U64Bytes | Self::CellBytes | Self::RegionBytes => {
+            Self::U64Bytes | Self::CellBytes | Self::RegionBytes | Self::VectorBytes => {
                 Vec::<u8>::make(key, payload, replacement).canonical()
             }
             Self::U64U64 | Self::VectorU64 => u64::make(key, payload, replacement).canonical(),
@@ -388,6 +401,23 @@ impl BenchValue for String {
 }
 
 ///
+/// ChunkBytes
+///
+/// Bounded raw chunk bytes, matching Canic's 1 MiB variable-length vector contract.
+///
+#[derive(Clone, Debug)]
+pub struct ChunkBytes(Vec<u8>);
+impl BenchValue for ChunkBytes {
+    fn make(key: u64, payload: u32, replacement: bool) -> Self {
+        assert!(payload <= 1_048_576);
+        Self(super::value(key, payload, replacement))
+    }
+    fn canonical(self) -> Vec<u8> {
+        self.0
+    }
+}
+
+///
 /// WireRecord
 ///
 /// Application-shaped record with the same bounded IC Wire codec on both stacks.
@@ -435,12 +465,40 @@ impl BenchValue for WireRecord {
 
 #[cfg(target_arch = "wasm32")]
 mod codec {
-    use super::{Signed64, WireRecord};
+    use super::{ChunkBytes, Signed64, WireRecord};
     #[cfg(any(feature = "dfinity", feature = "dfinity-head"))]
     use crate::upstream::{Storable, storable::Bound};
     #[cfg(feature = "owned")]
     use ic_storage::adapter::{Bound, CodecError, Storable};
     use std::borrow::Cow;
+    impl Storable for ChunkBytes {
+        const BOUND: Bound = Bound::Bounded {
+            max_size: 1_048_576,
+            is_fixed_size: false,
+        };
+        #[cfg(feature = "owned")]
+        fn to_bytes(&self) -> Result<Cow<'_, [u8]>, CodecError> {
+            Self::check_bounds(&self.0)?;
+            Ok(Cow::Borrowed(&self.0))
+        }
+        #[cfg(feature = "owned")]
+        fn from_bytes(bytes: Cow<'_, [u8]>) -> Result<Self, CodecError> {
+            Self::check_bounds(&bytes)?;
+            Ok(Self(bytes.into_owned()))
+        }
+        #[cfg(any(feature = "dfinity", feature = "dfinity-head"))]
+        fn to_bytes(&self) -> Cow<'_, [u8]> {
+            Cow::Borrowed(&self.0)
+        }
+        #[cfg(any(feature = "dfinity", feature = "dfinity-head"))]
+        fn into_bytes(self) -> Vec<u8> {
+            self.0
+        }
+        #[cfg(any(feature = "dfinity", feature = "dfinity-head"))]
+        fn from_bytes(bytes: Cow<'_, [u8]>) -> Self {
+            Self(bytes.into_owned())
+        }
+    }
     impl Storable for Signed64 {
         const BOUND: Bound = Bound::Bounded {
             max_size: 8,

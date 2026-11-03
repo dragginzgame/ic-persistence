@@ -55,6 +55,11 @@ same approach: mandatory local constraints first, task-specific references after
   authorization; DFINITY contributions remain excluded. Merges, integration-branch
   pushes, history rewrites, releases, publication, deployment and paid effects
   require delivery or specific action authority and retain enforced protections.
+- Do not file issues merely to request or wait for a sibling release, publication
+  or deployment. Tell the user which supplier/group and version or commit is
+  needed, what is available, and what remains blocked; the user coordinates
+  delivery. Track actual defects, missing capabilities and substantive consumer
+  code changes under the [dependency finding rules](rules/engineering-details.md#shared-dependency-findings).
 - Carry established authorization forward. Do not ask again for necessary
   substeps or stop an accepted coherent batch after each small slice. Inspection
   alone does not authorize repair. Resolve actual scope or effect ambiguity,
@@ -90,6 +95,10 @@ when changing interfaces, persistence or installation/recovery behavior.
 
 ## Validation and evidence
 
+- Ordinary coding and cleanup end after the relevant focused checks pass. Do not
+  turn that handoff into release preparation, fleet adoption or qualification of
+  every supported host. Those are separately requested workflows; missing broad
+  release evidence alone is not unfinished development work.
 - **Finish a coherent edit batch, then run its smallest meaningful checks once.**
   During development, run checks when they answer a specific implementation or
   debugging question. Do not test after every edit or rerun merely because it is
@@ -105,6 +114,12 @@ when changing interfaces, persistence or installation/recovery behavior.
   narrower selections. Do not stack check/build/test commands that prove the same
   compilation, or add feature/MSRV/native matrices without a changed obligation.
   Distinct lint, runtime, platform and product proofs still apply when relevant.
+- Inspect nested work before calling a fixture focused. Select its affected
+  cases rather than an aggregate that also runs unrelated installer, export or
+  release suites. If no narrow entrypoint exists, provide one when practical or
+  report that limitation; do not silently broaden an ordinary task into the full
+  suite. Name the changed behavior each selected check proves. Keep unchanged
+  generic regression matrices with their producer.
 - Reserve local full repository/workspace suites and broad gates for an explicitly
   authorized release or explicit request for those checks. Implementation,
   continuation, PR delivery and readiness wording do not authorize them. Focused
@@ -249,6 +264,11 @@ Group them once, with short titles and separate changelog comments, under the
 Dependency adoption must distinguish required compatibility/security changes from
 optional refreshes and check the destination graph before planning downstream
 releases. A newer external patch alone does not require republishing consumers.
+Defer optional dependency and snapshot refreshes by default, batching them at a
+natural release boundary when requested. Adopt Shared Tooling for a needed fix,
+capability or explicit refresh; an intact older snapshot alone is not work to do.
+Required API, security or compatibility migrations qualify the affected consumer
+boundary, rather than automatically updating the whole fleet.
 Follow the [adoption planning contract](docs/cargo-graph-checks.md#dependency-adoption-planning).
 Use root-owned dependency selections, reviewed shared tooling and explicit setup.
 Rust 1.99.1 is the approved minimum and pinned development/release compiler;

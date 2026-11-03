@@ -1,6 +1,8 @@
 //! Matched map workload and bounded benchmark protocol; not a production API.
 use serde::{Deserialize, Serialize};
 mod types;
+#[cfg(not(target_arch = "wasm32"))]
+pub mod workloads;
 #[cfg(all(
     target_arch = "wasm32",
     feature = "dfinity",
@@ -36,9 +38,9 @@ pub const RUN_ID: u64 = 2;
 pub const LIMITS: ic_wire::Limits = ic_wire::Limits {
     bytes: 8 * 1024 * 1024,
     // Wire conservatively charges visited byte references as well as buffers.
-    allocation: 128 * 1024 * 1024,
-    // Vec<u8> visits each byte; allow the largest 512 KiB result plus framing.
-    nodes: 4_000_000,
+    allocation: 256 * 1024 * 1024,
+    // Vec<u8> visits each byte; admit one 1 MiB bulk result plus framing.
+    nodes: 8_000_000,
     depth: 16,
 };
 ///
@@ -152,7 +154,7 @@ pub fn value(key: u64, length: u32, replacement: bool) -> Vec<u8> {
 pub fn keys(request: Request) -> Vec<u64> {
     assert!((1..=MAX_ROWS).contains(&request.rows));
     assert!((1..=32).contains(&request.count));
-    assert!(request.payload <= 65_536);
+    assert!(request.case.accepts_payload(request.payload));
     let mut state = request.seed;
     let cdf = if request.pattern == Pattern::Zipf {
         let mut sum = 0.0;
@@ -197,7 +199,7 @@ pub fn keys(request: Request) -> Vec<u64> {
 /// Replacement-size variation is shared by canisters and the independent model.
 pub fn payload_for(r: Request) -> u32 {
     match r.operation {
-        Operation::Grow => (r.payload.max(32) * 4).min(65_536),
+        Operation::Grow => (r.payload.max(32) * 4).min(65_536).max(r.payload),
         Operation::Shrink => 0,
         _ => r.payload,
     }

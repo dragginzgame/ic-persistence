@@ -1,0 +1,1178 @@
+{
+  "date": "2026-11-03",
+  "scope": "Local source declarations and supplied memory roles, not deployed allocations or usage. Fixtures identified separately; existing alternate worktrees are not distinct consumers. Toko and Toko Miner excluded by scope policy.",
+  "provenance": {
+    "canic": {
+      "head": "0509ec870891515923f79d3932ece127b351cd15",
+      "dirty_paths": 490,
+      "locked_storage_versions": [
+        "0.65.5"
+      ]
+    },
+    "ic-auth": {
+      "head": "bbcd4cc694e91f3b133d9c5bf0dc25c012b6d481",
+      "dirty_paths": 44,
+      "locked_storage_versions": [
+        "0.66.0"
+      ]
+    },
+    "ic-backup": {
+      "head": "8880639418bed4a741123f7401ef206dc47bb6b0",
+      "dirty_paths": 35
+    },
+    "ic-blob-storage": {
+      "head": "984a4c81838fa270a1d016d18a90739e7ad3ad89",
+      "dirty_paths": 78,
+      "locked_storage_versions": [
+        "0.66.0"
+      ]
+    },
+    "ic-crates": {
+      "head": "0851757145a7b42a63b41405bf273dd6a096ce86",
+      "dirty_paths": 107,
+      "locked_storage_versions": [
+        "0.56.4"
+      ]
+    },
+    "ic-observability": {
+      "head": "3b4c4c353dff8d7746016ceb03091c6b6e611b38",
+      "dirty_paths": 0
+    },
+    "ic-platform": {
+      "head": "082be2ff19f52ced0653f2a589c092bc0ffc3e90",
+      "dirty_paths": 1
+    },
+    "ic-profiler": {
+      "head": "50d954813680044d916e799f2d21e926e3f0b9db",
+      "dirty_paths": 4
+    },
+    "ic-query": {
+      "head": "7cce26eab3883b461594d262316746413b253219",
+      "dirty_paths": 0
+    },
+    "ic-relay": {
+      "head": "db3746404f09683b664cb8fe6b0234d9edbaf077",
+      "dirty_paths": 199,
+      "locked_storage_versions": [
+        "0.65.4"
+      ]
+    },
+    "ic-replica-watch": {
+      "head": "beca69e305c2bd08c0886e34711f01c277b60f53",
+      "dirty_paths": 2
+    },
+    "ic-scheduling": {
+      "head": "1e9821379a38f6f2b8a3b893d5987210ef48e933",
+      "dirty_paths": 62,
+      "locked_storage_versions": [
+        "0.66.0"
+      ]
+    },
+    "ic-tooling": {
+      "head": "18e3eba9bb918a1a24895a7dca2f9aadfaab2334",
+      "dirty_paths": 6
+    },
+    "ic-wire": {
+      "head": "aa308c9c859687f505cdde33a5d47c96c99ac601",
+      "dirty_paths": 182
+    },
+    "icydb": {
+      "head": "5fc21d4bc9ddfc885b5e33d064786e8ae3088871",
+      "dirty_paths": 0,
+      "locked_storage_versions": [
+        "0.66.0"
+      ]
+    },
+    "plex": {
+      "head": "c64e09635e8f7c0ee3b708bdabfd9ea983612922",
+      "dirty_paths": 13
+    }
+  },
+  "source_sha256": {
+    "canic/crates/canic-core/src/storage/stable/intent.rs": "4b399d72dee3173c57083f4a47053987e47912387143f801372f3a04f9236481",
+    "canic/crates/canic-core/src/storage/stable/async_job_recovery/mod.rs": "cd77b1fdf1d92178368f140d773fb2aa3fc46016338e1a1c5368a35b9983a979",
+    "canic/crates/canic-core/src/storage/stable/auth/mod.rs": "2e25b69a364865d74c8d0c49a6d7ac4a91efe8bea0076d7880e59b08427310a0",
+    "canic/crates/canic-core/src/storage/stable/auth/enrollment/mod.rs": "f0ad19f3b67c3a6ffac1c9af760ba11e2be536363c004d2c9dd7f7ceafff5c88",
+    "canic/crates/canic-core/src/storage/stable/authority_restore/mod.rs": "0a64bf2284ccd07e06a6b38e2a81f69522338368562c7df495ae920e2dc18e39",
+    "canic/crates/canic-core/src/storage/stable/caller_authority/mod.rs": "690f9adb82c81ad7581626386ba93ecf93035c356aca2262c37706da956647c3",
+    "canic/crates/canic-core/src/storage/stable/cycles.rs": "f7ee7434528ec6394ca237ebab31232b00e98b63af9152b13b135072b7fc9b55",
+    "canic/crates/canic-core/src/storage/stable/icp_refill.rs": "cf7c15d28ebe0c0440b3c1e011c4a3f6b8ef050ecbfe052a1c9335ae4ffbe0f6",
+    "canic/crates/canic-core/src/storage/stable/fleet_activation/mod.rs": "b06c8727e52bcf4b671ca22cb5b2906f113e6aca62edf91b8ce526aec919899c",
+    "canic/crates/canic-core/src/storage/stable/fleet_admission_projection/mod.rs": "cb2d8cd01773f428ad3d8afb749ace5d3c66e5844bd7f71cb301f3b0da6fa830",
+    "canic/crates/canic-core/src/storage/stable/state/fleet.rs": "44afa89818760b417e23f8f24e9db371a958f586f7b535a2c27381bde1c3e2f4",
+    "canic/crates/canic-core/src/storage/stable/placement_index.rs": "50c76302b8d6bffe9260ec9d1ea42aa7e9d5cf44d8ae9e67c169b6cf4099e4ff",
+    "canic/crates/canic-core/src/storage/stable/scaling.rs": "9fbd34a9de2985914386a7a3f400b52c7561a8311a473e7c83bec7e8fe9a374b",
+    "canic/crates/canic-core/src/storage/stable/replay.rs": "049886593440f2a0cf28dd05dce2550f8bdea14013aed1e2d40e66ff9c16bd35",
+    "canic/crates/canic-core/src/storage/stable/env.rs": "0b541e03a18cdd1d71e4cfabe8d41f1d200fde71bb2002aa0c4737fea25c5378",
+    "canic/crates/canic-core/src/storage/stable/children.rs": "7d8905f36f3aad9bfe187120394d62e37fb0ecf0374f0b8fe1fdc11d0b64975f",
+    "canic/crates/canic-core/src/storage/stable/sharding/mod.rs": "b6711f0027ce1e1d557d0f0bbc9b5a4f7731a0c6808389773abf034ca37ec346",
+    "canic/crates/canic-core/src/memory/keys/mod.rs": "a78e9847823ee3b5a402052c776d46b2ed1535a5d22ecff0ed0df55f74442ff3",
+    "canic/crates/canic-control-plane/src/storage/stable/application_checkpoint/mod.rs": "37a15c7c7d655261f7f5132512d56f6391948533c7856046af53b4299e44ab0a",
+    "canic/crates/canic-control-plane/src/storage/stable/fixture_store/mod.rs": "b89b39628941fd3da79647493c4130b104e32287763fa27db78f02ba2d21ce51",
+    "canic/crates/canic-control-plane/src/storage/stable/fleet_admission/mod.rs": "d399f03a83d64e82feb73c8961a68e41145f1f7aa55cf5fb2466fa4f56b14949",
+    "canic/crates/canic-control-plane/src/storage/stable/fleet_coordinator/mod.rs": "ad8a8621d4db757d2b81b1adce321eef09f5cac962085e78e11391f634301368",
+    "canic/crates/canic-control-plane/src/storage/stable/root_admission/mod.rs": "a98ea77a874d71ca3be8da7ede7b2a369a2d680d9e94be239dec95f5679ef648",
+    "canic/crates/canic-control-plane/src/storage/stable/canister_pool/mod.rs": "134946f166c7d57ae457d974d260d6bee3e7176d1c1972b06356433069273c97",
+    "canic/crates/canic-control-plane/src/storage/stable/component_registry/mod.rs": "a9b2eb99b6bfe72c7d3ec34e3076c4e362da0678051a1ff68d0f1dc689cc3a04",
+    "canic/crates/canic-control-plane/src/storage/stable/component_provisioning/mod.rs": "84a5bc9037b45204ba69ba395d53b408ba305cef130d31350d4f370f8f6d6bf7",
+    "canic/crates/canic-control-plane/src/storage/stable/fleet_registry_mirror/mod.rs": "c9a5d04aa4dd45cba321d45b59440407a387c0536aa390d1f493676ffce89b87",
+    "canic/crates/canic-control-plane/src/storage/stable/root_funding/mod.rs": "7e587572bab33873445bf6b72bb7d1aa45a9cca06b7b91422b700769f590b8cd",
+    "canic/crates/canic-control-plane/src/storage/stable/state/root_wasm_store.rs": "58e8790ef6b4cf83b24f146cdc384dfb27f850717be9183697d42dfd284b9e8b",
+    "canic/crates/canic-control-plane/src/storage/stable/template/chunked.rs": "1a37a1d10b6709fc0bc37662cd70af3b1f1f6896384a2e7de52b108414fe62b7",
+    "canic/crates/canic-control-plane/src/storage/stable/template/manifest.rs": "7c53c921c8c2aa52a495599ee35fda5d88afd6ea60f9f1dfe95769f4b524e4d5",
+    "canic/crates/canic-control-plane/src/storage/stable/template/gc/mod.rs": "68a630b774b1f98ee04d2d3e71d82a59505bf0d9ba81b55a4e5ca7762e0d0f4b",
+    "canic/crates/canic-control-plane/src/memory/keys/mod.rs": "86ecddb77e8b25798219eadb496c74a0555065f05cfaf8bbf34b36da1b997b3b",
+    "canic/crates/canic-core/src/ops/runtime/metric_providers/host.rs": "d739a9efb76fc2a569c90a0cbdbd270251ad2e1bc2240428b276e6c8a2b906b3",
+    "ic-blob-storage/crates/ic-blob-storage/src/ops/service/stores/grants/mod.rs": "7304a003c9a11fb84c268e61d28322916d8949ac8bbe41c22fd8cb7048e6aa37",
+    "ic-blob-storage/crates/ic-blob-storage/src/ops/service/installation/mod.rs": "8833ee4f6ba89971ba1f895abdfcb6337e57c9a67d501b66699807a02514f0f1",
+    "ic-relay/crates/ic-relay/src/channel/mod.rs": "a69929f53efa0ebf08a64a03d4794687ef154e70cd05fdf845b98ecfbc02a41f",
+    "ic-relay/crates/ic-relay/src/responder/mod.rs": "099fbd68f44c94ba82660e2c20ffc145fe49ffc2a9cdbf388e3b0ef59135e350",
+    "ic-relay/crates/ic-relay/src/dispatch/mod.rs": "6882bfebcf815f9cae4508b8958739dff202f7359820b9de3b1a5eb3c769375a",
+    "ic-relay/crates/ic-relay/src/mailbox/mod.rs": "3fe319f4bf88e49743d1ed4dd5b494e253ef857af53f0c97753c6963bcf3be09",
+    "ic-relay/crates/ic-relay/src/resources/mod.rs": "52bc28048bb841d44bb294e3e92461dfd3a9476debeaf7e0da7bdef15123715a",
+    "icydb/crates/icydb-model/src/build/actor/db/store.rs": "bc1b8e0af3f8e519749f297890c7eda662557b238bb7ef035283a7d59321026e",
+    "ic-storage/crates/ic-metrics-storage/src/lib.rs": "8e0e23e3d978f2be86dbfa7b8f35bf5275f19cb8283232164b5b2d8ddc117b7a",
+    "ic-storage/crates/ic-logging-storage/src/lib.rs": "a5cdf1c24a7115798c99ff0911155915d74aa27003cc35b41d6c590916fa9942",
+    "ic-auth/apps/qualification/canister/src/storage.rs": "d6bf7ab8e0f9726b988c169a48065d93369a06f4061ea1c876a8d9b2822ca5bf",
+    "ic-scheduling/apps/ic-jobs-test-consumer/src/queue.rs": "d0a057e07088085b52d5cda0167bea483319a02debd429cd827ccb68a20b4bfc",
+    "canic/Cargo.lock": "784bdcfbd61f7c9dcf1ee04ea2f791d20fc856bbb00a13958af5f08ea3fe2552",
+    "ic-auth/Cargo.lock": "55d5e0f3ab311ee0ae988a3d824da82493f213d83a223c6a813c0e69110e2721",
+    "ic-blob-storage/Cargo.lock": "0183aadf5ed01c9ee576575df5e23da568f819be7babb07f95b3a2735d5a2b21",
+    "ic-relay/Cargo.lock": "5fc0c0b33a11972f8b778bc8bf24b49578bc79fcea67ae262dd5cccf2e4509a2",
+    "ic-scheduling/Cargo.lock": "05faf77a3b6c8ffb639571b8c93d540440fa16de5950016f4871d7097ce985ca",
+    "icydb/Cargo.lock": "275b1393d1d36db269caf8dcb5b52365116022da5f5a3f71da6ff338874447ec",
+    "ic-crates/Cargo.lock": "ad11e1de994d7e378672ac11f75fbcea90c831235e257c2c4ffcd527b74c4994"
+  },
+  "allocations": [
+    {
+      "repo": "canic",
+      "component": "canic-core",
+      "key": "canic.core.application_receipt.eligibility.v1",
+      "kind": "Map",
+      "selection": "always",
+      "scope": "production declaration",
+      "workload": "records",
+      "source": "canic/crates/canic-core/src/storage/stable/intent.rs",
+      "line": 53
+    },
+    {
+      "repo": "canic",
+      "component": "canic-core",
+      "key": "canic.core.async_job_recovery.v1",
+      "kind": "Cell",
+      "selection": "always",
+      "scope": "production declaration",
+      "workload": "control",
+      "source": "canic/crates/canic-core/src/storage/stable/async_job_recovery/mod.rs",
+      "line": 20
+    },
+    {
+      "repo": "canic",
+      "component": "canic-core",
+      "key": "canic.core.auth.delegated_token_issuer.state.v1",
+      "kind": "Cell",
+      "selection": "cfg(any(test, feature = \"auth-delegated-token-issuer-state\"))",
+      "scope": "production declaration",
+      "workload": "control",
+      "source": "canic/crates/canic-core/src/storage/stable/auth/mod.rs",
+      "line": 118
+    },
+    {
+      "repo": "canic",
+      "component": "canic-core",
+      "key": "canic.core.auth.local_application_authorization.replays.v1",
+      "kind": "Vector",
+      "selection": "always",
+      "scope": "production declaration",
+      "workload": "records",
+      "source": "canic/crates/canic-core/src/storage/stable/auth/mod.rs",
+      "line": 65
+    },
+    {
+      "repo": "canic",
+      "component": "canic-core",
+      "key": "canic.core.auth.local_application_authorization.logins.v1",
+      "kind": "Map",
+      "selection": "always",
+      "scope": "production declaration",
+      "workload": "records",
+      "source": "canic/crates/canic-core/src/storage/stable/auth/mod.rs",
+      "line": 49
+    },
+    {
+      "repo": "canic",
+      "component": "canic-core",
+      "key": "canic.core.auth.local_application_authorization.sessions.v1",
+      "kind": "Vector",
+      "selection": "always",
+      "scope": "production declaration",
+      "workload": "records",
+      "source": "canic/crates/canic-core/src/storage/stable/auth/mod.rs",
+      "line": 57
+    },
+    {
+      "repo": "canic",
+      "component": "canic-core",
+      "key": "canic.core.auth.local_application_authorization.state.v1",
+      "kind": "Cell",
+      "selection": "cfg(any(test, feature = \"auth-local-application-authorization\"))",
+      "scope": "production declaration",
+      "workload": "control",
+      "source": "canic/crates/canic-core/src/storage/stable/auth/mod.rs",
+      "line": 91
+    },
+    {
+      "repo": "canic",
+      "component": "canic-core",
+      "key": "canic.core.auth.root_delegation.state.v1",
+      "kind": "Cell",
+      "selection": "cfg(any(test, feature = \"auth-root-delegation-state\"))",
+      "scope": "production declaration",
+      "workload": "control",
+      "source": "canic/crates/canic-core/src/storage/stable/auth/mod.rs",
+      "line": 141
+    },
+    {
+      "repo": "canic",
+      "component": "canic-core",
+      "key": "canic.core.auth.portable.root_enrollment.v1",
+      "kind": "Cell",
+      "selection": "cfg(any(test, feature = \"auth-root-delegation-state\"))",
+      "scope": "production declaration",
+      "workload": "control",
+      "source": "canic/crates/canic-core/src/storage/stable/auth/enrollment/mod.rs",
+      "line": 14
+    },
+    {
+      "repo": "canic",
+      "component": "canic-core",
+      "key": "canic.core.auth.portable.receiver_enrollment.v1",
+      "kind": "Cell",
+      "selection": "cfg(any(test, feature = \"auth-local-application-authorization\"))",
+      "scope": "production declaration",
+      "workload": "control",
+      "source": "canic/crates/canic-core/src/storage/stable/auth/enrollment/mod.rs",
+      "line": 18
+    },
+    {
+      "repo": "canic",
+      "component": "canic-core",
+      "key": "canic.core.authority_restore.fence.v1",
+      "kind": "Cell",
+      "selection": "always",
+      "scope": "production declaration",
+      "workload": "control",
+      "source": "canic/crates/canic-core/src/storage/stable/authority_restore/mod.rs",
+      "line": 23
+    },
+    {
+      "repo": "canic",
+      "component": "canic-core",
+      "key": "canic.core.caller_authority.header.v1",
+      "kind": "Cell",
+      "selection": "always",
+      "scope": "production declaration",
+      "workload": "control",
+      "source": "canic/crates/canic-core/src/storage/stable/caller_authority/mod.rs",
+      "line": 67
+    },
+    {
+      "repo": "canic",
+      "component": "canic-core",
+      "key": "canic.core.caller_authority.rows.v1",
+      "kind": "Map",
+      "selection": "always",
+      "scope": "production declaration",
+      "workload": "records",
+      "source": "canic/crates/canic-core/src/storage/stable/caller_authority/mod.rs",
+      "line": 76
+    },
+    {
+      "repo": "canic",
+      "component": "canic-core",
+      "key": "canic.core.cycles.funding_ledger.v1",
+      "kind": "Map",
+      "selection": "always",
+      "scope": "production declaration",
+      "workload": "records",
+      "source": "canic/crates/canic-core/src/storage/stable/cycles.rs",
+      "line": 52
+    },
+    {
+      "repo": "canic",
+      "component": "canic-core",
+      "key": "canic.core.cycles.icp_refill_records.v1",
+      "kind": "Map",
+      "selection": "always",
+      "scope": "production declaration",
+      "workload": "records",
+      "source": "canic/crates/canic-core/src/storage/stable/icp_refill.rs",
+      "line": 26
+    },
+    {
+      "repo": "canic",
+      "component": "canic-core",
+      "key": "canic.core.cycles.topup_events.v1",
+      "kind": "Map",
+      "selection": "always",
+      "scope": "production declaration",
+      "workload": "records",
+      "source": "canic/crates/canic-core/src/storage/stable/cycles.rs",
+      "line": 37
+    },
+    {
+      "repo": "canic",
+      "component": "canic-core",
+      "key": "canic.core.cycles.tracker.v1",
+      "kind": "Map",
+      "selection": "always",
+      "scope": "production declaration",
+      "workload": "records",
+      "source": "canic/crates/canic-core/src/storage/stable/cycles.rs",
+      "line": 22
+    },
+    {
+      "repo": "canic",
+      "component": "canic-core",
+      "key": "canic.core.fleet.activation.v1",
+      "kind": "Cell",
+      "selection": "always",
+      "scope": "production declaration",
+      "workload": "bulk",
+      "source": "canic/crates/canic-core/src/storage/stable/fleet_activation/mod.rs",
+      "line": 34
+    },
+    {
+      "repo": "canic",
+      "component": "canic-core",
+      "key": "canic.core.fleet_admission.projection.v1",
+      "kind": "Cell",
+      "selection": "always",
+      "scope": "production declaration",
+      "workload": "control",
+      "source": "canic/crates/canic-core/src/storage/stable/fleet_admission_projection/mod.rs",
+      "line": 19
+    },
+    {
+      "repo": "canic",
+      "component": "canic-core",
+      "key": "canic.core.fleet.state.v1",
+      "kind": "Cell",
+      "selection": "always",
+      "scope": "production declaration",
+      "workload": "control",
+      "source": "canic/crates/canic-core/src/storage/stable/state/fleet.rs",
+      "line": 17
+    },
+    {
+      "repo": "canic",
+      "component": "canic-core",
+      "key": "canic.core.intent.expiry_index.v1",
+      "kind": "Map",
+      "selection": "always",
+      "scope": "production declaration",
+      "workload": "records",
+      "source": "canic/crates/canic-core/src/storage/stable/intent.rs",
+      "line": 88
+    },
+    {
+      "repo": "canic",
+      "component": "canic-core",
+      "key": "canic.core.intent.meta.v1",
+      "kind": "Cell",
+      "selection": "always",
+      "scope": "production declaration",
+      "workload": "control",
+      "source": "canic/crates/canic-core/src/storage/stable/intent.rs",
+      "line": 42
+    },
+    {
+      "repo": "canic",
+      "component": "canic-core",
+      "key": "canic.core.intent.pending.v1",
+      "kind": "Map",
+      "selection": "always",
+      "scope": "production declaration",
+      "workload": "records",
+      "source": "canic/crates/canic-core/src/storage/stable/intent.rs",
+      "line": 150
+    },
+    {
+      "repo": "canic",
+      "component": "canic-core",
+      "key": "canic.core.intent.receipt_backed_records.v1",
+      "kind": "Map",
+      "selection": "always",
+      "scope": "production declaration",
+      "workload": "records",
+      "source": "canic/crates/canic-core/src/storage/stable/intent.rs",
+      "line": 74
+    },
+    {
+      "repo": "canic",
+      "component": "canic-core",
+      "key": "canic.core.intent.records.v1",
+      "kind": "Map",
+      "selection": "always",
+      "scope": "production declaration",
+      "workload": "records",
+      "source": "canic/crates/canic-core/src/storage/stable/intent.rs",
+      "line": 120
+    },
+    {
+      "repo": "canic",
+      "component": "canic-core",
+      "key": "canic.core.intent.totals.v1",
+      "kind": "Map",
+      "selection": "always",
+      "scope": "production declaration",
+      "workload": "records",
+      "source": "canic/crates/canic-core/src/storage/stable/intent.rs",
+      "line": 135
+    },
+    {
+      "repo": "canic",
+      "component": "canic-core",
+      "key": "canic.core.placement.acknowledgement_index.v1",
+      "kind": "Map",
+      "selection": "always",
+      "scope": "production declaration",
+      "workload": "records",
+      "source": "canic/crates/canic-core/src/storage/stable/intent.rs",
+      "line": 106
+    },
+    {
+      "repo": "canic",
+      "component": "canic-core",
+      "key": "canic.core.placement.index_registry.v1",
+      "kind": "Map",
+      "selection": "always",
+      "scope": "production declaration",
+      "workload": "records",
+      "source": "canic/crates/canic-core/src/storage/stable/placement_index.rs",
+      "line": 17
+    },
+    {
+      "repo": "canic",
+      "component": "canic-core",
+      "key": "canic.core.placement.scaling_registry.v1",
+      "kind": "Map",
+      "selection": "always",
+      "scope": "production declaration",
+      "workload": "records",
+      "source": "canic/crates/canic-core/src/storage/stable/scaling.rs",
+      "line": 18
+    },
+    {
+      "repo": "canic",
+      "component": "canic-core",
+      "key": "canic.core.replay.receipts.v1",
+      "kind": "Map",
+      "selection": "always",
+      "scope": "production declaration",
+      "workload": "records",
+      "source": "canic/crates/canic-core/src/storage/stable/replay.rs",
+      "line": 36
+    },
+    {
+      "repo": "canic",
+      "component": "canic-core",
+      "key": "canic.core.runtime.bindings.v1",
+      "kind": "Cell",
+      "selection": "always",
+      "scope": "production declaration",
+      "workload": "control",
+      "source": "canic/crates/canic-core/src/storage/stable/env.rs",
+      "line": 15
+    },
+    {
+      "repo": "canic",
+      "component": "canic-core",
+      "key": "canic.core.runtime.canister_children.v1",
+      "kind": "Map",
+      "selection": "always",
+      "scope": "production declaration",
+      "workload": "records",
+      "source": "canic/crates/canic-core/src/storage/stable/children.rs",
+      "line": 27
+    },
+    {
+      "repo": "canic",
+      "component": "canic-core",
+      "key": "canic.core.sharding.assignments.v1",
+      "kind": "Map",
+      "selection": "cfg(feature = \"sharding\")",
+      "scope": "production declaration",
+      "workload": "records",
+      "source": "canic/crates/canic-core/src/storage/stable/sharding/mod.rs",
+      "line": 44
+    },
+    {
+      "repo": "canic",
+      "component": "canic-core",
+      "key": "canic.core.sharding.registry.v1",
+      "kind": "Map",
+      "selection": "cfg(feature = \"sharding\")",
+      "scope": "production declaration",
+      "workload": "records",
+      "source": "canic/crates/canic-core/src/storage/stable/sharding/mod.rs",
+      "line": 36
+    },
+    {
+      "repo": "canic",
+      "component": "canic-control-plane",
+      "key": "canic.control_plane.root.application_checkpoint.v1",
+      "kind": "Cell",
+      "selection": "cfg(feature = \"root-control-plane\")",
+      "scope": "production declaration",
+      "workload": "control",
+      "source": "canic/crates/canic-control-plane/src/storage/stable/application_checkpoint/mod.rs",
+      "line": 26
+    },
+    {
+      "repo": "canic",
+      "component": "canic-control-plane",
+      "key": "canic.control_plane.fixture_store.v1",
+      "kind": "Map",
+      "selection": "cfg(feature = \"wasm-store-canister\")",
+      "scope": "production declaration",
+      "workload": "records",
+      "source": "canic/crates/canic-control-plane/src/storage/stable/fixture_store/mod.rs",
+      "line": 20
+    },
+    {
+      "repo": "canic",
+      "component": "canic-control-plane",
+      "key": "canic.control_plane.fleet_admission.v1",
+      "kind": "Cell",
+      "selection": "cfg(feature = \"fleet-coordinator-canister\")",
+      "scope": "production declaration",
+      "workload": "control",
+      "source": "canic/crates/canic-control-plane/src/storage/stable/fleet_admission/mod.rs",
+      "line": 26
+    },
+    {
+      "repo": "canic",
+      "component": "canic-control-plane",
+      "key": "canic.control_plane.fleet_coordinator.funding.v1",
+      "kind": "Cell",
+      "selection": "cfg(feature = \"fleet-coordinator-canister\")",
+      "scope": "production declaration",
+      "workload": "bulk",
+      "source": "canic/crates/canic-control-plane/src/storage/stable/fleet_coordinator/mod.rs",
+      "line": 97
+    },
+    {
+      "repo": "canic",
+      "component": "canic-control-plane",
+      "key": "canic.control_plane.fleet_coordinator.registry.v1",
+      "kind": "Cell",
+      "selection": "cfg(feature = \"fleet-coordinator-canister\")",
+      "scope": "production declaration",
+      "workload": "control",
+      "source": "canic/crates/canic-control-plane/src/storage/stable/fleet_coordinator/mod.rs",
+      "line": 83
+    },
+    {
+      "repo": "canic",
+      "component": "canic-control-plane",
+      "key": "canic.control_plane.root.admission.v1",
+      "kind": "Cell",
+      "selection": "cfg(feature = \"root-control-plane\")",
+      "scope": "production declaration",
+      "workload": "control",
+      "source": "canic/crates/canic-control-plane/src/storage/stable/root_admission/mod.rs",
+      "line": 22
+    },
+    {
+      "repo": "canic",
+      "component": "canic-control-plane",
+      "key": "canic.control_plane.root.canister_inventory.assets.v1",
+      "kind": "Map",
+      "selection": "cfg(feature = \"root-control-plane\")",
+      "scope": "production declaration",
+      "workload": "records",
+      "source": "canic/crates/canic-control-plane/src/storage/stable/canister_pool/mod.rs",
+      "line": 22
+    },
+    {
+      "repo": "canic",
+      "component": "canic-control-plane",
+      "key": "canic.control_plane.root.canister_pool.handoff_receipts.v1",
+      "kind": "Map",
+      "selection": "cfg(feature = \"root-control-plane\")",
+      "scope": "production declaration",
+      "workload": "records",
+      "source": "canic/crates/canic-control-plane/src/storage/stable/canister_pool/mod.rs",
+      "line": 35
+    },
+    {
+      "repo": "canic",
+      "component": "canic-control-plane",
+      "key": "canic.control_plane.root.canister_pool.state.v1",
+      "kind": "Cell",
+      "selection": "cfg(feature = \"root-control-plane\")",
+      "scope": "production declaration",
+      "workload": "control",
+      "source": "canic/crates/canic-control-plane/src/storage/stable/canister_pool/mod.rs",
+      "line": 48
+    },
+    {
+      "repo": "canic",
+      "component": "canic-control-plane",
+      "key": "canic.control_plane.root.component.allocations.v1",
+      "kind": "Map",
+      "selection": "cfg(feature = \"root-control-plane\")",
+      "scope": "production declaration",
+      "workload": "records",
+      "source": "canic/crates/canic-control-plane/src/storage/stable/component_registry/mod.rs",
+      "line": 171
+    },
+    {
+      "repo": "canic",
+      "component": "canic-control-plane",
+      "key": "canic.control_plane.root.component.draining.v1",
+      "kind": "Map",
+      "selection": "cfg(feature = \"root-control-plane\")",
+      "scope": "production declaration",
+      "workload": "records",
+      "source": "canic/crates/canic-control-plane/src/storage/stable/component_registry/mod.rs",
+      "line": 99
+    },
+    {
+      "repo": "canic",
+      "component": "canic-control-plane",
+      "key": "canic.control_plane.root.component.principal_index.v1",
+      "kind": "Map",
+      "selection": "cfg(feature = \"root-control-plane\")",
+      "scope": "production declaration",
+      "workload": "records",
+      "source": "canic/crates/canic-control-plane/src/storage/stable/component_registry/mod.rs",
+      "line": 153
+    },
+    {
+      "repo": "canic",
+      "component": "canic-control-plane",
+      "key": "canic.control_plane.root.component_provisioning.operations.v1",
+      "kind": "Map",
+      "selection": "cfg(feature = \"root-control-plane\")",
+      "scope": "production declaration",
+      "workload": "records",
+      "source": "canic/crates/canic-control-plane/src/storage/stable/component_provisioning/mod.rs",
+      "line": 54
+    },
+    {
+      "repo": "canic",
+      "component": "canic-control-plane",
+      "key": "canic.control_plane.root.component_provisioning.placements.v1",
+      "kind": "Map",
+      "selection": "cfg(feature = \"root-control-plane\")",
+      "scope": "production declaration",
+      "workload": "records",
+      "source": "canic/crates/canic-control-plane/src/storage/stable/component_provisioning/mod.rs",
+      "line": 71
+    },
+    {
+      "repo": "canic",
+      "component": "canic-control-plane",
+      "key": "canic.control_plane.root.component_provisioning.state.v1",
+      "kind": "Cell",
+      "selection": "cfg(feature = \"root-control-plane\")",
+      "scope": "production declaration",
+      "workload": "control",
+      "source": "canic/crates/canic-control-plane/src/storage/stable/component_provisioning/mod.rs",
+      "line": 84
+    },
+    {
+      "repo": "canic",
+      "component": "canic-control-plane",
+      "key": "canic.control_plane.root.component.registry_entries.v1",
+      "kind": "Map",
+      "selection": "cfg(feature = \"root-control-plane\")",
+      "scope": "production declaration",
+      "workload": "records",
+      "source": "canic/crates/canic-control-plane/src/storage/stable/component_registry/mod.rs",
+      "line": 135
+    },
+    {
+      "repo": "canic",
+      "component": "canic-control-plane",
+      "key": "canic.control_plane.root.component.registry_state.v1",
+      "kind": "Cell",
+      "selection": "cfg(feature = \"root-control-plane\")",
+      "scope": "production declaration",
+      "workload": "control",
+      "source": "canic/crates/canic-control-plane/src/storage/stable/component_registry/mod.rs",
+      "line": 81
+    },
+    {
+      "repo": "canic",
+      "component": "canic-control-plane",
+      "key": "canic.control_plane.root.component.subtree_removal_history.v1",
+      "kind": "Map",
+      "selection": "cfg(feature = \"root-control-plane\")",
+      "scope": "production declaration",
+      "workload": "records",
+      "source": "canic/crates/canic-control-plane/src/storage/stable/component_registry/mod.rs",
+      "line": 117
+    },
+    {
+      "repo": "canic",
+      "component": "canic-control-plane",
+      "key": "canic.control_plane.root.fleet_registry_mirror.v1",
+      "kind": "Cell",
+      "selection": "cfg(feature = \"root-control-plane\")",
+      "scope": "production declaration",
+      "workload": "control",
+      "source": "canic/crates/canic-control-plane/src/storage/stable/fleet_registry_mirror/mod.rs",
+      "line": 31
+    },
+    {
+      "repo": "canic",
+      "component": "canic-control-plane",
+      "key": "canic.control_plane.root.funding.v1",
+      "kind": "Cell",
+      "selection": "cfg(feature = \"root-control-plane\")",
+      "scope": "production declaration",
+      "workload": "control",
+      "source": "canic/crates/canic-control-plane/src/storage/stable/root_funding/mod.rs",
+      "line": 24
+    },
+    {
+      "repo": "canic",
+      "component": "canic-control-plane",
+      "key": "canic.control_plane.root.wasm_store.state.v1",
+      "kind": "Cell",
+      "selection": "cfg(feature = \"root-control-plane\")",
+      "scope": "production declaration",
+      "workload": "control",
+      "source": "canic/crates/canic-control-plane/src/storage/stable/state/root_wasm_store.rs",
+      "line": 20
+    },
+    {
+      "repo": "canic",
+      "component": "canic-control-plane",
+      "key": "canic.control_plane.template.chunk_payloads.v1",
+      "kind": "Vector",
+      "selection": "cfg(any(feature = \"root-control-plane\", feature = \"wasm-store-canister\"))",
+      "scope": "production declaration",
+      "workload": "bulk",
+      "source": "canic/crates/canic-control-plane/src/storage/stable/template/chunked.rs",
+      "line": 526
+    },
+    {
+      "repo": "canic",
+      "component": "canic-control-plane",
+      "key": "canic.control_plane.template.chunk_refs.v1",
+      "kind": "Map",
+      "selection": "cfg(any(feature = \"root-control-plane\", feature = \"wasm-store-canister\"))",
+      "scope": "production declaration",
+      "workload": "records",
+      "source": "canic/crates/canic-control-plane/src/storage/stable/template/chunked.rs",
+      "line": 47
+    },
+    {
+      "repo": "canic",
+      "component": "canic-control-plane",
+      "key": "canic.control_plane.template.chunk_sets.v1",
+      "kind": "Map",
+      "selection": "cfg(any(feature = \"root-control-plane\", feature = \"wasm-store-canister\"))",
+      "scope": "production declaration",
+      "workload": "records",
+      "source": "canic/crates/canic-control-plane/src/storage/stable/template/chunked.rs",
+      "line": 28
+    },
+    {
+      "repo": "canic",
+      "component": "canic-control-plane",
+      "key": "canic.control_plane.template.manifests.v1",
+      "kind": "Map",
+      "selection": "cfg(any(feature = \"root-control-plane\", feature = \"wasm-store-canister\"))",
+      "scope": "production declaration",
+      "workload": "records",
+      "source": "canic/crates/canic-control-plane/src/storage/stable/template/manifest.rs",
+      "line": 20
+    },
+    {
+      "repo": "canic",
+      "component": "canic-control-plane",
+      "key": "canic.control_plane.wasm_store.gc_state.v1",
+      "kind": "Cell",
+      "selection": "cfg(feature = \"wasm-store-canister\")",
+      "scope": "production declaration",
+      "workload": "control",
+      "source": "canic/crates/canic-control-plane/src/storage/stable/template/gc/mod.rs",
+      "line": 14
+    },
+    {
+      "repo": "canic",
+      "component": "metrics host",
+      "key": "canic.core.metrics.providers.v1",
+      "kind": "Map",
+      "selection": "role provider needs stable metrics",
+      "scope": "production declaration",
+      "workload": "records",
+      "source": "canic/crates/canic-core/src/ops/runtime/metric_providers/host.rs",
+      "line": 77
+    },
+    {
+      "repo": "ic-blob-storage",
+      "component": "service",
+      "key": "blob.tenants.v1",
+      "kind": "Map",
+      "selection": "per installation",
+      "scope": "production declaration",
+      "workload": "records",
+      "source": "ic-blob-storage/crates/ic-blob-storage/src/ops/service/stores/grants/mod.rs",
+      "line": 15
+    },
+    {
+      "repo": "ic-blob-storage",
+      "component": "service",
+      "key": "blob.roots.v1",
+      "kind": "Map",
+      "selection": "per installation",
+      "scope": "production declaration",
+      "workload": "records",
+      "source": "ic-blob-storage/crates/ic-blob-storage/src/ops/service/stores/grants/mod.rs",
+      "line": 16
+    },
+    {
+      "repo": "ic-blob-storage",
+      "component": "service",
+      "key": "blob.root_objects.v1",
+      "kind": "Map",
+      "selection": "per installation",
+      "scope": "production declaration",
+      "workload": "records",
+      "source": "ic-blob-storage/crates/ic-blob-storage/src/ops/service/stores/grants/mod.rs",
+      "line": 17
+    },
+    {
+      "repo": "ic-blob-storage",
+      "component": "service",
+      "key": "blob.permissions.v1",
+      "kind": "Map",
+      "selection": "per installation",
+      "scope": "production declaration",
+      "workload": "records",
+      "source": "ic-blob-storage/crates/ic-blob-storage/src/ops/service/stores/grants/mod.rs",
+      "line": 18
+    },
+    {
+      "repo": "ic-blob-storage",
+      "component": "service",
+      "key": "blob.usage.v1",
+      "kind": "Map",
+      "selection": "per installation",
+      "scope": "production declaration",
+      "workload": "records",
+      "source": "ic-blob-storage/crates/ic-blob-storage/src/ops/service/stores/grants/mod.rs",
+      "line": 19
+    },
+    {
+      "repo": "ic-blob-storage",
+      "component": "service",
+      "key": "blob.manifests.v1",
+      "kind": "Map",
+      "selection": "per installation",
+      "scope": "production declaration",
+      "workload": "records",
+      "source": "ic-blob-storage/crates/ic-blob-storage/src/ops/service/stores/grants/mod.rs",
+      "line": 20
+    },
+    {
+      "repo": "ic-blob-storage",
+      "component": "service",
+      "key": "blob.confirmed.v1",
+      "kind": "Map",
+      "selection": "per installation",
+      "scope": "production declaration",
+      "workload": "records",
+      "source": "ic-blob-storage/crates/ic-blob-storage/src/ops/service/stores/grants/mod.rs",
+      "line": 21
+    },
+    {
+      "repo": "ic-blob-storage",
+      "component": "service",
+      "key": "blob.references.v1",
+      "kind": "Map",
+      "selection": "per installation",
+      "scope": "production declaration",
+      "workload": "records",
+      "source": "ic-blob-storage/crates/ic-blob-storage/src/ops/service/stores/grants/mod.rs",
+      "line": 22
+    },
+    {
+      "repo": "ic-blob-storage",
+      "component": "service",
+      "key": "blob.receipts.v1",
+      "kind": "Map",
+      "selection": "per installation",
+      "scope": "production declaration",
+      "workload": "records",
+      "source": "ic-blob-storage/crates/ic-blob-storage/src/ops/service/stores/grants/mod.rs",
+      "line": 23
+    },
+    {
+      "repo": "ic-blob-storage",
+      "component": "service",
+      "key": "blob.pending_deletions.v1",
+      "kind": "Set",
+      "selection": "per installation",
+      "scope": "production declaration",
+      "workload": "records",
+      "source": "ic-blob-storage/crates/ic-blob-storage/src/ops/service/stores/grants/mod.rs",
+      "line": 24
+    },
+    {
+      "repo": "ic-blob-storage",
+      "component": "service",
+      "key": "blob.funding_accounting.v1",
+      "kind": "Map",
+      "selection": "per installation",
+      "scope": "production declaration",
+      "workload": "records",
+      "source": "ic-blob-storage/crates/ic-blob-storage/src/ops/service/stores/grants/mod.rs",
+      "line": 27
+    },
+    {
+      "repo": "ic-blob-storage",
+      "component": "service",
+      "key": "blob.funding_intents.v1",
+      "kind": "Map",
+      "selection": "per installation",
+      "scope": "production declaration",
+      "workload": "records",
+      "source": "ic-blob-storage/crates/ic-blob-storage/src/ops/service/stores/grants/mod.rs",
+      "line": 28
+    },
+    {
+      "repo": "ic-blob-storage",
+      "component": "service",
+      "key": "blob.gateways.v1",
+      "kind": "Cell",
+      "selection": "per installation",
+      "scope": "production declaration",
+      "workload": "control",
+      "source": "ic-blob-storage/crates/ic-blob-storage/src/ops/service/stores/grants/mod.rs",
+      "line": 30
+    },
+    {
+      "repo": "ic-blob-storage",
+      "component": "installation",
+      "key": "blob.configuration.v1",
+      "kind": "Cell",
+      "selection": "per installation",
+      "scope": "production declaration",
+      "workload": "control",
+      "source": "ic-blob-storage/crates/ic-blob-storage/src/ops/service/installation/mod.rs",
+      "line": 25
+    },
+    {
+      "repo": "ic-relay",
+      "component": "channel",
+      "key": "<host-selected channel.stream>",
+      "kind": "Map",
+      "selection": "per component instance; channel has three",
+      "scope": "production supplied memory",
+      "record_bound_bytes": 512,
+      "workload": "control",
+      "source": "ic-relay/crates/ic-relay/src/channel/mod.rs",
+      "line": 1
+    },
+    {
+      "repo": "ic-relay",
+      "component": "channel",
+      "key": "<host-selected channel.outbox>",
+      "kind": "Map",
+      "selection": "per component instance; channel has three",
+      "scope": "production supplied memory",
+      "record_bound_bytes": 65536,
+      "workload": "bulk",
+      "source": "ic-relay/crates/ic-relay/src/channel/mod.rs",
+      "line": 1
+    },
+    {
+      "repo": "ic-relay",
+      "component": "channel",
+      "key": "<host-selected channel.inbox>",
+      "kind": "Map",
+      "selection": "per component instance; channel has three",
+      "scope": "production supplied memory",
+      "record_bound_bytes": 65536,
+      "workload": "bulk",
+      "source": "ic-relay/crates/ic-relay/src/channel/mod.rs",
+      "line": 1
+    },
+    {
+      "repo": "ic-relay",
+      "component": "responder",
+      "key": "<host-selected responder.state>",
+      "kind": "Map",
+      "selection": "per component instance; channel has three",
+      "scope": "production supplied memory",
+      "record_bound_bytes": 73728,
+      "workload": "bulk",
+      "source": "ic-relay/crates/ic-relay/src/responder/mod.rs",
+      "line": 1
+    },
+    {
+      "repo": "ic-relay",
+      "component": "dispatch",
+      "key": "<host-selected dispatch.state>",
+      "kind": "Map",
+      "selection": "per component instance; channel has three",
+      "scope": "production supplied memory",
+      "record_bound_bytes": 4096,
+      "workload": "control",
+      "source": "ic-relay/crates/ic-relay/src/dispatch/mod.rs",
+      "line": 1
+    },
+    {
+      "repo": "ic-relay",
+      "component": "mailbox",
+      "key": "<host-selected mailbox.state>",
+      "kind": "Map",
+      "selection": "per component instance; channel has three",
+      "scope": "production supplied memory",
+      "record_bound_bytes": 73728,
+      "workload": "bulk",
+      "source": "ic-relay/crates/ic-relay/src/mailbox/mod.rs",
+      "line": 1
+    },
+    {
+      "repo": "ic-relay",
+      "component": "resources",
+      "key": "<host-selected resources.state>",
+      "kind": "Map",
+      "selection": "per component instance; channel has three",
+      "scope": "production supplied memory",
+      "record_bound_bytes": 16384,
+      "workload": "bulk",
+      "source": "ic-relay/crates/ic-relay/src/resources/mod.rs",
+      "line": 1
+    },
+    {
+      "repo": "icydb",
+      "component": "generated database",
+      "key": "icydb.{namespace}.commit.control.v1",
+      "kind": "raw buffer + schema region",
+      "selection": "per generated canister",
+      "scope": "production generated declaration",
+      "workload": "bulk",
+      "source": "icydb/crates/icydb-model/src/build/actor/db/store.rs",
+      "line": 1
+    },
+    {
+      "repo": "icydb",
+      "component": "generated database",
+      "key": "icydb.{namespace}.integrity.progress.v1",
+      "kind": "Map",
+      "selection": "per generated canister",
+      "scope": "production generated declaration",
+      "workload": "records",
+      "source": "icydb/crates/icydb-model/src/build/actor/db/store.rs",
+      "line": 1
+    },
+    {
+      "repo": "icydb",
+      "component": "generated database",
+      "key": "icydb.{namespace}.startup.control.v1",
+      "kind": "raw fixed receipt",
+      "selection": "per generated canister",
+      "scope": "production generated declaration",
+      "workload": "control",
+      "source": "icydb/crates/icydb-model/src/build/actor/db/store.rs",
+      "line": 1
+    },
+    {
+      "repo": "icydb",
+      "component": "generated database",
+      "key": "icydb.{namespace}.store.{store}.data.v1",
+      "kind": "Map",
+      "selection": "per journaled store",
+      "scope": "production generated declaration",
+      "workload": "records",
+      "source": "icydb/crates/icydb-model/src/build/actor/db/store.rs",
+      "line": 1
+    },
+    {
+      "repo": "icydb",
+      "component": "generated database",
+      "key": "icydb.{namespace}.store.{store}.index.v1",
+      "kind": "Map",
+      "selection": "per journaled store",
+      "scope": "production generated declaration",
+      "workload": "records",
+      "source": "icydb/crates/icydb-model/src/build/actor/db/store.rs",
+      "line": 1
+    },
+    {
+      "repo": "icydb",
+      "component": "generated database",
+      "key": "icydb.{namespace}.store.{store}.schema.v1",
+      "kind": "Map",
+      "selection": "per journaled store",
+      "scope": "production generated declaration",
+      "workload": "records",
+      "source": "icydb/crates/icydb-model/src/build/actor/db/store.rs",
+      "line": 1
+    },
+    {
+      "repo": "icydb",
+      "component": "generated database",
+      "key": "icydb.{namespace}.store.{store}.journal.v1",
+      "kind": "Map",
+      "selection": "per journaled store",
+      "scope": "production generated declaration",
+      "workload": "bulk",
+      "source": "icydb/crates/icydb-model/src/build/actor/db/store.rs",
+      "line": 1
+    },
+    {
+      "repo": "ic-storage",
+      "component": "ic-metrics-storage",
+      "key": "<host-selected>",
+      "kind": "Map",
+      "selection": "per adapter instance",
+      "scope": "production supplied memory",
+      "workload": "records",
+      "source": "ic-storage/crates/ic-metrics-storage/src/lib.rs",
+      "line": 1
+    },
+    {
+      "repo": "ic-storage",
+      "component": "ic-logging-storage",
+      "key": "<host-selected>",
+      "kind": "Map",
+      "selection": "per adapter instance",
+      "scope": "production supplied memory",
+      "workload": "bulk",
+      "source": "ic-storage/crates/ic-logging-storage/src/lib.rs",
+      "line": 1
+    },
+    {
+      "repo": "ic-auth",
+      "component": "qualification host",
+      "key": "ic_auth_qualification.checkpoint.v1",
+      "kind": "Cell",
+      "selection": "fixture only, not imposed by library",
+      "scope": "qualification declaration",
+      "workload": "control",
+      "source": "ic-auth/apps/qualification/canister/src/storage.rs",
+      "line": 1
+    },
+    {
+      "repo": "ic-scheduling",
+      "component": "qualification host",
+      "key": "test.jobs.consumer.management.v1",
+      "kind": "Cell",
+      "selection": "fixture only, not imposed by library",
+      "scope": "qualification declaration",
+      "workload": "control",
+      "source": "ic-scheduling/apps/ic-jobs-test-consumer/src/queue.rs",
+      "line": 1
+    }
+  ]
+}

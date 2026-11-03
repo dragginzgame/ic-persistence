@@ -1,0 +1,1 @@
+{"groups":["logging-storage","metrics-storage","storage"],"schema":1,"stages":["validate-admission","validate-lint","validate-features","validate-policy","validate-tooling","validate-storage-tests","validate-metrics-tests","validate-logging-tests","validate-docs","validate-wasm","validate-wasm-size","validate-archives"]}

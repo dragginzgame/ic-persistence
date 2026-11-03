@@ -28,6 +28,7 @@ pub(super) struct GitState {
     pub staged: bool,
     pub tag: bool,
     pub descendant: Option<BTreeMap<String, String>>,
+    pub validation_baseline: Option<BTreeMap<String, String>>,
     pub fail: Option<GitFault>,
 }
 
@@ -45,6 +46,10 @@ impl GitState {
     fn revision_files(&self, revision: &str) -> Result<&BTreeMap<String, String>> {
         match revision {
             "source" => Ok(&self.source),
+            "baseline" => self
+                .validation_baseline
+                .as_ref()
+                .ok_or_else(|| "missing baseline".into()),
             "release" => self
                 .release
                 .as_ref()
@@ -113,6 +118,39 @@ impl GitState {
                 Err("fixture Git status observation failure".into())
             }
             ["--no-optional-locks", "status", ..] => changed(self.revision_files(self.head())?),
+            ["ls-tree", "-r", "--name-only", "-z", revision] => Ok(self
+                .revision_files(revision)?
+                .keys()
+                .fold(String::new(), |mut text, path| {
+                    text.push_str(path);
+                    text.push('\0');
+                    text
+                })),
+            ["rev-parse", "--verify", _] if self.validation_baseline.is_some() => {
+                Ok("baseline".to_owned())
+            }
+            ["rev-parse", "--verify", _] => Err("fixture has no previous tag".into()),
+            ["cat-file", "-t", _] => Ok("tag".to_owned()),
+            [
+                "diff",
+                "--name-only",
+                "--no-renames",
+                "-z",
+                "baseline",
+                "source",
+                "--",
+            ] => {
+                let baseline = self.validation_baseline.as_ref().unwrap();
+                Ok(self
+                    .source
+                    .iter()
+                    .filter(|(path, text)| baseline.get(*path) != Some(*text))
+                    .fold(String::new(), |mut text, (path, _)| {
+                        text.push_str(path);
+                        text.push('\0');
+                        text
+                    }))
+            }
             ["rev-parse", "HEAD"] => {
                 if self.fail.as_ref() == Some(&GitFault::PublishBeforeTag)
                     && calls

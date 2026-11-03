@@ -1,0 +1,385 @@
+{
+  "date": "2026-11-03",
+  "scope": "One-sample installed qualification of fixed synthetic workloads with ICSS 0.7.2 at eight-page buckets; not a bucket sweep or whole-canister measurement.",
+  "wasm_sha256": {
+    "owned.wasm": "f14d7e04d6df279c159a639c70733b440abb13301cce5b0126cf78d9c193260b",
+    "dfinity.wasm": "339a4fc76c3bdecdd2384c2eccca1905512497c514f56eef114a922f5b6c5d8b"
+  },
+  "runs": {
+    "control": {
+      "directory": "target/storage-comparison/attempt.q6vdWD",
+      "validated_calls": 276,
+      "configuration": {
+        "backend_order": "alternates each sample",
+        "batch_sizes": [
+          1
+        ],
+        "cache_bytes": 0,
+        "cache_scope": "ordinary Map only",
+        "cases": [
+          {
+            "case": "U64Bytes",
+            "key_type": "u64",
+            "logical_value_bytes": [
+              256,
+              4096
+            ],
+            "operations": [
+              "Control",
+              "Get",
+              "MissAbove",
+              "Replace",
+              "Scan",
+              "Insert",
+              "Contains",
+              "ReverseScan",
+              "KeysScan",
+              "Grow",
+              "Shrink",
+              "Remove",
+              "RemoveMiss",
+              "Reinsert",
+              "RemoveInserted",
+              "First",
+              "Last",
+              "BoundedScan"
+            ],
+            "population_rows": 16,
+            "structure": "Map",
+            "value_type": "Vec<u8>"
+          },
+          {
+            "case": "CellBytes",
+            "key_type": "u64",
+            "logical_value_bytes": [
+              256,
+              4096
+            ],
+            "operations": [
+              "Control",
+              "Get",
+              "Replace",
+              "Grow",
+              "Shrink"
+            ],
+            "population_rows": 1,
+            "structure": "Cell",
+            "value_type": "Vec<u8>"
+          }
+        ],
+        "cold_cache": false,
+        "dfinity_wasm_bytes": 773175,
+        "measurement": "performance_counter(0) around operations; setup, trace/value creation, validation and Wire response excluded",
+        "owned_wasm_bytes": 1033849,
+        "patterns": [
+          "Uniform"
+        ],
+        "reference_revision": "0.7.2",
+        "rounds": 3,
+        "rows": 16,
+        "samples": 1,
+        "seed": "sample + 1 + round * 7919",
+        "shuffled": false,
+        "state": "fresh canister per case/sample/backend; operations run in declared order",
+        "structures": [
+          "Map",
+          "Set",
+          "Vector",
+          "Cell",
+          "Region"
+        ],
+        "upstream_bucket_pages": 8,
+        "upstream_cache_slots": 0,
+        "workload": "control"
+      },
+      "summary_sha256": "b5d7b0f36bff4bbaaeda565bcdafca04b21421eda2a5c265dcd0b1c5457213b6"
+    },
+    "records": {
+      "directory": "target/storage-comparison/attempt.aPgDyX",
+      "validated_calls": 5076,
+      "configuration": {
+        "backend_order": "alternates each sample",
+        "batch_sizes": [
+          1,
+          32
+        ],
+        "cache_bytes": 0,
+        "cache_scope": "ordinary Map only",
+        "cases": [
+          {
+            "case": "U64Bytes",
+            "key_type": "u64",
+            "logical_value_bytes": [
+              31,
+              32,
+              33,
+              256,
+              1024,
+              4096
+            ],
+            "operations": [
+              "Control",
+              "Get",
+              "MissAbove",
+              "Replace",
+              "Scan",
+              "Insert",
+              "Contains",
+              "ReverseScan",
+              "KeysScan",
+              "Grow",
+              "Shrink",
+              "Remove",
+              "RemoveMiss",
+              "Reinsert",
+              "RemoveInserted",
+              "First",
+              "Last",
+              "BoundedScan"
+            ],
+            "population_rows": 4096,
+            "structure": "Map",
+            "value_type": "Vec<u8>"
+          },
+          {
+            "case": "Bytes32Bytes32",
+            "key_type": "[u8;32]",
+            "logical_value_bytes": [
+              32
+            ],
+            "operations": [
+              "Control",
+              "Get",
+              "MissAbove",
+              "Replace",
+              "Scan",
+              "Insert",
+              "Contains",
+              "ReverseScan",
+              "KeysScan",
+              "Remove",
+              "RemoveMiss",
+              "Reinsert",
+              "RemoveInserted",
+              "First",
+              "Last",
+              "BoundedScan"
+            ],
+            "population_rows": 4096,
+            "structure": "Map",
+            "value_type": "[u8;32]"
+          },
+          {
+            "case": "VectorRecord",
+            "key_type": "u64",
+            "logical_value_bytes": [
+              60
+            ],
+            "operations": [
+              "Control",
+              "Get",
+              "MissAbove",
+              "Set",
+              "Scan",
+              "ReverseScan",
+              "Push",
+              "Pop"
+            ],
+            "population_rows": 4096,
+            "structure": "Vector",
+            "value_type": "WireRecord"
+          },
+          {
+            "case": "SetBytes64",
+            "key_type": "[u8;64]",
+            "logical_value_bytes": [
+              0
+            ],
+            "operations": [
+              "Control",
+              "Get",
+              "MissAbove",
+              "Scan",
+              "Insert",
+              "Remove",
+              "RemoveMiss",
+              "Reinsert",
+              "RemoveInserted"
+            ],
+            "population_rows": 4096,
+            "structure": "Set",
+            "value_type": "()"
+          }
+        ],
+        "cold_cache": false,
+        "dfinity_wasm_bytes": 773175,
+        "measurement": "performance_counter(0) around operations; setup, trace/value creation, validation and Wire response excluded",
+        "owned_wasm_bytes": 1033849,
+        "patterns": [
+          "Uniform",
+          "Hot16",
+          "Zipf"
+        ],
+        "reference_revision": "0.7.2",
+        "rounds": 3,
+        "rows": 4096,
+        "samples": 1,
+        "seed": "sample + 1 + round * 7919",
+        "shuffled": true,
+        "state": "fresh canister per case/sample/backend; operations run in declared order",
+        "structures": [
+          "Map",
+          "Set",
+          "Vector",
+          "Cell",
+          "Region"
+        ],
+        "upstream_bucket_pages": 8,
+        "upstream_cache_slots": 0,
+        "workload": "records"
+      },
+      "summary_sha256": "7c2c5d7c0497c2baa7c17abbc1253eb2266adcf2dc6b0599a1aa974948834dd3"
+    },
+    "bulk": {
+      "directory": "target/storage-comparison/attempt.1oWK1J",
+      "validated_calls": 172,
+      "configuration": {
+        "backend_order": "alternates each sample",
+        "batch_sizes": [
+          1
+        ],
+        "cache_bytes": 0,
+        "cache_scope": "ordinary Map only",
+        "cases": [
+          {
+            "case": "U64Bytes",
+            "key_type": "u64",
+            "logical_value_bytes": [
+              65536,
+              1048576
+            ],
+            "operations": [
+              "Control",
+              "Get",
+              "MissAbove",
+              "Replace",
+              "Scan",
+              "Insert",
+              "Contains",
+              "ReverseScan",
+              "KeysScan",
+              "Grow",
+              "Shrink",
+              "Remove",
+              "RemoveMiss",
+              "Reinsert",
+              "RemoveInserted",
+              "First",
+              "Last",
+              "BoundedScan"
+            ],
+            "population_rows": 8,
+            "structure": "Map",
+            "value_type": "Vec<u8>"
+          },
+          {
+            "case": "CellBytes",
+            "key_type": "u64",
+            "logical_value_bytes": [
+              65536,
+              1048576
+            ],
+            "operations": [
+              "Control",
+              "Get",
+              "Replace",
+              "Grow",
+              "Shrink"
+            ],
+            "population_rows": 1,
+            "structure": "Cell",
+            "value_type": "Vec<u8>"
+          },
+          {
+            "case": "RegionBytes",
+            "key_type": "u64",
+            "logical_value_bytes": [
+              65536,
+              1048576
+            ],
+            "operations": [
+              "Control",
+              "Get",
+              "MissAbove",
+              "Replace",
+              "KeysScan",
+              "Insert",
+              "Grow",
+              "Shrink",
+              "Remove",
+              "RemoveMiss",
+              "Reinsert",
+              "RemoveInserted"
+            ],
+            "population_rows": 8,
+            "structure": "Region",
+            "value_type": "Vec<u8>"
+          },
+          {
+            "case": "VectorBytes",
+            "key_type": "u64",
+            "logical_value_bytes": [
+              65536,
+              1048576
+            ],
+            "operations": [
+              "Control",
+              "Get",
+              "MissAbove",
+              "Set",
+              "Scan",
+              "ReverseScan",
+              "Push",
+              "Pop"
+            ],
+            "population_rows": 8,
+            "structure": "Vector",
+            "value_type": "ChunkBytes(max=1MiB)"
+          }
+        ],
+        "cold_cache": false,
+        "dfinity_wasm_bytes": 773175,
+        "measurement": "performance_counter(0) around operations; setup, trace/value creation, validation and Wire response excluded",
+        "owned_wasm_bytes": 1033849,
+        "patterns": [
+          "Uniform"
+        ],
+        "reference_revision": "0.7.2",
+        "rounds": 1,
+        "rows": 8,
+        "samples": 1,
+        "seed": "sample + 1 + round * 7919",
+        "shuffled": false,
+        "state": "fresh canister per case/sample/backend; operations run in declared order",
+        "structures": [
+          "Map",
+          "Set",
+          "Vector",
+          "Cell",
+          "Region"
+        ],
+        "upstream_bucket_pages": 8,
+        "upstream_cache_slots": 0,
+        "workload": "bulk"
+      },
+      "summary_sha256": "0ffc74cf96d28234d93c36a7f987d083cbe302e87f72ff18442b3136cc27046e"
+    }
+  },
+  "native_tests": 12,
+  "remaining": [
+    "Matched 1/8/128-page controls for the new recipes",
+    "Interleaved growth across multiple allocations",
+    "Real deployed populations and occupancy",
+    "2\u201332 MiB control snapshot maxima and GiB-scale maps"
+  ]
+}

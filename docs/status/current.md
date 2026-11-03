@@ -1,5 +1,43 @@
 # Current handoff
 
+## Pending Shared 0.28.2 and issue #156
+
+Reviewed Shared Tooling **0.28.2** (`5cf67f8`) matches remote main and is exported
+as a verified 152-file snapshot. No release or Git delivery was performed.
+The [local mapping](../storage-release-validation.md) keeps the full 12-stage roster
+for CI/core/shared/uncertain scope and eight stages for proven private adapter work.
+The single ordered catalog is `ci/release-validation.json`; Shared admits the full
+roster, baseline observations and initial evidence. Storage's generic event/timing
+parser is removed. Group-schema-2 evidence retains the original immutable Shared
+proof; existing source/configuration/compiler and lock projection admission owns
+recovery after version edits. Earlier receipts remain with their original helper.
+Pending notes belong to Storage 0.66.1; library versions/formats are unchanged.
+[Issue #156](https://github.com/dragginzgame/ic-storage/issues/156) is implemented
+locally and remains open pending integration. Storage **0.66.1** is prepared for
+requested release: all 12 full-gate stages pass, including bootstrap, 84 helper
+recovery tests, product tests, native/Wasm lint, docs, size and all archives.
+Evidence: `target/storage-0661-deploy/validate.log`; failed attempts remain retained.
+Direct `origin/main` push approval is still required before the release runner.
+No version, tag, remote or registry effects have occurred for 0.66.1 yet.
+The unrelated lock edits (Build/Host plus Metrics 0.28.1 and Logging 0.24.4) are
+preserved in `storage-0661-preserved-unselected-lock`; restore after publication
+or when handing back control. Previous proof is in `target/shared-tooling-0282-adoption/`
+and `target/shared-tooling-0281-adoption/`. Historical artifacts remain intact.
+
+## Pending consumer benchmark recipes
+
+The [refreshed inventory](../local-memory-audit.md#complete-declaration-inventory-and-repeatable-workloads)
+records 93 declaration/role rows, including two qualification-only hosts, with
+source hashes and current sibling lock selections. Siblings remain read-only.
+`BENCH_WORKLOAD=control|records|bulk` selects fixed consumer-shaped benchmarks;
+production APIs/defaults and sibling layouts remain unchanged. Notes join 0.66.1.
+[Qualification](../measurements/consumer-workload-qualification.json): 12 native
+tests, strict native and all three Wasm backend lint checks, formatting, ShellCheck
+and 5,524 real PocketIC calls at eight-page ICSS buckets pass. Attempts are
+`q6vdWD` (control), `aPgDyX` (records), `1oWK1J` (bulk) under
+`target/storage-comparison/`; initial unbounded-vector failure `bQJuSl` remains.
+No full new-profile bucket sweep, multi-allocation or deployed-occupancy claim.
+
 ## Published Metrics 0.28 and Wire 0.16 adoption
 
 All three releases are published and unyanked. The normal checkout
@@ -42,7 +80,7 @@ with its 145-file snapshot and Rust/Cargo 1.99.1 unchanged. Earlier focused proo
 remains in `target/shared-tooling-02729-adoption/` and `target/wire-016-adoption/`.
 
 Unrelated Build 0.74.1, Host 0.74.2 and Logging 0.24.3 lock selections are restored
-as the normal checkout's sole pending source diff. Exactly those five package
+as the normal checkout's pre-existing pending source diff. Exactly those five package
 blocks match stash `storage-0660-unselected-lock-edits`; all other lock blocks
 match the released source. Keep that stash and `storage-0660-preserved-pending-inputs`.
 The initial attempt refused dirty source before validation or version preparation;

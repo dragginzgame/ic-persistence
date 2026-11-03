@@ -1,8 +1,8 @@
 # Shared Tooling snapshot v1
-# version	0.27.29
+# version	0.28.2
 format	1
 source	https://github.com/dragginzgame/shared-tooling
-revision	18e727032237e4a6540fefce66bb1b90beb31644
+revision	5cf67f81c50c56ac17389ae71a3a87d46e86e8a2
 # entrypoint	DRAGGINZGAME.md
 # entrypoint	rules/contributions.md
 # entrypoint	rules/changelogs.md
@@ -84,14 +84,16 @@ revision	18e727032237e4a6540fefce66bb1b90beb31644
 # entrypoint	scripts/ci/classify-ci-change.pl
 # entrypoint	scripts/ci/observe-cargo-release-bootstrap.sh
 # entrypoint	scripts/ci/run-validation-stage.pl
-file	2a20fd0e692fa3f9396d73a18116e9ec44f284819da2df4a1514703e5a4a2ef4	-	DRAGGINZGAME.md
-file	6db2ab246c08571cd1216e51dabaa01dbf1c4b178e729ef2be0ae7d5a1c11cfb	-	rules/contributions.md
+# entrypoint	scripts/ci/validation-evidence.pl
+# entrypoint	scripts/ci/test-validation-evidence.sh
+file	1c8bf876a4a03cf9ccf4fa3bdead76e04b0f15d2da622f88832f1098f2e3ccb6	-	DRAGGINZGAME.md
+file	4c41e0dfc8cf437f3b136e4cf4802c7d048b979a149065b9e243b65d42e4baf0	-	rules/contributions.md
 file	81921b5057cf9e48bbc332d616371709df471db7ef4303339a13b81fc58c49e8	-	rules/changelogs.md
 file	ffc8cdf2fdef42d55675dc64a81e5a194a633c0e2446a49df674b8ea0eadc962	-	rules/cargo-dependencies.md
 file	74ffaa9664555992207c6cd5d27974679fdc3eb8df3f160fb3db578183595284	-	rules/rust-workspaces.md
 file	b0b4c00e2183a787791314f21d33d270b8003a1ec67286ce8a681b028214ff75	-	rules/dependency-pinning.md
 file	c957bb6465df829fa7aea4c8bdb9e7200bf5dd7f17776c0d57fcdf23eba634c3	-	rules/git-hooks.md
-file	9b21cb6b944e223d582c6a9198975f3eb1c8d6266850564925aa354f013a7cfd	-	rules/agent-maintenance.md
+file	6cbba5872f01c7332b5cdb76e16f3aecd545044ce428c284d23cb9d5b404ca8a	-	rules/agent-maintenance.md
 file	eff485d42b3a61da174ee7c3bb8257dccfc8753e6bf66f07290a78a67cc3edc2	-	tasks/README.md
 file	eb2419a5762a3cb02f25811d93becb6b18ca520df0bc3448ea35dfa187a034b4	-	tasks/cargo-machete.md
 file	b20211ec1c39ef262c8ab266b207db43c44cd1474acde18297586590c7885810	-	tasks/msrv.md
@@ -127,7 +129,7 @@ file	9315c9faffa4f36cfab496342535bf49d728ddd2111e8e127cbc44b3fac89ce7	-	docs/pri
 file	0e95bbdb5bdaabf587297b20324b034979a7e0ff81be5cee9ac440f6fdcdb0d3	-	docs/principles/reviewable-changes.md
 file	6db5ebda2f999330ff0a2f0a7915501bde39b52899ef688d9c74823e29cff9be	-	docs/principles/rust-code-hygiene.md
 file	457fd38e0073c91ba470b918d4facd9faac3c5200ebd38c97e9d6b76acdaea55	-	docs/principles/simplicity-and-maintainability.md
-file	e44f68ef587a7d6881fd81426360cd535c932666be725326089c6154473e6bb9	-	docs/consuming-snapshots.md
+file	0bec50b0ece8fdb0278d2b857291cbb2e24a63037a419a35baf105d99c1eda67	-	docs/consuming-snapshots.md
 file	68f257ad3efd1081d46d3ba9bbf633869fa8ce08116b2b8108261baf3c16dddd	-	docs/provenance.md
 file	d3b688c172a976580d4d78905c39c4c13c333c06a9336d77871122d91b64cae8	-	docs/verification-helpers.md
 file	e3d87049d307e1097f168118e066999c4edf5c7bc943b540f0095af673703864	-	docs/ic-tools.md
@@ -165,20 +167,22 @@ file	9fd250f349e3d6d297b9950a526b44dd586e3fd06ec2ca0a607e583af59905f3	-	scripts/
 file	fbc7073fccaa24936e45382690c96ba6fbd72ec4e3350fae0098fb281f0ed772	-	scripts/ci/classify-ci-change.pl
 file	9157b3125c0c368547edb43f2f06f0015cc400bc709aa64cb84ba97b7ecd95c7	x	scripts/ci/observe-cargo-release-bootstrap.sh
 file	42bf4d5ababbf964607962d8ef5ae9d87a615f234533ded80eb53ac1d367f3b4	x	scripts/ci/run-validation-stage.pl
+file	f6d76fdb4211ed76216a7f9f3f3afe45ea0cc43ec5ff747c82992a2fbdfe3c00	-	scripts/ci/validation-evidence.pl
+file	e68032b6656ea771501afb91f17c0b084b39b95329d8b0306d665455fd69857c	-	scripts/ci/test-validation-evidence.sh
 file	36f36552df36ea6e082f1fd1f14661d40b281ea01294ffda2eb6c6ec91bc6907	x	scripts/ci/verify-file-checksum.sh
 file	9495336bbafd7a82d7446246c85571e5ccb5f17674ad92c83f008275f11c1201	x	scripts/ci/verify-shared-tooling-snapshot.sh
-file	2e6e89ec3afda60e118d971a9d5cf230bfd42b7a44326c06fd972654a34e3f5e	-	rules/engineering-details.md
+file	344cc1407f2dff6db2eaee1baaf3880194178f8057bf7fe43a7cce3f32721b68	-	rules/engineering-details.md
 file	e3aed908dd9b08bf93255328bb056bed57298dab39944e3726aad2726548e653	-	rules/rpc-budgets.md
 file	c8a83509add7a7e7ef5a3932db105cd7d4207f486ad9c382e36ca96dda25ae5f	-	ci/examples/platform-owner-boundaries.json
 file	c96e7f919c1f0b88155316f79567438fd5e1fc0c07a31b308170dbc8adf91b11	-	docs/node-tools.md
 file	b19096b9a5cbf7b27df3438bfde431c5053e9e6c64dda7dd35e9d24083349c16	-	docs/tool-catalog-bindings.md
 file	8c0067fd398a916c7ad3d6cd5c69f886d9c250f0b0a02916467eea38da46ae09	-	docs/cargo-publication.md
 file	e6e50274bc2451c3de9f03a4f6a5c86776551ceca4cd41efb5f1d318aa92351f	-	docs/release-validation-reuse.md
-file	4a5640c4db6793f8b308925b43a3f4d4a497be3c0c1e7b81793f3769f9b94b01	-	docs/release-group-validation.md
+file	c64deacfbf05ce2058ea231dd13d0384c8c8af27a64e1f14b55f31b594f94158	-	docs/release-group-validation.md
 file	399f56ecf91c85defdca16c4b6f095bd99e9c2c89116edadd594ae8a88892133	-	scripts/ci/dependency-pins.jq
 file	a916ce4194ae2bd5591d86219109e4527455ce7b6358de0023da6bbe00b8397f	-	docs/rust-toolchains.md
 file	9aa52699f4f7f8069cddd6b6ec295afc7a781e48b09bf104d2fff8f262a4720d	-	scripts/distribution/maintenance-files.txt
-file	acd620cf4069abf8889678ffac53b61be17708b73a4019d8fe63bbbf1f65b8c1	-	docs/cargo-graph-checks.md
+file	9e6a4165fe6b5c34c70b7ecd0ff6a08a5f528fd7da8db8acc540c4cb28085aeb	-	docs/cargo-graph-checks.md
 file	3bec4d54fb154a532aa210a18d5e4f7d3ccedd408a7de18ede6401baf8a942de	x	scripts/ci/report-tool-versions.sh
 file	e4c348ca67764c57a46b6de27be2d534ad855e32be1143490261c4db599510d7	-	docs/tool-store-maintenance.md
 file	393ec7669f6aeae293aaf0d1e8288a28d520aa687ea1e235ed1791ee0d294325	-	docs/ci-change-selection.md
@@ -209,7 +213,11 @@ file	a973e193fe6218b85ae5a86537fba5b8ca93e427fd9155dadd7cc2b36339c891	-	scripts/
 file	b0221c706bcd6382fbb5d658529466aa447e3e03222df74524131115eed4d203	-	scripts/ci/release-metadata-transaction.sh
 file	fed2573258080a0c89c7db113208a774f615ca29c372e62c1d2334e58c165654	x	scripts/ci/compare-stable-versions.pl
 file	c8693a4bc058f31c1592c86e7037f0ed02a9719a8a0269038e0a45e16ca93c0b	-	scripts/ci/validation-input-checkpoint.pl
-file	0022db47979ef444df034030d501b83aa994b25c1f1ec78d8d8ad336c20bfa39	x	scripts/ci/run-validation-targets.sh
+file	6c094eb6af59e9071c7fa5e87c917202f866b220a94e59f1b4fffe154ed5f92e	-	scripts/ci/ValidationPlan.pm
+file	5852f19a6c7e999f9c1acccac93d735d1b5e8f55b1c03000d2daca8c7eefa882	-	docs/group-validation-adoption.md
+file	476e5bd1acf2033b75eed5eed080e4d306fa81bc3519eef7b79239294ab637e2	x	scripts/ci/run-validation-targets.sh
+file	c85eb9cbdb96fc30ac07db7c8c893da9e1b001d5694882b55a0d579c7086be9e	-	scripts/ci/fixtures/validation-evidence-caller.rs
+file	b9c8d2d59f6f46474c0cfa0b8b77bea21d94fc73a30ad93d5bf6385c422197d2	-	rust-toolchain.toml
 file	f961b1fc079f37e9da3d272a9308bc3d29bfcb1aa3fcc547a4ee778635c3abc5	-	docs/validation-runner.md
 file	f06fab74d51ec386133feeda6cd26509e8a9797ae14d93afdf5fb7369b0141a0	-	scripts/dev/tool-store-maintenance.pl
 file	7f39ed6acc821c20680e0e4cba85cf10fa894af81eb92dbf3c152bb198410b8e	-	scripts/dev/compiler-cache-maintenance.pl
@@ -225,7 +233,8 @@ file	ebf236f1db579744a13bc995ec1c58c2ee87e34caed23088a6d9b75e638dd27f	x	scripts/
 file	235d355481adf5b15dd118bbd2e83174484af4e463d75714bf70fd7f7352a8fc	-	ci/ic-tools.tsv
 file	6d99677e86759273a88fb4149cbd4c14f2aacc99e1838a0db343d76c776f1aba	-	scripts/ci/ic-tool-pins.awk
 file	ee9ec8f9f45ff2e61ed0287fcac6b2b3c151e802565cacd29c6eeacf32c3b97f	-	scripts/dev/native-package-inputs.pl
-file	7c4b9c65d2407fa63c1ae700a9854866d39a8ab7d1e6bf7ec593cefc54dceb9a	-	scripts/ci/release-validation-plan.pl
+file	efdb27607dff8a634f78e1fd8268192120e09cbb3f154e58c4fd1acfccfece34	-	scripts/ci/release-receipts.sh
+file	e89a0956c8266f7a1633436131e970d49ae4c3efa985f531b81edd2b5165d581	-	scripts/ci/release-validation-plan.pl
 file	efe6acefb807e41e7f2bc3bfe3314deba5647d694ccfd48c3beac4e7956bfb49	-	scripts/dev/OwnedTree.pm
 file	ce27820fc6256fc417d3606dfcc8b850256c3f36a1a29132be587d49aceb82d4	-	scripts/ci/RustSource.pm
 file	ec46c51af7fc2b7ef2959343331e6aa9efb40904d55f5c5b5a43cb446736f9a8	-	scripts/ci/cargo-publication-selection.pl

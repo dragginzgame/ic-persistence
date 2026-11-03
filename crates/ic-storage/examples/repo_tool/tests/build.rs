@@ -63,15 +63,9 @@ impl BuildEffects {
                     BuildFault::ToolCheck,
                     "fixture offline tool admission failure",
                 ),
-            "make"
-                if args
-                    == [
-                        "--no-print-directory",
-                        "validate",
-                        &format!("VALIDATION_TOOLCHAIN={}", fixture_toolchain()),
-                    ] =>
-            {
+            "make" if args.get(1) == Some(&"validate-release-plan") => {
                 self.gate(BuildFault::Validate, "fixture validation failure")?;
+                super::validation::runner_evidence(root, args)?;
                 if self.fail == Some(BuildFault::ValidationLock) {
                     fs::write(root.join("Cargo.lock"), "unexpected dependency selection")?;
                 }

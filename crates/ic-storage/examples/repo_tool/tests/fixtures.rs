@@ -146,6 +146,8 @@ impl Fixture {
         ]);
         Self::group_sources(&mut source);
         for helper in [
+            "Makefile",
+            validation_plan::POLICY,
             CHANGELOG_FINALIZER,
             RELEASE_INPUT_ADMISSION,
             "scripts/ci/StableVersion.pm",
@@ -467,9 +469,13 @@ impl Execute for Substitute {
         } = &mut *state;
         match program {
             "git" => git.capture(root, args, calls),
+            "uname" => Ok("fixture-host\n".to_owned()),
             "bash" if args.first() == Some(&TAG_CHECKER) => git.check_tag(args),
             "curl" => registry.observe(root, args),
             "cargo" if args.get(1) == Some(&"publish") => registry.publish(root, args, git),
+            "perl" if args.first() == Some(&"scripts/ci/validation-evidence.pl") => {
+                validation::shared_proof(root, args, git)
+            }
             "perl" | "awk" => Processes.capture(root, program, args),
             "bash"
                 if args == ["scripts/ci/check-make-execution.sh"]

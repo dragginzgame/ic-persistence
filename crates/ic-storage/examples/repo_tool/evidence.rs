@@ -15,7 +15,7 @@ pub(super) fn read_receipt<T: serde::de::DeserializeOwned>(path: &Path) -> Resul
 ///
 /// ValidationEvidence
 ///
-/// Successful full-gate inputs, saved before release metadata may change.
+/// Successful selected-gate inputs, saved before release metadata may change.
 ///
 /// The original selected lock bytes permit exact root-version refresh checks
 /// and recovery after an interrupted refresh without selecting dependencies.
@@ -24,6 +24,8 @@ pub(super) fn read_receipt<T: serde::de::DeserializeOwned>(path: &Path) -> Resul
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
 pub(super) struct ValidationEvidence {
+    pub(super) schema: u32,
+    pub(super) group_validation: validation_run::GroupValidation,
     pub(super) selection: ReleaseSelection,
     pub(super) lock: Vec<u8>,
     pub(super) identities: [String; 3],

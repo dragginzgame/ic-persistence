@@ -3,6 +3,30 @@
 Current releases use the Storage naming. [Earlier published history](https://github.com/dragginzgame/ic-storage/blob/23deb81c48d58558ac3b0ce36bf266ddc25dca91/releases/persistence/CHANGELOG.md)
 retains its original package and release identities.
 
+## [0.66.1] - Unreleased
+
+### 🔧 Changed
+
+- Load the release stage catalog from admitted source at runtime, preserving
+  standalone bootstrap and archive builds without embedding repository-root files.
+
+- Qualify the native Rust group-proof collector and retained-proof recovery
+  against real Shared runner/verifier evidence, including failures and tampering.
+  [#156](https://github.com/dragginzgame/ic-storage/issues/156).
+
+- Adopt Shared Tooling 0.28.2 (`5cf67f8`), centralize group evidence and
+  baseline observation, and derive full dispatch from one stage catalog.
+  Preserve release projection recovery, existing proof and pending work.
+
+- Add consumer-informed `control`, `records` and `bulk` benchmark recipes,
+  including byte vectors and opt-in 64 KiB/1 MiB records. Record sibling memory
+  declarations and sizing boundaries; production defaults remain unchanged.
+
+- Select release validation by proven change scope. Private adapter-only changes
+  can omit unaffected checks; core/shared changes and repository CI retain the
+  full roster. Group receipts preserve stage evidence for safe recovery.
+  [Details](0.66.md).
+
 ## [0.66.0] - 2026-11-03
 
 ### ⚠️ Breaking

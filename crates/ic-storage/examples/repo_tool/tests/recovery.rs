@@ -241,7 +241,7 @@ fn metadata_publication_failures_reconcile_visible_bytes_and_retry_saved_intent(
                     .borrow()
                     .calls
                     .iter()
-                    .filter(|call| { is_make_call(call, "validate") })
+                    .filter(|call| { is_make_call(call, "validate-release-plan") })
                     .count(),
                 1
             );
@@ -466,7 +466,7 @@ fn interrupted_preparation_finishes_saved_candidate_without_revalidating() {
         assert_eq!(
             calls
                 .iter()
-                .filter(|call| is_make_call(call, "validate"))
+                .filter(|call| is_make_call(call, "validate-release-plan"))
                 .count(),
             1
         );
@@ -478,7 +478,7 @@ fn interrupted_preparation_finishes_saved_candidate_without_revalidating() {
                 .any(|call| is_cargo_call(call, "fetch")
                     || is_package_call(call)
                     || is_make_call(call, "fmt-check")
-                    || is_make_call(call, "validate"))
+                    || is_make_call(call, "validate-release-plan"))
         );
         assert!(fixture.repo.exec.state.borrow().git.release.is_none());
     }

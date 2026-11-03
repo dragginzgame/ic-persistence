@@ -1,7 +1,7 @@
 # Repository Instructions
 
 For scope, delegated delivery, validation, compiler support and reporting, use
-[Shared policy at 18e7270](https://github.com/dragginzgame/shared-tooling/blob/18e727032237e4a6540fefce66bb1b90beb31644/DRAGGINZGAME.md)
+[Shared policy at 5cf67f8](https://github.com/dragginzgame/shared-tooling/blob/5cf67f81c50c56ac17389ae71a3a87d46e86e8a2/DRAGGINZGAME.md)
 and its revision-bound references over older snapshot or local-guide wording.
 This includes Rust 1.99.1 as minimum and pinned development/release compiler;
 check local declarations and qualification before claiming adoption is complete.
@@ -85,7 +85,9 @@ for the upstream contribution and the `ic-storage` package integration boundary.
   tests when a narrower proof suffices. `make runtime-server-check` admits the
   installed server; `make test-runtime` qualifies installed IO, upgrade and
   rollback with explicitly prepared tools and both caches.
-- Full release suite: `make validate`, under the shared
+- Full repository suite: `make validate`; releases use the qualified
+  [group validation mapping](docs/storage-release-validation.md) and require every
+  applicable stage, under the shared
   [validation cadence](DRAGGINZGAME.md#validation-and-evidence).
   Development packaging qualifies working-tree edits; release
   admission and the separate `make package` target still require clean source.
