@@ -91,8 +91,8 @@ refuse Metrics metadata feature unification and require one Wire identity;
 the independent qualifier also selects one Wire provider. No foreign trait
 implementations, supplier patches or replacement integration crate are added.
 Metrics 0.28.0 is published; Storage qualification uses that registry supplier.
-This preparation targets Storage 0.66.0, Metrics Storage 0.67.0 and the existing
-Logging Storage 0.64.0 draft; it does not publish any group.
+Storage 0.66.0, Metrics Storage 0.67.0 and Logging Storage 0.64.0 publish this
+adoption; verified delivery and qualification are in the [handoff](status/current.md).
 The library graph no longer selects Testkit Native: it has no allocation API
 callers, and Storage owns backing IO metering. Native 0.80's memory-module removal
 therefore requires no API migration here. Installed qualification selects Testkit
@@ -106,7 +106,7 @@ records and runtime ownership remain unchanged.
 The library and selected metadata editor use Build 0.74.0. Host Artifacts, FS and
 Process select 0.74.1. The installed Testkit CLI selects 0.79.0, with
 server 16.1.0 unchanged. Storage 0.65.0 and Metrics Storage 0.66.0 deliver this source
-adoption. Logging Storage retains its separate pending publication requirements.
+adoption. Logging Storage 0.64.0 subsequently completes its separate publication.
 
 The library [dependency catalog](../Cargo.toml) owns direct package requirements
 and feature selections; its [lockfile](../Cargo.lock) owns resolved identities.

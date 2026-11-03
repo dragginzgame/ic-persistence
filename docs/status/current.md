@@ -1,40 +1,52 @@
 # Current handoff
 
-## Metrics 0.28 and Wire 0.16 delivery preparation
+## Published Metrics 0.28 and Wire 0.16 adoption
 
-Published Metrics **0.28.0** is selected in the root catalog/lockfile. It has no
-Wire dependency or native schema feature; Storage still owns its record codec.
-Both maintained catalogs/lockfiles select Wire/Derive **0.16.0**. Public metric
-values/errors and Wire errors/limits change Rust identity; retained rows and
-current Storage-owned backing do not require reset or migration.
+All three releases are published and unyanked. The normal checkout
+`/home/adam/projects/ic-storage` on `main` performed the approved direct
+`origin/main` and annotated-tag pushes, then separate crates.io publication:
 
-The requested release scope is Storage **0.66.0**, Metrics Storage **0.67.0**,
-then Logging Storage **0.64.0**, supplier first, from the normal
-`/home/adam/projects/ic-storage` checkout to the existing crates.io identities.
-Direct `origin/main` push requires the separately disclosed explicit approval.
-No new release or publication has run at this preparation stage.
+| Package | Version | Release commit | Tag |
+| --- | --- | --- | --- |
+| Storage | 0.66.0 | `0b10639` | `storage-v0.66.0` |
+| Metrics Storage | 0.67.0 | `ab333a1` | `metrics-storage-v0.67.0` |
+| Logging Storage | 0.64.0 | `cf23e04` | `logging-storage-v0.64.0` |
 
-[Storage #154](https://github.com/dragginzgame/ic-storage/issues/154) has its local
-schema-coupling fix merged in [PR #155](https://github.com/dragginzgame/ic-storage/pull/155),
-remote main `f280cb8`. The new supplier completes its previously unavailable
-acceptance input. All 29 Metrics tests, strict native/Wasm Clippy, production
-graphs, pins, formatting and snapshot integrity pass with Metrics 0.28.0.
-Evidence: `target/metrics-028-deploy/`. Close the issue after confirming the
-qualified adoption is delivered on main. Observability #128 remains supplier-owned.
+Downloaded registry archives match each qualified receipt and index checksum.
+Verification JSON, downloaded archives and release/publication logs are retained
+in `target/metrics-028-deploy/`; exact group receipts and archives remain in
+`target/release-validation/`. Do not repeat these releases or uploads.
 
-The pending batch includes reviewed Shared Tooling **0.27.29** (`18e7270`),
-exported from clean committed source. Its 145-file snapshot, three native group
-plans, release-adapter substitutes and affected documentation passed earlier
-qualification in `target/shared-tooling-02729-adoption/`. Tool pins and Rust/Cargo
-1.99.1 are unchanged. Earlier Wire 0.16 focused evidence (129 selected tests and
-seven native/Wasm graphs) remains in `target/wire-016-adoption/`; release gates
-and installed qualification must use the final source/selected dependency graph.
+Metrics Storage requires published Metrics **0.28**, Storage **0.66** and Wire
+**0.16**. Metrics owns arithmetic/validated Serde with no Wire dependency;
+Storage owns its record codec and services own DTO schemas. Public metric values,
+errors and Wire limits change Rust identity, so hosts must align dependencies.
+Current Storage-owned backing and metric rows require no reset or migration.
+Logging's notes retain the distinct migration obligations from its older release.
 
-Unrelated Build 0.74.1, Host 0.74.2 and Logging 0.24.3 lock selections are preserved
-in Git stash `storage-0660-preserved-pending-inputs` and the incoming lock evidence.
-They are excluded from this release source and must be restored afterward without
-changing the released workspace versions or Metrics/Wire selections. Never blindly
-apply the whole stash: it also contains already-selected adoption changes.
+[Storage #154](https://github.com/dragginzgame/ic-storage/issues/154) is closed with
+supplier adoption, all 29 Metrics tests, strict native/Wasm lint, actual consumer
+and production graphs, complete release gates and publication evidence. Its
+schema-coupling fix was delivered in PR #155. Supplier Observability #128 is also
+closed by its owner; no Storage issues remained open at final inspection.
+
+All three complete local release gates and final archive integrations pass:
+Storage `verify.qQYeeM` / `attempt.wRS8QW`, Metrics `verify.rOKp7A` /
+`attempt.EEEctc`, Logging `verify.027t9u` / `attempt.hA7Wvv`.
+Installed original/O3/Os/Oz IO, collection upgrades, custody, logging and rollback
+pass in `target/qualification/runtime/attempt.RFmb22/`. Hosted/native-macOS CI
+was pending or running at handoff; these Linux results do not claim it passed.
+
+The delivered source includes reviewed Shared Tooling **0.27.29** (`18e7270`),
+with its 145-file snapshot and Rust/Cargo 1.99.1 unchanged. Earlier focused proof
+remains in `target/shared-tooling-02729-adoption/` and `target/wire-016-adoption/`.
+
+Unrelated Build 0.74.1, Host 0.74.2 and Logging 0.24.3 lock selections are restored
+as the normal checkout's sole pending source diff. Exactly those five package
+blocks match stash `storage-0660-unselected-lock-edits`; all other lock blocks
+match the released source. Keep that stash and `storage-0660-preserved-pending-inputs`.
+The initial attempt refused dirty source before validation or version preparation;
+its log remains. Subsequent clean releases passed without bypassing checks.
 
 ## Prior publication and recovery
 
