@@ -1,10 +1,14 @@
 # Current handoff
 
-## Pending Storage 0.65.5
+## Delivered Storage 0.65.5
 
-Storage 0.65.5 delivery is authorized; source preparation precedes the standard
-release gate, atomic Git delivery and registry publication. Siblings are unchanged.
-The [pending notes](../../releases/storage/0.65.md) cover node-buffer improvements,
+Storage **0.65.5** is published and unyanked. Commit
+`127031ee7013a0ab3c5c9de38d5e1722c529280d` and annotated tag `storage-v0.65.5`
+were atomically pushed to `origin/main`. The downloaded registry archive and
+sparse index match the qualified SHA-256:
+`4a5b1ea9a7b8f61e0ea22b257be5282795bd24ba77ab3d730afd02a46462b9aa`.
+Do not repeat release/upload. Only Storage was released; siblings are unchanged.
+The [release notes](../../releases/storage/0.65.md) cover node-buffer improvements,
 benchmark bucket controls and the latest Platform adoption. Public Storage APIs,
 stored formats, cache budgets and staged root-last publication remain unchanged.
 
@@ -15,20 +19,27 @@ installation, clock and cycle failures; rollback checks accept only actual
 canister traps. The explicit Platform 0.17 comparison alias remains for ICSS
 0.7.2; pinned DFINITY Git `b5d1650` remains the other research control.
 
-Adoption evidence: `target/platform-019-adoption/`. Native client/model tests,
-strict native and product-Wasm Clippy, pin/production graph checks, formatting,
-and independent default/facade composition on native and Wasm pass. Installed
-original-Wasm IO, all five structures, 1,031-allocation upgrade, six directory
-faults, custody, Logging and rollback pass in `runtime/`. The five-structure
-benchmark smoke passes 216 comparison rows in
-`target/storage-comparison/attempt.yeWNhE/` (64 rows, uniform, one round, batches
-1/32, ICSS eight-page buckets). No release gate or optimizer matrix was rerun.
+Delivery evidence: `target/storage-0655-deploy/`. The exact release checkout is
+retained at `checkout/`; its `target/` owns final receipts and archives. Full gate
+`verify.ze8HOu` passed in 247.558 seconds; final archive integration is
+`package-qualification/attempt.H6blMA`. Installed original/O3/Os/Oz IO, all five
+structures, 1,031-allocation upgrade, six directory faults, custody, Logging and
+rollback pass in `qualification/runtime/attempt.a4RQq4`. Publication and independent
+registry/archive verification are retained alongside the checkout.
+
+Earlier adoption checks remain in `target/platform-019-adoption/`, including
+native/Wasm default/facade composition. The five-structure smoke passed 216 rows
+in `target/storage-comparison/attempt.yeWNhE/` (64 rows, uniform, batches 1/32,
+one round, ICSS eight-page buckets). No whole-endpoint speedup is claimed.
 
 The release root lock selects only the Platform changes. Unrelated pending Build
 0.74.1, Host 0.74.2, Logging 0.24.3, Metrics 0.27.2 and Wire 0.15.1 updates are
-preserved separately for restoration after publication. Independent lock changes
-are limited to Platform and required transitive selections/disambiguation. Original
-locks/patches are in `target/storage-0655-deploy/` and the adoption evidence.
+restored in the main checkout, byte-identical except Storage's release version.
+Keep the `storage-0655-unselected-lock-edits` stash and saved locks/patches.
+The first gate passed its tests but refused admission after an unconfirmed writer
+restored those lock updates. An isolated retry with shared build output hit
+trybuild path mismatches. A clean checkout with independent artifacts passed the
+unchanged full gate. Both failed logs remain; no checks or assertions were bypassed.
 
 ## Local memory audit
 
@@ -46,7 +57,7 @@ reservation still assumes ICSS 0.7.2 geometry; requalify its bound against Stora
 No demonstrated capacity failure or quantified Canic saving is claimed. Use
 existing per-key/global diagnostics before consolidating any further stores.
 
-## Earlier pending node-buffer work and bucket study
+## Node-buffer work and bucket study
 
 B-tree nodes now encode into their final checksummed frame; membership retains
 node/index without value copies, and `get` decodes borrowed inline bytes.
@@ -78,14 +89,9 @@ whole endpoints, a production-default selection or a universal superiority claim
 
 ## Delivered releases, recovery and retained boundaries
 
-Storage **0.65.4** is published and unyanked: commit `70720ded`, tag
-`storage-v0.65.4`, registry/archive SHA-256
-`c9ea8338f14d8db0cb2551ff005de50345a0b734e51a96fb67a9c8e9b63414dc`.
-Do not repeat release/upload. Evidence: `target/storage-0654-deploy/`,
-`target/release-validation/storage-0.65.4.json`, validation `verify.iVFrKc`,
-archive `attempt.dCTtqm` and installed original/O3/Os/Oz `attempt.FITlwP`.
-Unconfirmed lockfile-writer recovery preserved failed logs, source bytes and
-receipts; standard resume succeeded. Keep `storage-0654-unselected-lock-edits`,
+Storage 0.65.4 and 0.65.3 remain published. Earlier unconfirmed lockfile-writer
+recovery preserved failed logs, source bytes and receipts; standard resume
+succeeded. Keep `storage-0654-unselected-lock-edits`,
 `storage-0653-unselected-lock-edits` and `storage-0653-hotspot-integration` stashes.
 Storage 0.65.3 and Metrics Storage 0.66.0 remain published. Logging Storage stays
 0.63.0 with 0.64.0 notes pending. Full prior recovery facts/evidence are in the
