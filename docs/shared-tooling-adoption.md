@@ -64,12 +64,13 @@ Both catalogs require published Wire 0.15.0 and select Wire/Derive 0.15.0.
 Public codec errors carry the new Wire Rust identity; hosts matching those errors
 must align their dependency. Codec bytes, budgets and restoration contracts are
 unchanged. Core Storage, production Wasm and the independent native qualifier
-each select one Wire 0.15 provider. Metrics Storage 0.66.0 selects
-published Metrics 0.27.0, aligning its default native schema traits with Wire 0.15
-and removing Wire/derive 0.14 from the root lockfile. The combined native adapter
-graph also has one Wire identity. No defaults are suppressed and no supplier
-overrides are selected. Metrics Storage publication is verified separately from
-Storage; Logging Storage retains its pending release.
+each select one Wire 0.15 provider. Metrics Storage selects published Metrics 0.27
+without its optional `native-wire` metadata under
+[Storage #154](https://github.com/dragginzgame/ic-storage/issues/154). Storage owns
+its stored codecs; services own report DTO schemas. Frozen records and numeric
+validation remain qualified. Native production admission refuses Metrics metadata
+feature unification and requires one Wire identity. No supplier overrides are
+selected. Metrics Storage publication is verified separately from Storage; Logging Storage retains its pending release.
 The library graph no longer selects Testkit Native: it has no allocation API
 callers, and Storage owns backing IO metering. Native 0.80's memory-module removal
 therefore requires no API migration here. Installed qualification selects Testkit

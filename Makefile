@@ -143,6 +143,7 @@ check-production-graph:
 	+RUSTUP_TOOLCHAIN=$(VALIDATION_TOOLCHAIN) RUSTUP_AUTO_INSTALL=0 perl scripts/ci/check-cargo-graph.pl \
 		--consumer "$(CURDIR)" --package ic-storage --package ic-metrics-storage --package ic-logging-storage \
 		--target "$$(rustc +$(VALIDATION_TOOLCHAIN) -vV | sed -n 's/^host: //p')" \
+		--require ic-wire=1 --forbid-feature ic-metrics/native-wire \
 		--forbid ic-platform --forbid ic-platform-runtime --forbid ic-platform-types --forbid ic-platform-runtime-guard
 
 # Install exact, checksum-verified tools separately; these checks are offline.

@@ -3,6 +3,14 @@
 Current releases use the Storage naming. [Earlier published history](https://github.com/dragginzgame/ic-storage/blob/23deb81c48d58558ac3b0ce36bf266ddc25dca91/releases/metrics-stable/CHANGELOG.md)
 retains its original package and release identities.
 
+## [0.67.0]
+
+### ⚠️ Breaking
+
+- Stop enabling Metrics-owned native Wire schemas. Services own report DTO schemas;
+  metric arithmetic, validated restoration and stored rows remain unchanged.
+  [Details](0.67.md), [#154](https://github.com/dragginzgame/ic-storage/issues/154).
+
 ## [0.66.0] - 2026-11-02
 
 ### ⚠️ Breaking

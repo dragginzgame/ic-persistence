@@ -1,5 +1,20 @@
 # Current handoff
 
+## Metrics schema coupling: local acceptance complete
+
+[Storage #154](https://github.com/dragginzgame/ic-storage/issues/154) disables
+Metrics native metadata and removes the schema-only expectation. Stored codecs,
+frozen rows and numeric admission remain unchanged. Pending Metrics Storage
+0.67.0 notes describe the feature-contract change; package versions are unchanged.
+Focused native/Wasm graph checks and strict Clippy pass, as do all 29 Metrics
+Storage tests and dependency-adoption refusal fixtures. Evidence is retained in
+`target/issue-154/` of the durable `ic-storage-issue-154` checkout.
+The issue remains open for adoption and qualification of the delivered supplier
+from [Observability #128](https://github.com/dragginzgame/ic-observability/issues/128);
+its prepared Metrics 0.28.0 change is currently unpublished. No release is claimed.
+[Storage #153](https://github.com/dragginzgame/ic-storage/issues/153) is closed on
+the published 0.65.5 supplier and IcyDB consumer evidence described below.
+
 ## Delivered Storage 0.65.5
 
 Storage **0.65.5** is published and unyanked. Commit

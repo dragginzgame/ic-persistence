@@ -307,7 +307,6 @@ version = "0.27.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1301c37815b711164dbef141437570f737abb63dd0f9531586067a4649411b86"
 dependencies = [
- "ic-wire",
  "serde",
 ]
 
@@ -396,7 +395,6 @@ dependencies = [
  "postcard",
  "serde",
  "serde_bytes",
- "serde_json",
 ]
 
 [[package]]
