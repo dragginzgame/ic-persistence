@@ -1,36 +1,41 @@
 # Current handoff
 
-## Pending Shared 0.28.2 and issue #156
+## Published Storage 0.66.1
 
-Reviewed Shared Tooling **0.28.2** (`5cf67f8`) matches remote main and is exported
-as a verified 152-file snapshot. No release or Git delivery was performed.
-The [local mapping](../storage-release-validation.md) keeps the full 12-stage roster
-for CI/core/shared/uncertain scope and eight stages for proven private adapter work.
-The single ordered catalog is `ci/release-validation.json`; Shared admits the full
-roster, baseline observations and initial evidence. Storage's generic event/timing
-parser is removed. Group-schema-2 evidence retains the original immutable Shared
-proof; existing source/configuration/compiler and lock projection admission owns
-recovery after version edits. Earlier receipts remain with their original helper.
-Pending notes belong to Storage 0.66.1; library versions/formats are unchanged.
-[Issue #156](https://github.com/dragginzgame/ic-storage/issues/156) is implemented
-locally and remains open pending integration. Storage **0.66.1** is prepared for
-requested release: all 12 full-gate stages pass, including bootstrap, 84 helper
-recovery tests, product tests, native/Wasm lint, docs, size and all archives.
-Evidence: `target/storage-0661-deploy/validate.log`; failed attempts remain retained.
-Direct `origin/main` push approval is still required before the release runner.
-No version, tag, remote or registry effects have occurred for 0.66.1 yet.
-The unrelated lock edits (Build/Host plus Metrics 0.28.1 and Logging 0.24.4) are
-preserved in `storage-0661-preserved-unselected-lock`; restore after publication
-or when handing back control. Previous proof is in `target/shared-tooling-0282-adoption/`
-and `target/shared-tooling-0281-adoption/`. Historical artifacts remain intact.
+Storage **0.66.1** is published and unyanked. Release commit `06f64ca` and annotated
+tag `storage-v0.66.1` were pushed atomically to `origin/main` from the approved
+normal checkout. Source commit is `551a4aa`; [#156](https://github.com/dragginzgame/ic-storage/issues/156)
+is closed. Metrics Storage remains 0.67.0 and Logging Storage remains 0.64.0.
+Downloaded registry bytes match receipt/archive SHA-256
+`35d187e67fc27cc56f9ab6b3d9b125f6e8d73c538c55578888b27edd86dd8938`.
+Publication verification and failed/successful logs: `target/storage-0661-deploy/`.
 
-## Pending consumer benchmark recipes
+The source-bound full release gate passed all 12 stages; original proof is under
+`target/release-plans/storage-1451973.1793709419076796644/`. Native validation log
+is `target/release-validation/attempts/verify.Q9F6DG`; group receipts and exact
+archives remain under `target/release-validation/`. Final archive integration
+passed at `target/package-qualification/attempt.xewaoR/`. Hosted release CI was
+running at handoff ([run](https://github.com/dragginzgame/ic-storage/actions/runs/41638040482));
+local Linux proof does not claim macOS completion. Do not repeat release/uploads.
+
+Shared 0.28.2 (`5cf67f8`) is the verified 152-file snapshot. One ordered stage
+catalog feeds full dispatch and private adapter plans; Shared verifies original
+proof, while Storage retains source/configuration/version projection authority.
+The bootstrap packaging fix reads the policy at runtime. Library APIs and stored
+formats are unchanged. Prior focused evidence remains in
+`target/shared-tooling-0282-adoption/` and `target/shared-tooling-0281-adoption/`.
+Preserve `storage-0661-preserved-unselected-lock` and
+`storage-0661-publication-unselected-lock`. Their unrelated Build/Host, Metrics
+0.28.1 and Logging 0.24.4 selections are restored after delivery, with only the
+expected local Storage lock identity advancing to 0.66.1. Historical evidence stays.
+
+## Delivered consumer benchmark recipes
 
 The [refreshed inventory](../local-memory-audit.md#complete-declaration-inventory-and-repeatable-workloads)
 records 93 declaration/role rows, including two qualification-only hosts, with
 source hashes and current sibling lock selections. Siblings remain read-only.
 `BENCH_WORKLOAD=control|records|bulk` selects fixed consumer-shaped benchmarks;
-production APIs/defaults and sibling layouts remain unchanged. Notes join 0.66.1.
+production APIs/defaults and sibling layouts remain unchanged. Delivered in 0.66.1.
 [Qualification](../measurements/consumer-workload-qualification.json): 12 native
 tests, strict native and all three Wasm backend lint checks, formatting, ShellCheck
 and 5,524 real PocketIC calls at eight-page ICSS buckets pass. Attempts are
@@ -38,7 +43,7 @@ and 5,524 real PocketIC calls at eight-page ICSS buckets pass. Attempts are
 `target/storage-comparison/`; initial unbounded-vector failure `bQJuSl` remains.
 No full new-profile bucket sweep, multi-allocation or deployed-occupancy claim.
 
-## Published Metrics 0.28 and Wire 0.16 adoption
+## Prior Metrics 0.28 and Wire 0.16 adoption
 
 All three releases are published and unyanked. The normal checkout
 `/home/adam/projects/ic-storage` on `main` performed the approved direct
