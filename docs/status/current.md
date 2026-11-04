@@ -1,17 +1,18 @@
 # Current handoff
 
-## Published Storage 0.66.2 and Logging Storage 0.64.1
+## Published Storage 0.66.3 and Logging Storage 0.64.1
 
-Storage `ec9d653` / `storage-v0.66.2` and Logging `74f185e` /
-`logging-storage-v0.64.1` are pushed and published. Both full 12-stage gates
-passed. Downloaded registry archives match the qualified bytes. GitHub's failed
-Logging pushes were resumed successfully without changing the release version.
-Evidence: `target/storage-0662-deploy/`, `target/logging-storage-0641-deploy/`.
-Preserve failed logs, receipts and all named lock-preservation stashes. The newer
-incoming lock selections were restored after publication; they remain pending.
-Shared Tooling 0.29.4 (`628ccc7`, 153 files) is included in the Storage release.
+Storage `8504539` / `storage-v0.66.3` is pushed and published. All 12 release
+stages and installed IO/upgrade/rollback qualification passed. The downloaded
+registry archive matches the qualified SHA-256 `901edc46ec51eadacaac3f3413cba19cc0ec06b009c4f4f045b0eb6442988f37`.
+Evidence: `target/storage-0663-deploy/`; runtime attempt `0K5mSN`.
+Logging remains published at `74f185e` / `logging-storage-v0.64.1`; adapters were
+not rereleased. Shared Tooling remains 0.29.4 (`628ccc7`, 153 files).
+Preserve all failed logs, receipts and lock-preservation stashes, including
+`storage-0663-preserved-pending-lock-inputs`. Restore its unrelated dependency
+selections after publication while retaining Storage's new local version.
 
-## Pending Storage 0.66.3 comparison expansion
+## Included in Storage 0.66.3
 
 The ordinary matrix now covers 29 concrete cases and 52 type/size combinations.
 The boundaries recipe covers 48 combinations across Map/Vector/Cell/Region;
@@ -59,7 +60,7 @@ Core tests/lint (95/95/96) and 6+10+1 harness tests pass; both locks are unchang
 Two-way cache adopted for 0.66.3; allocator unchanged. Sweep seeds/budgets next.
 96 core/87 helper tests and all-target lint pass; CI helper lint warning fixed.
 
-## Pending CI group selection
+## Included CI group selection
 
 Private adapter PRs now reuse the qualified release selector; non-docs pushes,
 core/shared/public/unknown changes remain full. Admitted plans scope four Cargo
