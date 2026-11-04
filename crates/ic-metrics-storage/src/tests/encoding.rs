@@ -58,7 +58,7 @@ fn frozen_wire_rows_reopen_through_the_governed_map() {
         .save_counter(
             &key("counter"),
             &id,
-            &Counter::from_parts(9, false).unwrap(),
+            &ic_metrics::persistence::restore_counter(9, false).unwrap(),
         )
         .unwrap();
     drop(store);
@@ -109,9 +109,9 @@ fn truncated_records_reject_all_metric_families_without_writes() {
     aggregate.record(7);
     check(&aggregate);
     check(&Summary::EMPTY);
-    check(&Summary::from_parts(aggregate, Some(7)).unwrap());
+    check(&ic_metrics::persistence::restore_summary(aggregate, Some(7)).unwrap());
     check(&Counter::ZERO);
-    check(&Counter::from_parts(7, false).unwrap());
+    check(&ic_metrics::persistence::restore_counter(7, false).unwrap());
     let mut histogram = Histogram::new([0, 10]).unwrap();
     check(&histogram);
     histogram.record(5);
@@ -237,7 +237,7 @@ fn wire_encoding_is_explicit_and_rejects_invalid_numeric_state() {
     let expected = wire_state(1, &identity, &aggregate);
     assert_eq!(encode(&identity, &value), expected);
     assert_eq!(expected, b"ICMW\x01\x01x\x03\x06\x01\x07\x01\x07\x00\x00");
-    let summary = Summary::from_parts(value, Some(7)).unwrap();
+    let summary = ic_metrics::persistence::restore_summary(value, Some(7)).unwrap();
     assert_eq!(
         encode(&identity, &summary),
         wire_state(2, &identity, &(aggregate, Some(7_u64)))
@@ -261,7 +261,7 @@ fn wire_encoding_is_explicit_and_rejects_invalid_numeric_state() {
 
 #[test]
 fn counter_wire_records_reject_corruption_before_checkpoint_or_reset() {
-    let value = Counter::from_parts(7, false).unwrap();
+    let value = ic_metrics::persistence::restore_counter(7, false).unwrap();
     let identity = MetricIdentity::new("x", 3).unwrap();
     let bytes = encode(&identity, &value);
     let expected = b"ICMW\x04\x01x\x03\x02\x07\x00".to_vec();
@@ -277,7 +277,9 @@ fn counter_wire_records_reject_corruption_before_checkpoint_or_reset() {
     *impossible_overflow.last_mut().unwrap() = 1;
     malformed.push((
         impossible_overflow,
-        StoreError::InvalidState(ic_metrics::MeasurementStateError::InvalidOverflowFlag),
+        StoreError::InvalidState(
+            ic_metrics::persistence::MeasurementStateError::InvalidOverflowFlag,
+        ),
     ));
     let mut unknown_kind = bytes.clone();
     unknown_kind[4] = 5;
@@ -363,16 +365,18 @@ fn wire_encoding_admits_bounded_histograms_and_numeric_extremes() {
     }
     check(&Aggregate::EMPTY);
     check(&Counter::ZERO);
-    check(&Counter::from_parts(u128::MAX, true).unwrap());
+    check(&ic_metrics::persistence::restore_counter(u128::MAX, true).unwrap());
     check(&Summary::EMPTY);
     check(&Histogram::new([]).unwrap());
     let bounds = std::array::from_fn::<_, 256, _>(|i| u64::MAX - 255 + i as u64);
     check(&Histogram::new(bounds).unwrap());
-    let wide = Aggregate::from_parts(u64::MAX, u128::MAX, Some(u64::MAX), true, true).unwrap();
+    let wide =
+        ic_metrics::persistence::restore_aggregate(u64::MAX, u128::MAX, Some(u64::MAX), true, true)
+            .unwrap();
     check(&wide);
-    check(&Summary::from_parts(wide, Some(u64::MAX)).unwrap());
+    check(&ic_metrics::persistence::restore_summary(wide, Some(u64::MAX)).unwrap());
     check(
-        &Histogram::from_parts(
+        &ic_metrics::persistence::restore_histogram(
             std::array::from_fn::<_, 256, _>(|i| i as u64),
             [u64::MAX; 256],
             u64::MAX,
@@ -403,17 +407,20 @@ fn wire_byte_mutations_preserve_canonical_admission_and_rejected_checkpoints() {
         histogram.record(sample);
     }
     let overflowed =
-        Aggregate::from_parts(u64::MAX, u128::MAX, Some(u64::MAX), true, true).unwrap();
+        ic_metrics::persistence::restore_aggregate(u64::MAX, u128::MAX, Some(u64::MAX), true, true)
+            .unwrap();
     let outcomes = [
         check_wire_mutations(&Counter::ZERO),
-        check_wire_mutations(&Counter::from_parts(u128::MAX, false).unwrap()),
-        check_wire_mutations(&Counter::from_parts(u128::MAX, true).unwrap()),
+        check_wire_mutations(&ic_metrics::persistence::restore_counter(u128::MAX, false).unwrap()),
+        check_wire_mutations(&ic_metrics::persistence::restore_counter(u128::MAX, true).unwrap()),
         check_wire_mutations(&Aggregate::EMPTY),
         check_wire_mutations(&aggregate),
         check_wire_mutations(&overflowed),
         check_wire_mutations(&Summary::EMPTY),
         check_wire_mutations(&summary),
-        check_wire_mutations(&Summary::from_parts(overflowed, Some(u64::MAX)).unwrap()),
+        check_wire_mutations(
+            &ic_metrics::persistence::restore_summary(overflowed, Some(u64::MAX)).unwrap(),
+        ),
         check_wire_mutations(&Histogram::new([]).unwrap()),
         check_wire_mutations(&histogram),
     ];
@@ -451,24 +458,30 @@ fn populated_wire_rows_reopen_without_reencoding() {
     }
     drop(map);
     let store = MetricsStore::new(StableBTreeMap::load(admitted_memory(backing)).unwrap());
-    let expected = Aggregate::from_parts(2, total, Some(maximum), false, false).unwrap();
+    let expected =
+        ic_metrics::persistence::restore_aggregate(2, total, Some(maximum), false, false).unwrap();
     assert_eq!(
         store.load_aggregate(&key("aggregate"), &id),
         Ok(Some(expected))
     );
     assert_eq!(
         store.load_summary(&key("summary"), &id),
-        Ok(Some(Summary::from_parts(expected, Some(maximum)).unwrap()))
+        Ok(Some(
+            ic_metrics::persistence::restore_summary(expected, Some(maximum)).unwrap()
+        ))
     );
     assert_eq!(
         store.load_histogram(&key("histogram"), &id, &[maximum]),
         Ok(Some(
-            Histogram::from_parts([maximum], [2], 0, [false], false, expected).unwrap()
+            ic_metrics::persistence::restore_histogram([maximum], [2], 0, [false], false, expected)
+                .unwrap()
         ))
     );
     assert_eq!(
         store.load_counter(&key("counter"), &id),
-        Ok(Some(Counter::from_parts(u128::MAX, true).unwrap()))
+        Ok(Some(
+            ic_metrics::persistence::restore_counter(u128::MAX, true).unwrap()
+        ))
     );
     let map = store.into_map();
     for (key, bytes) in originals {

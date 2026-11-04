@@ -34,7 +34,7 @@ impl From<MeasurementAggregate> for AggregateState {
 
 impl AggregateState {
     pub(super) fn restore(self) -> Result<MeasurementAggregate, StoreError> {
-        Ok(MeasurementAggregate::from_parts(
+        Ok(ic_metrics::persistence::restore_aggregate(
             self.samples,
             self.total,
             self.maximum,

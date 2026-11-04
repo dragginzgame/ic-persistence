@@ -6,7 +6,8 @@ use super::*;
 fn exact_caps_and_overflow_flags_survive_storage_and_continue() {
     let mut store = store();
     let key = key("app");
-    let mut value = Aggregate::from_parts(u64::MAX, 0, Some(0), false, false).unwrap();
+    let mut value =
+        ic_metrics::persistence::restore_aggregate(u64::MAX, 0, Some(0), false, false).unwrap();
     store.save(&key, &identity(), &value).unwrap();
     let exact = store.load_aggregate(&key, &identity()).unwrap().unwrap();
     assert!(!exact.samples_overflowed());
@@ -17,10 +18,14 @@ fn exact_caps_and_overflow_flags_survive_storage_and_continue() {
         Err(StoreError::StateRegression)
     );
     assert_eq!(store.load_aggregate(&key, &identity()), Ok(Some(value)));
-    let wide = Aggregate::from_parts(u64::MAX, u128::MAX, Some(u64::MAX), true, true).unwrap();
+    let wide =
+        ic_metrics::persistence::restore_aggregate(u64::MAX, u128::MAX, Some(u64::MAX), true, true)
+            .unwrap();
     store.save(&key, &identity(), &wide).unwrap();
     assert_eq!(store.load_aggregate(&key, &identity()), Ok(Some(wide)));
-    let histogram = Histogram::from_parts([0], [u64::MAX], 0, [true], false, value).unwrap();
+    let histogram =
+        ic_metrics::persistence::restore_histogram([0], [u64::MAX], 0, [true], false, value)
+            .unwrap();
     store
         .save(
             &crate::MetricKey::new("app", "distribution").unwrap(),
@@ -41,21 +46,21 @@ fn counter_checkpoints_preserve_wide_caps_identity_and_explicit_resets() {
     assert_eq!(store.load_counter(&key, &identity), Ok(None));
     for value in [
         Counter::ZERO,
-        Counter::from_parts(u128::from(u64::MAX) + 1, false).unwrap(),
-        Counter::from_parts(u128::MAX, false).unwrap(),
-        Counter::from_parts(u128::MAX, true).unwrap(),
+        ic_metrics::persistence::restore_counter(u128::from(u64::MAX) + 1, false).unwrap(),
+        ic_metrics::persistence::restore_counter(u128::MAX, false).unwrap(),
+        ic_metrics::persistence::restore_counter(u128::MAX, true).unwrap(),
     ] {
         store.save(&key, &identity, &value).unwrap();
         assert_eq!(store.load_counter(&key, &identity), Ok(Some(value)));
     }
     drop(store);
     let mut store = MetricsStore::new(StableBTreeMap::load(admitted_memory(memory)).unwrap());
-    let retained = Counter::from_parts(u128::MAX, true).unwrap();
+    let retained = ic_metrics::persistence::restore_counter(u128::MAX, true).unwrap();
     assert_eq!(store.load_counter(&key, &identity), Ok(Some(retained)));
     writes.set(0);
     for regression in [
         Counter::ZERO,
-        Counter::from_parts(u128::MAX, false).unwrap(),
+        ic_metrics::persistence::restore_counter(u128::MAX, false).unwrap(),
     ] {
         assert_eq!(
             store.save(&key, &identity, &regression),
@@ -124,7 +129,7 @@ fn inconsistent_summary_latest_rejects_load_and_save_without_overwrite() {
         &summary,
         (
             bytes,
-            StoreError::InvalidState(ic_metrics::MeasurementStateError::InvalidLatest),
+            StoreError::InvalidState(ic_metrics::persistence::MeasurementStateError::InvalidLatest),
         ),
     );
 }
@@ -219,16 +224,18 @@ fn histogram_checkpoints_cover_maximum_and_zero_bound_counts() {
 fn checkpoints_reject_same_count_rewrites_and_admit_order_after_overflow() {
     let mut store = store();
     let key = key("app");
-    let initial = Aggregate::from_parts(2, 8, Some(5), false, false).unwrap();
+    let initial = ic_metrics::persistence::restore_aggregate(2, 8, Some(5), false, false).unwrap();
     store.save(&key, &identity(), &initial).unwrap();
-    let rewrite = Aggregate::from_parts(2, 9, Some(5), false, false).unwrap();
+    let rewrite = ic_metrics::persistence::restore_aggregate(2, 9, Some(5), false, false).unwrap();
     assert_eq!(
         store.save(&key, &identity(), &rewrite),
         Err(StoreError::StateRegression)
     );
     let summary_key = MetricKey::new("app", "ordered").unwrap();
-    let aggregate = Aggregate::from_parts(u64::MAX, u128::MAX, Some(u64::MAX), true, true).unwrap();
-    let mut summary = Summary::from_parts(aggregate, Some(2)).unwrap();
+    let aggregate =
+        ic_metrics::persistence::restore_aggregate(u64::MAX, u128::MAX, Some(u64::MAX), true, true)
+            .unwrap();
+    let mut summary = ic_metrics::persistence::restore_summary(aggregate, Some(2)).unwrap();
     store.save(&summary_key, &identity(), &summary).unwrap();
     summary.record(3);
     store.save(&summary_key, &identity(), &summary).unwrap();
@@ -242,13 +249,13 @@ fn checkpoints_reject_same_count_rewrites_and_admit_order_after_overflow() {
 fn checkpoints_reject_impossible_exact_appends_without_writes() {
     // Only 1 was added to the total, which cannot introduce maximum 3.
     assert_rejected_checkpoint(
-        &Aggregate::from_parts(2, 2, Some(1), false, false).unwrap(),
-        &Aggregate::from_parts(3, 3, Some(3), false, false).unwrap(),
+        &ic_metrics::persistence::restore_aggregate(2, 2, Some(1), false, false).unwrap(),
+        &ic_metrics::persistence::restore_aggregate(3, 3, Some(3), false, false).unwrap(),
     );
     // One added observation cannot exceed the new maximum of 1.
     assert_rejected_checkpoint(
-        &Aggregate::from_parts(1, 0, Some(0), false, false).unwrap(),
-        &Aggregate::from_parts(2, 2, Some(1), false, false).unwrap(),
+        &ic_metrics::persistence::restore_aggregate(1, 0, Some(0), false, false).unwrap(),
+        &ic_metrics::persistence::restore_aggregate(2, 2, Some(1), false, false).unwrap(),
     );
     let summary = |samples: &[u64]| {
         let mut value = Summary::EMPTY;
@@ -292,7 +299,7 @@ fn checkpoint_continuity_preserves_exact_caps_and_clipped_appends() {
     use crate::metric::StoredMetric;
 
     let maximum = u64::MAX;
-    let mut aggregate = Aggregate::from_parts(
+    let mut aggregate = ic_metrics::persistence::restore_aggregate(
         maximum - 1,
         u128::from(maximum - 1) * u128::from(maximum),
         Some(maximum),
@@ -300,8 +307,8 @@ fn checkpoint_continuity_preserves_exact_caps_and_clipped_appends() {
         false,
     )
     .unwrap();
-    let mut summary = Summary::from_parts(aggregate, Some(maximum)).unwrap();
-    let mut histogram = Histogram::from_parts(
+    let mut summary = ic_metrics::persistence::restore_summary(aggregate, Some(maximum)).unwrap();
+    let mut histogram = ic_metrics::persistence::restore_histogram(
         [0, maximum],
         [0, maximum - 1],
         0,
@@ -389,8 +396,8 @@ fn identical_checkpoints_validate_without_stable_writes() {
     let mut counter = Counter::ZERO;
     counter.add(u128::from(u64::MAX) + 1);
     check(&Counter::ZERO, &counter);
-    let exact_cap = Counter::from_parts(u128::MAX, false).unwrap();
-    let overflowed = Counter::from_parts(u128::MAX, true).unwrap();
+    let exact_cap = ic_metrics::persistence::restore_counter(u128::MAX, false).unwrap();
+    let overflowed = ic_metrics::persistence::restore_counter(u128::MAX, true).unwrap();
     check(&exact_cap, &overflowed);
     let mut summary = Summary::EMPTY;
     summary.record(1);
@@ -406,29 +413,79 @@ fn identical_checkpoints_validate_without_stable_writes() {
 
 #[test]
 fn histogram_checkpoints_preserve_each_bucket_count_and_flag() {
-    let exact = Aggregate::from_parts(2, 1, Some(1), false, false).unwrap();
-    let redistributed = Aggregate::from_parts(3, 3, Some(1), false, false).unwrap();
-    let zero = Aggregate::from_parts(u64::MAX, 1, Some(1), true, false).unwrap();
+    let exact = ic_metrics::persistence::restore_aggregate(2, 1, Some(1), false, false).unwrap();
+    let redistributed =
+        ic_metrics::persistence::restore_aggregate(3, 3, Some(1), false, false).unwrap();
+    let zero =
+        ic_metrics::persistence::restore_aggregate(u64::MAX, 1, Some(1), true, false).unwrap();
     let total = u128::from(u64::MAX) + 12;
-    let overflow = Aggregate::from_parts(u64::MAX, total, Some(11), true, false).unwrap();
+    let overflow =
+        ic_metrics::persistence::restore_aggregate(u64::MAX, total, Some(11), true, false).unwrap();
     let later_overflow =
-        Aggregate::from_parts(u64::MAX, total + 11, Some(11), true, false).unwrap();
+        ic_metrics::persistence::restore_aggregate(u64::MAX, total + 11, Some(11), true, false)
+            .unwrap();
     // Every candidate passes core restoration. Other increasing fields cannot
     // compensate for a bucket decrease or a cleared flag in either array slot.
     let pairs = [
         (
-            Histogram::from_parts([0, 10], [1, 1], 0, [false; 2], false, exact).unwrap(),
-            Histogram::from_parts([0, 10], [0, 3], 0, [false; 2], false, redistributed).unwrap(),
+            ic_metrics::persistence::restore_histogram(
+                [0, 10],
+                [1, 1],
+                0,
+                [false; 2],
+                false,
+                exact,
+            )
+            .unwrap(),
+            ic_metrics::persistence::restore_histogram(
+                [0, 10],
+                [0, 3],
+                0,
+                [false; 2],
+                false,
+                redistributed,
+            )
+            .unwrap(),
         ),
         (
-            Histogram::from_parts([0, 10], [u64::MAX, 1], 0, [true, false], false, zero).unwrap(),
-            Histogram::from_parts([0, 10], [u64::MAX, 1], 0, [false; 2], false, zero).unwrap(),
+            ic_metrics::persistence::restore_histogram(
+                [0, 10],
+                [u64::MAX, 1],
+                0,
+                [true, false],
+                false,
+                zero,
+            )
+            .unwrap(),
+            ic_metrics::persistence::restore_histogram(
+                [0, 10],
+                [u64::MAX, 1],
+                0,
+                [false; 2],
+                false,
+                zero,
+            )
+            .unwrap(),
         ),
         (
-            Histogram::from_parts([0, 10], [0, u64::MAX], 1, [false, true], false, overflow)
-                .unwrap(),
-            Histogram::from_parts([0, 10], [0, u64::MAX], 2, [false; 2], false, later_overflow)
-                .unwrap(),
+            ic_metrics::persistence::restore_histogram(
+                [0, 10],
+                [0, u64::MAX],
+                1,
+                [false, true],
+                false,
+                overflow,
+            )
+            .unwrap(),
+            ic_metrics::persistence::restore_histogram(
+                [0, 10],
+                [0, u64::MAX],
+                2,
+                [false; 2],
+                false,
+                later_overflow,
+            )
+            .unwrap(),
         ),
     ];
     for (previous, regressing) in pairs {

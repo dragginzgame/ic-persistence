@@ -46,7 +46,7 @@ impl StoredMetric for MeasurementCounter {
     }
 
     fn restore((): &(), (total, overflowed): Self::State) -> Result<Self, StoreError> {
-        Ok(Self::from_parts(total, overflowed)?)
+        Ok(ic_metrics::persistence::restore_counter(total, overflowed)?)
     }
 }
 
@@ -92,7 +92,10 @@ impl StoredMetric for MeasurementSummary {
     }
 
     fn restore((): &(), (aggregate, latest): Self::State) -> Result<Self, StoreError> {
-        Ok(Self::from_parts(aggregate.restore()?, latest)?)
+        Ok(ic_metrics::persistence::restore_summary(
+            aggregate.restore()?,
+            latest,
+        )?)
     }
 }
 
@@ -160,7 +163,7 @@ impl<const N: usize> StoredMetric for MeasurementHistogram<N> {
             counts[index] = count;
             flags[index] = flag;
         }
-        let value = Self::from_parts(
+        let value = ic_metrics::persistence::restore_histogram(
             bounds,
             counts,
             state.overflow,

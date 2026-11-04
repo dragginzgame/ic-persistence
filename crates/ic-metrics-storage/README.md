@@ -24,8 +24,8 @@ for the selected dependency's declaration and lifecycle APIs.
 Storage owns the core `storage` release identity. This adapter
 owns its independent `metrics-storage` release group; hosts select compatible core
 requirements declared by its package metadata. Hosts exchanging arithmetic values
-also select `ic-metrics = "0.28"` so Rust type identities agree. The adapter
-selects Metrics 0.28, which has no Wire dependency or metadata feature, and owns its stored
+also select `ic-metrics = "0.29"` so Rust type identities agree. The adapter
+selects Metrics 0.29, which exposes canonical restoration through `ic_metrics::persistence`, and owns its stored
 Wire 0.16 codec. Services own frontend/report DTOs and their Wire schemas; this
 package does not require or supply Wire implementations for Metrics types.
 See [Storage #154](https://github.com/dragginzgame/ic-storage/issues/154) and the adapter's
@@ -42,7 +42,7 @@ hooks.
 
 ## Upgrade disposition
 
-Metrics 0.28 and Wire 0.16 change public Rust type identities; align direct
+Metrics 0.29 and Wire 0.16 change public Rust type identities; align direct
 dependencies when exchanging those types. Existing Storage-owned backing and
 metric rows require no reset or migration for this adoption.
 

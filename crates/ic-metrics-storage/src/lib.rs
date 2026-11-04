@@ -12,9 +12,9 @@
 
 #![doc = include_str!("../README.md")]
 
+use ic_metrics::persistence::{MeasurementStateError, validate_histogram_bounds};
 use ic_metrics::{
-    MeasurementAggregate, MeasurementCounter, MeasurementHistogram, MeasurementStateError,
-    MeasurementSummary, validate_histogram_bounds,
+    MeasurementAggregate, MeasurementCounter, MeasurementHistogram, MeasurementSummary,
 };
 use ic_storage::Memory;
 

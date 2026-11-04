@@ -5,14 +5,14 @@ use super::*;
 #[test]
 fn store_error_retains_the_arithmetic_source() {
     use std::error::Error as _;
-    let state = ic_metrics::MeasurementStateError::InvalidBounds;
+    let state = ic_metrics::persistence::MeasurementStateError::InvalidBounds;
     let error = StoreError::from(state);
     assert_eq!(error, StoreError::InvalidState(state));
     assert_eq!(
         error
             .source()
             .unwrap()
-            .downcast_ref::<ic_metrics::MeasurementStateError>(),
+            .downcast_ref::<ic_metrics::persistence::MeasurementStateError>(),
         Some(&state)
     );
     assert!(StoreError::StateRegression.source().is_none());
@@ -90,7 +90,8 @@ fn one_map_reopens_mixed_types_and_namespaces_with_wide_totals() {
         .save_histogram(&key("timers"), &identity(), &histogram)
         .unwrap();
     let bytes_identity = MetricIdentity::new("bytes", 0).unwrap();
-    let counter = Counter::from_parts(u128::from(u64::MAX) + 42, false).unwrap();
+    let counter =
+        ic_metrics::persistence::restore_counter(u128::from(u64::MAX) + 42, false).unwrap();
     store
         .save_counter(&key("backup"), &bytes_identity, &counter)
         .unwrap();
@@ -138,10 +139,23 @@ fn histogram_equality_shortcut_preserves_full_state_comparison() {
             Histogram::new(std::array::from_fn::<_, N, _>(|i| 1 + i as u64)).unwrap();
         assert_eq!(empty.same_state(&other_bounds), N == 0);
         // A clipped aggregate can remain unchanged while distribution changes.
-        let aggregate =
-            Aggregate::from_parts(u64::MAX, u128::MAX, Some(u64::MAX), true, true).unwrap();
-        let clipped =
-            Histogram::from_parts(bounds, [0; N], u64::MAX, [false; N], true, aggregate).unwrap();
+        let aggregate = ic_metrics::persistence::restore_aggregate(
+            u64::MAX,
+            u128::MAX,
+            Some(u64::MAX),
+            true,
+            true,
+        )
+        .unwrap();
+        let clipped = ic_metrics::persistence::restore_histogram(
+            bounds,
+            [0; N],
+            u64::MAX,
+            [false; N],
+            true,
+            aggregate,
+        )
+        .unwrap();
         let mut continued = clipped;
         continued.record(0);
         assert_eq!(continued.aggregate(), clipped.aggregate());
@@ -150,11 +164,25 @@ fn histogram_equality_shortcut_preserves_full_state_comparison() {
             let mut counts = [0; N];
             counts[0] = u64::MAX;
             let mut flags = [false; N];
-            let exact_bucket =
-                Histogram::from_parts(bounds, counts, u64::MAX, flags, true, aggregate).unwrap();
+            let exact_bucket = ic_metrics::persistence::restore_histogram(
+                bounds,
+                counts,
+                u64::MAX,
+                flags,
+                true,
+                aggregate,
+            )
+            .unwrap();
             flags[0] = true;
-            let overflowed_bucket =
-                Histogram::from_parts(bounds, counts, u64::MAX, flags, true, aggregate).unwrap();
+            let overflowed_bucket = ic_metrics::persistence::restore_histogram(
+                bounds,
+                counts,
+                u64::MAX,
+                flags,
+                true,
+                aggregate,
+            )
+            .unwrap();
             assert!(!exact_bucket.same_state(&overflowed_bucket));
         }
     }
@@ -181,7 +209,7 @@ fn public_histogram_load_admits_expected_bounds_before_reading_a_row() {
             assert_eq!(
                 store.load_histogram(&key, &identity, &bounds),
                 Err(StoreError::InvalidState(
-                    ic_metrics::MeasurementStateError::InvalidBounds
+                    ic_metrics::persistence::MeasurementStateError::InvalidBounds
                 ))
             );
         }
