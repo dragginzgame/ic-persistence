@@ -161,6 +161,7 @@ test-tooling:
 	+cargo +$(VALIDATION_TOOLCHAIN) test --locked --offline --example repo-tool
 
 test-release-adapters:
+	bash scripts/ci/test-validation-cargo.sh
 	bash scripts/ci/test-release-group-plans.sh
 	bash scripts/ci/test-release-adapters.sh
 	bash scripts/ci/test-consolidated-bootstrap.sh
@@ -196,6 +197,10 @@ ensure-clean:
 validate:
 	$(MAKE) --no-print-directory validate-toolchain
 
+.PHONY: validate-ci
+validate-ci:
+	+$(TOOL) validate-ci --event "$${CHANGE_EVENT:-}" --base "$${CHANGE_BASE:-}" --head "$${CHANGE_HEAD:-}" --reference "$${CHANGE_REF:-}"
+
 validate-toolchain:
 	+bash scripts/ci/validate-storage-workspace.sh
 
@@ -207,10 +212,10 @@ validate-admission:
 	$(MAKE) --no-print-directory shared-tooling-check tools-check format-tools-check validation-compilers-check
 
 validate-lint:
-	+cargo +$(VALIDATION_TOOLCHAIN) clippy --workspace --locked --offline --all-targets -- -D warnings
+	+bash scripts/ci/validation-cargo.sh lint $(VALIDATION_TOOLCHAIN) "$(VALIDATION_PLAN)"
 
 validate-features:
-	+cargo +$(VALIDATION_TOOLCHAIN) check --workspace --locked --offline --all-targets --features test-support
+	+bash scripts/ci/validation-cargo.sh features $(VALIDATION_TOOLCHAIN) "$(VALIDATION_PLAN)"
 
 validate-policy:
 	$(MAKE) --no-print-directory check-production-graph check-pins check-storage-boundary check-license check-doc-links fmt-check
@@ -229,10 +234,10 @@ validate-logging-tests:
 	+cargo +$(VALIDATION_TOOLCHAIN) test -p ic-logging-storage --locked --offline -- --test-threads=1
 
 validate-docs:
-	+RUSTDOCFLAGS='-D warnings' cargo +$(VALIDATION_TOOLCHAIN) doc --workspace --locked --offline --no-deps
+	+bash scripts/ci/validation-cargo.sh docs $(VALIDATION_TOOLCHAIN) "$(VALIDATION_PLAN)"
 
 validate-wasm:
-	+cargo +$(VALIDATION_TOOLCHAIN) check --workspace --locked --offline --target wasm32-unknown-unknown --tests
+	+bash scripts/ci/validation-cargo.sh wasm $(VALIDATION_TOOLCHAIN) "$(VALIDATION_PLAN)"
 
 validate-wasm-size:
 	$(MAKE) --no-print-directory wasm-size

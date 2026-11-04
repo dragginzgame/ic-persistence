@@ -1,60 +1,74 @@
 # Current handoff
 
-## Published Storage 0.66.1
+## Published Storage 0.66.2 and Logging Storage 0.64.1
 
-Storage **0.66.1** is published and unyanked. Release commit `06f64ca` and annotated
-tag `storage-v0.66.1` were pushed atomically to `origin/main` from the approved
-normal checkout. Source commit is `551a4aa`; [#156](https://github.com/dragginzgame/ic-storage/issues/156)
-is closed. Metrics Storage is now 0.68.0; Logging Storage remains 0.64.0.
-Downloaded registry bytes match receipt/archive SHA-256
-`35d187e67fc27cc56f9ab6b3d9b125f6e8d73c538c55578888b27edd86dd8938`.
-Publication verification and failed/successful logs: `target/storage-0661-deploy/`.
+Storage `ec9d653` / `storage-v0.66.2` and Logging `74f185e` /
+`logging-storage-v0.64.1` are pushed and published. Both full 12-stage gates
+passed. Downloaded registry archives match the qualified bytes. GitHub's failed
+Logging pushes were resumed successfully without changing the release version.
+Evidence: `target/storage-0662-deploy/`, `target/logging-storage-0641-deploy/`.
+Preserve failed logs, receipts and all named lock-preservation stashes. The newer
+incoming lock selections were restored after publication; they remain pending.
+Shared Tooling 0.29.4 (`628ccc7`, 153 files) is included in the Storage release.
 
-The source-bound full release gate passed all 12 stages; original proof is under
-`target/release-plans/storage-1451973.1793709419076796644/`. Native validation log
-is `target/release-validation/attempts/verify.Q9F6DG`; group receipts and exact
-archives remain under `target/release-validation/`. Final archive integration
-passed at `target/package-qualification/attempt.xewaoR/`. Hosted release CI was
-running at handoff ([run](https://github.com/dragginzgame/ic-storage/actions/runs/41638040482));
-local Linux proof does not claim macOS completion. Do not repeat release/uploads.
+## Pending Storage 0.66.3 comparison expansion
 
-Prior Shared proof: `target/shared-tooling-0282-adoption/`, `target/shared-tooling-0281-adoption/`.
-Preserve `storage-0661-preserved-unselected-lock` and `storage-0661-publication-unselected-lock`.
-After delivery, unrelated Build/Host, Metrics 0.28.1 and Logging 0.24.4 locks were
-restored; only Storage's local lock identity advanced to 0.66.1. Keep the evidence.
+The ordinary matrix now covers 29 concrete cases and 52 type/size combinations.
+The boundaries recipe covers 48 combinations across Map/Vector/Cell/Region;
+sequential access also qualifies all four Set key types and bounded byte vectors.
+Installed ICSS 0.7.2 comparisons passed 3,096 boundary and 1,008 sequential calls,
+plus final-content checks. Fourteen native tests and strict benchmark Clippy pass.
+One sample, three rounds, 64 rows (Cell one), eight-page ICSS buckets, disabled
+map caches: these are scope-limited qualification runs, not a universal ranking.
+[Retained summaries/configurations](../measurements/storage-icss-expansion-2026-11-04.json)
+record source/Wasm digests; raw results remain under `target/storage-comparison/`.
+Both incoming lockfiles are unchanged. The sandbox server-bind failure is retained
+in `target/comparison-expansion/`; installed runs used authorized localhost access.
+The [hotspot investigation](../audits/recurring/storage-icss-hotspots-2026-11-04.md)
+finds checksum passes absent in ICSS Cell/Vector, existing reusable vector buffers,
+and an aggregate-round interpretation caveat. Per-round summaries now distinguish
+initial state from post-Shrink Cell reads. A subsequent borrowed-key cursor fix
+passes 94 core tests and strict lint; matched scans improve 4–8% for array Map
+keys and 8.45% for u64 Set keys (String Set 0.5%). Before/after runs pass 984 calls
+each; Vector layout controls pass 672. Evidence: `target/cursor-investigation/`.
+Key-only scans now also skip unused inline-value copies: another 7.76% reduction
+in array-Map KeysScan (14.98% combined), with 0.3–0.6% Set scan increases versus
+the first candidate. Final u64 Set scanning is 7.87% below the original baseline.
+94 core tests, strict lint and 984 further installed calls pass. Evidence:
+`target/key-only-investigation/`. Cell/Vector checks and formats remain.
+The RSX-inspired inline replacement retains shared preparation: 3.74–7.47% fewer instructions for single replacements,
+19.53–26.60% for batches of 32 in matched 256-row Uniform/Hot16 runs. All three
+3,576-call traces pass; aggregate ICSS instructions and Storage pages match.
+Last regresses 2.66%; Wasm grows 4,054 bytes, 56% less than the first candidate.
+95 core tests/lint pass; evidence: hotspot audit and `target/encoded-update-size/`.
+Experiment 2 remains research: external-value-only 64-byte blocks save 30–44%
+of backing in the four-map small-record study, but Grow 33→132 costs up to 41%
+more. Both prototypes pass 95 tests and 3,576 installed calls each. Production
+format/minimum are restored; experiment 1 remains selected. Durable prototype
+patches/results are linked in the hotspot audit. `--small-records` is retained
+as a native benchmark selection; logs: `target/small-block-investigation/`.
+Deeper qualification: four policies, 36 native 24-phase histories, 24 installed
+runs / 39,168 calls; complete ICSS controls match. Retaining capacity with a
+64-byte initial floor fixes recurring write churn and improves batch cycles,
+but warm Uniform single-record 80-byte cycles regress 61.10%. No allocator
+promotion: preserve baseline/experiment 1. Eight cache trials (12,288 calls)
+identify protected-slot collisions at 18 KiB/64 KiB use. A mixer moves the failure
+to baseline (+58.59%); rejected. Selected two-way cache removes the target collision
+(−37.76%), with up to +2.04% warm-trace overhead; 9,408 new calls pass.
+Core tests/lint (95/95/96) and 6+10+1 harness tests pass; both locks are unchanged.
+Two-way cache adopted for 0.66.3; allocator unchanged. Sweep seeds/budgets next.
+96 core/87 helper tests and all-target lint pass; CI helper lint warning fixed.
 
-## Pending Storage 0.66.2 tooling and memory study
+## Pending CI group selection
 
-Shared **0.29.4** (`628ccc7`) is adopted from verified GitHub `main` via clean-source
-export (153 files); no extra checkout or release was created.
-The UTF-8 receipt regression and boundary/pin/format checks pass; logs are in
-`target/shared-tooling-0292-adoption/`; the prior UTF-8 failure is retained too.
-Current retention/caller evidence: `target/shared-tooling-0294-adoption/`. Seventeen
-inline Rust test modules and private fixtures now use tests.rs/tests directories;
-adapter test files are consolidated there too. Native/unit and actual CI-selection
-checks qualify the relocation and classifier; no runtime format change. Logging's
-test-only codec helper relocation is recorded separately for pending **0.64.1**.
-Remaining consumer fixture defaults now use `target/fixtures` or
-`target/repo-tool-fixtures`; retention/alias and native collision checks pass.
-The active audit overlay references current Storage modules and Rust 1.99.1.
-Focused evidence: `target/fixture-location-adoption/`; historical artifacts remain.
-Rust/Cargo remain 1.99.1. Both incoming locks and pending benchmark work are preserved.
-
-The [completed study](../local-memory-audit.md#completed-bucket-and-shared-backing-study)
-extends 0.66.1's 93-row inventory and fixed `control|records|bulk` recipes.
-[Results/provenance](../measurements/storage-memory-study.json): all nine matched
-1/8/128-page ICSS 0.7.2 comparisons pass, **16,572 validated IC calls**. Frozen
-driver/Wasm evidence remains in `target/storage-memory-study/` and
-`target/storage-comparison/attempt.iLr6et/`. Eight pages becomes the research
-default: records trace +0.76% instructions versus 128, 16 GiB bucket ceiling.
-The new native 32/64-map shared-backing experiment passes growth/churn/value checks
-and strict Clippy. At 64 maps: Storage 100.1875 MiB; ICSS 1/8/128 uses
-56.0625/84.0625/512.0625 MiB. Storage writes far fewer bytes in this trace.
-The fixed-shape probe confirms 20-byte framing/power-of-two space cliffs; prototype
-finer external-value allocation next, retaining selective IO and corruption safety.
-Production geometry/APIs and siblings are unchanged; no deployed/GiB claim.
-Formatting, selected CLI test and ShellCheck pass. Prior recipe qualification and
-failed fixture evidence remain under the earlier `target/storage-comparison/` attempts.
+Private adapter PRs now reuse the qualified release selector; non-docs pushes,
+core/shared/public/unknown changes remain full. Admitted plans scope four Cargo
+stages to the adapter, retaining workspace archives, policy and native/runtime
+obligations. CI source identity, runner checkpoints and upload evidence remain
+required. 87 helper tests, actual runner/Make scope fixtures, workflow/evidence
+fixtures and both adapters' real lint/features/docs/Wasm checks pass locally.
+See [the mapping](../storage-release-validation.md) and `target/ci-group-selection/`.
+No hosted acceptance, release or measured total speedup is claimed.
 
 ## Published Metrics Storage 0.68.0
 
@@ -65,11 +79,8 @@ Unrelated work is restored; preserve both `metrics-068-*` stashes and failed log
 
 ## Prior Metrics 0.28 and Wire 0.16 adoption
 
-Storage 0.66.0 (`0b10639`), Metrics Storage 0.67.0 (`ab333a1`) and Logging
-Storage 0.64.0 (`cf23e04`) were published, with matching downloaded archives.
-Evidence: `target/metrics-028-deploy/`, `target/release-validation/` and installed
-original/O3/Os/Oz qualification `target/qualification/runtime/attempt.RFmb22/`.
-Earlier full command/receipt identities remain in the
+Storage 0.66.0, Metrics Storage 0.67.0 and Logging Storage 0.64.0 were published
+with matching archives; historical identities and qualification paths remain in the
 [delivered handoff](https://github.com/dragginzgame/ic-storage/blob/7c5cf83660ccefd98fb0947a011c99fdab464ef1/docs/status/current.md).
 Do not repeat publication; Linux proof does not claim native macOS completion.
 [Storage #154](https://github.com/dragginzgame/ic-storage/issues/154) is closed;
@@ -79,22 +90,11 @@ public Rust identities. Backing/metric rows need no reset; Logging's migration
 duties remain. Preserve `storage-0660-unselected-lock-edits`,
 `storage-0660-preserved-pending-inputs`, prior failed attempts and tool caches.
 
-## ICSS re-audit follow-through
+## Published ICSS re-audit follow-through
 
-The [re-audit](../audits/recurring/storage-icss-2026-11-03.md) distinguishes
-published ICSS 0.7.2 from pinned DFINITY b5d1650. Pending 0.66.2 now borrows
-map-entry encoded bytes for non-consuming decoding, with no format/API change.
-Bulk Grow now changes size within the IC reply ceiling; variable-key/value
-histories and six matched size-churn rounds extend the earlier coverage.
-16 focused B-tree and 12 benchmark/model tests, native experiments and strict
-benchmark Clippy pass. Corrected installed bulk: 172 measured calls and final
-contents pass at `target/storage-comparison/attempt.a6sTYA/`; see the audit.
-[Native results](../measurements/storage-icss-reaudit.json): at 64 allocations,
-Storage uses 238.31 MiB versus ICSS eight-page 168.06 MiB, but writes about
-9.9× fewer bytes in the final round. No plateau or leak claim follows from six
-rounds. Prefer a measured denser-value prototype preserving selective writes;
-directory scaling needs IC CPU measurements before redesign. FNV is already
-eight-way unrolled in the measured Wasm; no speculative checksum change was made.
+Storage 0.66.2 includes borrowed entry decoding and corrected bulk/size-churn
+benchmarks. The [re-audit](../audits/recurring/storage-icss-2026-11-03.md) preserves
+scope, raw evidence and the distinction between published ICSS 0.7.2 and b5d1650.
 
 ## Prior publication and recovery
 

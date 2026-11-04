@@ -9,7 +9,7 @@ use std::{collections::BTreeMap, fs, io::Write, path::PathBuf};
 #[command(about = "Compare original Wasm map workloads on a prepared PocketIC server")]
 struct Arguments {
     /// Fixed consumer workload; owns cases, sizes, population, batching and access patterns.
-    #[arg(long, value_enum, conflicts_with_all = ["rows", "cases", "patterns", "shuffled", "cache_bytes", "upstream_cache_slots", "cold_cache", "rounds"])]
+    #[arg(long, value_enum, conflicts_with_all = ["rows", "cases", "payloads", "growth_cycles", "patterns", "shuffled", "cache_bytes", "upstream_cache_slots", "cold_cache", "rounds"])]
     workload: Option<Workload>,
     #[arg(long)]
     owned_wasm: PathBuf,
@@ -24,6 +24,13 @@ struct Arguments {
     /// Optional concrete case names, e.g. U64U64,VectorU64.
     #[arg(long, value_delimiter = ',')]
     cases: Vec<String>,
+    /// Select admitted payload sizes instead of each case's default matrix.
+    #[arg(long, value_delimiter = ',')]
+    payloads: Vec<u32>,
+    /// Repeat small replacement/read and fourfold growth/read on the same keys.
+    /// Restricted to U64Bytes; does not remove records or shrink them to empty.
+    #[arg(long)]
+    growth_cycles: bool,
     #[arg(
         long,
         value_enum,
@@ -48,10 +55,28 @@ struct Arguments {
     reference_revision: String,
 }
 struct Measurement {
+    round: u32,
     instructions: u64,
     stable_pages: u64,
 }
 type Samples = BTreeMap<(Case, u32, u32, Pattern, String, String), Vec<Measurement>>;
+fn phases(case: Case, growth_cycles: bool) -> Vec<(String, Operation)> {
+    if growth_cycles {
+        return [
+            ("SmallReplace", Operation::Replace),
+            ("SmallGet", Operation::Get),
+            ("Grow", Operation::Grow),
+            ("LargeGet", Operation::Get),
+        ]
+        .into_iter()
+        .map(|(name, op)| (name.into(), op))
+        .collect();
+    }
+    case.operations()
+        .into_iter()
+        .map(|op| (format!("{op:?}"), op))
+        .collect()
+}
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut args = Arguments::parse();
     if let Some(workload) = args.workload {
@@ -62,22 +87,19 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             .map(|case| format!("{case:?}"))
             .collect();
         args.patterns = workload.patterns().to_vec();
-        args.shuffled = matches!(workload, Workload::Records);
+        args.shuffled = matches!(workload, Workload::Records | Workload::Boundaries);
         args.rounds = workload.rounds();
     }
     let batches: &[u32] = args.workload.map_or(&[1, 32], Workload::counts);
     let payloads = |case: Case| {
+        if !args.payloads.is_empty() {
+            return args.payloads.as_slice();
+        }
         args.workload
             .map_or_else(|| case.payloads(), |workload| workload.payloads(case))
     };
     let cases: Vec<_> = CASES
         .into_iter()
-        .chain(
-            args.cases
-                .iter()
-                .any(|name| name == "VectorBytes")
-                .then_some(Case::VectorBytes),
-        )
         .filter(|case| args.cases.is_empty() || args.cases.contains(&format!("{case:?}")))
         .collect();
     assert!(
@@ -88,6 +110,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .all(|name| cases.iter().any(|case| name == &format!("{case:?}"))),
         "unknown or empty case selection"
     );
+    assert!(
+        cases.iter().all(|case| payloads(*case)
+            .iter()
+            .all(|size| case.accepts_payload(*size))),
+        "payload selection must be admitted by every selected case"
+    );
+    assert!(
+        !args.growth_cycles || cases == [Case::U64Bytes],
+        "growth cycles require only U64Bytes"
+    );
     let url = std::env::var("IC_TESTKIT_POCKET_IC_URL")?;
     let wasm = [fs::read(&args.owned_wasm)?, fs::read(&args.dfinity_wasm)?];
     fs::create_dir(&args.output)?;
@@ -95,7 +127,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         args.output.join("configuration.json"),
         serde_json::to_vec_pretty(&serde_json::json!({
             "rows": args.rows, "structures": ["Map","Set","Vector","Cell","Region"], "samples": args.samples, "cases": cases.iter().map(|case| serde_json::json!({"case":case, "key_type":case.key_type(), "value_type":case.value_type(), "logical_value_bytes":payloads(*case), "structure":case.structure(), "operations":case.operations(), "population_rows":case.rows(args.rows)})).collect::<Vec<_>>(), "batch_sizes": batches, "workload": args.workload,
-            "patterns": args.patterns, "seed": "sample + 1 + round * 7919", "shuffled": args.shuffled,
+            "patterns": args.patterns, "seed": if args.growth_cycles { "sample + 1 (same keys across rounds)" } else { "sample + 1 + round * 7919" }, "shuffled": args.shuffled,
+            "growth_cycles": args.growth_cycles, "phase_override": args.growth_cycles.then(|| phases(Case::U64Bytes, true).into_iter().map(|(name,_)|name).collect::<Vec<_>>()),
             "cache_bytes": args.cache_bytes, "upstream_cache_slots": args.upstream_cache_slots, "cold_cache": args.cold_cache, "cache_scope": "ordinary Map only", "rounds": args.rounds, "reference_revision": args.reference_revision,
             "upstream_bucket_pages": args.upstream_bucket_pages,
             "backend_order": "alternates each sample", "measurement": "performance_counter(0) around operations; setup, trace/value creation, validation and Wire response excluded",
@@ -167,14 +200,20 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                                 .map(|key| (key, case.expected_value(key, payload, false)))
                                 .collect();
                             for round in 0..args.rounds {
-                                for operation in case.operations() {
+                                for (phase, operation) in phases(case, args.growth_cycles) {
                                     let request = Request {
                                         case,
                                         operation,
                                         rows: case.rows(args.rows),
                                         payload,
                                         count,
-                                        seed: u64::from(sample) + 1 + u64::from(round) * 7919,
+                                        seed: u64::from(sample)
+                                            + 1
+                                            + if args.growth_cycles {
+                                                0
+                                            } else {
+                                                u64::from(round) * 7919
+                                            },
                                         pattern,
                                     };
                                     // Admit the intended phase before executing either backend.
@@ -194,7 +233,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                                     writeln!(
                                         raw,
                                         "{}",
-                                        serde_json::json!({"backend":name,"sample":sample,"round":round,"request":request,"response":actual})
+                                        serde_json::json!({"backend":name,"sample":sample,"round":round,"phase":phase,"request":request,"response":actual})
                                     )?;
                                     raw.flush()?;
                                     assert_eq!(
@@ -203,16 +242,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                                     );
                                     assert_eq!(actual.length, model.len() as u64);
                                     timings
-                                        .entry((
-                                            case,
-                                            payload,
-                                            count,
-                                            pattern,
-                                            format!("{operation:?}"),
-                                            name.into(),
-                                        ))
+                                        .entry((case, payload, count, pattern, phase, name.into()))
                                         .or_default()
                                         .push(Measurement {
+                                            round,
                                             instructions: actual.instructions,
                                             stable_pages: actual.stable_pages,
                                         });
@@ -251,12 +284,42 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
         }
     }
-    let mut summary = fs::File::create(args.output.join("summary.csv"))?;
+    write_summary(
+        fs::File::create(args.output.join("summary.csv"))?,
+        &timings,
+        args.rows,
+        args.upstream_bucket_pages,
+        args.rounds,
+        false,
+    )?;
+    write_summary(
+        fs::File::create(args.output.join("round-summary.csv"))?,
+        &timings,
+        args.rows,
+        args.upstream_bucket_pages,
+        args.rounds,
+        true,
+    )?;
+    println!(
+        "Validated comparison: {}",
+        args.output.join("summary.csv").display()
+    );
+    Ok(())
+}
+fn write_summary(
+    mut summary: impl Write,
+    timings: &Samples,
+    rows: u32,
+    bucket_pages: std::num::NonZeroU16,
+    rounds: u32,
+    per_round: bool,
+) -> std::io::Result<()> {
     writeln!(
         summary,
-        "rows,structure,case,key_type,value_type,logical_value_bytes,batch_or_scan_limit,pattern,operation,storage_median_instructions,dfinity_median_instructions,storage_over_dfinity,storage_median_stable_pages,dfinity_median_stable_pages,upstream_bucket_pages"
+        "rows,structure,case,key_type,value_type,logical_value_bytes,batch_or_scan_limit,pattern,operation,storage_median_instructions,dfinity_median_instructions,storage_over_dfinity,storage_median_stable_pages,dfinity_median_stable_pages,upstream_bucket_pages{}",
+        if per_round { ",round" } else { "" }
     )?;
-    for ((case, payload, count, pattern, operation, backend), samples) in &timings {
+    for ((case, payload, count, pattern, operation, backend), samples) in timings {
         if backend != "ic-storage" {
             continue;
         }
@@ -268,27 +331,39 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             operation.clone(),
             "ic-stable-structures".into(),
         )];
-        let a = median(&samples.iter().map(|s| s.instructions).collect::<Vec<_>>());
-        let b = median(&other.iter().map(|s| s.instructions).collect::<Vec<_>>());
-        let a_pages = median(&samples.iter().map(|s| s.stable_pages).collect::<Vec<_>>());
-        let b_pages = median(&other.iter().map(|s| s.stable_pages).collect::<Vec<_>>());
-        writeln!(
-            summary,
-            "{},{},{case:?},{},{},{payload},{count},{pattern:?},{operation},{a},{b},{:.4},{a_pages},{b_pages},{}",
-            case.rows(args.rows),
-            case.structure(),
-            case.key_type(),
-            case.value_type(),
-            a as f64 / b as f64,
-            args.upstream_bucket_pages
-        )?;
+        for selected_round in if per_round {
+            (0..rounds).map(Some).collect()
+        } else {
+            vec![None]
+        } {
+            let samples: Vec<_> = samples
+                .iter()
+                .filter(|s| selected_round.is_none_or(|round| s.round == round))
+                .collect();
+            let other: Vec<_> = other
+                .iter()
+                .filter(|s| selected_round.is_none_or(|round| s.round == round))
+                .collect();
+            let a = median(&samples.iter().map(|s| s.instructions).collect::<Vec<_>>());
+            let b = median(&other.iter().map(|s| s.instructions).collect::<Vec<_>>());
+            let a_pages = median(&samples.iter().map(|s| s.stable_pages).collect::<Vec<_>>());
+            let b_pages = median(&other.iter().map(|s| s.stable_pages).collect::<Vec<_>>());
+            writeln!(
+                summary,
+                "{},{},{case:?},{},{},{payload},{count},{pattern:?},{operation},{a},{b},{:.4},{a_pages},{b_pages},{}{}",
+                case.rows(rows),
+                case.structure(),
+                case.key_type(),
+                case.value_type(),
+                a as f64 / b as f64,
+                bucket_pages,
+                selected_round.map_or_else(String::new, |round| format!(",{round}"))
+            )?;
+        }
     }
-    println!(
-        "Validated comparison: {}",
-        args.output.join("summary.csv").display()
-    );
     Ok(())
 }
+
 fn median(values: &[u64]) -> u64 {
     let mut values = values.to_vec();
     values.sort_unstable();

@@ -11,8 +11,10 @@ unchanged and is not used as evidence for an omitted group stage.
 [The canonical policy](../ci/release-validation.json) owns the 12 ordered stages.
 Full Make dispatch projects admitted group names and uses Shared's `roster`
 interface; the native selector derives its vocabulary from that same catalog. `make validate` and `make validate-toolchain` always run every stage.
-Existing GitHub CI continues to use that full roster on its existing native hosts;
-installed runtime jobs, prerequisites and publication requirements are unchanged.
+GitHub CI retains that full roster for non-docs pushes and broad PR changes;
+private adapter PRs use the [qualified CI selector](ci-selection.md#private-adapter-prs).
+Installed runtime jobs, native hosts, prerequisites and publication requirements
+are unchanged.
 Lint precedes expensive tests and artifacts.
 
 The native selector compares the admitted source with the selected group's
@@ -32,13 +34,18 @@ previous package version for an available baseline. It never compares only the l
 The two adapter scopes are closed, reviewed directory sets, not an inference
 that any Rust file is private. Changes to their `lib.rs` stay full. Narrowing also
 requires that the union of the entire locked dependency graph has no reverse
-path from core or the other adapter to the selected adapter. New dependency
+path from core, the other adapter or another local package to the selected adapter. New dependency
 relationships therefore cannot silently retain obsolete exclusions after a new
 release baseline. All lock and manifest edits themselves already select full.
 
-Every plan retains an explicit reason for each exclusion. Native workspace lint,
-feature-enabled compilation, production policies, formatting, workspace rustdoc,
-Wasm test compilation and whole-workspace archive integration always run. Final
+Every plan retains an explicit reason for each exclusion. Lint, feature-enabled
+compilation, rustdoc and Wasm test compilation select the adapter package for an
+admitted narrow plan; full plans keep `--workspace`. The consumer Cargo wrapper
+requires the plan's hash in Shared's runner checkpoint and matching source/group
+before narrowing. `RELEASE_GROUP` alone does not narrow any command. The feature
+check explicitly enables `ic-storage/test-support` for either selection.
+Production policies, formatting and whole-workspace archive integration always
+run. Final
 selected-group archive qualification, supplier-first publication, clean source,
 index, configuration and unchanged unrelated identities are still independently
 admitted. No native host or installed-runtime requirement is waived.
@@ -102,7 +109,22 @@ selector, dependency independence, group ownership or shared evidence contract
 changes. Scope outside the reviewed private paths always selects the full gate;
 new or uncertain exclusions need fresh focused qualification first. This is
 mapping qualification, not whole-gate or Cargo execution reuse. Ordinary CI runs
-the existing full roster once, without also replaying every selected group.
+one admitted plan, or the full roster; it never replays every group. Non-docs
+pushes retain repository-wide qualification.
 Required native/installed acceptance and separately requested release gates keep
 their existing owners. The issue remains open until the implementation is
 integrated into the default branch; local passing fixtures do not close it.
+
+### Scoped compilation and ordinary CI qualification
+
+The follow-up passes 87 native helper tests, including private-adapter PR
+selection, full push/mixed/unknown fallback, missing history, exact tested source,
+required versus excluded failures and mandatory narrow-CI upload evidence.
+Actual Shared-runner → Make → Cargo command capture qualifies both adapter
+selections. Full-gate command equivalence and lint-first failure propagation
+remain covered; stale or absent runner checkpoints refuse package narrowing.
+Both adapters' real locked/offline native lint, feature, rustdoc and Wasm test
+compilation pass. Workflow selection, native failure-evidence bindings, ShellCheck,
+Actionlint and snapshot verification pass. Evidence: `target/ci-group-selection/`.
+These focused checks do not claim a full release gate or hosted native-host run.
+Archive qualification remains workspace-wide; no measured total speedup is claimed.

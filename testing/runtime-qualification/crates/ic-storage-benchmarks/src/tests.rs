@@ -20,7 +20,12 @@ fn largest_matrix_responses_fit_protocol_budgets() {
 }
 #[test]
 fn traces_are_bounded_repeatable_and_missing_keys_are_disjoint() {
-    for pattern in [Pattern::Uniform, Pattern::Hot16, Pattern::Zipf] {
+    for pattern in [
+        Pattern::Uniform,
+        Pattern::Hot16,
+        Pattern::Zipf,
+        Pattern::Sequential,
+    ] {
         for operation in OPERATIONS {
             let r = Request {
                 case: Case::U64Bytes,
@@ -54,4 +59,39 @@ fn traces_are_bounded_repeatable_and_missing_keys_are_disjoint() {
         }
     }
     assert_ne!(value(7, 32, false), value(7, 32, true));
+}
+
+#[test]
+fn sequential_trace_wraps_and_keeps_misses_outside_population() {
+    let request = Request {
+        case: Case::U64U64,
+        operation: Operation::Get,
+        rows: 5,
+        payload: 8,
+        count: 8,
+        seed: 4,
+        pattern: Pattern::Sequential,
+    };
+    assert_eq!(keys(request), [4, 0, 1, 2, 3, 4, 0, 1]);
+    assert_eq!(
+        keys(Request {
+            seed: u64::MAX,
+            ..request
+        }),
+        [0, 1, 2, 3, 4, 0, 1, 2]
+    );
+    assert_eq!(
+        keys(Request {
+            operation: Operation::MissAbove,
+            ..request
+        }),
+        (5..13).collect::<Vec<_>>()
+    );
+    assert_eq!(
+        keys(Request {
+            operation: Operation::RemoveMiss,
+            ..request
+        }),
+        (69..77).collect::<Vec<_>>()
+    );
 }

@@ -102,7 +102,7 @@ scope keeps the full gate; failed observations refuse. No producer fixture alone
 qualifies this consumer's recovery, host or publication boundaries.
 
 The [consumer mapping](storage-release-validation.md) keeps narrow private adapter
-plans and the full repository CI gate. Group evidence now has schema 2 inside the
+plans, including private adapter PRs, and full repository CI on non-docs pushes. Group evidence now has schema 2 inside the
 pending schema-2 validation receipt; earlier local group-schema-1 attempts remain
 with their original helper. Historical released receipts and archives are untouched.
 ShellCheck's separate reuse path and tool/compiler/dependency pins remain unchanged.
@@ -527,8 +527,10 @@ cleanup boundary. No cleanup was performed to qualify this adoption.
 
 The consumer opts into the selected revision’s classifier through the exporter.
 [The consumer contract](ci-selection.md) and exact prose allowlist own CI dispatch;
-unknown and code changes keep full native qualification. Documentation checks
-remain separate from native evidence, and release gates are unchanged.
+unknown and broad code changes keep full native qualification. Private adapter
+PRs now use the consumer's qualified group selector; non-docs pushes retain the
+full roster. Documentation checks remain separate from native evidence, and
+archive/native-host/runtime obligations are unchanged.
 
 ## Exact-input ShellCheck reuse
 

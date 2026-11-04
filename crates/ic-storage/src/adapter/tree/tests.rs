@@ -659,3 +659,53 @@ impl<K: Storable + Ord + Clone, V: Storable, M: Memory> Tree<K, V, M> {
         Ok(self.read_node(p, MAX_DEPTH)?.owned())
     }
 }
+
+#[test]
+fn cursors_decode_keys_from_the_checked_node_buffer() {
+    // A read codec that rejects owned input proves cursor traversal no longer
+    // allocates an intermediate encoded-key buffer. Bound and data stay u64.
+    #[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
+    struct BorrowedKey(u64);
+    impl Storable for BorrowedKey {
+        const BOUND: crate::storable::Bound = <u64 as Storable>::BOUND;
+        fn to_bytes(&self) -> std::result::Result<Cow<'_, [u8]>, crate::storable::CodecError> {
+            self.0.to_bytes()
+        }
+        fn from_bytes(
+            bytes: Cow<'_, [u8]>,
+        ) -> std::result::Result<Self, crate::storable::CodecError> {
+            if matches!(bytes, Cow::Owned(_)) {
+                return Err(crate::storable::CodecError::Invalid("owned cursor key"));
+            }
+            u64::from_bytes(bytes).map(Self)
+        }
+    }
+    let memory = VectorMemory::default();
+    let mut tree = Tree::<u64, u64, _>::reset(memory.clone()).unwrap();
+    for id in 0..96 {
+        tree.insert(id, id * 2).unwrap();
+    }
+    drop(tree);
+    for cache in [0, 128 * 1024] {
+        let mut tree = Tree::<BorrowedKey, u64, _>::load(memory.clone()).unwrap();
+        tree.set_cache_budget(cache);
+        let mut iter = tree.range(BorrowedKey(8)..BorrowedKey(88));
+        for id in 8..48 {
+            assert_eq!(
+                iter.next().unwrap().unwrap().into_pair().unwrap(),
+                (BorrowedKey(id), id * 2)
+            );
+            let back = 95 - id;
+            assert_eq!(
+                iter.next_back().unwrap().unwrap().into_pair().unwrap(),
+                (BorrowedKey(back), back * 2)
+            );
+        }
+        assert!(iter.next().is_none());
+        assert!(iter.next_back().is_none());
+        assert_eq!(
+            tree.keys_range(..).collect::<Result<Vec<_>>>().unwrap(),
+            (0..96).map(BorrowedKey).collect::<Vec<_>>()
+        );
+    }
+}

@@ -1,5 +1,77 @@
 use super::*;
 #[test]
+fn growth_cycles_keep_the_same_external_records_and_preserve_default_phases() {
+    for case in CASES {
+        assert_eq!(
+            phases(case, false)
+                .into_iter()
+                .map(|(_, op)| op)
+                .collect::<Vec<_>>(),
+            case.operations()
+        );
+    }
+    let mut model = (0..64)
+        .map(|key| (key, Case::U64Bytes.expected_value(key, 33, false)))
+        .collect();
+    for _ in 0..4 {
+        for (phase, operation) in phases(Case::U64Bytes, true) {
+            let request = Request {
+                case: Case::U64Bytes,
+                operation,
+                rows: 64,
+                payload: 33,
+                count: 32,
+                seed: 1,
+                pattern: Pattern::Hot16,
+            };
+            expected(&mut model, request);
+            let length = if phase == "Grow" || phase == "LargeGet" {
+                132
+            } else {
+                33
+            };
+            for key in keys(request) {
+                assert_eq!(model[&key].len(), length);
+            }
+            assert_eq!(model.len(), 64);
+        }
+    }
+}
+#[test]
+fn payload_selection_is_typed_and_conflicts_with_fixed_workloads() {
+    let base = [
+        "bench",
+        "--owned-wasm",
+        "a",
+        "--dfinity-wasm",
+        "b",
+        "--output",
+        "report",
+    ];
+    let args = Arguments::try_parse_from(
+        base.into_iter()
+            .chain(["--payloads", "33,44,45,108,109,132"]),
+    )
+    .unwrap();
+    assert_eq!(args.payloads, [33, 44, 45, 108, 109, 132]);
+    assert!(
+        args.payloads
+            .iter()
+            .all(|size| Case::U64Bytes.accepts_payload(*size))
+    );
+    assert!(!Case::U64U64.accepts_payload(33));
+    assert!(Arguments::try_parse_from(base.into_iter().chain(["--payloads", "-1"])).is_err());
+    assert!(
+        Arguments::try_parse_from(base.into_iter().chain([
+            "--payloads",
+            "33",
+            "--workload",
+            "records"
+        ]))
+        .is_err()
+    );
+}
+#[test]
 fn named_workloads_refuse_mixed_knobs_and_preserve_operation_semantics() {
     let base = [
         "bench",
@@ -10,7 +82,7 @@ fn named_workloads_refuse_mixed_knobs_and_preserve_operation_semantics() {
         "--output",
         "report",
     ];
-    for name in ["control", "records", "bulk"] {
+    for name in ["control", "records", "bulk", "boundaries"] {
         let args = Arguments::try_parse_from(base.into_iter().chain(["--workload", name])).unwrap();
         let workload = args.workload.unwrap();
         assert!(
@@ -109,7 +181,12 @@ fn bucket_selection_is_nonzero_and_survives_initialization_encoding() {
 fn mixed_mutation_rounds_preserve_phase_preconditions_and_population() {
     for case in CASES {
         for &payload in case.payloads() {
-            for pattern in [Pattern::Uniform, Pattern::Hot16, Pattern::Zipf] {
+            for pattern in [
+                Pattern::Uniform,
+                Pattern::Hot16,
+                Pattern::Zipf,
+                Pattern::Sequential,
+            ] {
                 let rows = case.rows(7);
                 let mut model: BTreeMap<_, _> = (0..u64::from(rows))
                     .map(|key| (key, case.expected_value(key, payload, false)))
@@ -256,4 +333,59 @@ fn structure_models_cover_cells_sets_vectors_and_regions() {
             }
         }
     }
+}
+
+#[test]
+fn round_summary_keeps_initial_and_shrunk_cell_costs_separate() {
+    let mut samples = Samples::new();
+    for (backend, initial) in [("ic-storage", 100), ("ic-stable-structures", 10)] {
+        samples.insert(
+            (
+                Case::CellBytes,
+                1024,
+                1,
+                Pattern::Uniform,
+                "Get".into(),
+                backend.into(),
+            ),
+            [initial, 1, 1]
+                .into_iter()
+                .enumerate()
+                .map(|(round, instructions)| Measurement {
+                    round: u32::try_from(round).unwrap(),
+                    instructions,
+                    stable_pages: 4,
+                })
+                .collect(),
+        );
+    }
+    let mut aggregate = Vec::new();
+    let mut rounds = Vec::new();
+    write_summary(
+        &mut aggregate,
+        &samples,
+        64,
+        std::num::NonZeroU16::new(8).unwrap(),
+        3,
+        false,
+    )
+    .unwrap();
+    write_summary(
+        &mut rounds,
+        &samples,
+        64,
+        std::num::NonZeroU16::new(8).unwrap(),
+        3,
+        true,
+    )
+    .unwrap();
+    let aggregate = String::from_utf8(aggregate).unwrap();
+    let rounds = String::from_utf8(rounds).unwrap();
+    assert_eq!(aggregate.lines().count(), 2);
+    assert!(aggregate.lines().nth(1).unwrap().contains(",1,1,1.0000,"));
+    assert!(rounds.lines().next().unwrap().ends_with(",round"));
+    assert_eq!(rounds.lines().count(), 4);
+    assert!(rounds.lines().nth(1).unwrap().contains(",100,10,10.0000,"));
+    assert!(rounds.lines().nth(1).unwrap().ends_with(",0"));
+    assert!(rounds.lines().nth(3).unwrap().ends_with(",2"));
 }

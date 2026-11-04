@@ -74,16 +74,48 @@ protocol changed, so rebuild both Wasm backends and the driver together.
 Shuffling uses a deterministic Fisher–Yates permutation for Map, Set and Region
 population; Vector/Cell setup retains its semantics. Zipf uses a discrete
 harmonic CDF with exponent one, generated outside timing on both backends.
+The opt-in `sequential` pattern starts at `seed % rows`, visits adjacent IDs,
+and wraps at the population boundary. Missing/insertion keys remain outside
+the population. This exercises locality without changing operation order.
 Trace generation can warm heap regions. `BENCH_ROUNDS=1..20` repeats the complete
 operation sequence on existing state with different access seeds. Raw samples
 retain the round; summaries take the upper median across samples and rounds.
 Configuration records every selection. Larger supported populations are opt-in
 and must be qualified separately; use selected cases to bound runtime and memory.
 
+### Focused payloads and repeated growth
+
+`BENCH_PAYLOADS=33,44,45,80,108,109,132` selects explicit logical value sizes for
+selected cases. Every selected case must admit every supplied size; invalid
+combinations refuse before contacting the server. Omitting the variable preserves
+the ordinary payload matrix. It cannot be combined with `BENCH_WORKLOAD`.
+
+`BENCH_GROWTH_CYCLES=1` requires `BENCH_CASES=U64Bytes` and replaces the normal
+operation sequence with SmallReplace → SmallGet → Grow → LargeGet. Each round
+uses `sample + 1` as its seed, so the same existing keys repeatedly change size;
+no empty-value, removal or reinsertion phase intervenes. For 33/80-byte bases,
+Grow writes 132/320 bytes. Count 32 may revisit hot keys within one call. Normal
+runs retain their changing per-round seeds and complete operation sequences.
+Raw records retain both the phase label and actual request operation; summaries
+use the phase label to distinguish small and large Get. Upper medians over all
+rounds can hide first-growth costs; use `round-summary.csv` or raw per-sample
+trace totals when comparing recurring work.
+
+```sh
+BENCH_CASES=U64Bytes BENCH_PAYLOADS=33,80 BENCH_PATTERNS=uniform,hot16 \
+BENCH_SHUFFLED=1 BENCH_ROUNDS=12 BENCH_GROWTH_CYCLES=1 \
+make benchmark-storage BENCH_ROWS=4096 BENCH_SAMPLES=2
+# Repeat with BENCH_CACHE_BYTES=65536 to expose cache/placement interactions.
+```
+
+These controls change only the research workload. They do not change production
+allocation policy. A comparison with published ICSS 0.7.2 does not give both
+engines equal cache budgets; that release has no selectable node cache.
+
 ## Consumer workloads
 
 The [local memory inventory](../../../../docs/local-memory-audit.md#complete-declaration-inventory-and-repeatable-workloads)
-selects three fixed recipes. Use a name instead of repeating a collection of
+selects three consumer recipes plus a size-boundary experiment. Use a name instead of repeating a collection of
 flags; these are benchmark selections, not new Storage runtime parameters.
 
 | `BENCH_WORKLOAD` | Population | Values / structures | Access |
@@ -91,6 +123,7 @@ flags; these are benchmark selections, not new Storage runtime parameters.
 | `control` | 16 records; Cell has one | 256 B / 4 KiB, Map and Cell | Single, uniform, three rounds |
 | `records` | 4,096 records | Bytes at 31/32/33/256/1,024/4,096 B; fixed 32-byte Map, 64-byte Set, WireRecord Vector | Batches 1/32, uniform/hot16/Zipf, shuffled Map/Set, three rounds |
 | `bulk` | Eight records; Cell has one | 64 KiB / 1 MiB, Map/Vector/Cell/Region | Single, uniform, one round |
+| `boundaries` | 64 records; Cell has one | 31/32/33, 235/236/237, 4,075/4,076/4,077 and 65,515/65,516/65,517 B; Map/Vector/Cell/Region | Single, sequential, shuffled population, three rounds |
 
 ```sh
 make benchmark-storage BENCH_WORKLOAD=records BENCH_SAMPLES=1 BENCH_UPSTREAM_BUCKET_PAGES=8
@@ -99,6 +132,13 @@ for pages in 1 8 128; do
     make benchmark-storage BENCH_WORKLOAD=bulk BENCH_SAMPLES=1 BENCH_UPSTREAM_BUCKET_PAGES=$pages
 done
 ```
+
+The boundary recipe probes adjacent payload sizes around candidate inline and
+allocation-size transitions; these are not claims that both engines share layout
+thresholds. It includes growth, shrink, removal and reinsertion where supported.
+Use `BENCH_WORKLOAD=boundaries BENCH_SAMPLES=1 make benchmark-storage`.
+For Set locality, use `BENCH_CASES=SetU64,SetString,SetI64,SetBytes64` with
+`BENCH_PATTERNS=sequential BENCH_SHUFFLED=1 BENCH_ROUNDS=3`.
 
 A recipe owns population (so `BENCH_ROWS` is unused), cases, payload sizes,
 batches, patterns, ordering, rounds and disabled caches. Combining it with the
@@ -134,7 +174,7 @@ from a successful smoke run.
 | Map | [u8;32] → [u8;32]; [u8;64] → u128 | 32; 16 |
 | Map | u64 → [u8;31/32/33/256]; u64 → WireRecord | 31, 32, 33, 256; 60 |
 | Set | u64; String; Signed64; [u8;64] | unit values |
-| Vector | u64; Signed64; u128; f64; [u8;32]; WireRecord | 8; 8; 16; 8; 32; 60 |
+| Vector | u64; Signed64; u128; f64; [u8;32]; WireRecord; ChunkBytes | 8; 8; 16; 8; 32; 60; 0/31/32/33/1024/4096 |
 | Cell | bytes; WireRecord; u128; [u8;32] | 0, 31, 32, 33, 1024, 4096; 60; 16; 32 |
 | Map region | u64 → bytes | 0, 31, 32, 33, 1024, 4096 |
 
@@ -143,8 +183,8 @@ generation and 32-byte tag, using the same IC Wire codec on both backends. Its
 60 field bytes are not its encoded size; the declared encoding ceiling is 256
 bytes. Fixed array keys and zero-padded string keys preserve logical ID order.
 String values use two-byte UTF-8 characters. Scalars exercise high bits.
-There are 28 concrete cases and 46 type/size combinations in the ordinary matrix.
-The additional `VectorBytes` case is opt-in: both backends declare a variable-length
+There are 29 concrete cases and 52 type/size combinations in the ordinary matrix.
+`VectorBytes` is included by default: both backends declare a variable-length
 1 MiB maximum (`ChunkBytes`), matching Canic’s chunk vector. ICSS slots reserve
 that maximum even for shorter values; this is part of the comparison, not an
 equal-layout claim. The 31/32/33-byte
@@ -244,6 +284,10 @@ insert/delete histories; installed lifecycle qualification is a separate suite.
 
 Each `target/storage-comparison/attempt.*/` contains:
 
+- `report/round-summary.csv`: per-round medians across samples, with zero-based
+  `round`. Use this to separate the initial population from later mutated states.
+  Cell Shrink leaves an empty value for the next round's Get; aggregate Get medians
+  can therefore describe empty cached reads even when the initial payload is large.
 - `report/summary.csv`: per-case upper-median instructions and
   `storage_over_dfinity` (below 1 means fewer Storage instructions), with explicit
   structure/type/payload/operation/batch/access-pattern labels. The two
@@ -267,6 +311,24 @@ timings remain valid for those historical mixed traces, not for the old labels.
 Use corrected baseline/candidate runs to attribute new implementation gains.
 
 ## Shared-backing capacity and IO
+
+Pass `--small-records` after the output path in the command below to select the
+focused Storage density study instead: four governed maps with 1,024 rows each,
+payloads 33/44/45/80/108/109/235/236/237 bytes, six half-delete/reinsert rounds,
+and full returned/final-value checks. It reports actual capacity and backing IO,
+including metadata, without predicting a particular allocation minimum. This
+selection changes the benchmark workload, not production allocation policy.
+
+Alternatively, `--allocation-histories` selects nine Storage-only histories over
+four governed 1,024-record maps: fixed 33/80-byte values, 33↔132 and 80↔320
+alternation, one-time growth, 10%/50% growth, staircase sizes through 4,096 bytes,
+and external↔inline transitions. Each history has 24 phases, full content checks
+after cold reopening every fourth phase, complete deletion and small refill.
+Mutation returns are checked against an independent map. Initial population uses
+a deterministic permutation; final refill is sorted, so its capacity difference
+is not by itself a fragmentation diagnosis. Diagnostic and verification reads
+are excluded from subsequent mutation IO. `--allocation-histories` and
+`--small-records` are mutually exclusive; neither reports native execution time.
 
 The native `multi-allocations` example uses one backing per backend, 32 and 64
 real governed allocations/ICSS virtual memories, 256-byte metadata records and

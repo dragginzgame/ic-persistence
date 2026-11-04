@@ -1,0 +1,16 @@
+--- a/crates/ic-storage/src/adapter/tree/read.rs
++++ b/crates/ic-storage/src/adapter/tree/read.rs
+@@ -172,8 +172,11 @@
+         self.limit = bytes;
+     }
+     fn index(&self, pointer: Pointer) -> usize {
+-        usize::try_from(((pointer.offset >> 8) ^ (pointer.offset >> 17)) % self.slots.len() as u64)
+-            .unwrap()
++        let mut hash = pointer.offset >> 6;
++        hash = (hash ^ (hash >> 30)).wrapping_mul(0xbf58_476d_1ce4_e5b9);
++        hash = (hash ^ (hash >> 27)).wrapping_mul(0x94d0_49bb_1331_11eb);
++        hash ^= hash >> 31;
++        usize::try_from(hash % self.slots.len() as u64).unwrap()
+     }
+     pub fn get(&mut self, pointer: Pointer, depth: usize) -> Option<Rc<ReadNode>> {
+         if self.slots.is_empty() {

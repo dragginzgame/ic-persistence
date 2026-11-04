@@ -8,7 +8,7 @@ use serde::{Serialize, de::DeserializeOwned};
 
 pub const HEADER_BYTES: u64 = 4096;
 pub const MAX_RECORD: usize = 16 * 1024 * 1024;
-const PREFIX: usize = 20;
+pub(super) const PREFIX: usize = 20;
 const LIMITS: ic_wire::Limits = ic_wire::Limits {
     bytes: MAX_RECORD,
     allocation: 64 * 1024 * 1024,

@@ -5,7 +5,7 @@ root="$(pwd -P)"
 mkdir -p "$root/target/ci-selection"
 fixture="$(mktemp -d "$root/target/ci-selection/attempt.XXXXXX")"
 echo "Retained CI selection fixture: $fixture"
-rg -F 'cargo +$(VALIDATION_TOOLCHAIN) check --workspace --locked --offline --all-targets --features test-support' Makefile > /dev/null
+rg -F 'bash scripts/ci/validation-cargo.sh features $(VALIDATION_TOOLCHAIN)' Makefile > /dev/null
 yq -o=json '.' .github/workflows/ci.yml > "$fixture/workflow.json"
 jq -r '.jobs["change-scope"].steps[] | select(.id == "classify") | .run' "$fixture/workflow.json" > "$fixture/classify.sh"
 jq -e '
@@ -19,7 +19,13 @@ jq -e '
   (.jobs["tooling-lint"].steps | any(.run == "make lint-tooling")) and
   (.on.pull_request | has("paths") or has("paths-ignore") | not) and
   (.on.push | has("paths") or has("paths-ignore") | not) and
-  (.jobs.test.steps | any(.id == "evidence" and (.run | contains("make validate-toolchain")))) and
+  (.jobs.test.steps | any(.uses and .with["fetch-depth"] == 0)) and
+  (.jobs.test.steps | any(.id == "evidence" and (.run | contains("make validate-ci"))
+    and .env.CHANGE_HEAD == "${{ github.sha }}"
+    and (.env.CHANGE_BASE | contains("github.event.pull_request.base.sha"))
+    and .env.CHANGE_EVENT == "${{ github.event_name }}")) and
+  (.jobs.test.steps | any(.name == "Retain CI selection and stage evidence"
+    and .with.path == "target/ci-plans/" and (.if | contains("!cancelled()")))) and
   (.jobs.runtime.steps | any((.run // "") | contains("make test-runtime"))) and
   (.jobs | has("msrv") | not) and
   all(.jobs | to_entries[] | select(.key == "test" or .key == "runtime");

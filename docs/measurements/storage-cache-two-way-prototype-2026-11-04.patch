@@ -1,0 +1,231 @@
+--- a/crates/ic-storage/src/adapter/tree/read.rs
++++ b/crates/ic-storage/src/adapter/tree/read.rs
+@@ -163,56 +163,64 @@
+ impl NodeCache {
+     pub fn configure(&mut self, bytes: usize) {
+         *self = Self::default();
+-        // Reserve most of the budget for node buffers, with roughly one slot
+-        // per KiB. Actual buffer capacities, not this estimate, bound admission.
+-        let slots = bytes / (1024 + size_of::<Option<Cached>>());
++        // Two slots per set, with the same approximate table/payload split.
++        let slots = bytes / (1024 + size_of::<Option<Cached>>()) / 2 * 2;
+         self.slots = Vec::with_capacity(slots);
+         self.slots.resize_with(slots, || None);
+         self.used = self.slots.capacity() * size_of::<Option<Cached>>();
+         self.limit = bytes;
+     }
+     fn index(&self, pointer: Pointer) -> usize {
+-        usize::try_from(((pointer.offset >> 8) ^ (pointer.offset >> 17)) % self.slots.len() as u64)
+-            .unwrap()
++        usize::try_from(
++            ((pointer.offset >> 8) ^ (pointer.offset >> 17)) % (self.slots.len() / 2) as u64,
++        )
++        .unwrap()
++            * 2
+     }
+     pub fn get(&mut self, pointer: Pointer, depth: usize) -> Option<Rc<ReadNode>> {
+         if self.slots.is_empty() {
+             return None;
+         }
+-        let index = self.index(pointer);
+-        match &mut self.slots[index] {
+-            Some(entry) if entry.pointer == pointer => {
++        let start = self.index(pointer);
++        for index in start..start + 2 {
++            if let Some(entry) = &mut self.slots[index]
++                && entry.pointer == pointer
++            {
+                 entry.depth = depth;
++                let node = Rc::clone(&entry.node);
++                // First way is most recently used; no timestamps or extra table.
++                if index != start {
++                    self.slots.swap(start, index);
++                }
+                 #[cfg(test)]
+                 {
+                     self.metrics.hits += 1;
+                 }
+-                Some(Rc::clone(&entry.node))
+-            }
+-            slot => {
+-                #[cfg(test)]
+-                {
+-                    if slot.is_some() {
+-                        self.metrics.collision_misses += 1;
+-                    } else {
+-                        self.metrics.cold_misses += 1;
+-                    }
+-                }
+-                let _ = slot;
+-                None
+-            }
+-        }
++                return Some(node);
++            }
++        }
++        #[cfg(test)]
++        {
++            if self.slots[start..start + 2].iter().all(Option::is_some) {
++                self.metrics.collision_misses += 1;
++            } else {
++                self.metrics.cold_misses += 1;
++            }
++        }
++        None
+     }
+     pub fn invalidate(&mut self, offset: u64) {
+         if self.slots.is_empty() {
+             return;
+         }
+-        let index = self.index(Pointer { offset, order: 8 });
+-        if self.slots[index]
+-            .as_ref()
+-            .is_some_and(|entry| entry.pointer.offset == offset)
+-        {
+-            self.used -= self.slots[index].take().unwrap().node.heap_bytes();
++        let start = self.index(Pointer { offset, order: 8 });
++        for index in start..start + 2 {
++            if self.slots[index]
++                .as_ref()
++                .is_some_and(|entry| entry.pointer.offset == offset)
++            {
++                self.used -= self.slots[index].take().unwrap().node.heap_bytes();
++            }
+         }
+     }
+     pub fn clear(&mut self) {
+@@ -223,17 +231,28 @@
+         if self.slots.is_empty() {
+             return;
+         }
+-        let index = self.index(pointer);
+-        if self.slots[index]
+-            .as_ref()
+-            .is_some_and(|old| old.pointer != pointer && old.depth <= 1 && depth > old.depth)
+-        {
++        let start = self.index(pointer);
++        let eligible = |index: usize| {
++            !self.slots[index]
++                .as_ref()
++                .is_some_and(|old| old.pointer != pointer && old.depth <= 1 && depth > old.depth)
++        };
++        // Update in place, use an empty way, then evict the least-recent eligible way.
++        let index = (start..start + 2)
++            .find(|&i| {
++                self.slots[i]
++                    .as_ref()
++                    .is_some_and(|old| old.pointer == pointer)
++            })
++            .or_else(|| (start..start + 2).find(|&i| self.slots[i].is_none()))
++            .or_else(|| (start..start + 2).rev().find(|&i| eligible(i)));
++        let Some(index) = index else {
+             #[cfg(test)]
+             {
+                 self.metrics.protected_rejections += 1;
+             }
+             return;
+-        }
++        };
+         let old_bytes = self.slots[index]
+             .as_ref()
+             .map_or(0, |entry| entry.node.heap_bytes());
+@@ -245,6 +264,9 @@
+                 depth,
+             });
+             self.used = used;
++            if index != start {
++                self.slots.swap(start, index);
++            }
+         } else {
+             #[cfg(test)]
+             {
+--- a/crates/ic-storage/src/adapter/tree/read/tests.rs
++++ b/crates/ic-storage/src/adapter/tree/read/tests.rs
+@@ -52,28 +52,76 @@
+         offset: 4096,
+         order: 8,
+     };
+-    let other = (4352..1_000_000)
++    let colliders: Vec<_> = (4352..1_000_000)
+         .step_by(256)
+         .map(|offset| Pointer { offset, order: 8 })
+-        .find(|p| cache.index(*p) == cache.index(root))
+-        .unwrap();
++        .filter(|p| cache.index(*p) == cache.index(root))
++        .take(3)
++        .collect();
+     let node = Rc::new(
+         ReadNode::decode::<u64, u64>(Node::default().encode().unwrap(), 1_000_000).unwrap(),
+     );
+     cache.put(root, Rc::clone(&node), 0);
+-    cache.put(other, Rc::clone(&node), 3);
++    cache.put(colliders[0], Rc::clone(&node), 3);
++    // A protected ancestor and a colliding leaf can now both stay warm.
++    for _ in 0..32 {
++        assert!(cache.get(root, 0).is_some());
++        assert!(cache.get(colliders[0], 3).is_some());
++    }
++    assert_eq!(cache.metrics.protected_rejections, 0);
++    cache.put(colliders[1], Rc::clone(&node), 1);
+     assert!(cache.get(root, 0).is_some());
+-    assert!(cache.get(other, 3).is_none());
++    assert!(cache.get(colliders[1], 1).is_some());
++    cache.put(colliders[2], Rc::clone(&node), 3);
++    assert!(cache.get(colliders[2], 3).is_none());
+     assert_eq!(cache.metrics.protected_rejections, 1);
+-    assert_eq!(cache.metrics.hits, 1);
+-    assert_eq!(cache.metrics.collision_misses, 1);
++    // Invalidate either way, then reuse the free way without evicting its neighbour.
+     cache.invalidate(root.offset);
+-    cache.put(other, node, 1);
+-    assert!(cache.get(other, 1).is_some());
++    cache.put(colliders[2], Rc::clone(&node), 3);
++    assert!(cache.get(colliders[2], 3).is_some());
++    assert!(cache.get(colliders[1], 1).is_some());
++    cache.invalidate(colliders[2].offset);
++    assert!(cache.get(colliders[2], 3).is_none());
+     assert!(cache.used <= cache.limit);
+     cache.clear();
+-    assert!(cache.get(other, 1).is_none());
+-    assert_eq!(cache.metrics.cold_misses, 1);
++    assert!(cache.get(colliders[1], 1).is_none());
++    assert_eq!(
++        cache.used,
++        cache.slots.capacity() * size_of::<Option<Cached>>()
++    );
++}
++
++#[test]
++fn colliding_leaves_evict_the_least_recent_and_keep_exact_accounting() {
++    let mut cache = NodeCache::default();
++    cache.configure(4096); // One set on both native and Wasm.
++    let pointers = [4096, 4352, 4608].map(|offset| Pointer { offset, order: 8 });
++    let node =
++        Rc::new(ReadNode::decode::<u64, u64>(Node::default().encode().unwrap(), 8192).unwrap());
++    cache.put(pointers[0], Rc::clone(&node), 3);
++    cache.put(pointers[1], Rc::clone(&node), 3);
++    assert!(cache.get(pointers[0], 3).is_some());
++    cache.put(pointers[2], Rc::clone(&node), 3);
++    assert!(cache.get(pointers[0], 3).is_some());
++    assert!(cache.get(pointers[1], 3).is_none());
++    assert!(cache.get(pointers[2], 3).is_some());
++    let used = cache.used;
++    cache.put(pointers[2], Rc::clone(&node), 3);
++    assert_eq!(cache.used, used);
++    cache.limit = used;
++    let large = Node {
++        entries: vec![Entry {
++            key: 1_u64.to_le_bytes().to_vec(),
++            value: Value::Inline(vec![1; 8]),
++        }],
++        children: vec![],
++    };
++    let large = Rc::new(ReadNode::decode::<u64, u64>(large.encode().unwrap(), 8192).unwrap());
++    cache.put(pointers[1], large, 3);
++    assert_eq!(cache.metrics.budget_rejections, 1);
++    assert_eq!(cache.used, used);
++    assert!(cache.get(pointers[0], 3).is_some());
++    assert!(cache.get(pointers[2], 3).is_some());
+ }
+ 
+ #[test]

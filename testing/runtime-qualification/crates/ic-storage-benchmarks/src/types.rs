@@ -40,7 +40,7 @@ pub enum Case {
     CellFixed32,
 }
 
-pub const CASES: [Case; 28] = [
+pub const CASES: [Case; 29] = [
     Case::U64Bytes,
     Case::U64U64,
     Case::U64U128,
@@ -50,6 +50,7 @@ pub const CASES: [Case; 28] = [
     Case::SetU64,
     Case::SetString,
     Case::VectorU64,
+    Case::VectorBytes,
     Case::VectorBytes32,
     Case::VectorRecord,
     Case::CellBytes,
@@ -170,7 +171,11 @@ impl Case {
             || matches!(
                 self,
                 Self::U64Bytes | Self::CellBytes | Self::RegionBytes | Self::VectorBytes
-            ) && [256, 65_536, 1_048_576].contains(&payload)
+            ) && [
+                44, 45, 80, 108, 109, 132, 235, 236, 237, 256, 4075, 4076, 4077, 65_515, 65_516,
+                65_517, 65_536, 1_048_576,
+            ]
+            .contains(&payload)
     }
     /// Logical value sizes; WireRecord has 60 field bytes, with variable encoding.
     pub fn payloads(self) -> &'static [u32] {

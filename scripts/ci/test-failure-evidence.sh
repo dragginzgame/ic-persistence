@@ -39,7 +39,7 @@ jq -e '
     | [.steps[] | select(.id == "evidence")] as $producers
     | .permissions.actions == "read"
     and ($producers | length) == 1 and ($producers[0] |
-        .run == "make validate-toolchain 2>&1 | tee \"$RUNNER_TEMP/validation.log\""
+        .run == "make validate-ci 2>&1 | tee \"$RUNNER_TEMP/validation.log\""
         and .env.FAILURE_EVIDENCE_DIRECTORY == "${{ runner.temp }}/ic-storage-fixtures/native-upload")
     and ([.steps[] | select((.run // "") | contains("bash scripts/ci/test-failure-evidence.sh"))] | length) == 0
     and ($downloads | length) == 1 and ($downloads[0] |

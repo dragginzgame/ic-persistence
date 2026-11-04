@@ -19,13 +19,22 @@ pub(super) fn command(
     plan_path: &str,
     selection: &ReleaseSelection,
 ) -> Vec<String> {
+    plan_command(toolchain, plan_path, &selection.source, &selection.group)
+}
+
+pub(super) fn plan_command(
+    toolchain: &str,
+    plan_path: &str,
+    source: &str,
+    group: &str,
+) -> Vec<String> {
     vec![
         "make".to_owned(),
         "--no-print-directory".to_owned(),
         "validate-release-plan".to_owned(),
         format!("VALIDATION_TOOLCHAIN={toolchain}"),
-        format!("RELEASE_SOURCE={}", selection.source),
-        format!("RELEASE_GROUP={}", selection.group),
+        format!("RELEASE_SOURCE={source}"),
+        format!("RELEASE_GROUP={group}"),
         format!("VALIDATION_PLAN={plan_path}"),
         format!("VALIDATION_LOG_DIR={plan_path}.logs"),
     ]

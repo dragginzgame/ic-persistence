@@ -3,6 +3,45 @@
 Current releases use the Storage naming. [Earlier published history](https://github.com/dragginzgame/ic-storage/blob/23deb81c48d58558ac3b0ce36bf266ddc25dca91/releases/persistence/CHANGELOG.md)
 retains its original package and release identities.
 
+## [0.66.3] - Unreleased
+
+### ⚡ Performance
+
+- Use a two-way Map/Set node cache so a protected ancestor can coexist with a
+  colliding descendant, retaining the heap-byte budget and existing address hash.
+  Selected baseline batch traces improve by up to 26.9%, with up to 1.2% warm
+  and 1.5% cold whole-trace regressions. No allocation or persisted-format change.
+  [Scope and tradeoffs](0.66.md).
+
+- Replace inline Map values directly in encoded node frames, avoiding temporary
+  buffers for unchanged entries. Preserve stored formats and integrity checks.
+  Matched 256-row tests reduce inline replacement instructions by 3.7–7.5% for single
+  updates and 19.5–26.6% for batches of 32; see [tradeoffs and scope](0.66.md).
+- Decode Map/Set cursor keys directly from validated node buffers, avoiding a
+  temporary encoded-key allocation. Key-only scans also skip unused inline-value
+  buffers. Preserve range ordering and integrity checks. A matched 64-record run
+  reduced scalar Set scan instructions by 7.9% and array-Map key scans by 15%.
+  [Investigation](../../docs/audits/recurring/storage-icss-hotspots-2026-11-04.md).
+
+### 🔧 Tooling
+
+- Apply qualified group selection to private adapter PRs. Scope lint, feature,
+  rustdoc and Wasm compilation to the admitted adapter in CI and release plans.
+  Preserve full checks for core/shared/unknown changes and non-docs pushes, plus
+  workspace archives, runtime qualification and native evidence obligations.
+  [Selection and validation](../../docs/storage-release-validation.md).
+
+### 🧪 Testing
+
+- Add a focused small-record capacity/reuse study covering external-value
+  allocation boundaries and metadata IO. Experimental denser layouts remain
+  research only; production allocation policy and retained formats are unchanged.
+- Expand ICSS comparisons with a size-boundary workload, sequential access and
+  bounded byte vectors in the default matrix. Preserve matched operations and
+  independent result validation. Add per-round summaries so aggregate medians
+  do not hide first-round versus mutated-state costs; production behavior is unchanged.
+  [Details](0.66.md).
+
 ## [0.66.2] - 2026-11-04
 
 ### 🔧 Changed

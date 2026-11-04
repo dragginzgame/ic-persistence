@@ -4,12 +4,19 @@ use ic_platform_stable_benchmark::stable_structures as icss;
 use ic_storage::{Memory, MemoryBacking, MemoryRuntime, VectorMemory, testing::MeteredMemory};
 use serde_json::{Value, json};
 use std::{fs, path::PathBuf};
+mod allocation_histories;
 
 #[derive(Parser)]
 #[command(about = "Measure shared-backing capacity and IO; does not measure IC instructions")]
 struct Arguments {
     /// Write the JSON report to a new file, preserving existing reports.
     output: PathBuf,
+    /// Measure small-record boundaries and reuse instead of the large mixed study.
+    #[arg(long)]
+    small_records: bool,
+    /// Compare fixed, growing and mixed-size histories over shared backing.
+    #[arg(long, conflicts_with = "small_records")]
+    allocation_histories: bool,
 }
 
 #[derive(Clone, Default)]
@@ -283,8 +290,21 @@ fn geometry() -> Vec<Value> {
     rows
 }
 fn main() {
-    let output = Arguments::parse().output;
+    let args = Arguments::parse();
+    let output = args.output;
     assert!(!output.exists(), "preserve earlier results");
+    if args.allocation_histories {
+        fs::write(
+            output,
+            serde_json::to_vec_pretty(&allocation_histories::histories()).unwrap(),
+        )
+        .unwrap();
+        return;
+    }
+    if args.small_records {
+        fs::write(output, serde_json::to_vec_pretty(&small_records()).unwrap()).unwrap();
+        return;
+    }
     let mut runs = vec![];
     for count in [32, 64] {
         for bucket in [0, 1, 8, 128] {
@@ -303,4 +323,51 @@ fn main() {
         }
     }
     fs::write(output,serde_json::to_vec_pretty(&json!({"scope":"Native capacity and backing IO; not IC instructions. Diagnostics excluded from phase IO. One backing, interleaved operations; four delete/reinsert rounds.","runs":runs,"storage_geometry":geometry()})).unwrap()).unwrap();
+}
+
+fn small_records() -> Value {
+    let mut runs = vec![];
+    for payload in [33, 44, 45, 80, 108, 109, 235, 236, 237] {
+        let backing = Backing::default();
+        let mut stores = Owned::new(backing.clone(), 4);
+        stores.init();
+        backing.0.reset();
+        for key in 0..1024 {
+            for store in 0..4 {
+                assert!(stores.put(store, key, vec![7; payload]).is_none());
+            }
+        }
+        let mut phases = vec![checkpoint(&stores, &backing, "populated", payload * 4096)];
+        for round in 0..6 {
+            for key in (0..1024).step_by(2) {
+                for store in 0..4 {
+                    assert_eq!(stores.remove(store, key), Some(vec![7; payload]));
+                }
+            }
+            phases.push(checkpoint(
+                &stores,
+                &backing,
+                &format!("deleted-{round}"),
+                payload * 2048,
+            ));
+            for key in (0..1024).rev().filter(|key| key % 2 == 0) {
+                for store in 0..4 {
+                    assert!(stores.put(store, key, vec![7; payload]).is_none());
+                }
+            }
+            phases.push(checkpoint(
+                &stores,
+                &backing,
+                &format!("reused-{round}"),
+                payload * 4096,
+            ));
+        }
+        for key in 0..1024 {
+            for store in 0..4 {
+                assert_eq!(stores.get(store, key), Some(vec![7; payload]));
+            }
+        }
+        runs.push(json!({"payload_bytes":payload,"allocations":4,"records_per_allocation":1024,"phases":phases}));
+    }
+    json!({"scope":"Native capacity and backing IO including allocation metadata; no IC instruction or timing claim. Four shared-backing maps, six delete/reinsert rounds, full final-value validation.","runs":runs})
 }

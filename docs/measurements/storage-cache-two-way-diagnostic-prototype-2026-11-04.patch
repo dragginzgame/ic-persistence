@@ -1,0 +1,165 @@
+--- a/crates/ic-storage/src/adapter/tree/read.rs
++++ b/crates/ic-storage/src/adapter/tree/read.rs
+@@ -143,7 +143,6 @@
+     node: Rc<ReadNode>,
+     depth: usize,
+ }
+-#[cfg(test)]
+ #[derive(Default, Debug)]
+ pub(super) struct CacheMetrics {
+     pub hits: u64,
+@@ -157,10 +156,20 @@
+     slots: Vec<Option<Cached>>,
+     limit: usize,
+     used: usize,
+-    #[cfg(test)]
+     pub metrics: CacheMetrics,
+ }
+ impl NodeCache {
++    pub fn diagnostics(&self) -> [u64; 7] {
++        [
++            self.metrics.hits,
++            self.metrics.cold_misses,
++            self.metrics.collision_misses,
++            self.metrics.protected_rejections,
++            self.metrics.budget_rejections,
++            self.slots.len() as u64,
++            self.used as u64,
++        ]
++    }
+     pub fn configure(&mut self, bytes: usize) {
+         *self = Self::default();
+         // Two slots per set, with the same approximate table/payload split.
+@@ -192,14 +201,12 @@
+                 if index != start {
+                     self.slots.swap(start, index);
+                 }
+-                #[cfg(test)]
+                 {
+                     self.metrics.hits += 1;
+                 }
+                 return Some(node);
+             }
+         }
+-        #[cfg(test)]
+         {
+             if self.slots[start..start + 2].iter().all(Option::is_some) {
+                 self.metrics.collision_misses += 1;
+@@ -247,7 +254,6 @@
+             .or_else(|| (start..start + 2).find(|&i| self.slots[i].is_none()))
+             .or_else(|| (start..start + 2).rev().find(|&i| eligible(i)));
+         let Some(index) = index else {
+-            #[cfg(test)]
+             {
+                 self.metrics.protected_rejections += 1;
+             }
+@@ -268,7 +274,6 @@
+                 self.slots.swap(start, index);
+             }
+         } else {
+-            #[cfg(test)]
+             {
+                 self.metrics.budget_rejections += 1;
+             }
+--- a/crates/ic-storage/src/adapter/tree.rs
++++ b/crates/ic-storage/src/adapter/tree.rs
+@@ -246,6 +246,9 @@
+         self.healthy().expect("map owner is poisoned");
+         self.root.borrow().length
+     }
++    pub fn cache_diagnostics(&self) -> [u64; 7] {
++        self.cache.borrow().diagnostics()
++    }
+     pub fn set_cache_budget(&mut self, bytes: usize) {
+         self.cache.get_mut().configure(bytes);
+     }
+--- a/crates/ic-storage/src/adapter/map.rs
++++ b/crates/ic-storage/src/adapter/map.rs
+@@ -57,6 +57,10 @@
+     /// over deeper colliding nodes. Very small budgets may retain no nodes.
+     pub fn set_node_cache_budget(&mut self, bytes: usize) {
+         self.inner.set_cache_budget(bytes);
++    }
++    /// Research-only cache counters; not a production API proposal.
++    pub fn cache_diagnostics(&self) -> [u64; 7] {
++        self.inner.cache_diagnostics()
+     }
+     /// Reserve a minimum virtual extent without exposing or duplicating the lease.
+     ///
+--- a/testing/runtime-qualification/crates/ic-storage-benchmarks/examples/wasm.rs
++++ b/testing/runtime-qualification/crates/ic-storage-benchmarks/examples/wasm.rs
+@@ -53,6 +53,9 @@
+         fn setup(&mut self, request: Setup) -> u64;
+         fn verify(&self, request: Setup) -> Vec<(u64, Vec<u8>)>;
+         fn run(&mut self, request: Request) -> Response;
++        fn cache_diagnostics(&self) -> [u64; 7] {
++            [0; 7]
++        }
+     }
+ 
+     fn argument<T: DeserializeOwned>(id: u64) -> T {
+@@ -238,12 +241,26 @@
+         assert!(r.count <= 128);
+         MAP.with(|slot| reply(3, &slot.borrow().as_ref().unwrap().verify(r)));
+     }
++    #[unsafe(export_name = "canister_query cache_diagnostics")]
++    extern "C" fn cache_diagnostics() {
++        MAP.with(|map| reply(0, &map.borrow().as_ref().unwrap().cache_diagnostics()));
++    }
+     #[unsafe(export_name = "canister_update benchmark")]
+     extern "C" fn benchmark() {
+         let r: Request = argument(RUN_ID);
+         MAP.with(|slot| reply(RUN_ID, &slot.borrow_mut().as_mut().unwrap().run(r)));
+     }
+     impl<K: BenchKey + Storable, V: BenchValue + Storable> Benchmark for TypedMap<K, V> {
++        fn cache_diagnostics(&self) -> [u64; 7] {
++            #[cfg(feature = "owned")]
++            {
++                self.map.cache_diagnostics()
++            }
++            #[cfg(any(feature = "dfinity", feature = "dfinity-head"))]
++            {
++                [0; 7]
++            }
++        }
+         fn setup(&mut self, r: Setup) -> u64 {
+             assert!(self.case.accepts_payload(r.payload));
+             for id in population_ids(&r) {
+--- a/testing/runtime-qualification/crates/ic-storage-benchmarks/src/main.rs
++++ b/testing/runtime-qualification/crates/ic-storage-benchmarks/src/main.rs
+@@ -199,6 +199,18 @@
+                             let mut model: BTreeMap<_, _> = (0..u64::from(case.rows(args.rows)))
+                                 .map(|key| (key, case.expected_value(key, payload, false)))
+                                 .collect();
++                            let snapshot = || -> Result<[u64; 7], Box<dyn std::error::Error>> {
++                                let bytes = pic
++                                    .query_call(
++                                        canister,
++                                        ExternalPrincipal::anonymous(),
++                                        "cache_diagnostics",
++                                        Vec::new(),
++                                    )
++                                    .map_err(|error| format!("cache query: {error:?}"))?;
++                                Ok(ic_wire::native::decode_response(0, &bytes, LIMITS)?)
++                            };
++                            let mut cache_before = snapshot()?;
+                             for round in 0..args.rounds {
+                                 for (phase, operation) in phases(case, args.growth_cycles) {
+                                     let request = Request {
+@@ -230,10 +242,15 @@
+                                         .map_err(|e| format!("{name} {operation:?}: {e:?}"))?;
+                                     let actual: Response =
+                                         ic_wire::native::decode_response(RUN_ID, &reply, LIMITS)?;
++                                    let cache_after = snapshot()?;
++                                    let cache_delta: [u64; 5] = std::array::from_fn(|index| {
++                                        cache_after[index] - cache_before[index]
++                                    });
++                                    cache_before = cache_after;
+                                     writeln!(
+                                         raw,
+                                         "{}",
+-                                        serde_json::json!({"backend":name,"sample":sample,"round":round,"phase":phase,"request":request,"response":actual})
++                                        serde_json::json!({"backend":name,"sample":sample,"round":round,"phase":phase,"request":request,"response":actual,"cache_delta":cache_delta,"cache_slots":cache_after[5],"cache_used_bytes":cache_after[6],"diagnostics_only":true})
+                                     )?;
+                                     raw.flush()?;
+                                     assert_eq!(

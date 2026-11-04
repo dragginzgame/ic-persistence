@@ -35,6 +35,7 @@ mod source_admission;
 
 mod groups;
 
+mod ci_validation;
 mod validation;
 
 // Private fixture helpers; excluded from production compilation.

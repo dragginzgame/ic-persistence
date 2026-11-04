@@ -4,7 +4,7 @@ set -euo pipefail
 # This independent fixture owns its selections, not the invoking release's.
 unset MAKEFLAGS MFLAGS MAKEOVERRIDES GNUMAKEFLAGS MAKEFILES
 unset VALIDATION_REPOSITORY_ROOT VALIDATION_RUNNER_SNAPSHOT_PATH
-unset RELEASE_CACHE_PREPARE
+unset RELEASE_CACHE_PREPARE VALIDATION_PLAN
 export RELEASE_DELIVERY=direct
 export RELEASE_GROUP=storage
 # Keep Make status/warning assertions independent of the caller's locale.
@@ -55,7 +55,7 @@ cp "$ROOT/make/consumer.mk" "$ROOT/make/tools.mk" "$ROOT/make/release.mk" "$ROOT
 cp "$ROOT/ci/release-validation.json" "$ROOT/ci/cargo-release-groups.json" "$directory/ci/"
 mkdir -p "$directory/scripts/ci"
 cp "$ROOT/scripts/ci/check-make-execution.sh" "$ROOT/scripts/ci/check-release-delivery.sh" "$directory/scripts/ci/"
-cp "$ROOT/scripts/ci/validate-storage-workspace.sh" "$ROOT/scripts/ci/validation-evidence.pl" "$ROOT/scripts/ci/run-validation-targets.sh" "$ROOT/scripts/ci/verify-file-checksum.sh" "$ROOT/scripts/ci/validation-input-checkpoint.pl" "$ROOT/scripts/ci/release-validation-plan.pl" "$ROOT/scripts/ci/ValidationPlan.pm" "$directory/scripts/ci/"
+cp "$ROOT/scripts/ci/validation-cargo.sh" "$ROOT/scripts/ci/validate-storage-workspace.sh" "$ROOT/scripts/ci/validation-evidence.pl" "$ROOT/scripts/ci/run-validation-targets.sh" "$ROOT/scripts/ci/verify-file-checksum.sh" "$ROOT/scripts/ci/validation-input-checkpoint.pl" "$ROOT/scripts/ci/release-validation-plan.pl" "$ROOT/scripts/ci/ValidationPlan.pm" "$directory/scripts/ci/"
 }
 
 test_make_admission() (
@@ -251,7 +251,12 @@ cat > "$FIXTURE/lint-bin/cargo" <<'STUB'
 set -euo pipefail
 printf 'cargo %s\n' "$*" >> "$MAKE_PROBE_EVENTS"
 if [[ "${2:-}" == clippy ]]; then
-    [[ "$*" == "+$FIXTURE_TOOLCHAIN clippy --workspace --locked --offline --all-targets -- -D warnings" ]] || exit 1
+    case "$*" in
+        "+$FIXTURE_TOOLCHAIN clippy --workspace --locked --offline --all-targets -- -D warnings"|\
+        "+$FIXTURE_TOOLCHAIN clippy --package ic-metrics-storage --locked --offline --all-targets -- -D warnings"|\
+        "+$FIXTURE_TOOLCHAIN clippy --package ic-logging-storage --locked --offline --all-targets -- -D warnings") ;;
+        *) exit 1 ;;
+    esac
     exit "$MAKE_PROBE_LINT_STATUS"
 fi
 STUB
@@ -266,7 +271,7 @@ printf '%s\n' \
     > "$FIXTURE/lint-failure-expected"
 cp "$FIXTURE/lint-failure-expected" "$FIXTURE/lint-success-expected"
 printf '%s\n' \
-    "cargo +$FIXTURE_TOOLCHAIN check --workspace --locked --offline --all-targets --features test-support" \
+    "cargo +$FIXTURE_TOOLCHAIN check --workspace --locked --offline --all-targets --features ic-storage/test-support" \
     'make --no-print-directory check-production-graph check-pins check-storage-boundary check-license check-doc-links fmt-check' \
     'make --no-print-directory test-release-adapters test-tools test-tooling test-hooks test-package-admission' \
     'make --no-print-directory test-fixture-cell' \
@@ -282,6 +287,32 @@ printf '%s\n' \
     make_probe_lint_order "$(command -v make)" "$FIXTURE/Makefile" "$FIXTURE" \
     "$FIXTURE/lint-events" validate-toolchain \
     "$FIXTURE/lint-failure-expected" "$FIXTURE/lint-success-expected")
+# Exercise the actual plan runner -> recursive Make -> scoped Cargo recipes.
+# Read-only Git identity is substituted; no fixture commit/tag is needed.
+cat > "$FIXTURE/lint-bin/git" <<'STUB'
+#!/usr/bin/env bash
+printf '%s\n' aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+STUB
+chmod +x "$FIXTURE/lint-bin/git"
+for group in metrics-storage logging-storage; do
+    jq -cS --arg group "$group" '{schema:1,source:"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        group:$group,scope:"group",policy:"ci/release-validation.json",
+        inputs:["Makefile","scripts/ci/validation-cargo.sh"],
+        stages:[.stages[] | {target:.,required:(. == "validate-lint" or . == "validate-features" or . == "validate-docs" or . == "validate-wasm"),reason:"Focused Cargo caller qualification"}]}' \
+        "$FIXTURE/ci/release-validation.json" > "$FIXTURE/$group.plan.json"
+    : > "$FIXTURE/plan-cargo-events"
+    (cd "$FIXTURE"; PATH="$FIXTURE/lint-bin:$PATH" MAKE_PROBE_EVENTS="$FIXTURE/plan-cargo-events" \
+        MAKE_PROBE_LINT_STATUS=0 make --no-print-directory validate-release-plan \
+        "VALIDATION_PLAN=$group.plan.json" "RELEASE_GROUP=$group" \
+        RELEASE_SOURCE=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa \
+        "VALIDATION_LOG_DIR=$FIXTURE/$group.plan-logs") > "$FIXTURE/$group.plan-run.log" 2>&1
+    printf '%s\n' \
+        "cargo +$FIXTURE_TOOLCHAIN clippy --package ic-$group --locked --offline --all-targets -- -D warnings" \
+        "cargo +$FIXTURE_TOOLCHAIN check --package ic-$group --locked --offline --all-targets --features ic-storage/test-support" \
+        "cargo +$FIXTURE_TOOLCHAIN doc --package ic-$group --locked --offline --no-deps" \
+        "cargo +$FIXTURE_TOOLCHAIN check --package ic-$group --locked --offline --target wasm32-unknown-unknown --tests" > "$FIXTURE/plan-cargo-expected"
+    cmp "$FIXTURE/plan-cargo-expected" "$FIXTURE/plan-cargo-events"
+done
 # The consolidated validate target delegates once and preserves gate failure.
 cat > "$FIXTURE/compiler-gate" <<'STUB'
 #!/usr/bin/env bash

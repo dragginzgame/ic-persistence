@@ -89,6 +89,26 @@ impl ReadNode {
             ReadValue::External(_) => None,
         }
     }
+    pub fn key_bytes(&self, index: usize) -> &[u8] {
+        &self.bytes[self.entries[index].key.clone()]
+    }
+    // Replace only an admitted inline span. Copy unchanged encodings into one
+    // final frame instead of materializing every key/value, and seal it through
+    // the same record writer as ordinary node encoding.
+    pub fn replace_inline(&self, index: usize, value: &[u8]) -> Result<Vec<u8>> {
+        ensure(value.len() <= INLINE, Error::Budget)?;
+        let ReadValue::Inline(range) = &self.entries[index].value else {
+            return Err(Error::Corrupt("expected inline replacement"));
+        };
+        let length = self.bytes.len() - record::PREFIX - range.len() + value.len();
+        record::encode_payload_with(NODE, length, |bytes| {
+            bytes.extend_from_slice(&self.bytes[record::PREFIX..range.start - 1]);
+            bytes.push(u8::try_from(value.len()).unwrap());
+            bytes.extend_from_slice(value);
+            bytes.extend_from_slice(&self.bytes[range.end..]);
+            Ok(())
+        })
+    }
     pub fn value(&self, index: usize) -> Value {
         match &self.entries[index].value {
             ReadValue::Inline(range) => Value::Inline(self.bytes[range.clone()].to_vec()),
@@ -143,56 +163,64 @@ pub(super) struct NodeCache {
 impl NodeCache {
     pub fn configure(&mut self, bytes: usize) {
         *self = Self::default();
-        // Reserve most of the budget for node buffers, with roughly one slot
-        // per KiB. Actual buffer capacities, not this estimate, bound admission.
-        let slots = bytes / (1024 + size_of::<Option<Cached>>());
+        // Two slots per set, with the same approximate table/payload split.
+        let slots = bytes / (1024 + size_of::<Option<Cached>>()) / 2 * 2;
         self.slots = Vec::with_capacity(slots);
         self.slots.resize_with(slots, || None);
         self.used = self.slots.capacity() * size_of::<Option<Cached>>();
         self.limit = bytes;
     }
     fn index(&self, pointer: Pointer) -> usize {
-        usize::try_from(((pointer.offset >> 8) ^ (pointer.offset >> 17)) % self.slots.len() as u64)
-            .unwrap()
+        usize::try_from(
+            ((pointer.offset >> 8) ^ (pointer.offset >> 17)) % (self.slots.len() / 2) as u64,
+        )
+        .unwrap()
+            * 2
     }
     pub fn get(&mut self, pointer: Pointer, depth: usize) -> Option<Rc<ReadNode>> {
         if self.slots.is_empty() {
             return None;
         }
-        let index = self.index(pointer);
-        match &mut self.slots[index] {
-            Some(entry) if entry.pointer == pointer => {
+        let start = self.index(pointer);
+        for index in start..start + 2 {
+            if let Some(entry) = &mut self.slots[index]
+                && entry.pointer == pointer
+            {
                 entry.depth = depth;
+                let node = Rc::clone(&entry.node);
+                // First way is most recently used; no timestamps or extra table.
+                if index != start {
+                    self.slots.swap(start, index);
+                }
                 #[cfg(test)]
                 {
                     self.metrics.hits += 1;
                 }
-                Some(Rc::clone(&entry.node))
-            }
-            slot => {
-                #[cfg(test)]
-                {
-                    if slot.is_some() {
-                        self.metrics.collision_misses += 1;
-                    } else {
-                        self.metrics.cold_misses += 1;
-                    }
-                }
-                let _ = slot;
-                None
+                return Some(node);
             }
         }
+        #[cfg(test)]
+        {
+            if self.slots[start..start + 2].iter().all(Option::is_some) {
+                self.metrics.collision_misses += 1;
+            } else {
+                self.metrics.cold_misses += 1;
+            }
+        }
+        None
     }
     pub fn invalidate(&mut self, offset: u64) {
         if self.slots.is_empty() {
             return;
         }
-        let index = self.index(Pointer { offset, order: 8 });
-        if self.slots[index]
-            .as_ref()
-            .is_some_and(|entry| entry.pointer.offset == offset)
-        {
-            self.used -= self.slots[index].take().unwrap().node.heap_bytes();
+        let start = self.index(Pointer { offset, order: 8 });
+        for index in start..start + 2 {
+            if self.slots[index]
+                .as_ref()
+                .is_some_and(|entry| entry.pointer.offset == offset)
+            {
+                self.used -= self.slots[index].take().unwrap().node.heap_bytes();
+            }
         }
     }
     pub fn clear(&mut self) {
@@ -203,17 +231,28 @@ impl NodeCache {
         if self.slots.is_empty() {
             return;
         }
-        let index = self.index(pointer);
-        if self.slots[index]
-            .as_ref()
-            .is_some_and(|old| old.pointer != pointer && old.depth <= 1 && depth > old.depth)
-        {
+        let start = self.index(pointer);
+        let eligible = |index: usize| {
+            !self.slots[index]
+                .as_ref()
+                .is_some_and(|old| old.pointer != pointer && old.depth <= 1 && depth > old.depth)
+        };
+        // Update in place, use an empty way, then evict the least-recent eligible way.
+        let index = (start..start + 2)
+            .find(|&i| {
+                self.slots[i]
+                    .as_ref()
+                    .is_some_and(|old| old.pointer == pointer)
+            })
+            .or_else(|| (start..start + 2).find(|&i| self.slots[i].is_none()))
+            .or_else(|| (start..start + 2).rev().find(|&i| eligible(i)));
+        let Some(index) = index else {
             #[cfg(test)]
             {
                 self.metrics.protected_rejections += 1;
             }
             return;
-        }
+        };
         let old_bytes = self.slots[index]
             .as_ref()
             .map_or(0, |entry| entry.node.heap_bytes());
@@ -225,6 +264,9 @@ impl NodeCache {
                 depth,
             });
             self.used = used;
+            if index != start {
+                self.slots.swap(start, index);
+            }
         } else {
             #[cfg(test)]
             {

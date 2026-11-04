@@ -404,7 +404,12 @@ impl<K: Storable + Ord + Clone, V: Storable, M: Memory> Tree<K, V, M> {
         }
         Ok(path)
     }
-    fn advance_path(&self, path: &mut Vec<Frame>, forward: bool) -> Result<Option<Entry>> {
+    fn advance_path(
+        &self,
+        path: &mut Vec<Frame>,
+        forward: bool,
+        keys_only: bool,
+    ) -> Result<Option<(K, Option<Value>)>> {
         self.healthy()?;
         while let Some(frame) = path.last_mut() {
             if frame.descend {
@@ -439,12 +444,15 @@ impl<K: Storable + Ord + Clone, V: Storable, M: Memory> Tree<K, V, M> {
                 path.pop();
                 continue;
             }
-            let entry = frame.node.entry(index);
+            let bytes = frame.node.key_bytes(index);
+            K::check_bounds(bytes)?;
+            let key = K::from_bytes(Cow::Borrowed(bytes))?;
+            let value = (!keys_only).then(|| frame.node.value(index));
             frame.index = if forward { index + 1 } else { index };
             // A caller may stop at this entry. Read the following subtree only
             // when another step in this direction is actually requested.
             frame.descend = !frame.node.children.is_empty();
-            return Ok(Some(entry));
+            return Ok(Some((key, value)));
         }
         Ok(None)
     }
@@ -655,6 +663,10 @@ impl<'a, K: Storable + Ord + Clone, V: Storable, M: Memory> Transaction<'a, K, V
                     matches!((&previous,&value),(Value::External(a),Value::External(b)) if a==b);
                 if same_pointer {
                     return Ok((p.unwrap(), None, Some(old)));
+                }
+                if let (Value::Inline(_), Value::Inline(bytes)) = (&previous, &value) {
+                    let next = self.save_bytes(p, read.replace_inline(i, bytes)?)?;
+                    return Ok((next, None, Some(old)));
                 }
                 let mut node = read.owned();
                 node.entries[i].value = value;
@@ -1003,9 +1015,10 @@ impl<K: Storable + Ord + Clone, V: Storable, M: Memory> TreeIter<'_, K, V, M> {
         if path.is_none() {
             *path = Some(self.tree.seek_path(bound, forward)?);
         }
-        let entry = self.tree.advance_path(path.as_mut().unwrap(), forward)?;
-        if let Some(entry) = entry {
-            let key: K = decode(entry.key)?;
+        let entry = self
+            .tree
+            .advance_path(path.as_mut().unwrap(), forward, self.keys_only)?;
+        if let Some((key, value)) = entry {
             let after = match &self.lower {
                 Bound::Unbounded => true,
                 Bound::Included(k) => key >= *k,
@@ -1030,11 +1043,10 @@ impl<K: Storable + Ord + Clone, V: Storable, M: Memory> TreeIter<'_, K, V, M> {
             }
             return Ok(Some(MapEntry {
                 key,
-                bytes: if self.keys_only {
-                    vec![]
-                } else {
-                    self.tree.value(entry.value)?
-                },
+                bytes: value
+                    .map(|value| self.tree.value(value))
+                    .transpose()?
+                    .unwrap_or_default(),
                 value: PhantomData,
             }));
         }

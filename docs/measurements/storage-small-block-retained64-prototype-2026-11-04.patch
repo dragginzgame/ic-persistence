@@ -1,0 +1,162 @@
+--- a/crates/ic-storage/src/adapter/tree.rs
++++ b/crates/ic-storage/src/adapter/tree.rs
+@@ -21,7 +21,7 @@
+ mod read;
+ use read::{NodeCache, ReadNode};
+ 
+-pub const MAGIC: [u8; 8] = *b"ICMAP002";
++pub const MAGIC: [u8; 8] = *b"ICMAPHYS";
+ const NODE: [u8; 8] = *b"ICBTND01";
+ const VALUE: [u8; 8] = *b"ICBTVAL1";
+ const FREE: [u8; 8] = *b"ICFREE01";
+@@ -43,7 +43,7 @@
+     }
+     fn check(self, cursor: u64) -> Result<()> {
+         ensure(
+-            (8..32).contains(&self.order),
++            (6..32).contains(&self.order),
+             Error::Corrupt("tree block order"),
+         )?;
+         ensure(
+@@ -554,9 +554,9 @@
+         self.root.free[index] = Some(p);
+         Ok(())
+     }
+-    fn allocate(&mut self, len: usize) -> Result<Pointer> {
++    fn allocate(&mut self, len: usize, minimum: usize) -> Result<Pointer> {
+         let size = len
+-            .max(256)
++            .max(minimum)
+             .checked_next_power_of_two()
+             .ok_or(Error::Budget)?;
+         let order = size.trailing_zeros() as usize;
+@@ -596,16 +596,21 @@
+             .ok_or(Error::Budget)?;
+         Ok(p)
+     }
+-    fn save_bytes(&mut self, previous: Option<Pointer>, bytes: Vec<u8>) -> Result<Pointer> {
++    fn save_bytes(
++        &mut self,
++        previous: Option<Pointer>,
++        bytes: Vec<u8>,
++        minimum: usize,
++    ) -> Result<Pointer> {
+         let p = if let Some(p) = previous.filter(|p| p.capacity() >= bytes.len() as u64) {
+-            let needed = bytes.len().max(256).next_power_of_two() as u64;
++            let needed = bytes.len().max(minimum).next_power_of_two() as u64;
+             // Reclaim only into already reusable smaller capacity. Splitting the
+             // live block itself loses its large size class and causes unbounded
+             // growth under repeated large/small replacements without coalescing.
+             let smaller_available = (needed.trailing_zeros() as usize..usize::from(p.order))
+                 .any(|order| self.root.free[order].is_some());
+             if p.capacity() / needed >= 4 && smaller_available {
+-                let smaller = self.allocate(bytes.len())?;
++                let smaller = self.allocate(bytes.len(), minimum)?;
+                 self.free(p)?;
+                 smaller
+             } else {
+@@ -615,13 +620,13 @@
+             if let Some(p) = previous {
+                 self.free(p)?;
+             }
+-            self.allocate(bytes.len())?
++            self.allocate(bytes.len(), minimum)?
+         };
+         self.writes.insert(p.offset, bytes);
+         Ok(p)
+     }
+     fn save(&mut self, p: Option<Pointer>, node: &Node) -> Result<Pointer> {
+-        self.save_bytes(p, node.encode()?)
++        self.save_bytes(p, node.encode()?, 256)
+     }
+     fn save_value(&mut self, previous: Option<&Value>, bytes: Vec<u8>) -> Result<Value> {
+         let old = match previous {
+@@ -634,9 +639,11 @@
+             }
+             Ok(Value::Inline(bytes))
+         } else {
+-            Ok(Value::External(
+-                self.save_bytes(old, record::encode_payload(VALUE, &bytes)?)?,
+-            ))
++            Ok(Value::External(self.save_bytes(
++                old,
++                record::encode_payload(VALUE, &bytes)?,
++                old.map_or(64, |pointer| pointer.capacity().min(256) as usize),
++            )?))
+         }
+     }
+     fn insert(
+@@ -665,7 +672,7 @@
+                     return Ok((p.unwrap(), None, Some(old)));
+                 }
+                 if let (Value::Inline(_), Value::Inline(bytes)) = (&previous, &value) {
+-                    let next = self.save_bytes(p, read.replace_inline(i, bytes)?)?;
++                    let next = self.save_bytes(p, read.replace_inline(i, bytes)?, 256)?;
+                     return Ok((next, None, Some(old)));
+                 }
+                 let mut node = read.owned();
+--- a/crates/ic-storage/src/adapter/tree/tests.rs
++++ b/crates/ic-storage/src/adapter/tree/tests.rs
+@@ -333,7 +333,7 @@
+     let backing = VectorMemory::default();
+     let mut tree = Tree::<u64, Vec<u8>, _>::reset(backing.clone()).unwrap();
+     tree.insert(1, vec![7; 4096]).unwrap();
+-    tree.insert(2, vec![3; 80]).unwrap();
++    tree.insert(2, vec![3; 236]).unwrap();
+     tree.remove(&2).unwrap();
+     let (node, index) = tree.find(&1).unwrap().unwrap();
+     let Value::External(original) = node.value(index) else {
+@@ -491,7 +491,7 @@
+         panic!()
+     };
+     assert_eq!(reused.offset, original.offset);
+-    assert_eq!(reused.capacity(), 256);
++    assert_eq!(reused.capacity(), 128);
+     assert_eq!(tree.root.borrow().cursor, cursor);
+     drop(tree);
+     let mut tree = Tree::<u64, Vec<u8>, _>::load(backing).unwrap();
+@@ -709,3 +709,33 @@
+         );
+     }
+ }
++
++#[test]
++fn grown_external_value_retains_small_capacity_across_reopen() {
++    let memory = VectorMemory::default();
++    let mut tree = Tree::<u64, Vec<u8>, _>::reset(memory.clone()).unwrap();
++    tree.insert(1, vec![1; 33]).unwrap();
++    tree.insert(2, vec![2; 33]).unwrap();
++    tree.remove(&2).unwrap();
++    tree.insert(1, vec![3; 132]).unwrap();
++    let (node, index) = tree.find(&1).unwrap().unwrap();
++    let Value::External(grown) = node.value(index) else {
++        panic!()
++    };
++    assert_eq!(grown.capacity(), 256);
++    let cursor = tree.root.borrow().cursor;
++    for step in 0..12 {
++        let value = vec![4; if step % 2 == 0 { 33 } else { 132 }];
++        tree.insert(1, value.clone()).unwrap();
++        drop(tree);
++        tree = Tree::load(memory.clone()).unwrap();
++        assert_eq!(tree.get(&1).unwrap(), Some(value));
++        let (node, index) = tree.find(&1).unwrap().unwrap();
++        let Value::External(current) = node.value(index) else {
++            panic!()
++        };
++        assert_eq!(current, grown);
++        assert_eq!(tree.root.borrow().cursor, cursor);
++        check(&tree);
++    }
++}
+--- a/crates/ic-storage/src/adapter/tests/regions.rs
++++ b/crates/ic-storage/src/adapter/tests/regions.rs
+@@ -47,7 +47,7 @@
+ fn admit<M: Memory>(view: &BTreeMapRegion<[u8; 33], Vec<u8>, M>) -> Result<(), ()> {
+     let mut frame = [0; 8];
+     view.read(0, &mut frame);
+-    if frame != *b"ICMAP002" {
++    if frame != *b"ICMAPHYS" {
+         return Err(());
+     }
+     let mut after_families = [0; 33];

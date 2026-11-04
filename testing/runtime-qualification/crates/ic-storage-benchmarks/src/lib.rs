@@ -22,6 +22,7 @@ pub enum Pattern {
     Uniform,
     Hot16,
     Zipf,
+    Sequential,
 }
 
 #[derive(Clone, Copy, Debug, Serialize, Deserialize)]
@@ -179,6 +180,10 @@ pub fn keys(request: Request) -> Vec<u64> {
                 | Operation::RemoveInserted
                 | Operation::Push => u64::from(request.rows) + u64::from(index),
                 _ => {
+                    if request.pattern == Pattern::Sequential {
+                        return (request.seed % u64::from(request.rows) + u64::from(index))
+                            % u64::from(request.rows);
+                    }
                     if request.pattern == Pattern::Zipf {
                         let fraction =
                             f64::from((state >> 32) as u32) / (f64::from(u32::MAX) + 1.0);

@@ -77,7 +77,7 @@ pub(super) fn regular_path(root: &Path, path: &str) -> Result<PathBuf> {
 
 // Only private adapter implementations and tests qualify. Public entrypoints,
 // manifests, examples, shared tooling, locks and unclassified inputs stay full.
-fn adapter_local(group: &str, path: &str) -> bool {
+pub(super) fn adapter_local(group: &str, path: &str) -> bool {
     let prefix = format!("crates/ic-{group}/src/");
     let Some(relative) = path.strip_prefix(&prefix) else {
         return path.starts_with(&format!("releases/{group}/"))
@@ -107,8 +107,8 @@ pub(super) fn stages(
     roster.iter().map(String::as_str).map(|target| {
         let reason = if narrow {
             match target {
-                "validate-tooling" => Some("Private adapter code cannot affect the standalone repository helper, hooks or release scripts; their full source, recipes, dependencies and configuration are unchanged from the admitted tag."),
-                "validate-storage-tests" | "validate-wasm-size" => Some("Core Storage source, tests, examples, manifests and locks are unchanged; Storage has no dependency on either adapter. Workspace lint, features, Wasm and all-archive integration still run."),
+                "validate-tooling" => Some("Private adapter code cannot affect the standalone repository helper, hooks or release scripts; their full source, recipes, dependencies and configuration are unchanged from the admitted comparison baseline."),
+                "validate-storage-tests" | "validate-wasm-size" => Some("Core Storage source, tests, examples, manifests and locks are unchanged; Storage has no dependency on either adapter. Selected-adapter lint, features, docs and Wasm plus all-archive integration still run."),
                 "validate-metrics-tests" if group == "logging-storage" => Some("Metrics Storage and its complete dependency inputs are unchanged and it does not consume Logging Storage; all-archive integration still runs."),
                 "validate-logging-tests" if group == "metrics-storage" => Some("Logging Storage and its complete dependency inputs are unchanged and it does not consume Metrics Storage; all-archive integration still runs."),
                 _ => None,
@@ -158,6 +158,16 @@ pub(super) fn independent_adapter(lock: &str, group: &str) -> Result<bool> {
         "ic-metrics-storage"
     };
     let mut pending = vec!["ic-storage".to_owned(), peer.to_owned()];
+    // Additional workspace/path consumers cannot silently fall outside the
+    // original three-group mapping after a manifest change has been released.
+    pending.extend(
+        packages
+            .iter()
+            .filter(|package| package.get("source").is_none())
+            .filter_map(|package| package.get("name").and_then(toml::Value::as_str))
+            .filter(|name| *name != selected)
+            .map(str::to_owned),
+    );
     let mut seen = std::collections::BTreeSet::new();
     while let Some(name) = pending.pop() {
         if name == selected {
@@ -171,10 +181,10 @@ pub(super) fn independent_adapter(lock: &str, group: &str) -> Result<bool> {
 }
 
 impl<E: Execute> Repository<E> {
-    fn admit_validation_policy(&self, selection: &ReleaseSelection) -> Result<Vec<String>> {
-        let raw = self.text(POLICY, Some(&selection.source))?;
+    pub(super) fn admit_validation_policy(&self, source: &str, group: &str) -> Result<Vec<String>> {
+        let raw = self.text(POLICY, Some(source))?;
         let policy: Policy = serde_json::from_str(&raw)?;
-        let release_groups = self.release_groups(Some(&selection.source))?;
+        let release_groups = self.release_groups(Some(source))?;
         for group in &release_groups {
             let package = format!("ic-{}", group.name);
             require(
@@ -188,7 +198,7 @@ impl<E: Execute> Repository<E> {
             policy.schema == 1
                 && canonical(&policy)? == raw.as_bytes()
                 && policy.groups == groups
-                && groups.contains(&selection.group)
+                && groups.iter().any(|name| name == group)
                 && !policy.stages.is_empty()
                 && policy.stages.iter().all(|stage| {
                     stage.starts_with("validate-")
@@ -212,7 +222,7 @@ impl<E: Execute> Repository<E> {
         selection: &ReleaseSelection,
         plan_path: &str,
     ) -> Result<(Plan, Context)> {
-        let roster = self.admit_validation_policy(selection)?;
+        let roster = self.admit_validation_policy(&selection.source, &selection.group)?;
         let baseline_tag = format!("{}-v{}", selection.group, selection.previous);
         let observation: serde_json::Value = serde_json::from_str(&self.output(
             "perl",

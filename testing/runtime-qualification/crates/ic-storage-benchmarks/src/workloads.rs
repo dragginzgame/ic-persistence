@@ -13,6 +13,7 @@ pub enum Workload {
     Control,
     Records,
     Bulk,
+    Boundaries,
 }
 
 impl Workload {
@@ -25,7 +26,7 @@ impl Workload {
                 Case::SetBytes64,
                 Case::VectorRecord,
             ],
-            Self::Bulk => &[
+            Self::Bulk | Self::Boundaries => &[
                 Case::U64Bytes,
                 Case::VectorBytes,
                 Case::CellBytes,
@@ -39,6 +40,9 @@ impl Workload {
             (Self::Records, Case::U64Bytes) => &[31, 32, 33, 256, 1024, 4096],
             (Self::Records, _) => case.payloads(),
             (Self::Bulk, _) => &[65_536, 1_048_576],
+            (Self::Boundaries, _) => &[
+                31, 32, 33, 235, 236, 237, 4075, 4076, 4077, 65_515, 65_516, 65_517,
+            ],
         }
     }
     pub const fn rows(self) -> u32 {
@@ -46,23 +50,25 @@ impl Workload {
             Self::Control => 16,
             Self::Records => 4096,
             Self::Bulk => 8,
+            Self::Boundaries => 64,
         }
     }
     pub const fn counts(self) -> &'static [u32] {
         match self {
             Self::Records => &[1, 32],
-            Self::Control | Self::Bulk => &[1],
+            Self::Control | Self::Bulk | Self::Boundaries => &[1],
         }
     }
     pub const fn patterns(self) -> &'static [Pattern] {
         match self {
             Self::Records => &[Pattern::Uniform, Pattern::Hot16, Pattern::Zipf],
             Self::Control | Self::Bulk => &[Pattern::Uniform],
+            Self::Boundaries => &[Pattern::Sequential],
         }
     }
     pub const fn rounds(self) -> u32 {
         match self {
-            Self::Control | Self::Records => 3,
+            Self::Control | Self::Records | Self::Boundaries => 3,
             Self::Bulk => 1,
         }
     }

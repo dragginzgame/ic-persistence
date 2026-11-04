@@ -1,0 +1,69 @@
+--- a/crates/ic-storage/src/adapter/tree.rs
++++ b/crates/ic-storage/src/adapter/tree.rs
+@@ -21,7 +21,7 @@
+ mod read;
+ use read::{NodeCache, ReadNode};
+ 
+-pub const MAGIC: [u8; 8] = *b"ICMAP002";
++pub const MAGIC: [u8; 8] = *b"ICMAPDNS";
+ const NODE: [u8; 8] = *b"ICBTND01";
+ const VALUE: [u8; 8] = *b"ICBTVAL1";
+ const FREE: [u8; 8] = *b"ICFREE01";
+@@ -43,7 +43,7 @@
+     }
+     fn check(self, cursor: u64) -> Result<()> {
+         ensure(
+-            (8..32).contains(&self.order),
++            (6..32).contains(&self.order),
+             Error::Corrupt("tree block order"),
+         )?;
+         ensure(
+@@ -556,7 +556,7 @@
+     }
+     fn allocate(&mut self, len: usize) -> Result<Pointer> {
+         let size = len
+-            .max(256)
++            .max(64)
+             .checked_next_power_of_two()
+             .ok_or(Error::Budget)?;
+         let order = size.trailing_zeros() as usize;
+@@ -598,7 +598,7 @@
+     }
+     fn save_bytes(&mut self, previous: Option<Pointer>, bytes: Vec<u8>) -> Result<Pointer> {
+         let p = if let Some(p) = previous.filter(|p| p.capacity() >= bytes.len() as u64) {
+-            let needed = bytes.len().max(256).next_power_of_two() as u64;
++            let needed = bytes.len().max(64).next_power_of_two() as u64;
+             // Reclaim only into already reusable smaller capacity. Splitting the
+             // live block itself loses its large size class and causes unbounded
+             // growth under repeated large/small replacements without coalescing.
+--- a/crates/ic-storage/src/adapter/tree/tests.rs
++++ b/crates/ic-storage/src/adapter/tree/tests.rs
+@@ -346,7 +346,7 @@
+         panic!()
+     };
+     assert_ne!(smaller.offset, original.offset);
+-    assert_eq!(smaller.capacity(), 256);
++    assert_eq!(smaller.capacity(), 128);
+     drop(tree);
+     let mut tree = Tree::<u64, Vec<u8>, _>::load(backing).unwrap();
+     tree.insert(2, vec![9; 1024]).unwrap();
+@@ -491,7 +491,7 @@
+         panic!()
+     };
+     assert_eq!(reused.offset, original.offset);
+-    assert_eq!(reused.capacity(), 256);
++    assert_eq!(reused.capacity(), 128);
+     assert_eq!(tree.root.borrow().cursor, cursor);
+     drop(tree);
+     let mut tree = Tree::<u64, Vec<u8>, _>::load(backing).unwrap();
+--- a/crates/ic-storage/src/adapter/tests/regions.rs
++++ b/crates/ic-storage/src/adapter/tests/regions.rs
+@@ -47,7 +47,7 @@
+ fn admit<M: Memory>(view: &BTreeMapRegion<[u8; 33], Vec<u8>, M>) -> Result<(), ()> {
+     let mut frame = [0; 8];
+     view.read(0, &mut frame);
+-    if frame != *b"ICMAP002" {
++    if frame != *b"ICMAPDNS" {
+         return Err(());
+     }
+     let mut after_families = [0; 33];

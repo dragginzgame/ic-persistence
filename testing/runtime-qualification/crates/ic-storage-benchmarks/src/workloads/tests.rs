@@ -3,7 +3,12 @@ use crate::{LIMITS, Operation, RUN_ID, Request, Response, payload_for, value};
 
 #[test]
 fn every_profile_result_fits_the_existing_wire_budget() {
-    for profile in [Workload::Control, Workload::Records, Workload::Bulk] {
+    for profile in [
+        Workload::Control,
+        Workload::Records,
+        Workload::Bulk,
+        Workload::Boundaries,
+    ] {
         for &case in profile.cases() {
             for &payload in profile.payloads(case) {
                 assert!(case.accepts_payload(payload));

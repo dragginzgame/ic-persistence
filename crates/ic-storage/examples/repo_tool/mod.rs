@@ -43,6 +43,7 @@ mod wasm;
 use packages::package_manifest;
 mod processes;
 use processes::{Execute, Processes};
+mod ci_validation;
 mod publication;
 mod qualification;
 mod validation_plan;
@@ -105,6 +106,17 @@ enum ToolCommand {
         evidence: PathBuf,
         /// Compiler floor admitted by the archive entrypoint.
         msrv: String,
+    },
+    /// Qualify the exact CI checkout; private adapter PRs may select a narrower gate.
+    ValidateCi {
+        #[arg(long)]
+        event: String,
+        #[arg(long)]
+        base: String,
+        #[arg(long)]
+        head: String,
+        #[arg(long)]
+        reference: String,
     },
     /// Require clean repository source.
     EnsureClean,
@@ -346,6 +358,14 @@ pub(super) fn main() -> Result<()> {
         ToolCommand::Target => println!("{}", repo.target()?.display()),
         ToolCommand::QualifyArchives { evidence, msrv } => {
             repo.qualify_archives(&evidence, &msrv)?;
+        }
+        ToolCommand::ValidateCi {
+            event,
+            base,
+            head,
+            reference,
+        } => {
+            repo.validate_ci(&event, &base, &head, &reference)?;
         }
         ToolCommand::EnsureClean => repo.clean()?,
         ToolCommand::WasmSize => repo.wasm_size()?,
