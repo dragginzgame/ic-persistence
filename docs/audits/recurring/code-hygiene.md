@@ -1,4 +1,4 @@
-# ic-memory code hygiene overlay
+# IC Storage code hygiene overlay
 
 Use the unchanged [shared code hygiene method](../../../audits/code-hygiene.md)
 and [audit contract](../../../audits/README.md), whose exact Shared Tooling
@@ -12,36 +12,58 @@ the crate-specific obligations below. An audit does not authorize fixes.
 - Current [safety contract](../../../SAFETY.md), [advanced API](../../../ADVANCED.md),
   [current ledger](../../current-ledger.md) and [operations](../../operations.md).
   Review current contracts; historical reports do not establish present behavior.
-- Public API roots: `crates/ic-storage/src/lib.rs`, `crates/ic-storage/src/capability.rs`, `crates/ic-storage/src/declaration.rs`,
-  `crates/ic-storage/src/policy.rs`, `crates/ic-storage/src/slot/`, `crates/ic-storage/src/runtime/`, and `crates/ic-storage/examples/composed_host.rs`.
+- Public API roots: [library exports](../../../crates/ic-storage/src/lib.rs),
+  [runtime and allocation handles](../../../crates/ic-storage/src/runtime/mod.rs),
+  [stable keys](../../../crates/ic-storage/src/key.rs),
+  [backing IO](../../../crates/ic-storage/src/memory.rs),
+  [codecs](../../../crates/ic-storage/src/storable.rs),
+  [collections](../../../crates/ic-storage/src/adapter.rs) and the
+  [host example](../../../crates/ic-storage/examples/composed_host.rs).
   Inventory constructors separately from inert/diagnostic DTOs and runtime owners.
-- Trust transitions: declarations/decoded DTOs → validation → staged ledger →
-  physical persistence → committed capability → runtime publication. Trace
-  `crates/ic-storage/src/cbor.rs`, `crates/ic-storage/src/validation.rs`, `crates/ic-storage/src/ledger/`, `crates/ic-storage/src/physical.rs`,
-  `crates/ic-storage/src/stable_cell.rs`, `crates/ic-storage/src/bootstrap.rs`, `crates/ic-storage/src/requests.rs` and `crates/ic-storage/src/runtime/`.
-  Recovery must reject malformed current-format bytes and corrupt/ambiguous slots
-  before issuing authority. Keep constructor/deserialization invariants aligned;
+- Trust transitions: declarations and namespace grants → host policy admission →
+  validated directory candidate → durable snapshot/root publication → exclusive
+  allocation lease. Trace [admission](../../../crates/ic-storage/src/runtime/admission.rs),
+  [custody](../../../crates/ic-storage/src/runtime/custody.rs),
+  [directory validation](../../../crates/ic-storage/src/runtime/directory_model.rs),
+  [persistence](../../../crates/ic-storage/src/runtime/directory_model/persistence.rs)
+  and [lease IO](../../../crates/ic-storage/src/runtime/directory_model/leases.rs).
+  Recovery must reject malformed current-format bytes, overlapping extents and
+  invalid identities before issuing authority. Keep constructors and decoding aligned;
   decoded DTOs and diagnostics never grant memory access.
-- Admission and warm adoption remain distinct. Verify explicit grants, logical
-  placement, per-thread native bootstrap ordering, nonconstructing observations
-  and the sole owned manager. The host supplies complete explicit component
-  requests; runtime-owned persistence precedes capability publication. No global
-  registry or public manual persistence-confirmation route exists.
-- Classify panic sites against stable-memory input reachability and the substrate's
+- Admission and reopening remain distinct. Verify explicit grants and limits,
+  backing custody and one live lease per allocation, including detached handles.
+  The host owns truthful backing identity and excludes raw aliases. Runtime-owned
+  persistence precedes capability publication; diagnostics grant no authority.
+  Ordinary IO validates ranges and translates admitted extents without repeating
+  complete directory validation. Foreign formats require explicit host replacement,
+  never an implicit reset, fallback generation or legacy decoder.
+- Collection boundaries include [record framing](../../../crates/ic-storage/src/adapter/record.rs),
+  [B-tree routing and allocation](../../../crates/ic-storage/src/adapter/tree.rs),
+  [Cell](../../../crates/ic-storage/src/adapter/cell.rs),
+  [Vector](../../../crates/ic-storage/src/adapter/vector.rs), and
+  [map regions](../../../crates/ic-storage/src/adapter/region.rs).
+  Check bounded decoding, checksums, staged publication, cache invalidation and
+  free-space reuse. Root loading and key-only scans do not validate every payload.
+  Native interrupted writes poison ownership; IC traps rely on execution rollback.
+- Classify panic sites against stable-memory input reachability and Storage's
   `Storable` contract. Preserve typed distinctions where operator action differs:
   corruption, invalid input, unsupported format, policy rejection and readiness.
 - Trace bounds, checked arithmetic, growth failure, zero-length/page-edge IO,
   bounded decode/recovery, retained bytes and physical allocation accounting.
   Never describe allocated backing bytes as application payload occupancy.
-- Consumer policy stays outside ic-memory. README/examples should show the shortest
-  supported path; advanced authority/recovery caveats belong in ADVANCED/SAFETY.
+- Consumer lifecycle and workload policy stay outside Storage. README/examples
+  should show the shortest supported path; advanced authority/recovery caveats
+  belong in ADVANCED/SAFETY.
   Archived API names and measurements retain their original source identities.
 
 ## Focused evidence
 
-Inspect `crates/ic-storage/src`, `crates/ic-storage/tests`, `crates/ic-storage/examples`, `crates/ic-storage/fixtures/current`, `testing/runtime-qualification`,
-Make/CI and maintained guides for the selected scope. Trace request factories
-through checked snapshots, explicit host composition, examples and compile-fail consumers. Runtime,
+Inspect the selected owners under `crates/ic-storage/src`, `crates/ic-storage/tests`,
+`crates/ic-storage/examples`, and `testing/runtime-qualification`, plus relevant
+Make/CI and maintained guides. Trace declared requests through admitted snapshots,
+explicit host composition, examples and compile-fail consumers. Governed Metrics
+and Logging checkpoints live in their respective `crates/ic-*-storage/` packages;
+include them when the audited contract reaches those adapters. Runtime,
 host release adapters and the independent PocketIC harness have different contracts;
 name omitted families rather than implying they passed.
 
@@ -52,15 +74,26 @@ for focused runtime checks and full qualification.
 
 - Formatting: `make fmt-check` checks both workspaces without builds or installs.
 - Product changes: select the affected Rust test on the pinned toolchain using
-  `cargo +1.99.0 test --locked --offline <selection> -- --test-threads=1`.
-- Host tooling: select `make shared-tooling-check`, `test-tools`, `test-pins`,
-  `test-tooling`, `test-release-adapters`, `test-release-runner`, `test-hooks`
-  or `lint-tooling` as relevant. Scripts use disposable substitutes where effects
-  would otherwise create commits, tags or publication; never run the real hook.
+  `cargo +1.99.1 test -p ic-storage --locked --offline <selection> -- --test-threads=1`.
+  Keep test bodies and ordinary fixture helpers in `tests.rs` or `tests/` using
+  ordinary module discovery; retain API doctests beside their documentation.
+- Host tooling: select `make shared-tooling-check`, `make check-pins`, or named
+  repo-tool tests/scripts for the affected contract. `test-tools`, `test-tooling`,
+  `test-release-adapters`, `test-hooks` and `lint-tooling` are aggregates, not
+  automatically focused checks. Inspect nested work before selecting them.
+  Scripts substitute release effects; do not create commits/tags or activate the
+  real hook merely to qualify a change.
+- Ordinary fixture scratch belongs beneath the owning workspace's `target/`.
+  Preserve failed evidence, exclusive directory creation and existing files.
+  Explicit child-tool TMPDIR/alias probes and caller-selected evidence paths must
+  retain their intended boundary tests; historical artifacts are not cleanup work.
 - Check active builds before compilation or edits. Select focused checks for repairs
   under the [shared validation cadence](../../../DRAGGINZGAME.md#validation-and-evidence).
-  The full `make validate` release suite includes Wasm budgets, development
-  packaging and MSRV qualification.
+  Full `make validate` and release/group gates retain separate authorization;
+  ordinary implementation ends after relevant focused checks pass. Rust 1.99.1
+  is both the support floor and pinned development/release compiler. Admit actual
+  compiler identities and preserve distinct feature/target/host evidence without
+  repeating an identical compiler graph.
   Documentation-only work needs link, consistency and diff checks. Release,
   publication and installed PocketIC qualification retain separate authority.
   Audits do not install tools or upgrade dependencies. Preparing missing locked

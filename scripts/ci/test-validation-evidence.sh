@@ -1,6 +1,11 @@
 #!/usr/bin/env bash
 # Shared companions: scripts/ci/fixture-lifecycle.sh scripts/ci/prepare-script-fixture.sh scripts/ci/run-validation-targets.sh scripts/ci/validation-evidence.pl scripts/ci/fixtures/validation-evidence-caller.rs rust-toolchain.toml
 set -euo pipefail
+selection=all
+if [[ $# != 0 ]]; then
+    [[ $# == 2 && $1 == --case && $2 == utf8 ]] || { echo 'usage: test-validation-evidence.sh [--case utf8]' >&2; exit 2; }
+    selection=utf8
+fi
 root="$(cd -P "${BASH_SOURCE[0]%/*}/../.." && pwd -P)"
 # shellcheck source=scripts/ci/fixture-lifecycle.sh
 source "$root/scripts/ci/fixture-lifecycle.sh"
@@ -11,6 +16,7 @@ trap 'fixture_finish "$?" "$fixture" "Validation evidence fixture retained"' EXI
 unset MAKEFLAGS MFLAGS MAKEOVERRIDES GNUMAKEFLAGS MAKEFILES
 unset VALIDATION_INPUT_ROOT VALIDATION_INPUT_BASELINE VALIDATION_RUNNER_SNAPSHOT_PATH GITHUB_STEP_SUMMARY
 source_root="$fixture/source with spaces"
+[[ $selection != utf8 ]] || source_root+=$'\316\273'
 mkdir -p "$source_root/ci"
 bash "$root/scripts/ci/prepare-script-fixture.sh" "$root" "$source_root" \
     scripts/ci/run-validation-targets.sh scripts/ci/validation-evidence.pl
@@ -46,30 +52,32 @@ git add source.txt
 git commit -qm changed
 export RELEASE_SOURCE RELEASE_GROUP=client
 RELEASE_SOURCE="$(git rev-parse HEAD)"
-perl "$helper" baseline "$PWD" "$RELEASE_SOURCE" refs/tags/client-v1.0.0 > baseline.json
-jq -e --arg base "$baseline" '.available and .baseline == $base and .changes == ["source.txt"]' baseline.json >/dev/null
-perl "$helper" baseline "$PWD" "$RELEASE_SOURCE" refs/tags/missing > absent.json
-jq -e '.available == false' absent.json >/dev/null
-git tag lightweight
-perl "$helper" baseline "$PWD" "$RELEASE_SOURCE" refs/tags/lightweight > lightweight.json
-jq -e '.available == false' lightweight.json >/dev/null
-perl "$helper" baseline "$PWD" "$baseline" refs/tags/client-v1.0.0 > equal.json
-jq -e '.available and .changes == []' equal.json >/dev/null
-git tag -a future -m future
-perl "$helper" baseline "$PWD" "$baseline" refs/tags/future > future.json
-jq -e '.available == false and .reason == "baseline is not an ancestor"' future.json >/dev/null
-perl "$helper" roster "$PWD" ci/validation.json ci/groups.json > roster.txt
-[[ "$(cat roster.txt)" == $'lint\nclient\nruntime' ]]
 refuse() {
     if "$@" > "$fixture/refused.stdout" 2> "$fixture/refused.stderr"; then
         echo 'unexpected validation evidence admission' >&2; exit 1
     fi
     [[ ! -s "$fixture/refused.stdout" ]]
 }
-jq -cnS '["client"]' > ci/wrong-groups.json
-refuse perl "$helper" roster "$PWD" ci/validation.json ci/wrong-groups.json
-jq -cnS '["client","client","runtime"]' > ci/wrong-groups.json
-refuse perl "$helper" roster "$PWD" ci/validation.json ci/wrong-groups.json
+if [[ $selection == all ]]; then
+    perl "$helper" baseline "$PWD" "$RELEASE_SOURCE" refs/tags/client-v1.0.0 > baseline.json
+    jq -e --arg base "$baseline" '.available and .baseline == $base and .changes == ["source.txt"]' baseline.json >/dev/null
+    perl "$helper" baseline "$PWD" "$RELEASE_SOURCE" refs/tags/missing > absent.json
+    jq -e '.available == false' absent.json >/dev/null
+    git tag lightweight
+    perl "$helper" baseline "$PWD" "$RELEASE_SOURCE" refs/tags/lightweight > lightweight.json
+    jq -e '.available == false' lightweight.json >/dev/null
+    perl "$helper" baseline "$PWD" "$baseline" refs/tags/client-v1.0.0 > equal.json
+    jq -e '.available and .changes == []' equal.json >/dev/null
+    git tag -a future -m future
+    perl "$helper" baseline "$PWD" "$baseline" refs/tags/future > future.json
+    jq -e '.available == false and .reason == "baseline is not an ancestor"' future.json >/dev/null
+    perl "$helper" roster "$PWD" ci/validation.json ci/groups.json > roster.txt
+    [[ "$(cat roster.txt)" == $'lint\nclient\nruntime' ]]
+    jq -cnS '["client"]' > ci/wrong-groups.json
+    refuse perl "$helper" roster "$PWD" ci/validation.json ci/wrong-groups.json
+    jq -cnS '["client","client","runtime"]' > ci/wrong-groups.json
+    refuse perl "$helper" roster "$PWD" ci/validation.json ci/wrong-groups.json
+fi
 make_plan() {
     jq -cnS --arg source "$RELEASE_SOURCE" --arg group "$RELEASE_GROUP" --arg scope "$1" \
         '{schema:1,source:$source,group:$group,scope:$scope,policy:"ci/validation.json",
@@ -88,6 +96,31 @@ run_plan() {
 }
 verify() { perl "$helper" verify "$PWD" plan.json "$RELEASE_SOURCE" "$RELEASE_GROUP" "$run" context.json; }
 check() { perl "$helper" check "$PWD" plan.json "$RELEASE_SOURCE" "$RELEASE_GROUP" "$run" context.json proof.json; }
+if [[ $selection == utf8 ]]; then
+    make_plan group
+    jq -cS '.stages[0].reason = "Latin-1 \u00e9" | .stages[1].reason = "Quote \u2019" |
+        .stages[2].reason = "Excluded \u96ea"' plan.json > utf8-plan.json
+    mv utf8-plan.json plan.json
+    : > fail-runtime
+    run_plan utf8
+    verify > proof.json
+    check > checked.json
+    cmp proof.json checked.json
+    jq -e '[.stages[].state] == ["PASS","PASS","not-applicable"]' proof.json >/dev/null
+    cp "$run/plan-events.tsv" "$fixture/events.saved"
+    printf '\377' >> "$run/plan-events.tsv"
+    refuse verify
+    cp "$fixture/events.saved" "$run/plan-events.tsv"
+    cp "$run/0.log" "$fixture/log.saved"
+    printf 'changed UTF-8 fixture log\n' >> "$run/0.log"
+    refuse check
+    cp "$fixture/log.saved" "$run/0.log"
+    check > recovered.json
+    cmp proof.json recovered.json
+    fixture_complete=true
+    printf 'UTF-8 reasons/log paths and corrupted evidence refusal passed\n'
+    exit 0
+fi
 make_plan group
 : > fail-runtime
 run_plan narrow
@@ -197,5 +230,7 @@ refuse verify
 cp "$fixture/full-events.saved" "$run/plan-events.tsv"
 verify > recovered.json
 cmp full-proof.json recovered.json
+# Keep the narrow regression in complete producer qualification as well.
+bash "$root/scripts/ci/test-validation-evidence.sh" --case utf8
 fixture_complete=true
 printf 'Validation evidence, roster, baseline and shell/native caller fixtures passed\n'

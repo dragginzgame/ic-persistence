@@ -8,7 +8,8 @@ pin="$(sed -n 's/^channel = "\([^"]*\)"$/\1/p' rust-toolchain.toml)"
 source ci/release-tools.env
 editor="$(RUSTUP_TOOLCHAIN="$pin" bash scripts/dev/install-rust-tools.sh --consumer "$root" \
     --package ic-build --version "$IC_BUILD_RELEASE_METADATA_VERSION" --bin ic-build-release-metadata --profile debug --features cli --check)"
-fixture="$(mktemp -d "${TMPDIR:-/tmp}/ic-storage-group-bootstrap.XXXXXX")"
+mkdir -p "$root/target/fixtures"
+fixture="$(mktemp -d "$root/target/fixtures/ic-storage-group-bootstrap.XXXXXX")"
 echo "Retained group bootstrap fixture: $fixture"
 cp Cargo.toml Cargo.lock LICENSE rust-toolchain.toml CHANGELOG.md "$fixture/"
 mkdir -p "$fixture/docs"

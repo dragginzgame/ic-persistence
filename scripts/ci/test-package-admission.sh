@@ -4,7 +4,8 @@ set -euo pipefail
 package_names="$(bash scripts/ci/read-storage-packages.sh --all)"
 IFS=$'\t' read -r -a packages <<< "$package_names"
 source scripts/ci/fixture-lifecycle.sh
-fixture="$(fixture_create "${TMPDIR:-/tmp}/ic-storage-package-admission.XXXXXX")"
+mkdir -p "$PWD/target/fixtures"
+fixture="$(fixture_create "$PWD/target/fixtures/ic-storage-package-admission.XXXXXX")"
 trap 'status=$?; if [[ "$status" != 0 ]]; then
     fixture_replay_logs "$fixture/package.log" "$fixture/drift.log" "$fixture/msrv.log"
 fi; exit "$status"' EXIT

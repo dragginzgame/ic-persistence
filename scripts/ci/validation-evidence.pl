@@ -71,7 +71,7 @@ sub verify {
     };
     same($read->('parsed-inputs.json.plan.json'), json($plan), 'runner selected different plan');
     same($read->('parsed-inputs.json.policy.json'), json($policy), 'runner selected different policy');
-    same($read->('plan-selection.tsv'), join('', (map { "input\t$_\n" } @$inputs), (map { "$_\n" } @$rows)),
+    same(decode('UTF-8', $read->('plan-selection.tsv'), FB_CROAK), join('', (map { "input\t$_\n" } @$inputs), (map { "$_\n" } @$rows)),
         'runner selection differs');
     my $checkpoint_raw = $read->('plan-inputs.json');
     my $checkpoint = $json->decode($checkpoint_raw);
@@ -93,7 +93,7 @@ sub verify {
     for my $stage (@{$plan->{stages}}) {
         $events .= join("\t", $stage->{target}, $stage->{required} ? 'blocked' : 'not-applicable', $stage->{reason})."\n";
     }
-    my $timings_raw = $read->('timings.tsv');
+    my $timings_raw = decode('UTF-8', $read->('timings.tsv'), FB_CROAK);
     $timings_raw =~ s/\Atarget\tresult\tseconds\tlog\n// or die "invalid timings header\n";
     my @timings = split /\n/, $timings_raw, -1;
     pop(@timings) eq '' or die "unterminated timings\n";
@@ -108,7 +108,7 @@ sub verify {
             or die "failed, duplicate, reordered or malformed stage timing\n";
         # Current runner emits absolute paths and sequential log names. Never
         # follow arbitrary paths in a saved record, including an outside log.
-        same($log, "$root/$run/$index.log", 'execution log escapes or differs from runner slot');
+        same($log, decode('UTF-8', "$root/$run/$index.log", FB_CROAK), 'execution log escapes or differs from runner slot');
         $files{"$index.log"} = digest($root, "$run/$index.log");
         for my $phase ('before', 'after') {
             same($read->("$index-$phase-inputs.json"), $checkpoint_raw,
@@ -118,7 +118,7 @@ sub verify {
         $proof{$target} = {target=>$target, state=>'PASS', seconds=>0+$seconds,
             log=>"$index.log", log_sha256=>$files{"$index.log"}};
     }
-    same($read->('plan-events.tsv'), $events, 'failed, interrupted, duplicate or reordered stage events');
+    same(decode('UTF-8', $read->('plan-events.tsv'), FB_CROAK), $events, 'failed, interrupted, duplicate or reordered stage events');
     for my $stage (@{$plan->{stages}}) {
         push @stages, $proof{$stage->{target}} // {target=>$stage->{target}, state=>'not-applicable', reason=>$stage->{reason}};
     }

@@ -29,7 +29,7 @@ else
     [[ "${BENCH_SHUFFLED:-0}" != 1 ]] || arguments+=(--shuffled)
     [[ "${BENCH_COLD_CACHE:-0}" != 1 ]] || arguments+=(--cold-cache)
 fi
-arguments+=(--upstream-bucket-pages "${BENCH_UPSTREAM_BUCKET_PAGES:-128}")
+arguments+=(--upstream-bucket-pages "${BENCH_UPSTREAM_BUCKET_PAGES:-8}")
 if [[ "$reference" == dfinity-head ]]; then
     arguments+=(--reference-revision b5d1650463f477affb3d358e86b1113953fc9937)
 fi

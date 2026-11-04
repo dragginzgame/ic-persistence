@@ -3,6 +3,14 @@
 Current releases use the Storage naming. [Earlier published history](https://github.com/dragginzgame/ic-storage/blob/23deb81c48d58558ac3b0ce36bf266ddc25dca91/releases/logging-stable/CHANGELOG.md)
 retains its original package and release identities.
 
+## [0.64.1] - Unreleased
+
+### 🔧 Changed
+
+- Move retained-record fixture encoding into the codec's test module, following
+  the shared test-source layout. Production codecs and checkpoint bytes are
+  unchanged. [Details](0.64.md).
+
 ## [0.64.0] - 2026-11-03
 
 ### ⚠️ Breaking

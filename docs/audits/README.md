@@ -1,4 +1,4 @@
-# ic-memory audit methods
+# IC Storage audit methods
 
 Select a method from the unchanged [shared catalog](../../audits/README.md),
 recorded by [.shared-tooling.snapshot](../../.shared-tooling.snapshot).

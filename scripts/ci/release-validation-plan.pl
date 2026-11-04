@@ -28,5 +28,7 @@ for my $item (['plan', $plan], ['policy', $policy]) {
     close $snapshot or die "close retained plan/policy: $!\n";
 }
 # Emit only after every decision is admitted; no partial plan can dispatch.
+# This is a UTF-8 text stream, independent of each reason's codepoint range.
+binmode STDOUT, ':encoding(UTF-8)' or die "encode plan selection: $!\n";
 print "input\t$_\n" for @$inputs;
 print "$_\n" for @$rows;

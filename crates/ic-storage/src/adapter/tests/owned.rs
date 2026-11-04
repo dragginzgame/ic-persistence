@@ -13,7 +13,7 @@ fn vector_model_mixed_updates_reopen_and_bidirectional_iteration() {
     let backing = VectorMemory::default();
     let mut expected = Vec::new();
     for generation in 0..6 {
-        let host = super::tests::runtime(backing.clone());
+        let host = super::runtime(backing.clone());
         let memory = host
             .open_memory(&crate::StableKey::parse("test.vec.v1").unwrap())
             .unwrap();

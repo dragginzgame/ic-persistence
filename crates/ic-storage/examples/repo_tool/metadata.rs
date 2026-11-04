@@ -73,16 +73,6 @@ impl<E: Execute> Repository<E> {
         Ok(output)
     }
 
-    #[cfg(test)]
-    pub(super) fn project_catalog(
-        &self,
-        text: &str,
-        previous: &str,
-        version: &str,
-    ) -> Result<String> {
-        self.project_group_catalog(&self.release_group(None)?, text, previous, version)
-    }
-
     pub(super) fn project_group_catalog(
         &self,
         group: &groups::ReleaseGroup,
@@ -125,16 +115,6 @@ impl<E: Execute> Repository<E> {
             ManifestVersion::Unchanged,
             &dependencies,
         )?)
-    }
-
-    #[cfg(test)]
-    pub(super) fn replace_lock_version(
-        &self,
-        text: &str,
-        previous: &str,
-        version: &str,
-    ) -> Result<String> {
-        Self::replace_group_lock_version(&self.release_group(None)?, text, previous, version)
     }
 
     pub(super) fn replace_group_lock_version(

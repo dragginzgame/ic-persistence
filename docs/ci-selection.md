@@ -1,9 +1,11 @@
 # Conservative CI change selection
 
 The [workflow](../.github/workflows/ci.yml) uses Shared’s reviewed
-[classifier contract](ci-change-selection.md). Its executable is exported from
-the already selected commit `143a9abb9ae81feae9400ff3844b03b1ddfdd75a`.
-No unrelated upstream release behavior is adopted.
+[classifier contract](ci-change-selection.md). Its executable follows the reviewed
+[snapshot](../.shared-tooling.snapshot), currently Shared 0.29.3 (`1fa2d90`).
+The optional `--allow-version-bump` mode is disabled: Storage uses Cargo release
+groups, not Shared Tooling's root VERSION convention. Cargo metadata changes
+continue to require full CI.
 
 [The exact allowlist](../ci/docs-only-paths.txt) contains only the root README,
 documentation navigation and current handoff. They have no companion declarations,

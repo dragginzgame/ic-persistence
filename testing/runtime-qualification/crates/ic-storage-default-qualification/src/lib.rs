@@ -20,9 +20,4 @@ pub fn backing_roundtrip() {
 }
 
 #[cfg(all(test, not(target_arch = "wasm32")))]
-mod tests {
-    #[test]
-    fn default_backing_roundtrips() {
-        super::backing_roundtrip();
-    }
-}
+mod tests;

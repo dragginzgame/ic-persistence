@@ -4,7 +4,8 @@ set -euo pipefail
 [[ $# == 1 && -n "$1" ]] || { echo 'usage: check-dependency-adoption.sh TOOLCHAIN' >&2; exit 2; }
 export RUSTUP_TOOLCHAIN="$1" RUSTUP_AUTO_INSTALL=0 CARGO_NET_OFFLINE=true
 shared=scripts/ci
-evidence="$(mktemp -d "${TMPDIR:-/tmp}/storage-adoption.XXXXXX")"
+mkdir -p "$PWD/target/dependency-adoption"
+evidence="$(mktemp -d "$PWD/target/dependency-adoption/attempt.XXXXXX")"
 printf 'Dependency adoption evidence: %s\n' "$evidence"
 inputs=(Cargo.toml Cargo.lock crates/*/Cargo.toml testing/runtime-qualification/Cargo.toml \
     testing/runtime-qualification/Cargo.lock testing/runtime-qualification/crates/*/Cargo.toml)

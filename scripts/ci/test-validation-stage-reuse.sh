@@ -9,7 +9,8 @@ source ci/release-tools.env
 editor="$(RUSTUP_TOOLCHAIN="$pin" bash scripts/dev/install-rust-tools.sh --consumer "$root" \
     --package ic-build --version "$IC_BUILD_RELEASE_METADATA_VERSION" --bin ic-build-release-metadata --profile debug --features cli --check)"
 shellcheck_bin="${SHELLCHECK_BIN:-$(command -v shellcheck)}"
-fixture="$(mktemp -d "${TMPDIR:-/tmp}/storage-stage-qualification.XXXXXX")"
+mkdir -p "$root/target/fixtures"
+fixture="$(mktemp -d "$root/target/fixtures/storage-stage-qualification.XXXXXX")"
 fixture="$(cd -P "$fixture" && pwd -P)"
 echo "Retained stage qualification: $fixture"
 parent_inputs=(Cargo.toml Cargo.lock ci/cargo-release-groups.json crates/*/Cargo.toml)

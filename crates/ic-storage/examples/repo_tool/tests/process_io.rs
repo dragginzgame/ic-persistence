@@ -149,6 +149,11 @@ fn failed_release_fixture_retains_receipts_and_command_state() {
 #[test]
 fn fixture_creation_preserves_existing_directories_and_files() {
     let parent = Fixture::new();
+    let workspace_target = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../target/repo-tool-fixtures")
+        .canonicalize()
+        .unwrap();
+    assert_eq!(parent.repo.root.parent(), Some(workspace_target.as_path()));
     let retained = parent
         .repo
         .root
@@ -171,6 +176,8 @@ fn fixture_creation_preserves_existing_directories_and_files() {
         b"retained failure"
     );
     assert_eq!(fs::read(foreign).unwrap(), b"unrelated file");
+    let group = Fixture::for_group("metrics-storage");
+    assert_eq!(group.repo.root.parent(), Some(workspace_target.as_path()));
 }
 
 #[test]

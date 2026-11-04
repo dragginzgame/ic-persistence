@@ -41,8 +41,6 @@ mod source;
 use source::SurfaceState;
 mod wasm;
 use packages::package_manifest;
-#[cfg(test)]
-use packages::packages;
 mod processes;
 use processes::{Execute, Processes};
 mod publication;
@@ -140,8 +138,6 @@ enum ToolCommand {
     },
 }
 
-#[cfg(test)]
-const PACKAGE_README: &str = "crates/ic-storage/README.md";
 const CHANGELOG_FINALIZER: &str = "scripts/ci/finalize-release-changelog.awk";
 const RELEASE_INPUT_ADMISSION: &str = "scripts/ci/validate-release-inputs.pl";
 const TAG_CHECKER: &str = "scripts/ci/check-release-tag.sh";

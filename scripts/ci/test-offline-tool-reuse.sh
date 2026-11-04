@@ -5,7 +5,8 @@ set -euo pipefail
 # Check prepared selections first: missing tools must not turn this probe into setup.
 make --no-print-directory host-tools-check ic-tools-check rust-tools-check
 source scripts/ci/fixture-lifecycle.sh
-sharing="$(fixture_create "${TMPDIR:-/tmp}/ic-storage-tool-reuse.XXXXXX")"
+mkdir -p "$PWD/target/fixtures"
+sharing="$(fixture_create "$PWD/target/fixtures/ic-storage-tool-reuse.XXXXXX")"
 echo "Retained offline tool-reuse qualification: $sharing"
 mkdir -p "$sharing/consumer" "$sharing/bin"
 printf '#!/bin/sh\necho unexpected-download >&2\nexit 91\n' > "$sharing/bin/curl"

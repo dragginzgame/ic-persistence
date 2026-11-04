@@ -22,10 +22,6 @@ pub use crate::storable::{Bound, CodecError, Storable};
 pub use crate::{Memory, storable};
 
 #[cfg(all(test, not(target_arch = "wasm32")))]
-mod improvements_tests;
-#[cfg(all(test, not(target_arch = "wasm32")))]
-mod owned_tests;
-#[cfg(all(test, not(target_arch = "wasm32")))]
 mod tests;
 
 mod error;

@@ -15,7 +15,8 @@ if [[ $# == 1 ]]; then
     fixture="$1"
     retained=true
 else
-    fixture="$(mktemp -d "${TMPDIR:-/tmp}/failure-evidence.XXXXXX")"
+    mkdir -p "$ROOT/target/fixtures"
+    fixture="$(mktemp -d "$ROOT/target/fixtures/failure-evidence.XXXXXX")"
 fi
 fixture_complete=false
 finish() {

@@ -394,6 +394,11 @@ exec /usr/bin/make "$@"
                 &[format!("crates/ic-{group}/{private}")],
                 scenario != "workspace",
             );
+            // Exercise UTF-8 through the actual runner, shared verifier and
+            // Storage receipt admission, rather than only parsing a mock proof.
+            for stage in plan.stages.iter_mut().filter(|stage| !stage.required) {
+                stage.reason.push_str(" — other group’s checks");
+            }
             plan.scope = if plan.stages.iter().all(|s| s.required) {
                 "workspace"
             } else {

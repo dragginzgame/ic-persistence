@@ -246,10 +246,6 @@ impl<K: Storable + Ord + Clone, V: Storable, M: Memory> Tree<K, V, M> {
         self.healthy().expect("map owner is poisoned");
         self.root.borrow().length
     }
-    #[cfg(test)]
-    fn node(&self, p: Pointer) -> Result<Node> {
-        Ok(self.read_node(p, MAX_DEPTH)?.owned())
-    }
     pub fn set_cache_budget(&mut self, bytes: usize) {
         self.cache.get_mut().configure(bytes);
     }
@@ -946,7 +942,8 @@ impl<K, V: Storable> MapEntry<K, V> {
     /// # Errors
     /// Returns the application codec or declared-bound error for this value.
     pub fn value(&self) -> Result<V> {
-        decode(self.bytes.clone())
+        V::check_bounds(&self.bytes)?;
+        Ok(V::from_bytes(Cow::Borrowed(&self.bytes))?)
     }
     /// Consume the entry and decode its value.
     ///

@@ -1,0 +1,2630 @@
+{
+   "installed_bulk" : {
+      "command" : "make benchmark-storage BENCH_WORKLOAD=bulk BENCH_SAMPLES=1",
+      "evidence" : "target/storage-comparison/attempt.a6sTYA",
+      "icss_bucket_pages" : 8,
+      "icss_version" : "0.7.2",
+      "measured_calls" : 172,
+      "result" : "All results, lengths and final contents matched the independent model; final source, artifact and lock identity checks passed.",
+      "rounds" : 1,
+      "samples" : 1,
+      "server" : "16.1.0",
+      "source_archive_sha256" : "e6ce7d1ce11731973d6bb4793fa3c5bd541449a8c3b94d692a806c6b16185af5",
+      "summary" : "docs/measurements/storage-icss-bulk-2026-11-03.csv",
+      "summary_sha256" : "d7b2a7a5542bb0364958bc7cac9d9705d167aca519b72e4bd50a7f1c06594be2"
+   },
+   "provenance" : {
+      "command" : "cargo run --locked --offline --manifest-path testing/runtime-qualification/Cargo.toml -p ic-storage-benchmarks --example multi-allocations --features owned,dfinity --target-dir target/runtime-qualification -- target/storage-memory-study/audit-size-churn.json",
+      "compiler" : "rustc 1.99.1 (58cf8f9c3 2026-10-13)",
+      "raw" : "target/storage-memory-study/audit-size-churn.json",
+      "raw_sha256" : "e613a650a7ab80b4efce912e047a300bc00945329b98b38a23a724988cd72f25",
+      "source_base" : "7c5cf83660ccefd98fb0947a011c99fdab464ef1",
+      "source_state" : "pending working tree, source archived in target/storage-comparison/attempt.a6sTYA/source.tar.gz"
+   },
+   "runs" : [
+      {
+         "allocations" : 32,
+         "backend" : "ic-storage",
+         "bucket_pages" : null,
+         "phases" : [
+            {
+               "directory" : {
+                  "admitted_allocations" : 32,
+                  "allocations" : 32,
+                  "data_pages" : 0,
+                  "directory_bytes" : 817,
+                  "extents" : 0,
+                  "generation" : 1,
+                  "live_leases" : 0,
+                  "metadata_pages" : 2,
+                  "physical_pages" : 3,
+                  "unassigned_pages" : 0
+               },
+               "io" : {
+                  "grown_pages" : 3,
+                  "grows" : 2,
+                  "read_bytes" : 158,
+                  "reads" : 4,
+                  "write_bytes" : 960,
+                  "writes" : 4
+               },
+               "logical_payload_bytes" : 0,
+               "phase" : "bootstrap",
+               "physical_pages" : 3
+            },
+            {
+               "directory" : {
+                  "admitted_allocations" : 32,
+                  "allocations" : 32,
+                  "data_pages" : 32,
+                  "directory_bytes" : 881,
+                  "extents" : 32,
+                  "generation" : 33,
+                  "live_leases" : 32,
+                  "metadata_pages" : 2,
+                  "physical_pages" : 35,
+                  "unassigned_pages" : 0
+               },
+               "io" : {
+                  "grown_pages" : 32,
+                  "grows" : 32,
+                  "read_bytes" : 58368,
+                  "reads" : 128,
+                  "write_bytes" : 31200,
+                  "writes" : 96
+               },
+               "logical_payload_bytes" : 0,
+               "phase" : "initialized",
+               "physical_pages" : 35
+            },
+            {
+               "directory" : {
+                  "admitted_allocations" : 32,
+                  "allocations" : 32,
+                  "data_pages" : 288,
+                  "directory_bytes" : 1220,
+                  "extents" : 160,
+                  "generation" : 161,
+                  "live_leases" : 32,
+                  "metadata_pages" : 2,
+                  "physical_pages" : 291,
+                  "unassigned_pages" : 0
+               },
+               "io" : {
+                  "grown_pages" : 256,
+                  "grows" : 128,
+                  "read_bytes" : 379930,
+                  "reads" : 3712,
+                  "write_bytes" : 9068561,
+                  "writes" : 3872
+               },
+               "logical_payload_bytes" : 8617984,
+               "phase" : "populated",
+               "physical_pages" : 291
+            },
+            {
+               "directory" : {
+                  "admitted_allocations" : 32,
+                  "allocations" : 32,
+                  "data_pages" : 800,
+                  "directory_bytes" : 1988,
+                  "extents" : 416,
+                  "generation" : 417,
+                  "live_leases" : 32,
+                  "metadata_pages" : 2,
+                  "physical_pages" : 803,
+                  "unassigned_pages" : 0
+               },
+               "io" : {
+                  "grown_pages" : 512,
+                  "grows" : 256,
+                  "read_bytes" : 1373744,
+                  "reads" : 9856,
+                  "write_bytes" : 18464884,
+                  "writes" : 8224
+               },
+               "logical_payload_bytes" : 25853952,
+               "phase" : "grown",
+               "physical_pages" : 803
+            },
+            {
+               "directory" : {
+                  "admitted_allocations" : 32,
+                  "allocations" : 32,
+                  "data_pages" : 800,
+                  "directory_bytes" : 1988,
+                  "extents" : 416,
+                  "generation" : 417,
+                  "live_leases" : 32,
+                  "metadata_pages" : 2,
+                  "physical_pages" : 803,
+                  "unassigned_pages" : 0
+               },
+               "io" : {
+                  "grown_pages" : 0,
+                  "grows" : 0,
+                  "read_bytes" : 13854016,
+                  "reads" : 13376,
+                  "write_bytes" : 810448,
+                  "writes" : 6784
+               },
+               "logical_payload_bytes" : 12926976,
+               "phase" : "deleted-0",
+               "physical_pages" : 803
+            },
+            {
+               "directory" : {
+                  "admitted_allocations" : 32,
+                  "allocations" : 32,
+                  "data_pages" : 800,
+                  "directory_bytes" : 1988,
+                  "extents" : 416,
+                  "generation" : 417,
+                  "live_leases" : 32,
+                  "metadata_pages" : 2,
+                  "physical_pages" : 803,
+                  "unassigned_pages" : 0
+               },
+               "io" : {
+                  "grown_pages" : 0,
+                  "grows" : 0,
+                  "read_bytes" : 787484,
+                  "reads" : 9856,
+                  "write_bytes" : 13475248,
+                  "writes" : 5312
+               },
+               "logical_payload_bytes" : 25853952,
+               "phase" : "reinserted-0",
+               "physical_pages" : 803
+            },
+            {
+               "directory" : {
+                  "admitted_allocations" : 32,
+                  "allocations" : 32,
+                  "data_pages" : 800,
+                  "directory_bytes" : 1988,
+                  "extents" : 416,
+                  "generation" : 417,
+                  "live_leases" : 32,
+                  "metadata_pages" : 2,
+                  "physical_pages" : 803,
+                  "unassigned_pages" : 0
+               },
+               "io" : {
+                  "grown_pages" : 0,
+                  "grows" : 0,
+                  "read_bytes" : 13887648,
+                  "reads" : 13632,
+                  "write_bytes" : 837672,
+                  "writes" : 6784
+               },
+               "logical_payload_bytes" : 12926976,
+               "phase" : "deleted-1",
+               "physical_pages" : 803
+            },
+            {
+               "directory" : {
+                  "admitted_allocations" : 32,
+                  "allocations" : 32,
+                  "data_pages" : 800,
+                  "directory_bytes" : 1988,
+                  "extents" : 416,
+                  "generation" : 417,
+                  "live_leases" : 32,
+                  "metadata_pages" : 2,
+                  "physical_pages" : 803,
+                  "unassigned_pages" : 0
+               },
+               "io" : {
+                  "grown_pages" : 0,
+                  "grows" : 0,
+                  "read_bytes" : 794952,
+                  "reads" : 9600,
+                  "write_bytes" : 13468400,
+                  "writes" : 5184
+               },
+               "logical_payload_bytes" : 25853952,
+               "phase" : "reinserted-1",
+               "physical_pages" : 803
+            },
+            {
+               "directory" : {
+                  "admitted_allocations" : 32,
+                  "allocations" : 32,
+                  "data_pages" : 800,
+                  "directory_bytes" : 1988,
+                  "extents" : 416,
+                  "generation" : 417,
+                  "live_leases" : 32,
+                  "metadata_pages" : 2,
+                  "physical_pages" : 803,
+                  "unassigned_pages" : 0
+               },
+               "io" : {
+                  "grown_pages" : 0,
+                  "grows" : 0,
+                  "read_bytes" : 13799808,
+                  "reads" : 10752,
+                  "write_bytes" : 648980,
+                  "writes" : 5696
+               },
+               "logical_payload_bytes" : 12926976,
+               "phase" : "deleted-2",
+               "physical_pages" : 803
+            },
+            {
+               "directory" : {
+                  "admitted_allocations" : 32,
+                  "allocations" : 32,
+                  "data_pages" : 800,
+                  "directory_bytes" : 1988,
+                  "extents" : 416,
+                  "generation" : 417,
+                  "live_leases" : 32,
+                  "metadata_pages" : 2,
+                  "physical_pages" : 803,
+                  "unassigned_pages" : 0
+               },
+               "io" : {
+                  "grown_pages" : 0,
+                  "grows" : 0,
+                  "read_bytes" : 773496,
+                  "reads" : 9792,
+                  "write_bytes" : 13498216,
+                  "writes" : 5376
+               },
+               "logical_payload_bytes" : 25853952,
+               "phase" : "reinserted-2",
+               "physical_pages" : 803
+            },
+            {
+               "directory" : {
+                  "admitted_allocations" : 32,
+                  "allocations" : 32,
+                  "data_pages" : 800,
+                  "directory_bytes" : 1988,
+                  "extents" : 416,
+                  "generation" : 417,
+                  "live_leases" : 32,
+                  "metadata_pages" : 2,
+                  "physical_pages" : 803,
+                  "unassigned_pages" : 0
+               },
+               "io" : {
+                  "grown_pages" : 0,
+                  "grows" : 0,
+                  "read_bytes" : 13763616,
+                  "reads" : 10560,
+                  "write_bytes" : 617800,
+                  "writes" : 5568
+               },
+               "logical_payload_bytes" : 12926976,
+               "phase" : "deleted-3",
+               "physical_pages" : 803
+            },
+            {
+               "directory" : {
+                  "admitted_allocations" : 32,
+                  "allocations" : 32,
+                  "data_pages" : 800,
+                  "directory_bytes" : 1988,
+                  "extents" : 416,
+                  "generation" : 417,
+                  "live_leases" : 32,
+                  "metadata_pages" : 2,
+                  "physical_pages" : 803,
+                  "unassigned_pages" : 0
+               },
+               "io" : {
+                  "grown_pages" : 0,
+                  "grows" : 0,
+                  "read_bytes" : 751944,
+                  "reads" : 9664,
+                  "write_bytes" : 13473432,
+                  "writes" : 5248
+               },
+               "logical_payload_bytes" : 25853952,
+               "phase" : "reinserted-3",
+               "physical_pages" : 803
+            },
+            {
+               "directory" : {
+                  "admitted_allocations" : 32,
+                  "allocations" : 32,
+                  "data_pages" : 800,
+                  "directory_bytes" : 1988,
+                  "extents" : 416,
+                  "generation" : 417,
+                  "live_leases" : 32,
+                  "metadata_pages" : 2,
+                  "physical_pages" : 803,
+                  "unassigned_pages" : 0
+               },
+               "io" : {
+                  "grown_pages" : 0,
+                  "grows" : 0,
+                  "read_bytes" : 27545856,
+                  "reads" : 18176,
+                  "write_bytes" : 0,
+                  "writes" : 0
+               },
+               "logical_payload_bytes" : 25853952,
+               "phase" : "verified",
+               "physical_pages" : 803
+            },
+            {
+               "directory" : {
+                  "admitted_allocations" : 32,
+                  "allocations" : 32,
+                  "data_pages" : 1749,
+                  "directory_bytes" : 3944,
+                  "extents" : 1068,
+                  "generation" : 1069,
+                  "live_leases" : 32,
+                  "metadata_pages" : 2,
+                  "physical_pages" : 1752,
+                  "unassigned_pages" : 0
+               },
+               "io" : {
+                  "grown_pages" : 949,
+                  "grows" : 652,
+                  "read_bytes" : 29655813,
+                  "reads" : 19552,
+                  "write_bytes" : 50266515,
+                  "writes" : 10154
+               },
+               "logical_payload_bytes" : 47603814,
+               "phase" : "size-churn-0",
+               "physical_pages" : 1752
+            },
+            {
+               "directory" : {
+                  "admitted_allocations" : 32,
+                  "allocations" : 32,
+                  "data_pages" : 1859,
+                  "directory_bytes" : 4178,
+                  "extents" : 1146,
+                  "generation" : 1147,
+                  "live_leases" : 32,
+                  "metadata_pages" : 2,
+                  "physical_pages" : 1862,
+                  "unassigned_pages" : 0
+               },
+               "io" : {
+                  "grown_pages" : 110,
+                  "grows" : 78,
+                  "read_bytes" : 49890837,
+                  "reads" : 20485,
+                  "write_bytes" : 48952407,
+                  "writes" : 9658
+               },
+               "logical_payload_bytes" : 47738418,
+               "phase" : "size-churn-1",
+               "physical_pages" : 1862
+            },
+            {
+               "directory" : {
+                  "admitted_allocations" : 32,
+                  "allocations" : 32,
+                  "data_pages" : 1881,
+                  "directory_bytes" : 4211,
+                  "extents" : 1157,
+                  "generation" : 1158,
+                  "live_leases" : 32,
+                  "metadata_pages" : 2,
+                  "physical_pages" : 1884,
+                  "unassigned_pages" : 0
+               },
+               "io" : {
+                  "grown_pages" : 22,
+                  "grows" : 11,
+                  "read_bytes" : 49750456,
+                  "reads" : 20587,
+                  "write_bytes" : 48815986,
+                  "writes" : 9507
+               },
+               "logical_payload_bytes" : 47864933,
+               "phase" : "size-churn-2",
+               "physical_pages" : 1884
+            },
+            {
+               "directory" : {
+                  "admitted_allocations" : 32,
+                  "allocations" : 32,
+                  "data_pages" : 1889,
+                  "directory_bytes" : 4223,
+                  "extents" : 1161,
+                  "generation" : 1162,
+                  "live_leases" : 32,
+                  "metadata_pages" : 2,
+                  "physical_pages" : 1892,
+                  "unassigned_pages" : 0
+               },
+               "io" : {
+                  "grown_pages" : 8,
+                  "grows" : 4,
+                  "read_bytes" : 49855620,
+                  "reads" : 21241,
+                  "write_bytes" : 48971870,
+                  "writes" : 10291
+               },
+               "logical_payload_bytes" : 47922123,
+               "phase" : "size-churn-3",
+               "physical_pages" : 1892
+            },
+            {
+               "directory" : {
+                  "admitted_allocations" : 32,
+                  "allocations" : 32,
+                  "data_pages" : 1899,
+                  "directory_bytes" : 4238,
+                  "extents" : 1166,
+                  "generation" : 1167,
+                  "live_leases" : 32,
+                  "metadata_pages" : 2,
+                  "physical_pages" : 1902,
+                  "unassigned_pages" : 0
+               },
+               "io" : {
+                  "grown_pages" : 10,
+                  "grows" : 5,
+                  "read_bytes" : 49916783,
+                  "reads" : 21231,
+                  "write_bytes" : 48904684,
+                  "writes" : 10293
+               },
+               "logical_payload_bytes" : 47848550,
+               "phase" : "size-churn-4",
+               "physical_pages" : 1902
+            },
+            {
+               "directory" : {
+                  "admitted_allocations" : 32,
+                  "allocations" : 32,
+                  "data_pages" : 1903,
+                  "directory_bytes" : 4244,
+                  "extents" : 1168,
+                  "generation" : 1169,
+                  "live_leases" : 32,
+                  "metadata_pages" : 2,
+                  "physical_pages" : 1906,
+                  "unassigned_pages" : 0
+               },
+               "io" : {
+                  "grown_pages" : 4,
+                  "grows" : 2,
+                  "read_bytes" : 49831278,
+                  "reads" : 21225,
+                  "write_bytes" : 48757769,
+                  "writes" : 10274
+               },
+               "logical_payload_bytes" : 47713741,
+               "phase" : "size-churn-5",
+               "physical_pages" : 1906
+            }
+         ]
+      },
+      {
+         "allocations" : 32,
+         "backend" : "ic-stable-structures-0.7.2",
+         "bucket_pages" : 1,
+         "phases" : [
+            {
+               "directory" : null,
+               "io" : {
+                  "grown_pages" : 1,
+                  "grows" : 1,
+                  "read_bytes" : 0,
+                  "reads" : 0,
+                  "write_bytes" : 34848,
+                  "writes" : 2
+               },
+               "logical_payload_bytes" : 0,
+               "phase" : "bootstrap",
+               "physical_pages" : 1
+            },
+            {
+               "directory" : null,
+               "io" : {
+                  "grown_pages" : 32,
+                  "grows" : 32,
+                  "read_bytes" : 0,
+                  "reads" : 0,
+                  "write_bytes" : 69536,
+                  "writes" : 160
+               },
+               "logical_payload_bytes" : 0,
+               "phase" : "initialized",
+               "physical_pages" : 33
+            },
+            {
+               "directory" : null,
+               "io" : {
+                  "grown_pages" : 136,
+                  "grows" : 136,
+                  "read_bytes" : 70983040,
+                  "reads" : 215428,
+                  "write_bytes" : 80351944,
+                  "writes" : 208588
+               },
+               "logical_payload_bytes" : 8617984,
+               "phase" : "populated",
+               "physical_pages" : 169
+            },
+            {
+               "directory" : null,
+               "io" : {
+                  "grown_pages" : 272,
+                  "grows" : 272,
+                  "read_bytes" : 190653128,
+                  "reads" : 674048,
+                  "write_bytes" : 208311256,
+                  "writes" : 525584
+               },
+               "logical_payload_bytes" : 25853952,
+               "phase" : "grown",
+               "physical_pages" : 441
+            },
+            {
+               "directory" : null,
+               "io" : {
+                  "grown_pages" : 8,
+                  "grows" : 8,
+                  "read_bytes" : 221359312,
+                  "reads" : 657456,
+                  "write_bytes" : 267634892,
+                  "writes" : 547016
+               },
+               "logical_payload_bytes" : 12926976,
+               "phase" : "deleted-0",
+               "physical_pages" : 449
+            },
+            {
+               "directory" : null,
+               "io" : {
+                  "grown_pages" : 0,
+                  "grows" : 0,
+                  "read_bytes" : 103604932,
+                  "reads" : 382672,
+                  "write_bytes" : 115179980,
+                  "writes" : 236180
+               },
+               "logical_payload_bytes" : 25853952,
+               "phase" : "reinserted-0",
+               "physical_pages" : 449
+            },
+            {
+               "directory" : null,
+               "io" : {
+                  "grown_pages" : 0,
+                  "grows" : 0,
+                  "read_bytes" : 123546588,
+                  "reads" : 431780,
+                  "write_bytes" : 116683976,
+                  "writes" : 206844
+               },
+               "logical_payload_bytes" : 12926976,
+               "phase" : "deleted-1",
+               "physical_pages" : 449
+            },
+            {
+               "directory" : null,
+               "io" : {
+                  "grown_pages" : 0,
+                  "grows" : 0,
+                  "read_bytes" : 103582348,
+                  "reads" : 380600,
+                  "write_bytes" : 115179980,
+                  "writes" : 236192
+               },
+               "logical_payload_bytes" : 25853952,
+               "phase" : "reinserted-1",
+               "physical_pages" : 449
+            },
+            {
+               "directory" : null,
+               "io" : {
+                  "grown_pages" : 0,
+                  "grows" : 0,
+                  "read_bytes" : 123533604,
+                  "reads" : 430624,
+                  "write_bytes" : 116683976,
+                  "writes" : 206808
+               },
+               "logical_payload_bytes" : 12926976,
+               "phase" : "deleted-2",
+               "physical_pages" : 449
+            },
+            {
+               "directory" : null,
+               "io" : {
+                  "grown_pages" : 0,
+                  "grows" : 0,
+                  "read_bytes" : 103559764,
+                  "reads" : 378476,
+                  "write_bytes" : 115179980,
+                  "writes" : 236164
+               },
+               "logical_payload_bytes" : 25853952,
+               "phase" : "reinserted-2",
+               "physical_pages" : 449
+            },
+            {
+               "directory" : null,
+               "io" : {
+                  "grown_pages" : 0,
+                  "grows" : 0,
+                  "read_bytes" : 123511020,
+                  "reads" : 428528,
+                  "write_bytes" : 116683976,
+                  "writes" : 206800
+               },
+               "logical_payload_bytes" : 12926976,
+               "phase" : "deleted-3",
+               "physical_pages" : 449
+            },
+            {
+               "directory" : null,
+               "io" : {
+                  "grown_pages" : 0,
+                  "grows" : 0,
+                  "read_bytes" : 103537180,
+                  "reads" : 376388,
+                  "write_bytes" : 115179980,
+                  "writes" : 236164
+               },
+               "logical_payload_bytes" : 25853952,
+               "phase" : "reinserted-3",
+               "physical_pages" : 449
+            },
+            {
+               "directory" : null,
+               "io" : {
+                  "grown_pages" : 0,
+                  "grows" : 0,
+                  "read_bytes" : 31657124,
+                  "reads" : 591576,
+                  "write_bytes" : 0,
+                  "writes" : 0
+               },
+               "logical_payload_bytes" : 25853952,
+               "phase" : "verified",
+               "physical_pages" : 449
+            },
+            {
+               "directory" : null,
+               "io" : {
+                  "grown_pages" : 652,
+                  "grows" : 652,
+                  "read_bytes" : 366220963,
+                  "reads" : 1190367,
+                  "write_bytes" : 386299083,
+                  "writes" : 767316
+               },
+               "logical_payload_bytes" : 47603814,
+               "phase" : "size-churn-0",
+               "physical_pages" : 1101
+            },
+            {
+               "directory" : null,
+               "io" : {
+                  "grown_pages" : 24,
+                  "grows" : 24,
+                  "read_bytes" : 489675103,
+                  "reads" : 1500006,
+                  "write_bytes" : 482855039,
+                  "writes" : 739829
+               },
+               "logical_payload_bytes" : 47738418,
+               "phase" : "size-churn-1",
+               "physical_pages" : 1125
+            },
+            {
+               "directory" : null,
+               "io" : {
+                  "grown_pages" : 8,
+                  "grows" : 8,
+                  "read_bytes" : 490855134,
+                  "reads" : 1496089,
+                  "write_bytes" : 484042778,
+                  "writes" : 740452
+               },
+               "logical_payload_bytes" : 47864933,
+               "phase" : "size-churn-2",
+               "physical_pages" : 1133
+            },
+            {
+               "directory" : null,
+               "io" : {
+                  "grown_pages" : 7,
+                  "grows" : 7,
+                  "read_bytes" : 490827097,
+                  "reads" : 1491999,
+                  "write_bytes" : 483990583,
+                  "writes" : 740420
+               },
+               "logical_payload_bytes" : 47922123,
+               "phase" : "size-churn-3",
+               "physical_pages" : 1140
+            },
+            {
+               "directory" : null,
+               "io" : {
+                  "grown_pages" : 5,
+                  "grows" : 5,
+                  "read_bytes" : 491732857,
+                  "reads" : 1492624,
+                  "write_bytes" : 484761330,
+                  "writes" : 740853
+               },
+               "logical_payload_bytes" : 47848550,
+               "phase" : "size-churn-4",
+               "physical_pages" : 1145
+            },
+            {
+               "directory" : null,
+               "io" : {
+                  "grown_pages" : 2,
+                  "grows" : 2,
+                  "read_bytes" : 490908415,
+                  "reads" : 1489256,
+                  "write_bytes" : 483889886,
+                  "writes" : 739501
+               },
+               "logical_payload_bytes" : 47713741,
+               "phase" : "size-churn-5",
+               "physical_pages" : 1147
+            }
+         ]
+      },
+      {
+         "allocations" : 32,
+         "backend" : "ic-stable-structures-0.7.2",
+         "bucket_pages" : 8,
+         "phases" : [
+            {
+               "directory" : null,
+               "io" : {
+                  "grown_pages" : 1,
+                  "grows" : 1,
+                  "read_bytes" : 0,
+                  "reads" : 0,
+                  "write_bytes" : 34848,
+                  "writes" : 2
+               },
+               "logical_payload_bytes" : 0,
+               "phase" : "bootstrap",
+               "physical_pages" : 1
+            },
+            {
+               "directory" : null,
+               "io" : {
+                  "grown_pages" : 256,
+                  "grows" : 32,
+                  "read_bytes" : 0,
+                  "reads" : 0,
+                  "write_bytes" : 69536,
+                  "writes" : 160
+               },
+               "logical_payload_bytes" : 0,
+               "phase" : "initialized",
+               "physical_pages" : 257
+            },
+            {
+               "directory" : null,
+               "io" : {
+                  "grown_pages" : 128,
+                  "grows" : 16,
+                  "read_bytes" : 70983040,
+                  "reads" : 214560,
+                  "write_bytes" : 80351824,
+                  "writes" : 207488
+               },
+               "logical_payload_bytes" : 8617984,
+               "phase" : "populated",
+               "physical_pages" : 385
+            },
+            {
+               "directory" : null,
+               "io" : {
+                  "grown_pages" : 256,
+                  "grows" : 32,
+                  "read_bytes" : 190653128,
+                  "reads" : 671596,
+                  "write_bytes" : 208311016,
+                  "writes" : 522660
+               },
+               "logical_payload_bytes" : 25853952,
+               "phase" : "grown",
+               "physical_pages" : 641
+            },
+            {
+               "directory" : null,
+               "io" : {
+                  "grown_pages" : 32,
+                  "grows" : 4,
+                  "read_bytes" : 221359312,
+                  "reads" : 654768,
+                  "write_bytes" : 267634888,
+                  "writes" : 543688
+               },
+               "logical_payload_bytes" : 12926976,
+               "phase" : "deleted-0",
+               "physical_pages" : 673
+            },
+            {
+               "directory" : null,
+               "io" : {
+                  "grown_pages" : 0,
+                  "grows" : 0,
+                  "read_bytes" : 103604932,
+                  "reads" : 381320,
+                  "write_bytes" : 115179980,
+                  "writes" : 234660
+               },
+               "logical_payload_bytes" : 25853952,
+               "phase" : "reinserted-0",
+               "physical_pages" : 673
+            },
+            {
+               "directory" : null,
+               "io" : {
+                  "grown_pages" : 0,
+                  "grows" : 0,
+                  "read_bytes" : 123546588,
+                  "reads" : 430156,
+                  "write_bytes" : 116683976,
+                  "writes" : 205272
+               },
+               "logical_payload_bytes" : 12926976,
+               "phase" : "deleted-1",
+               "physical_pages" : 673
+            },
+            {
+               "directory" : null,
+               "io" : {
+                  "grown_pages" : 0,
+                  "grows" : 0,
+                  "read_bytes" : 103582348,
+                  "reads" : 379236,
+                  "write_bytes" : 115179980,
+                  "writes" : 234668
+               },
+               "logical_payload_bytes" : 25853952,
+               "phase" : "reinserted-1",
+               "physical_pages" : 673
+            },
+            {
+               "directory" : null,
+               "io" : {
+                  "grown_pages" : 0,
+                  "grows" : 0,
+                  "read_bytes" : 123533604,
+                  "reads" : 429084,
+                  "write_bytes" : 116683976,
+                  "writes" : 205348
+               },
+               "logical_payload_bytes" : 12926976,
+               "phase" : "deleted-2",
+               "physical_pages" : 673
+            },
+            {
+               "directory" : null,
+               "io" : {
+                  "grown_pages" : 0,
+                  "grows" : 0,
+                  "read_bytes" : 103559764,
+                  "reads" : 377164,
+                  "write_bytes" : 115179980,
+                  "writes" : 234680
+               },
+               "logical_payload_bytes" : 25853952,
+               "phase" : "reinserted-2",
+               "physical_pages" : 673
+            },
+            {
+               "directory" : null,
+               "io" : {
+                  "grown_pages" : 0,
+                  "grows" : 0,
+                  "read_bytes" : 123511020,
+                  "reads" : 426960,
+                  "write_bytes" : 116683976,
+                  "writes" : 205284
+               },
+               "logical_payload_bytes" : 12926976,
+               "phase" : "deleted-3",
+               "physical_pages" : 673
+            },
+            {
+               "directory" : null,
+               "io" : {
+                  "grown_pages" : 0,
+                  "grows" : 0,
+                  "read_bytes" : 103537180,
+                  "reads" : 375044,
+                  "write_bytes" : 115179980,
+                  "writes" : 234652
+               },
+               "logical_payload_bytes" : 25853952,
+               "phase" : "reinserted-3",
+               "physical_pages" : 673
+            },
+            {
+               "directory" : null,
+               "io" : {
+                  "grown_pages" : 0,
+                  "grows" : 0,
+                  "read_bytes" : 31657124,
+                  "reads" : 591240,
+                  "write_bytes" : 0,
+                  "writes" : 0
+               },
+               "logical_payload_bytes" : 25853952,
+               "phase" : "verified",
+               "physical_pages" : 673
+            },
+            {
+               "directory" : null,
+               "io" : {
+                  "grown_pages" : 568,
+                  "grows" : 71,
+                  "read_bytes" : 366220963,
+                  "reads" : 1185529,
+                  "write_bytes" : 386298502,
+                  "writes" : 761573
+               },
+               "logical_payload_bytes" : 47603814,
+               "phase" : "size-churn-0",
+               "physical_pages" : 1241
+            },
+            {
+               "directory" : null,
+               "io" : {
+                  "grown_pages" : 32,
+                  "grows" : 4,
+                  "read_bytes" : 489675103,
+                  "reads" : 1493674,
+                  "write_bytes" : 482855019,
+                  "writes" : 733475
+               },
+               "logical_payload_bytes" : 47738418,
+               "phase" : "size-churn-1",
+               "physical_pages" : 1273
+            },
+            {
+               "directory" : null,
+               "io" : {
+                  "grown_pages" : 32,
+                  "grows" : 4,
+                  "read_bytes" : 490855134,
+                  "reads" : 1489805,
+                  "write_bytes" : 484042774,
+                  "writes" : 734177
+               },
+               "logical_payload_bytes" : 47864933,
+               "phase" : "size-churn-2",
+               "physical_pages" : 1305
+            },
+            {
+               "directory" : null,
+               "io" : {
+                  "grown_pages" : 24,
+                  "grows" : 3,
+                  "read_bytes" : 490827097,
+                  "reads" : 1485776,
+                  "write_bytes" : 483990579,
+                  "writes" : 734186
+               },
+               "logical_payload_bytes" : 47922123,
+               "phase" : "size-churn-3",
+               "physical_pages" : 1329
+            },
+            {
+               "directory" : null,
+               "io" : {
+                  "grown_pages" : 16,
+                  "grows" : 2,
+                  "read_bytes" : 491732857,
+                  "reads" : 1486409,
+                  "write_bytes" : 484761327,
+                  "writes" : 734651
+               },
+               "logical_payload_bytes" : 47848550,
+               "phase" : "size-churn-4",
+               "physical_pages" : 1345
+            },
+            {
+               "directory" : null,
+               "io" : {
+                  "grown_pages" : 0,
+                  "grows" : 0,
+                  "read_bytes" : 490908415,
+                  "reads" : 1483143,
+                  "write_bytes" : 483889884,
+                  "writes" : 733381
+               },
+               "logical_payload_bytes" : 47713741,
+               "phase" : "size-churn-5",
+               "physical_pages" : 1345
+            }
+         ]
+      },
+      {
+         "allocations" : 32,
+         "backend" : "ic-stable-structures-0.7.2",
+         "bucket_pages" : 128,
+         "phases" : [
+            {
+               "directory" : null,
+               "io" : {
+                  "grown_pages" : 1,
+                  "grows" : 1,
+                  "read_bytes" : 0,
+                  "reads" : 0,
+                  "write_bytes" : 34848,
+                  "writes" : 2
+               },
+               "logical_payload_bytes" : 0,
+               "phase" : "bootstrap",
+               "physical_pages" : 1
+            },
+            {
+               "directory" : null,
+               "io" : {
+                  "grown_pages" : 4096,
+                  "grows" : 32,
+                  "read_bytes" : 0,
+                  "reads" : 0,
+                  "write_bytes" : 69536,
+                  "writes" : 160
+               },
+               "logical_payload_bytes" : 0,
+               "phase" : "initialized",
+               "physical_pages" : 4097
+            },
+            {
+               "directory" : null,
+               "io" : {
+                  "grown_pages" : 0,
+                  "grows" : 0,
+                  "read_bytes" : 70983040,
+                  "reads" : 214428,
+                  "write_bytes" : 80351808,
+                  "writes" : 207324
+               },
+               "logical_payload_bytes" : 8617984,
+               "phase" : "populated",
+               "physical_pages" : 4097
+            },
+            {
+               "directory" : null,
+               "io" : {
+                  "grown_pages" : 0,
+                  "grows" : 0,
+                  "read_bytes" : 190653128,
+                  "reads" : 671272,
+                  "write_bytes" : 208310984,
+                  "writes" : 522272
+               },
+               "logical_payload_bytes" : 25853952,
+               "phase" : "grown",
+               "physical_pages" : 4097
+            },
+            {
+               "directory" : null,
+               "io" : {
+                  "grown_pages" : 0,
+                  "grows" : 0,
+                  "read_bytes" : 221359312,
+                  "reads" : 654312,
+                  "write_bytes" : 267634884,
+                  "writes" : 543148
+               },
+               "logical_payload_bytes" : 12926976,
+               "phase" : "deleted-0",
+               "physical_pages" : 4097
+            },
+            {
+               "directory" : null,
+               "io" : {
+                  "grown_pages" : 0,
+                  "grows" : 0,
+                  "read_bytes" : 103604932,
+                  "reads" : 381144,
+                  "write_bytes" : 115179980,
+                  "writes" : 234464
+               },
+               "logical_payload_bytes" : 25853952,
+               "phase" : "reinserted-0",
+               "physical_pages" : 4097
+            },
+            {
+               "directory" : null,
+               "io" : {
+                  "grown_pages" : 0,
+                  "grows" : 0,
+                  "read_bytes" : 123546588,
+                  "reads" : 429956,
+                  "write_bytes" : 116683976,
+                  "writes" : 205088
+               },
+               "logical_payload_bytes" : 12926976,
+               "phase" : "deleted-1",
+               "physical_pages" : 4097
+            },
+            {
+               "directory" : null,
+               "io" : {
+                  "grown_pages" : 0,
+                  "grows" : 0,
+                  "read_bytes" : 103582348,
+                  "reads" : 379056,
+                  "write_bytes" : 115179980,
+                  "writes" : 234464
+               },
+               "logical_payload_bytes" : 25853952,
+               "phase" : "reinserted-1",
+               "physical_pages" : 4097
+            },
+            {
+               "directory" : null,
+               "io" : {
+                  "grown_pages" : 0,
+                  "grows" : 0,
+                  "read_bytes" : 123533604,
+                  "reads" : 428828,
+                  "write_bytes" : 116683976,
+                  "writes" : 205088
+               },
+               "logical_payload_bytes" : 12926976,
+               "phase" : "deleted-2",
+               "physical_pages" : 4097
+            },
+            {
+               "directory" : null,
+               "io" : {
+                  "grown_pages" : 0,
+                  "grows" : 0,
+                  "read_bytes" : 103559764,
+                  "reads" : 376968,
+                  "write_bytes" : 115179980,
+                  "writes" : 234464
+               },
+               "logical_payload_bytes" : 25853952,
+               "phase" : "reinserted-2",
+               "physical_pages" : 4097
+            },
+            {
+               "directory" : null,
+               "io" : {
+                  "grown_pages" : 0,
+                  "grows" : 0,
+                  "read_bytes" : 123511020,
+                  "reads" : 426740,
+                  "write_bytes" : 116683976,
+                  "writes" : 205088
+               },
+               "logical_payload_bytes" : 12926976,
+               "phase" : "deleted-3",
+               "physical_pages" : 4097
+            },
+            {
+               "directory" : null,
+               "io" : {
+                  "grown_pages" : 0,
+                  "grows" : 0,
+                  "read_bytes" : 103537180,
+                  "reads" : 374880,
+                  "write_bytes" : 115179980,
+                  "writes" : 234464
+               },
+               "logical_payload_bytes" : 25853952,
+               "phase" : "reinserted-3",
+               "physical_pages" : 4097
+            },
+            {
+               "directory" : null,
+               "io" : {
+                  "grown_pages" : 0,
+                  "grows" : 0,
+                  "read_bytes" : 31657124,
+                  "reads" : 591192,
+                  "write_bytes" : 0,
+                  "writes" : 0
+               },
+               "logical_payload_bytes" : 25853952,
+               "phase" : "verified",
+               "physical_pages" : 4097
+            },
+            {
+               "directory" : null,
+               "io" : {
+                  "grown_pages" : 0,
+                  "grows" : 0,
+                  "read_bytes" : 366220963,
+                  "reads" : 1184988,
+                  "write_bytes" : 386298431,
+                  "writes" : 760926
+               },
+               "logical_payload_bytes" : 47603814,
+               "phase" : "size-churn-0",
+               "physical_pages" : 4097
+            },
+            {
+               "directory" : null,
+               "io" : {
+                  "grown_pages" : 0,
+                  "grows" : 0,
+                  "read_bytes" : 489675103,
+                  "reads" : 1492837,
+                  "write_bytes" : 482855015,
+                  "writes" : 732634
+               },
+               "logical_payload_bytes" : 47738418,
+               "phase" : "size-churn-1",
+               "physical_pages" : 4097
+            },
+            {
+               "directory" : null,
+               "io" : {
+                  "grown_pages" : 0,
+                  "grows" : 0,
+                  "read_bytes" : 490855134,
+                  "reads" : 1488873,
+                  "write_bytes" : 484042770,
+                  "writes" : 733233
+               },
+               "logical_payload_bytes" : 47864933,
+               "phase" : "size-churn-2",
+               "physical_pages" : 4097
+            },
+            {
+               "directory" : null,
+               "io" : {
+                  "grown_pages" : 0,
+                  "grows" : 0,
+                  "read_bytes" : 490827097,
+                  "reads" : 1484816,
+                  "write_bytes" : 483990576,
+                  "writes" : 733224
+               },
+               "logical_payload_bytes" : 47922123,
+               "phase" : "size-churn-3",
+               "physical_pages" : 4097
+            },
+            {
+               "directory" : null,
+               "io" : {
+                  "grown_pages" : 0,
+                  "grows" : 0,
+                  "read_bytes" : 491732857,
+                  "reads" : 1485452,
+                  "write_bytes" : 484761325,
+                  "writes" : 733686
+               },
+               "logical_payload_bytes" : 47848550,
+               "phase" : "size-churn-4",
+               "physical_pages" : 4097
+            },
+            {
+               "directory" : null,
+               "io" : {
+                  "grown_pages" : 0,
+                  "grows" : 0,
+                  "read_bytes" : 490908415,
+                  "reads" : 1482104,
+                  "write_bytes" : 483889884,
+                  "writes" : 732346
+               },
+               "logical_payload_bytes" : 47713741,
+               "phase" : "size-churn-5",
+               "physical_pages" : 4097
+            }
+         ]
+      },
+      {
+         "allocations" : 64,
+         "backend" : "ic-storage",
+         "bucket_pages" : null,
+         "phases" : [
+            {
+               "directory" : {
+                  "admitted_allocations" : 64,
+                  "allocations" : 64,
+                  "data_pages" : 0,
+                  "directory_bytes" : 1617,
+                  "extents" : 0,
+                  "generation" : 1,
+                  "live_leases" : 0,
+                  "metadata_pages" : 2,
+                  "physical_pages" : 3,
+                  "unassigned_pages" : 0
+               },
+               "io" : {
+                  "grown_pages" : 3,
+                  "grows" : 2,
+                  "read_bytes" : 158,
+                  "reads" : 4,
+                  "write_bytes" : 1760,
+                  "writes" : 4
+               },
+               "logical_payload_bytes" : 0,
+               "phase" : "bootstrap",
+               "physical_pages" : 3
+            },
+            {
+               "directory" : {
+                  "admitted_allocations" : 64,
+                  "allocations" : 64,
+                  "data_pages" : 64,
+                  "directory_bytes" : 1745,
+                  "extents" : 64,
+                  "generation" : 65,
+                  "live_leases" : 64,
+                  "metadata_pages" : 2,
+                  "physical_pages" : 67,
+                  "unassigned_pages" : 0
+               },
+               "io" : {
+                  "grown_pages" : 64,
+                  "grows" : 64,
+                  "read_bytes" : 223232,
+                  "reads" : 256,
+                  "write_bytes" : 115648,
+                  "writes" : 192
+               },
+               "logical_payload_bytes" : 0,
+               "phase" : "initialized",
+               "physical_pages" : 67
+            },
+            {
+               "directory" : {
+                  "admitted_allocations" : 64,
+                  "allocations" : 64,
+                  "data_pages" : 576,
+                  "directory_bytes" : 2484,
+                  "extents" : 320,
+                  "generation" : 321,
+                  "live_leases" : 64,
+                  "metadata_pages" : 2,
+                  "physical_pages" : 579,
+                  "unassigned_pages" : 0
+               },
+               "io" : {
+                  "grown_pages" : 512,
+                  "grows" : 256,
+                  "read_bytes" : 1032722,
+                  "reads" : 7424,
+                  "write_bytes" : 18410045,
+                  "writes" : 7744
+               },
+               "logical_payload_bytes" : 17235968,
+               "phase" : "populated",
+               "physical_pages" : 579
+            },
+            {
+               "directory" : {
+                  "admitted_allocations" : 64,
+                  "allocations" : 64,
+                  "data_pages" : 1600,
+                  "directory_bytes" : 4020,
+                  "extents" : 832,
+                  "generation" : 833,
+                  "live_leases" : 64,
+                  "metadata_pages" : 2,
+                  "physical_pages" : 1603,
+                  "unassigned_pages" : 0
+               },
+               "io" : {
+                  "grown_pages" : 1024,
+                  "grows" : 512,
+                  "read_bytes" : 3591264,
+                  "reads" : 19712,
+                  "write_bytes" : 37773544,
+                  "writes" : 16448
+               },
+               "logical_payload_bytes" : 51707904,
+               "phase" : "grown",
+               "physical_pages" : 1603
+            },
+            {
+               "directory" : {
+                  "admitted_allocations" : 64,
+                  "allocations" : 64,
+                  "data_pages" : 1600,
+                  "directory_bytes" : 4020,
+                  "extents" : 832,
+                  "generation" : 833,
+                  "live_leases" : 64,
+                  "metadata_pages" : 2,
+                  "physical_pages" : 1603,
+                  "unassigned_pages" : 0
+               },
+               "io" : {
+                  "grown_pages" : 0,
+                  "grows" : 0,
+                  "read_bytes" : 27708032,
+                  "reads" : 26752,
+                  "write_bytes" : 1620896,
+                  "writes" : 13568
+               },
+               "logical_payload_bytes" : 25853952,
+               "phase" : "deleted-0",
+               "physical_pages" : 1603
+            },
+            {
+               "directory" : {
+                  "admitted_allocations" : 64,
+                  "allocations" : 64,
+                  "data_pages" : 1600,
+                  "directory_bytes" : 4020,
+                  "extents" : 832,
+                  "generation" : 833,
+                  "live_leases" : 64,
+                  "metadata_pages" : 2,
+                  "physical_pages" : 1603,
+                  "unassigned_pages" : 0
+               },
+               "io" : {
+                  "grown_pages" : 0,
+                  "grows" : 0,
+                  "read_bytes" : 1574968,
+                  "reads" : 19712,
+                  "write_bytes" : 26950496,
+                  "writes" : 10624
+               },
+               "logical_payload_bytes" : 51707904,
+               "phase" : "reinserted-0",
+               "physical_pages" : 1603
+            },
+            {
+               "directory" : {
+                  "admitted_allocations" : 64,
+                  "allocations" : 64,
+                  "data_pages" : 1600,
+                  "directory_bytes" : 4020,
+                  "extents" : 832,
+                  "generation" : 833,
+                  "live_leases" : 64,
+                  "metadata_pages" : 2,
+                  "physical_pages" : 1603,
+                  "unassigned_pages" : 0
+               },
+               "io" : {
+                  "grown_pages" : 0,
+                  "grows" : 0,
+                  "read_bytes" : 27775296,
+                  "reads" : 27264,
+                  "write_bytes" : 1675344,
+                  "writes" : 13568
+               },
+               "logical_payload_bytes" : 25853952,
+               "phase" : "deleted-1",
+               "physical_pages" : 1603
+            },
+            {
+               "directory" : {
+                  "admitted_allocations" : 64,
+                  "allocations" : 64,
+                  "data_pages" : 1600,
+                  "directory_bytes" : 4020,
+                  "extents" : 832,
+                  "generation" : 833,
+                  "live_leases" : 64,
+                  "metadata_pages" : 2,
+                  "physical_pages" : 1603,
+                  "unassigned_pages" : 0
+               },
+               "io" : {
+                  "grown_pages" : 0,
+                  "grows" : 0,
+                  "read_bytes" : 1589904,
+                  "reads" : 19200,
+                  "write_bytes" : 26936800,
+                  "writes" : 10368
+               },
+               "logical_payload_bytes" : 51707904,
+               "phase" : "reinserted-1",
+               "physical_pages" : 1603
+            },
+            {
+               "directory" : {
+                  "admitted_allocations" : 64,
+                  "allocations" : 64,
+                  "data_pages" : 1600,
+                  "directory_bytes" : 4020,
+                  "extents" : 832,
+                  "generation" : 833,
+                  "live_leases" : 64,
+                  "metadata_pages" : 2,
+                  "physical_pages" : 1603,
+                  "unassigned_pages" : 0
+               },
+               "io" : {
+                  "grown_pages" : 0,
+                  "grows" : 0,
+                  "read_bytes" : 27599616,
+                  "reads" : 21504,
+                  "write_bytes" : 1297960,
+                  "writes" : 11392
+               },
+               "logical_payload_bytes" : 25853952,
+               "phase" : "deleted-2",
+               "physical_pages" : 1603
+            },
+            {
+               "directory" : {
+                  "admitted_allocations" : 64,
+                  "allocations" : 64,
+                  "data_pages" : 1600,
+                  "directory_bytes" : 4020,
+                  "extents" : 832,
+                  "generation" : 833,
+                  "live_leases" : 64,
+                  "metadata_pages" : 2,
+                  "physical_pages" : 1603,
+                  "unassigned_pages" : 0
+               },
+               "io" : {
+                  "grown_pages" : 0,
+                  "grows" : 0,
+                  "read_bytes" : 1546992,
+                  "reads" : 19584,
+                  "write_bytes" : 26996432,
+                  "writes" : 10752
+               },
+               "logical_payload_bytes" : 51707904,
+               "phase" : "reinserted-2",
+               "physical_pages" : 1603
+            },
+            {
+               "directory" : {
+                  "admitted_allocations" : 64,
+                  "allocations" : 64,
+                  "data_pages" : 1600,
+                  "directory_bytes" : 4020,
+                  "extents" : 832,
+                  "generation" : 833,
+                  "live_leases" : 64,
+                  "metadata_pages" : 2,
+                  "physical_pages" : 1603,
+                  "unassigned_pages" : 0
+               },
+               "io" : {
+                  "grown_pages" : 0,
+                  "grows" : 0,
+                  "read_bytes" : 27527232,
+                  "reads" : 21120,
+                  "write_bytes" : 1235600,
+                  "writes" : 11136
+               },
+               "logical_payload_bytes" : 25853952,
+               "phase" : "deleted-3",
+               "physical_pages" : 1603
+            },
+            {
+               "directory" : {
+                  "admitted_allocations" : 64,
+                  "allocations" : 64,
+                  "data_pages" : 1600,
+                  "directory_bytes" : 4020,
+                  "extents" : 832,
+                  "generation" : 833,
+                  "live_leases" : 64,
+                  "metadata_pages" : 2,
+                  "physical_pages" : 1603,
+                  "unassigned_pages" : 0
+               },
+               "io" : {
+                  "grown_pages" : 0,
+                  "grows" : 0,
+                  "read_bytes" : 1503888,
+                  "reads" : 19328,
+                  "write_bytes" : 26946864,
+                  "writes" : 10496
+               },
+               "logical_payload_bytes" : 51707904,
+               "phase" : "reinserted-3",
+               "physical_pages" : 1603
+            },
+            {
+               "directory" : {
+                  "admitted_allocations" : 64,
+                  "allocations" : 64,
+                  "data_pages" : 1600,
+                  "directory_bytes" : 4020,
+                  "extents" : 832,
+                  "generation" : 833,
+                  "live_leases" : 64,
+                  "metadata_pages" : 2,
+                  "physical_pages" : 1603,
+                  "unassigned_pages" : 0
+               },
+               "io" : {
+                  "grown_pages" : 0,
+                  "grows" : 0,
+                  "read_bytes" : 55091712,
+                  "reads" : 36352,
+                  "write_bytes" : 0,
+                  "writes" : 0
+               },
+               "logical_payload_bytes" : 51707904,
+               "phase" : "verified",
+               "physical_pages" : 1603
+            },
+            {
+               "directory" : {
+                  "admitted_allocations" : 64,
+                  "allocations" : 64,
+                  "data_pages" : 3500,
+                  "directory_bytes" : 7932,
+                  "extents" : 2136,
+                  "generation" : 2137,
+                  "live_leases" : 64,
+                  "metadata_pages" : 2,
+                  "physical_pages" : 3503,
+                  "unassigned_pages" : 0
+               },
+               "io" : {
+                  "grown_pages" : 1900,
+                  "grows" : 1304,
+                  "read_bytes" : 63235425,
+                  "reads" : 39100,
+                  "write_bytes" : 104568832,
+                  "writes" : 20281
+               },
+               "logical_payload_bytes" : 95317555,
+               "phase" : "size-churn-0",
+               "physical_pages" : 3503
+            },
+            {
+               "directory" : {
+                  "admitted_allocations" : 64,
+                  "allocations" : 64,
+                  "data_pages" : 3718,
+                  "directory_bytes" : 8382,
+                  "extents" : 2286,
+                  "generation" : 2287,
+                  "live_leases" : 64,
+                  "metadata_pages" : 2,
+                  "physical_pages" : 3721,
+                  "unassigned_pages" : 0
+               },
+               "io" : {
+                  "grown_pages" : 218,
+                  "grows" : 150,
+                  "read_bytes" : 100479898,
+                  "reads" : 40948,
+                  "write_bytes" : 98345930,
+                  "writes" : 19284
+               },
+               "logical_payload_bytes" : 95321601,
+               "phase" : "size-churn-1",
+               "physical_pages" : 3721
+            },
+            {
+               "directory" : {
+                  "admitted_allocations" : 64,
+                  "allocations" : 64,
+                  "data_pages" : 3758,
+                  "directory_bytes" : 8442,
+                  "extents" : 2306,
+                  "generation" : 2307,
+                  "live_leases" : 64,
+                  "metadata_pages" : 2,
+                  "physical_pages" : 3761,
+                  "unassigned_pages" : 0
+               },
+               "io" : {
+                  "grown_pages" : 40,
+                  "grows" : 20,
+                  "read_bytes" : 99424226,
+                  "reads" : 41121,
+                  "write_bytes" : 97368446,
+                  "writes" : 18952
+               },
+               "logical_payload_bytes" : 95387085,
+               "phase" : "size-churn-2",
+               "physical_pages" : 3761
+            },
+            {
+               "directory" : {
+                  "admitted_allocations" : 64,
+                  "allocations" : 64,
+                  "data_pages" : 3772,
+                  "directory_bytes" : 8463,
+                  "extents" : 2313,
+                  "generation" : 2314,
+                  "live_leases" : 64,
+                  "metadata_pages" : 2,
+                  "physical_pages" : 3775,
+                  "unassigned_pages" : 0
+               },
+               "io" : {
+                  "grown_pages" : 14,
+                  "grows" : 7,
+                  "read_bytes" : 99399336,
+                  "reads" : 42456,
+                  "write_bytes" : 97580405,
+                  "writes" : 20550
+               },
+               "logical_payload_bytes" : 95452569,
+               "phase" : "size-churn-3",
+               "physical_pages" : 3775
+            },
+            {
+               "directory" : {
+                  "admitted_allocations" : 64,
+                  "allocations" : 64,
+                  "data_pages" : 3798,
+                  "directory_bytes" : 8502,
+                  "extents" : 2326,
+                  "generation" : 2327,
+                  "live_leases" : 64,
+                  "metadata_pages" : 2,
+                  "physical_pages" : 3801,
+                  "unassigned_pages" : 0
+               },
+               "io" : {
+                  "grown_pages" : 26,
+                  "grows" : 13,
+                  "read_bytes" : 99518696,
+                  "reads" : 42458,
+                  "write_bytes" : 97636756,
+                  "writes" : 20589
+               },
+               "logical_payload_bytes" : 95452364,
+               "phase" : "size-churn-4",
+               "physical_pages" : 3801
+            },
+            {
+               "directory" : {
+                  "admitted_allocations" : 64,
+                  "allocations" : 64,
+                  "data_pages" : 3810,
+                  "directory_bytes" : 8520,
+                  "extents" : 2332,
+                  "generation" : 2333,
+                  "live_leases" : 64,
+                  "metadata_pages" : 2,
+                  "physical_pages" : 3813,
+                  "unassigned_pages" : 0
+               },
+               "io" : {
+                  "grown_pages" : 12,
+                  "grows" : 6,
+                  "read_bytes" : 99456743,
+                  "reads" : 42462,
+                  "write_bytes" : 97577577,
+                  "writes" : 20558
+               },
+               "logical_payload_bytes" : 95452159,
+               "phase" : "size-churn-5",
+               "physical_pages" : 3813
+            }
+         ]
+      },
+      {
+         "allocations" : 64,
+         "backend" : "ic-stable-structures-0.7.2",
+         "bucket_pages" : 1,
+         "phases" : [
+            {
+               "directory" : null,
+               "io" : {
+                  "grown_pages" : 1,
+                  "grows" : 1,
+                  "read_bytes" : 0,
+                  "reads" : 0,
+                  "write_bytes" : 34848,
+                  "writes" : 2
+               },
+               "logical_payload_bytes" : 0,
+               "phase" : "bootstrap",
+               "physical_pages" : 1
+            },
+            {
+               "directory" : null,
+               "io" : {
+                  "grown_pages" : 64,
+                  "grows" : 64,
+                  "read_bytes" : 0,
+                  "reads" : 0,
+                  "write_bytes" : 139072,
+                  "writes" : 320
+               },
+               "logical_payload_bytes" : 0,
+               "phase" : "initialized",
+               "physical_pages" : 65
+            },
+            {
+               "directory" : null,
+               "io" : {
+                  "grown_pages" : 272,
+                  "grows" : 272,
+                  "read_bytes" : 141966080,
+                  "reads" : 430856,
+                  "write_bytes" : 160703888,
+                  "writes" : 417176
+               },
+               "logical_payload_bytes" : 17235968,
+               "phase" : "populated",
+               "physical_pages" : 337
+            },
+            {
+               "directory" : null,
+               "io" : {
+                  "grown_pages" : 544,
+                  "grows" : 544,
+                  "read_bytes" : 381306256,
+                  "reads" : 1348096,
+                  "write_bytes" : 416622512,
+                  "writes" : 1051168
+               },
+               "logical_payload_bytes" : 51707904,
+               "phase" : "grown",
+               "physical_pages" : 881
+            },
+            {
+               "directory" : null,
+               "io" : {
+                  "grown_pages" : 16,
+                  "grows" : 16,
+                  "read_bytes" : 442718624,
+                  "reads" : 1314912,
+                  "write_bytes" : 535269784,
+                  "writes" : 1094032
+               },
+               "logical_payload_bytes" : 25853952,
+               "phase" : "deleted-0",
+               "physical_pages" : 897
+            },
+            {
+               "directory" : null,
+               "io" : {
+                  "grown_pages" : 0,
+                  "grows" : 0,
+                  "read_bytes" : 207209864,
+                  "reads" : 765344,
+                  "write_bytes" : 230359960,
+                  "writes" : 472360
+               },
+               "logical_payload_bytes" : 51707904,
+               "phase" : "reinserted-0",
+               "physical_pages" : 897
+            },
+            {
+               "directory" : null,
+               "io" : {
+                  "grown_pages" : 0,
+                  "grows" : 0,
+                  "read_bytes" : 247093176,
+                  "reads" : 863560,
+                  "write_bytes" : 233367952,
+                  "writes" : 413688
+               },
+               "logical_payload_bytes" : 25853952,
+               "phase" : "deleted-1",
+               "physical_pages" : 897
+            },
+            {
+               "directory" : null,
+               "io" : {
+                  "grown_pages" : 0,
+                  "grows" : 0,
+                  "read_bytes" : 207164696,
+                  "reads" : 761200,
+                  "write_bytes" : 230359960,
+                  "writes" : 472384
+               },
+               "logical_payload_bytes" : 51707904,
+               "phase" : "reinserted-1",
+               "physical_pages" : 897
+            },
+            {
+               "directory" : null,
+               "io" : {
+                  "grown_pages" : 0,
+                  "grows" : 0,
+                  "read_bytes" : 247067208,
+                  "reads" : 861248,
+                  "write_bytes" : 233367952,
+                  "writes" : 413616
+               },
+               "logical_payload_bytes" : 25853952,
+               "phase" : "deleted-2",
+               "physical_pages" : 897
+            },
+            {
+               "directory" : null,
+               "io" : {
+                  "grown_pages" : 0,
+                  "grows" : 0,
+                  "read_bytes" : 207119528,
+                  "reads" : 756952,
+                  "write_bytes" : 230359960,
+                  "writes" : 472328
+               },
+               "logical_payload_bytes" : 51707904,
+               "phase" : "reinserted-2",
+               "physical_pages" : 897
+            },
+            {
+               "directory" : null,
+               "io" : {
+                  "grown_pages" : 0,
+                  "grows" : 0,
+                  "read_bytes" : 247022040,
+                  "reads" : 857056,
+                  "write_bytes" : 233367952,
+                  "writes" : 413600
+               },
+               "logical_payload_bytes" : 25853952,
+               "phase" : "deleted-3",
+               "physical_pages" : 897
+            },
+            {
+               "directory" : null,
+               "io" : {
+                  "grown_pages" : 0,
+                  "grows" : 0,
+                  "read_bytes" : 207074360,
+                  "reads" : 752776,
+                  "write_bytes" : 230359960,
+                  "writes" : 472328
+               },
+               "logical_payload_bytes" : 51707904,
+               "phase" : "reinserted-3",
+               "physical_pages" : 897
+            },
+            {
+               "directory" : null,
+               "io" : {
+                  "grown_pages" : 0,
+                  "grows" : 0,
+                  "read_bytes" : 63314248,
+                  "reads" : 1183152,
+                  "write_bytes" : 0,
+                  "writes" : 0
+               },
+               "logical_payload_bytes" : 51707904,
+               "phase" : "verified",
+               "physical_pages" : 897
+            },
+            {
+               "directory" : null,
+               "io" : {
+                  "grown_pages" : 1304,
+                  "grows" : 1304,
+                  "read_bytes" : 734350528,
+                  "reads" : 2379873,
+                  "write_bytes" : 774635147,
+                  "writes" : 1536141
+               },
+               "logical_payload_bytes" : 95317555,
+               "phase" : "size-churn-0",
+               "physical_pages" : 2201
+            },
+            {
+               "directory" : null,
+               "io" : {
+                  "grown_pages" : 44,
+                  "grows" : 44,
+                  "read_bytes" : 978312808,
+                  "reads" : 2985413,
+                  "write_bytes" : 964542969,
+                  "writes" : 1477811
+               },
+               "logical_payload_bytes" : 95321601,
+               "phase" : "size-churn-1",
+               "physical_pages" : 2245
+            },
+            {
+               "directory" : null,
+               "io" : {
+                  "grown_pages" : 13,
+                  "grows" : 13,
+                  "read_bytes" : 979362906,
+                  "reads" : 2984813,
+                  "write_bytes" : 965582629,
+                  "writes" : 1477284
+               },
+               "logical_payload_bytes" : 95387085,
+               "phase" : "size-churn-2",
+               "physical_pages" : 2258
+            },
+            {
+               "directory" : null,
+               "io" : {
+                  "grown_pages" : 14,
+                  "grows" : 14,
+                  "read_bytes" : 978962196,
+                  "reads" : 2982676,
+                  "write_bytes" : 965203418,
+                  "writes" : 1476920
+               },
+               "logical_payload_bytes" : 95452569,
+               "phase" : "size-churn-3",
+               "physical_pages" : 2272
+            },
+            {
+               "directory" : null,
+               "io" : {
+                  "grown_pages" : 13,
+                  "grows" : 13,
+                  "read_bytes" : 979333291,
+                  "reads" : 2986655,
+                  "write_bytes" : 965468480,
+                  "writes" : 1477147
+               },
+               "logical_payload_bytes" : 95452364,
+               "phase" : "size-churn-4",
+               "physical_pages" : 2285
+            },
+            {
+               "directory" : null,
+               "io" : {
+                  "grown_pages" : 6,
+                  "grows" : 6,
+                  "read_bytes" : 980583518,
+                  "reads" : 2989201,
+                  "write_bytes" : 966683129,
+                  "writes" : 1477972
+               },
+               "logical_payload_bytes" : 95452159,
+               "phase" : "size-churn-5",
+               "physical_pages" : 2291
+            }
+         ]
+      },
+      {
+         "allocations" : 64,
+         "backend" : "ic-stable-structures-0.7.2",
+         "bucket_pages" : 8,
+         "phases" : [
+            {
+               "directory" : null,
+               "io" : {
+                  "grown_pages" : 1,
+                  "grows" : 1,
+                  "read_bytes" : 0,
+                  "reads" : 0,
+                  "write_bytes" : 34848,
+                  "writes" : 2
+               },
+               "logical_payload_bytes" : 0,
+               "phase" : "bootstrap",
+               "physical_pages" : 1
+            },
+            {
+               "directory" : null,
+               "io" : {
+                  "grown_pages" : 512,
+                  "grows" : 64,
+                  "read_bytes" : 0,
+                  "reads" : 0,
+                  "write_bytes" : 139072,
+                  "writes" : 320
+               },
+               "logical_payload_bytes" : 0,
+               "phase" : "initialized",
+               "physical_pages" : 513
+            },
+            {
+               "directory" : null,
+               "io" : {
+                  "grown_pages" : 256,
+                  "grows" : 32,
+                  "read_bytes" : 141966080,
+                  "reads" : 429120,
+                  "write_bytes" : 160703648,
+                  "writes" : 414976
+               },
+               "logical_payload_bytes" : 17235968,
+               "phase" : "populated",
+               "physical_pages" : 769
+            },
+            {
+               "directory" : null,
+               "io" : {
+                  "grown_pages" : 512,
+                  "grows" : 64,
+                  "read_bytes" : 381306256,
+                  "reads" : 1343192,
+                  "write_bytes" : 416622032,
+                  "writes" : 1045320
+               },
+               "logical_payload_bytes" : 51707904,
+               "phase" : "grown",
+               "physical_pages" : 1281
+            },
+            {
+               "directory" : null,
+               "io" : {
+                  "grown_pages" : 64,
+                  "grows" : 8,
+                  "read_bytes" : 442718624,
+                  "reads" : 1309536,
+                  "write_bytes" : 535269776,
+                  "writes" : 1087376
+               },
+               "logical_payload_bytes" : 25853952,
+               "phase" : "deleted-0",
+               "physical_pages" : 1345
+            },
+            {
+               "directory" : null,
+               "io" : {
+                  "grown_pages" : 0,
+                  "grows" : 0,
+                  "read_bytes" : 207209864,
+                  "reads" : 762640,
+                  "write_bytes" : 230359960,
+                  "writes" : 469320
+               },
+               "logical_payload_bytes" : 51707904,
+               "phase" : "reinserted-0",
+               "physical_pages" : 1345
+            },
+            {
+               "directory" : null,
+               "io" : {
+                  "grown_pages" : 0,
+                  "grows" : 0,
+                  "read_bytes" : 247093176,
+                  "reads" : 860312,
+                  "write_bytes" : 233367952,
+                  "writes" : 410544
+               },
+               "logical_payload_bytes" : 25853952,
+               "phase" : "deleted-1",
+               "physical_pages" : 1345
+            },
+            {
+               "directory" : null,
+               "io" : {
+                  "grown_pages" : 0,
+                  "grows" : 0,
+                  "read_bytes" : 207164696,
+                  "reads" : 758472,
+                  "write_bytes" : 230359960,
+                  "writes" : 469336
+               },
+               "logical_payload_bytes" : 51707904,
+               "phase" : "reinserted-1",
+               "physical_pages" : 1345
+            },
+            {
+               "directory" : null,
+               "io" : {
+                  "grown_pages" : 0,
+                  "grows" : 0,
+                  "read_bytes" : 247067208,
+                  "reads" : 858168,
+                  "write_bytes" : 233367952,
+                  "writes" : 410696
+               },
+               "logical_payload_bytes" : 25853952,
+               "phase" : "deleted-2",
+               "physical_pages" : 1345
+            },
+            {
+               "directory" : null,
+               "io" : {
+                  "grown_pages" : 0,
+                  "grows" : 0,
+                  "read_bytes" : 207119528,
+                  "reads" : 754328,
+                  "write_bytes" : 230359960,
+                  "writes" : 469360
+               },
+               "logical_payload_bytes" : 51707904,
+               "phase" : "reinserted-2",
+               "physical_pages" : 1345
+            },
+            {
+               "directory" : null,
+               "io" : {
+                  "grown_pages" : 0,
+                  "grows" : 0,
+                  "read_bytes" : 247022040,
+                  "reads" : 853920,
+                  "write_bytes" : 233367952,
+                  "writes" : 410568
+               },
+               "logical_payload_bytes" : 25853952,
+               "phase" : "deleted-3",
+               "physical_pages" : 1345
+            },
+            {
+               "directory" : null,
+               "io" : {
+                  "grown_pages" : 0,
+                  "grows" : 0,
+                  "read_bytes" : 207074360,
+                  "reads" : 750088,
+                  "write_bytes" : 230359960,
+                  "writes" : 469304
+               },
+               "logical_payload_bytes" : 51707904,
+               "phase" : "reinserted-3",
+               "physical_pages" : 1345
+            },
+            {
+               "directory" : null,
+               "io" : {
+                  "grown_pages" : 0,
+                  "grows" : 0,
+                  "read_bytes" : 63314248,
+                  "reads" : 1182480,
+                  "write_bytes" : 0,
+                  "writes" : 0
+               },
+               "logical_payload_bytes" : 51707904,
+               "phase" : "verified",
+               "physical_pages" : 1345
+            },
+            {
+               "directory" : null,
+               "io" : {
+                  "grown_pages" : 1136,
+                  "grows" : 142,
+                  "read_bytes" : 734350528,
+                  "reads" : 2370258,
+                  "write_bytes" : 774633985,
+                  "writes" : 1524714
+               },
+               "logical_payload_bytes" : 95317555,
+               "phase" : "size-churn-0",
+               "physical_pages" : 2481
+            },
+            {
+               "directory" : null,
+               "io" : {
+                  "grown_pages" : 48,
+                  "grows" : 6,
+                  "read_bytes" : 978312808,
+                  "reads" : 2972780,
+                  "write_bytes" : 964542931,
+                  "writes" : 1465140
+               },
+               "logical_payload_bytes" : 95321601,
+               "phase" : "size-churn-1",
+               "physical_pages" : 2529
+            },
+            {
+               "directory" : null,
+               "io" : {
+                  "grown_pages" : 56,
+                  "grows" : 7,
+                  "read_bytes" : 979362906,
+                  "reads" : 2972265,
+                  "write_bytes" : 965582623,
+                  "writes" : 1464753
+               },
+               "logical_payload_bytes" : 95387085,
+               "phase" : "size-churn-2",
+               "physical_pages" : 2585
+            },
+            {
+               "directory" : null,
+               "io" : {
+                  "grown_pages" : 56,
+                  "grows" : 7,
+                  "read_bytes" : 978962196,
+                  "reads" : 2970224,
+                  "write_bytes" : 965203411,
+                  "writes" : 1464454
+               },
+               "logical_payload_bytes" : 95452569,
+               "phase" : "size-churn-3",
+               "physical_pages" : 2641
+            },
+            {
+               "directory" : null,
+               "io" : {
+                  "grown_pages" : 48,
+                  "grows" : 6,
+                  "read_bytes" : 979333291,
+                  "reads" : 2974279,
+                  "write_bytes" : 965468473,
+                  "writes" : 1464791
+               },
+               "logical_payload_bytes" : 95452364,
+               "phase" : "size-churn-4",
+               "physical_pages" : 2689
+            },
+            {
+               "directory" : null,
+               "io" : {
+                  "grown_pages" : 0,
+                  "grows" : 0,
+                  "read_bytes" : 980583518,
+                  "reads" : 2976964,
+                  "write_bytes" : 966683123,
+                  "writes" : 1465716
+               },
+               "logical_payload_bytes" : 95452159,
+               "phase" : "size-churn-5",
+               "physical_pages" : 2689
+            }
+         ]
+      },
+      {
+         "allocations" : 64,
+         "backend" : "ic-stable-structures-0.7.2",
+         "bucket_pages" : 128,
+         "phases" : [
+            {
+               "directory" : null,
+               "io" : {
+                  "grown_pages" : 1,
+                  "grows" : 1,
+                  "read_bytes" : 0,
+                  "reads" : 0,
+                  "write_bytes" : 34848,
+                  "writes" : 2
+               },
+               "logical_payload_bytes" : 0,
+               "phase" : "bootstrap",
+               "physical_pages" : 1
+            },
+            {
+               "directory" : null,
+               "io" : {
+                  "grown_pages" : 8192,
+                  "grows" : 64,
+                  "read_bytes" : 0,
+                  "reads" : 0,
+                  "write_bytes" : 139072,
+                  "writes" : 320
+               },
+               "logical_payload_bytes" : 0,
+               "phase" : "initialized",
+               "physical_pages" : 8193
+            },
+            {
+               "directory" : null,
+               "io" : {
+                  "grown_pages" : 0,
+                  "grows" : 0,
+                  "read_bytes" : 141966080,
+                  "reads" : 428856,
+                  "write_bytes" : 160703616,
+                  "writes" : 414648
+               },
+               "logical_payload_bytes" : 17235968,
+               "phase" : "populated",
+               "physical_pages" : 8193
+            },
+            {
+               "directory" : null,
+               "io" : {
+                  "grown_pages" : 0,
+                  "grows" : 0,
+                  "read_bytes" : 381306256,
+                  "reads" : 1342544,
+                  "write_bytes" : 416621968,
+                  "writes" : 1044544
+               },
+               "logical_payload_bytes" : 51707904,
+               "phase" : "grown",
+               "physical_pages" : 8193
+            },
+            {
+               "directory" : null,
+               "io" : {
+                  "grown_pages" : 0,
+                  "grows" : 0,
+                  "read_bytes" : 442718624,
+                  "reads" : 1308624,
+                  "write_bytes" : 535269768,
+                  "writes" : 1086296
+               },
+               "logical_payload_bytes" : 25853952,
+               "phase" : "deleted-0",
+               "physical_pages" : 8193
+            },
+            {
+               "directory" : null,
+               "io" : {
+                  "grown_pages" : 0,
+                  "grows" : 0,
+                  "read_bytes" : 207209864,
+                  "reads" : 762288,
+                  "write_bytes" : 230359960,
+                  "writes" : 468928
+               },
+               "logical_payload_bytes" : 51707904,
+               "phase" : "reinserted-0",
+               "physical_pages" : 8193
+            },
+            {
+               "directory" : null,
+               "io" : {
+                  "grown_pages" : 0,
+                  "grows" : 0,
+                  "read_bytes" : 247093176,
+                  "reads" : 859912,
+                  "write_bytes" : 233367952,
+                  "writes" : 410176
+               },
+               "logical_payload_bytes" : 25853952,
+               "phase" : "deleted-1",
+               "physical_pages" : 8193
+            },
+            {
+               "directory" : null,
+               "io" : {
+                  "grown_pages" : 0,
+                  "grows" : 0,
+                  "read_bytes" : 207164696,
+                  "reads" : 758112,
+                  "write_bytes" : 230359960,
+                  "writes" : 468928
+               },
+               "logical_payload_bytes" : 51707904,
+               "phase" : "reinserted-1",
+               "physical_pages" : 8193
+            },
+            {
+               "directory" : null,
+               "io" : {
+                  "grown_pages" : 0,
+                  "grows" : 0,
+                  "read_bytes" : 247067208,
+                  "reads" : 857656,
+                  "write_bytes" : 233367952,
+                  "writes" : 410176
+               },
+               "logical_payload_bytes" : 25853952,
+               "phase" : "deleted-2",
+               "physical_pages" : 8193
+            },
+            {
+               "directory" : null,
+               "io" : {
+                  "grown_pages" : 0,
+                  "grows" : 0,
+                  "read_bytes" : 207119528,
+                  "reads" : 753936,
+                  "write_bytes" : 230359960,
+                  "writes" : 468928
+               },
+               "logical_payload_bytes" : 51707904,
+               "phase" : "reinserted-2",
+               "physical_pages" : 8193
+            },
+            {
+               "directory" : null,
+               "io" : {
+                  "grown_pages" : 0,
+                  "grows" : 0,
+                  "read_bytes" : 247022040,
+                  "reads" : 853480,
+                  "write_bytes" : 233367952,
+                  "writes" : 410176
+               },
+               "logical_payload_bytes" : 25853952,
+               "phase" : "deleted-3",
+               "physical_pages" : 8193
+            },
+            {
+               "directory" : null,
+               "io" : {
+                  "grown_pages" : 0,
+                  "grows" : 0,
+                  "read_bytes" : 207074360,
+                  "reads" : 749760,
+                  "write_bytes" : 230359960,
+                  "writes" : 468928
+               },
+               "logical_payload_bytes" : 51707904,
+               "phase" : "reinserted-3",
+               "physical_pages" : 8193
+            },
+            {
+               "directory" : null,
+               "io" : {
+                  "grown_pages" : 0,
+                  "grows" : 0,
+                  "read_bytes" : 63314248,
+                  "reads" : 1182384,
+                  "write_bytes" : 0,
+                  "writes" : 0
+               },
+               "logical_payload_bytes" : 51707904,
+               "phase" : "verified",
+               "physical_pages" : 8193
+            },
+            {
+               "directory" : null,
+               "io" : {
+                  "grown_pages" : 0,
+                  "grows" : 0,
+                  "read_bytes" : 734350528,
+                  "reads" : 2369132,
+                  "write_bytes" : 774633843,
+                  "writes" : 1523378
+               },
+               "logical_payload_bytes" : 95317555,
+               "phase" : "size-churn-0",
+               "physical_pages" : 8193
+            },
+            {
+               "directory" : null,
+               "io" : {
+                  "grown_pages" : 0,
+                  "grows" : 0,
+                  "read_bytes" : 978312808,
+                  "reads" : 2971119,
+                  "write_bytes" : 964542925,
+                  "writes" : 1463473
+               },
+               "logical_payload_bytes" : 95321601,
+               "phase" : "size-churn-1",
+               "physical_pages" : 8193
+            },
+            {
+               "directory" : null,
+               "io" : {
+                  "grown_pages" : 0,
+                  "grows" : 0,
+                  "read_bytes" : 979362906,
+                  "reads" : 2970446,
+                  "write_bytes" : 965582616,
+                  "writes" : 1462914
+               },
+               "logical_payload_bytes" : 95387085,
+               "phase" : "size-churn-2",
+               "physical_pages" : 8193
+            },
+            {
+               "directory" : null,
+               "io" : {
+                  "grown_pages" : 0,
+                  "grows" : 0,
+                  "read_bytes" : 978962196,
+                  "reads" : 2968350,
+                  "write_bytes" : 965203404,
+                  "writes" : 1462572
+               },
+               "logical_payload_bytes" : 95452569,
+               "phase" : "size-churn-3",
+               "physical_pages" : 8193
+            },
+            {
+               "directory" : null,
+               "io" : {
+                  "grown_pages" : 0,
+                  "grows" : 0,
+                  "read_bytes" : 979333291,
+                  "reads" : 2972397,
+                  "write_bytes" : 965468467,
+                  "writes" : 1462891
+               },
+               "logical_payload_bytes" : 95452364,
+               "phase" : "size-churn-4",
+               "physical_pages" : 8193
+            },
+            {
+               "directory" : null,
+               "io" : {
+                  "grown_pages" : 0,
+                  "grows" : 0,
+                  "read_bytes" : 980583518,
+                  "reads" : 2974941,
+                  "write_bytes" : 966683123,
+                  "writes" : 1463699
+               },
+               "logical_payload_bytes" : 95452159,
+               "phase" : "size-churn-5",
+               "physical_pages" : 8193
+            }
+         ]
+      }
+   ],
+   "schema" : 1,
+   "scope" : "Native matched capacity/backing IO; not IC instructions. Existing same-size trace followed by six rotating size-changing rounds. No plateau assertion."
+}

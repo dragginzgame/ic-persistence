@@ -38,9 +38,4 @@ fn roundtrip<M: MemoryBacking + Clone>(backing: M) {
 }
 
 #[cfg(test)]
-mod tests {
-    #[test]
-    fn platform_runtime_and_storage_reopen_in_one_consumer() {
-        super::composed_backing_roundtrip();
-    }
-}
+mod tests;

@@ -9,25 +9,81 @@ local baseline. Future policy changes require reviewed snapshot adoption.
 
 ## Current source selection
 
-IC Storage selects committed Shared Tooling VERSION 0.28.2 at
-`5cf67f81c50c56ac17389ae71a3a87d46e86e8a2`. The snapshot was previewed and exported
-from a clean checkout of that commit; dirty sibling changes are excluded. The
-manifest records the complete selected payload and executable-mode inventory.
-Source verification and native qualification remain separate.
+IC Storage selects committed Shared Tooling VERSION 0.29.4 at
+`628ccc75d813bfd9bae777bfbaef55838d25b1b2`, verified against GitHub's `main`.
+The clean sibling checkout was exported through the canonical exporter, with
+153 files recorded by the snapshot. Clean-source export keeps transient staging
+inside the consumer; explicit-revision preview requires external scratch and was
+not used. No sibling edits or additional checkout were needed.
 
-This adoption requires lasting implementation in the requested checkout, an
-authorized durable PR checkout, or another specifically approved durable location.
-Issues record deferred work but do not preserve existing diffs. Never leave the
-only implementation in `/tmp`, `target/` or a cache. Direct integration-branch
-pushes and alternate delivery checkouts need explicit authorization; Storage's
-configured direct-release default is not consent. Existing temporary work must
-be preserved through an authorized route before cleanup.
+The new retained-state guard admits the current Git-side recovery roots without
+cleanup. It runs before release work and around adapter hooks, preserves original
+hook failures, and refuses oversized/stale bulk state or nested build trees.
+Storage's native archives and receipts already use Cargo's target directory.
+The remaining dependency-adoption evidence default now uses
+`target/dependency-adoption/`; the actual caller fixture checks that location.
+Evidence for this refresh is in `target/shared-tooling-0294-adoption/`.
+Shared retention and full command-stub runner tests pass, as does Storage's
+actual dependency-adoption caller fixture. The exported runner and guard match
+the tested source byte-for-byte; snapshot/source verification, dependency pins,
+ShellCheck 0.11.0, Perl syntax and documentation links pass. Both lockfiles are
+unchanged. This qualifies tooling adoption, not a live release or runtime change.
+Git-side release state contains 191 files and 32,079 logical bytes; the allocated
+filesystem footprint is 776 KiB. Publication-state and retired-checkouts roots
+are absent. No evidence or caches were deleted by this adoption.
 
-The 0.28.2 adoption is explicitly requested maintenance. Its selected changes add
-focused-development and batched-adoption guidance; the upstream nesting-depth
-regression fixture fix is outside Storage's selected export closure. No supplier
-or consumer release is implied by this refresh. The consumer-specific proof
-collection/recovery work completes the local implementation for
+Implementation, delivery and checkout authority follow the
+[Shared contribution contract](../rules/contributions.md). This refresh stays in
+the normal Storage checkout, creates no additional checkout and executes no release.
+Existing temporary work retains its separately approved preservation requirements.
+
+The 0.29.3 adoption moves owned inline Rust test bodies into `tests.rs` or
+`tests/`, including the independent qualification workspace and native helper.
+Ordinary module discovery preserves private access; no path attributes or
+production visibility expansion are introduced. Small cache instrumentation stays
+at its observation sites. Benchmarks retain the pending audit/growth work.
+Shared's narrower Metrics rule still permits this repository's governed metric
+snapshot adapter; benchmark calculations already have no Metrics dependency.
+Grouped changelogs own fixed-issue links; the root stays a navigation index.
+The CI classifier's new VERSION exception remains disabled for this Cargo
+workspace. Evidence is in `target/shared-tooling-0293-adoption/`; uncommitted
+Shared 0.29.4 work was excluded by the explicit committed-revision export.
+
+Qualification passed 124 selected unit/fixture tests across Storage, the native
+helper, Logging's fixture encoder and the independent workspace. Two installed
+runtime tests retain their existing ignored status in unit runs; no new installed
+runtime proof is claimed for a source-layout-only change. Strict Storage/helper
+Clippy, selected formatting, ShellCheck 0.11.0, actual workflow CI selection,
+snapshot/source verification, pins and local documentation links pass. Both
+lockfiles match the incoming copies. Ordinary Rust test bodies now all reside in
+`tests.rs` or `tests/`; the benchmark binary's inline module contains wiring only
+because its library shares `src/` and already owns `tests.rs`.
+
+Consumer fixture scratch now defaults to workspace `target/fixtures`, with
+`target/repo-tool-fixtures` for the native helper and `target/ci-selection` for
+workflow checks. The native group-plan script uses Cargo's observed target
+directory. Inherited TMPDIR no longer redirects those ordinary fixtures;
+explicit evidence-directory arguments and child-tool alias/TMPDIR probes remain.
+Failure/cleanup-status probes, the aliased archive round trip, Rust fixture
+collision/preservation checks, compiler admission and dependency-caller checks
+pass; evidence is under `target/fixture-location-adoption/`. Historical temporary
+directories and failed artifacts are untouched. The active local audit overlay
+now describes the current Storage owners and Rust 1.99.1; older audit reports
+retain their original scope and hashes.
+
+The 0.29.2 adoption includes UTF-8 runner evidence and Bash 3.2 manifest-order
+failure propagation fixes. Storage's existing real-runner receipt test now covers
+non-ASCII selection reasons through the shared verifier and local receipt admission.
+The boundary checker recognizes Testkit as the native PocketIC SDK dependency
+owner; the current qualified Platform client graph and both lock selections are
+unchanged by this tooling refresh. That earlier graph does not qualify a future
+transferred Testkit client. Root release-group ordering already matches the new
+policy. Shared now names Storage's allocation ownership directly, removing the
+obsolete local policy exception. Evidence is retained in
+`target/shared-tooling-0292-adoption/`, including the pre-adoption UTF-8 failure
+under `target/shared-tooling-0291-adoption/`.
+
+The earlier proof collection/recovery work completed
 [Storage #156](https://github.com/dragginzgame/ic-storage/issues/156).
 
 The 152-file snapshot adds Shared's canonical validation evidence, baseline and
@@ -545,10 +601,9 @@ The existing full gates and release-group decisions remain authoritative.
 ### Storage allocation consolidation
 
 The maintainer moved allocation ownership into Storage on 2026-11-02.
-This explicit hard cut supersedes the snapshot wording that names `ic-memory`
-as the handle issuer: `ic_storage::RuntimeMemory` now supplies the same checked
-custody and admission boundary. Shared vendor files remain untouched.
-The persistence group contains only Storage; both stable adapters depend on it.
+Shared's current governance names `ic_storage::RuntimeMemory` as the checked
+allocation boundary; no local ownership override remains. The storage group
+contains only Storage; both storage adapters depend on it.
 
 The subsequent owned-engine hard cut removes the fixed-slot manager and all
 upstream collection implementations. `make check-production-graph` forbids the

@@ -297,12 +297,12 @@ promise. Do not add per-consumer bucket settings or copy ICSS's 8-page result in
 Storage. Keep the three recipes as the shared comparison vocabulary, then change
 one internal default only when matched results establish a benefit.
 
-Still unmeasured: interleaved growth across many allocations, simultaneous-store
-working sets, actual deployed cardinalities, multi-MiB control snapshots and large
-DB populations. Single-collection profiles cannot choose an extent-growth policy
-for a 30–60-allocation host. Use `memory_allocations()` and `diagnostics()` at
-bootstrap, initialization, representative work, churn and upgrade to qualify that
-next step. No runtime default or sibling layout has changed in this pass.
+The completed study below adds interleaved growth and churn across many
+allocations. Simultaneous-store IC working sets, actual deployed cardinalities,
+multi-MiB control snapshots and large DB populations remain unmeasured. Use
+`memory_allocations()` and `diagnostics()` at bootstrap, initialization,
+representative work, churn and upgrade before selecting production geometry.
+No production default or sibling layout has changed in this pass.
 
 ### Initial qualification
 
@@ -319,5 +319,116 @@ uniform single-read case, 4 KiB values used 519 Storage pages versus 273 ICSS
 pages, while median measured reads cost 472,466 versus 1,738,322 instructions.
 The stable-page totals include allocation history across the three rounds.
 Do not generalize this speed/space tradeoff to other operations or sum distinct
-profiles into a universal performance score. Repeat matched bucket controls and
-measure actual multi-allocation growth before changing production geometry.
+profiles into a universal performance score. The following matched bucket and
+multi-allocation controls extend this evidence without changing production geometry.
+
+## Completed bucket and shared-backing study
+
+[Compact results and provenance](measurements/storage-memory-study.json) retain
+all nine IC comparisons, native capacity/IO phases and controlled allocation
+boundaries. The IC runs used identical frozen driver and Wasm binaries, published
+**ICSS 0.7.2**, Rust 1.99.1 and PocketIC 16.1.0. Each profile used one sample per
+bucket with its existing rounds and population; every bucket was explicit.
+All **16,572 calls** and final contents passed the independent ordered model.
+Storage's per-call instructions, lengths and page counts were identical across
+bucket controls. These are selected traces, not statistical workload coverage.
+
+### ICSS bucket controls
+
+The table compares each ICSS trace's total timed instructions with the same trace
+at 128 pages. Positive means more instructions; totals include controls. Different
+profiles perform different work and must not be combined into one score.
+
+| Profile | 1-page versus 128 | 8-page versus 128 |
+| --- | ---: | ---: |
+| control | +0.23% | 0.00% |
+| records | +1.15% | +0.76% |
+| bulk | −0.64% | −0.44% |
+
+Individual rows vary more: the records trace's largest increases are 7.61% at one
+page and 7.05% at eight. Bulk 64 KiB vector reads improve by 51.38% at one page
+and 34.27% at eight; retained per-row extrema identify the exact cases. Neither smaller bucket is
+universally faster. Timing excludes request/reply codecs and setup, as described
+in the [benchmark boundaries](../testing/runtime-qualification/crates/ic-storage-benchmarks/README.md#comparison-boundaries).
+
+The research command now defaults to **eight pages (512 KiB)**. ICSS 0.7.2's
+32,768-bucket limit gives a 16 GiB data ceiling at eight pages, versus 2 GiB at
+one page and 256 GiB at its stock 128 pages. One page cannot support the stated
+2–4 GiB business-state target generally. Eight is a useful comparison setting,
+not an optimum proven for every population. Pass 128 explicitly for stock-default
+claims; retain one page as a low-reservation control. Production Storage has no
+ICSS buckets and keeps its existing exact requested-page growth.
+
+Reproduce the matched configurations from the repository root:
+
+```sh
+for workload in control records bulk; do
+    for pages in 1 8 128; do
+        BENCH_WORKLOAD="$workload" BENCH_UPSTREAM_BUCKET_PAGES="$pages" \
+            make benchmark-storage BENCH_SAMPLES=1 || exit
+    done
+done
+```
+
+The retained run built once and reused frozen binaries; rebuilding now creates a
+new source-bound experiment. The later CLI default change does not alter the
+explicit arguments or saved configuration of any completed run.
+
+### Many allocations sharing one backing
+
+The [native executable](../testing/runtime-qualification/crates/ic-storage-benchmarks/examples/multi_allocations.rs)
+uses 32 and 64 maps, interleaved growth from 32 to 96 records per map, 256-byte
+values and 64 KiB values in every eighth map, then four delete/reinsert rounds.
+It uses actual governed Storage leases or actual ICSS virtual memories on one
+fresh backing per backend. Expected final pairs and displaced values are checked.
+The count brackets Canic-sized compositions but does not execute Canic DTOs,
+admission policy or scheduling. These are native capacity and backing-IO results,
+**not IC instructions or endpoint speedups**.
+
+| Configuration | 32 maps, final physical MiB | 64 maps, final physical MiB |
+| --- | ---: | ---: |
+| Storage | 50.1875 | 100.1875 |
+| ICSS 1 page | 28.0625 | 56.0625 |
+| ICSS 8 pages | 42.0625 | 84.0625 |
+| ICSS 128 pages | 256.0625 | 512.0625 |
+
+The 64-map logical value payload is 49.3125 MiB. Initializing empty maps alone
+reaches 67 physical pages for Storage versus 65/513/8,193 for ICSS 1/8/128.
+Both engines plateau under this bounded same-size churn: Storage remains at
+1,603 physical pages and 832 extents after growth; ICSS expands during the first
+reinsert and then stays at 897/1,345/8,193 pages. This is reuse evidence for this
+history, not a general fragmentation or recovery proof.
+
+For the 64-map growth phase, Storage writes 37,773,544 backing bytes, versus
+416,622,512 / 416,622,032 / 416,621,968 bytes for ICSS 1/8/128. ICSS 0.7.2's
+`btreemap/node/v2.rs::save_v2` serializes every entry's value when saving a node;
+Storage retains external-value references and saves changed payloads separately.
+This explains a concrete IO advantage, alongside Storage's larger capacity.
+Native IO counts do not establish an equivalent IC instruction ratio.
+
+Run the native experiment using the command in the
+[benchmark README](../testing/runtime-qualification/crates/ic-storage-benchmarks/README.md#shared-backing-capacity-and-io).
+Diagnostics are observed between phases and excluded from the next phase's IO.
+The report separates physical pages, logical virtual pages, Storage metadata,
+extents, per-allocation pages and expected value payload.
+
+### External-value allocation boundary
+
+[Record framing](../crates/ic-storage/src/adapter/record.rs) adds 20 bytes.
+[Tree allocation](../crates/ic-storage/src/adapter/tree.rs) rounds external
+allocations to a power of two with a 256-byte minimum. The geometry probe keeps
+32 records, insertion history and tree shape fixed and checks adjacent sizes:
+
+| Payload bytes | External block bytes | Actual allocation data pages |
+| --- | ---: | ---: |
+| 4,076 / 4,077 | 4,096 / 8,192 | 3 / 5 |
+| 65,516 / 65,517 | 65,536 / 131,072 | 33 / 65 |
+| 1,048,556 / 1,048,557 | 1,048,576 / 2,097,152 | 513 / 1,025 |
+
+This verifies the source-derived cause of substantial slack near these boundaries.
+The smallest next experiment is finer external-value allocation while preserving
+selective IO, corruption checks and free/reuse safety. It needs a bounded design,
+native rejection/reuse tests and matched IC measurements before selecting any
+production layout. No new geometry, public API, stored format, production
+dependency or sibling release is part of this study. Keeping the current
+allocator remains simpler until those tradeoffs are qualified.

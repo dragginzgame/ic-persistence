@@ -6,6 +6,8 @@ use crate::{
 use std::{cell::Cell, rc::Rc};
 
 mod cells;
+mod improvements;
+mod owned;
 mod regions;
 
 const KEYS: [&str; 4] = ["test.map.v1", "test.set.v1", "test.cell.v1", "test.vec.v1"];

@@ -22,27 +22,9 @@ impl<E: Execute> Repository<E> {
             .receipt(&format!("{}-{version}", self.group), stage))
     }
 
-    #[cfg(test)]
-    pub(super) fn package_path(&self, package: &str, version: &str) -> Result<PathBuf> {
-        self.version_parts(version)?;
-        Ok(self.artifact_paths()?.package(package, version))
-    }
-
     pub(super) fn sha256(path: &Path) -> Result<String> {
         // Preserve the existing file-size contract; hashing uses constant memory.
         Ok(hash_file(path, u64::MAX)?.sha256.to_string())
-    }
-
-    #[cfg(test)]
-    pub(super) fn retained_package(&self, digest: &str) -> Result<PathBuf> {
-        let digest: Sha256Digest = digest.parse()?;
-        Ok(self.artifact_paths()?.retained(digest))
-    }
-
-    #[cfg(test)]
-    pub(super) fn record_package(&self, name: &str, version: &str) -> Result<String> {
-        self.version_parts(version)?;
-        self.record_package_in(&self.artifact_paths()?, name, version)
     }
 
     pub(super) fn record_package_in(

@@ -50,7 +50,7 @@ clears ordinary-map caches before each timed call; clearing cost is excluded.
 This measures cold routing, not collection reopening or whole-call cost.
 
 `BENCH_UPSTREAM_BUCKET_PAGES=1..65535` selects the ICSS MemoryManager bucket size
-for every structure; the default remains 128 (8 MiB). One Wasm page is 64 KiB.
+for every structure; the comparison default is eight pages (512 KiB); stock ICSS defaults to 128 (8 MiB). One Wasm page is 64 KiB.
 This changes only the DFINITY backend's backing allocation policy, not its node
 size, Storage's growth policy or cache settings. Each fresh comparison canister
 receives the selection during initialization. Existing managers cannot be resized
@@ -108,11 +108,14 @@ resolved settings; original manual selections remain available without a recipe.
 
 Large byte values are opt-in; the ordinary matrix retains its previous payload
 sizes. Setup and final verification target at most 512 KiB per call, except for
-one indivisible 1 MiB value. Protocol tests qualify that value under bounded Wire
-limits. The measured bulk call contains one operation; `Grow` at/above 64 KiB
-replaces at the same size, while `Shrink` still writes an empty payload. This
-preserves the old trace's growth ceiling without shrinking a 1 MiB value in the
-phase named `Grow`. Encoding and setup remain outside the measured interval.
+one indivisible bulk value. Protocol tests qualify initial and grown values under
+bounded Wire limits and the IC's 2 MiB reply ceiling, including framing. The
+measured bulk call contains one operation; `Grow` takes 64 KiB to 256 KiB and
+1 MiB to 1.5 MiB, while `Shrink` writes an empty payload and returns the old value.
+Vector's bounded chunk fixture retains its 1 MiB bound and does not select Grow.
+Encoding and setup remain outside the measured interval. Earlier retained bucket
+results used same-size bulk Grow operations; those rows do not measure growth
+and cannot be compared with the corrected trace as an implementation speedup.
 
 These are synthetic collection traces informed by actual declarations. They do
 not reproduce a complete canister, concurrently open allocations, actual live
@@ -175,7 +178,8 @@ committed state. This is a trace, not an independent reset per operation.
 - Region: control, hit/miss, replacement, bounded key snapshot, insertion,
   growth/shrink, removal, missing removal, reinsertion and inserted-key cleanup.
 
-Growth replaces values with four times the initial size (minimum 128 bytes);
+Growth replaces values with four times the initial size (minimum 128 bytes,
+capped at 1.5 MiB to leave reply-framing space);
 shrink uses empty bytes/strings. Growth/shrink run while selected original keys
 still exist; removal follows, then reinsertion restores them. `RemoveInserted`
 cleans up the insertion range so later rounds start with the original population.
@@ -261,3 +265,46 @@ The phase-correctness repair also changes work ordering and cache history. Earli
 reinserted removed keys, and `Reinsert` replaced values restored by growth. Their
 timings remain valid for those historical mixed traces, not for the old labels.
 Use corrected baseline/candidate runs to attribute new implementation gains.
+
+## Shared-backing capacity and IO
+
+The native `multi-allocations` example uses one backing per backend, 32 and 64
+real governed allocations/ICSS virtual memories, 256-byte metadata records and
+64 KiB records in every eighth store. It initializes all stores, interleaves
+population and growth (32 then 96 rows per store), then performs four rounds of
+deleting half the keys and reinserting in reverse order. Displaced and final
+values are checked. Diagnostic reads are excluded from phase IO counters.
+Six subsequent replacement rounds rotate values through 31/32/33,
+236/237, 4076/4077 and 65516/65517 bytes. These cross inline and external
+allocation boundaries without changing the live key population. Every displaced
+value and the final contents are checked; each phase reports its actual live
+payload rather than reusing the original fixed-size estimate. The original
+same-size phases remain directly comparable with retained runs.
+
+```sh
+cargo run --locked --offline --manifest-path testing/runtime-qualification/Cargo.toml \
+    -p ic-storage-benchmarks --example multi-allocations --features owned,dfinity \
+    --target-dir target/runtime-qualification -- target/multi-allocations.json
+```
+
+The output records logical payload, per-allocation capacity, physical pages,
+Storage metadata/extents and backing IO per phase. ICSS's one metadata page and
+bucket reservation must be distinguished from its logical virtual pages.
+Counters include setup and mutations within each labelled phase, not diagnostics.
+This is native memory accounting, not an IC instruction or fault-charge model.
+It preserves the production custody boundary for Storage, with ICSS confined to
+the independent research graph. Native helper dependencies are explicitly optional.
+
+A separate controlled Storage geometry probe holds tree shape and row count
+fixed (32 records) and tests adjacent payloads around a power-of-two boundary
+minus the current 20-byte external record prefix. It reports actual directory/
+allocation capacity alongside the source-derived block-size prediction. This
+investigates current overhead without changing allocator bytes or public APIs.
+
+The completed matched study is recorded in
+[the memory audit](../../../../docs/local-memory-audit.md#completed-bucket-and-shared-backing-study).
+Eight pages is the tuned research default, not a change to ICSS or Storage.
+The fixed 32,768-bucket ICSS limit gives 2 GiB at one page, 16 GiB at eight and
+256 GiB at 128. Always name 128 explicitly when claiming a stock-default
+comparison. All nine qualification runs passed an explicit bucket argument;
+the subsequent default change does not reinterpret their configurations.

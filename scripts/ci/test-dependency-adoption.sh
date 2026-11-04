@@ -2,7 +2,8 @@
 # The real caller's command order and failure propagation; Cargo is substituted.
 set -euo pipefail
 root="$(pwd -P)"
-fixture="$(mktemp -d "${TMPDIR:-/tmp}/storage-adoption-fixture.XXXXXX")"
+mkdir -p "$root/target/fixtures"
+fixture="$(mktemp -d "$root/target/fixtures/storage-adoption-fixture.XXXXXX")"
 echo "Retained adoption caller fixture: $fixture"
 mkdir -p "$fixture/source/scripts/ci" "$fixture/source/ci" "$fixture/bin"
 cp Makefile rust-toolchain.toml "$fixture/source/"
@@ -72,6 +73,7 @@ export PATH="$fixture/bin:$PATH"
 cd "$fixture/source"
 : > "$ADOPTION_CALLS"
 make -j4 --no-print-directory check-dependency-adoption > "$fixture/success.log" 2>&1
+grep -F "Dependency adoption evidence: $fixture/source/target/dependency-adoption/attempt." "$fixture/success.log" >/dev/null
 [[ "$(wc -l < "$ADOPTION_CALLS")" == 15 ]]
 awk 'NR<=2 && $1!="metadata" {exit 1} NR>2 && NR<=9 && $1!="tree" {exit 1} NR>9 && $1!="clippy" {exit 1}' "$ADOPTION_CALLS"
 for failure in root-metadata independent-metadata runtime-policy native-runtime native-wire-family native-metrics-wire independent-policy default-native default-executor composition-policy plausible-tree root-lint independent-lint default-lint composition-lint; do

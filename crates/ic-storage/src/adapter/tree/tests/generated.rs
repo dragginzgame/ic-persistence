@@ -60,7 +60,7 @@ fn replay(ops: &[Op], budget: usize) {
         }
         assert_eq!(tree.len(), model.len() as u64);
         // Inspect retained bytes through a cold reader, independently of cache.
-        check(&Tree::load(memory.clone()).unwrap());
+        check::<u64>(&Tree::load(memory.clone()).unwrap());
     }
     assert_eq!(
         tree.range(..)
@@ -106,7 +106,7 @@ fn generated_histories_match_ordered_model_with_cache_collisions_and_reopen() {
                 5 => Op::Range(key / 2, key),
                 _ => Op::Insert(
                     key,
-                    [0, 31, 32, 33, 80, 4096][(random >> 16) as usize % 6],
+                    [0, 31, 32, 33, 236, 237, 4076, 4077, 4096][(random >> 16) as usize % 9],
                     random.to_le_bytes()[0],
                 ),
             });
@@ -118,5 +118,61 @@ fn generated_histories_match_ordered_model_with_cache_collisions_and_reopen() {
                 minimize(ops.clone(), budget)
             );
         }
+    }
+}
+
+#[test]
+fn variable_keys_and_size_class_churn_preserve_cold_tree_and_free_lists() {
+    // Vary routing-record capacity as well as external values. The eight-byte
+    // prefix preserves numeric ordering while suffix lengths change node sizes.
+    let keys: Vec<Vec<u8>> = (0_u64..72)
+        .map(|id| {
+            let mut key = id.to_be_bytes().to_vec();
+            key.resize(8 + [0, 31, 237, 1024][id as usize % 4], id as u8);
+            key
+        })
+        .collect();
+    let sizes = [0, 31, 32, 33, 236, 237, 4076, 4077, 65516, 65517];
+    for budget in [0, 4096, 128 * 1024] {
+        let memory = VectorMemory::default();
+        let mut tree = Tree::<Vec<u8>, Vec<u8>, _>::reset(memory.clone()).unwrap();
+        tree.set_cache_budget(budget);
+        let mut model = BTreeMap::new();
+        for round in 0..12 {
+            for (index, key) in keys.iter().enumerate() {
+                if (index + round) % 5 == 0 {
+                    assert_eq!(tree.remove(key).unwrap(), model.remove(key));
+                } else {
+                    let value = vec![round as u8; sizes[(index + round) % sizes.len()]];
+                    assert_eq!(
+                        tree.insert(key.clone(), value.clone()).unwrap(),
+                        model.insert(key.clone(), value)
+                    );
+                }
+            }
+            drop(tree);
+            tree = Tree::load(memory.clone()).unwrap();
+            // Independently inspect ordering, depth, occupancy and disjoint
+            // live/free blocks before enabling the cache on the reopened tree.
+            check(&tree);
+            tree.set_cache_budget(budget);
+            assert_eq!(
+                tree.range(..)
+                    .map(|e| e.unwrap().into_pair().unwrap())
+                    .collect::<Vec<_>>(),
+                model
+                    .iter()
+                    .map(|(k, v)| (k.clone(), v.clone()))
+                    .collect::<Vec<_>>()
+            );
+            for key in &keys {
+                assert_eq!(tree.get(key).unwrap(), model.get(key).cloned());
+            }
+        }
+        for key in keys.iter().rev() {
+            assert_eq!(tree.remove(key).unwrap(), model.remove(key));
+        }
+        check::<Vec<u8>>(&Tree::load(memory).unwrap());
+        assert_eq!(tree.len(), 0);
     }
 }

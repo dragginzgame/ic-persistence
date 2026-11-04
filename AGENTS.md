@@ -1,7 +1,7 @@
 # Repository Instructions
 
 For scope, delegated delivery, validation, compiler support and reporting, use
-[Shared policy at 5cf67f8](https://github.com/dragginzgame/shared-tooling/blob/5cf67f81c50c56ac17389ae71a3a87d46e86e8a2/DRAGGINZGAME.md)
+[Shared policy at 628ccc7](https://github.com/dragginzgame/shared-tooling/blob/628ccc75d813bfd9bae777bfbaef55838d25b1b2/DRAGGINZGAME.md)
 and its revision-bound references over older snapshot or local-guide wording.
 This includes Rust 1.99.1 as minimum and pinned development/release compiler;
 check local declarations and qualification before claiming adoption is complete.
@@ -35,7 +35,7 @@ independently with group-bound receipts and publication.
 Storage owns allocation governance, bootstrap, exclusive leases and governed
 collections over those leases. Allocation internals remain private modules. Metrics Storage owns validated IC Wire metric
 snapshots over Storage maps and depends on the external
-`ic-metrics` arithmetic crate. Hosts own metric attribution, lifecycle and cadence.
+`ic-metrics` recording and state-validation crate. Hosts own metric attribution, lifecycle and cadence.
 Storage owns allocation, bootstrap, backing custody and collections in one crate.
 There is no separate Memory package or compatibility facade. Package source, tests and canonical
 READMEs live under their packages.
@@ -144,10 +144,9 @@ to prove adoption.
 
 Follow the reviewed shared [contribution rules](rules/contributions.md),
 [hard-cut baseline](DRAGGINZGAME.md#pre-10-contracts) and
-[changelog rules](rules/changelogs.md). Storage configures direct release delivery;
-that default does not authorize an integration-branch push or an alternate delivery
-checkout. Follow the shared explicit authorization and durable-work rules. An
-ordinary PR does not select PR release delivery.
+[changelog rules](rules/changelogs.md). Storage configures direct release delivery
+under Shared's delegated-delivery contract. An ordinary PR does not select PR
+release delivery; checkout locations follow Shared's durable-work contract.
 
 Root `CHANGELOG.md` is an index. Each group owns `releases/<group>/CHANGELOG.md`
 and new detailed notes under that directory; shared coordinated history lives

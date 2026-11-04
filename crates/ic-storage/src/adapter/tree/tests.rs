@@ -79,6 +79,16 @@ fn lookups_borrow_inline_values_and_membership_skips_value_decoding() {
             }
             assert!(!tree.contains_key(&122).unwrap());
             assert_eq!(tree.get(&122).unwrap(), None);
+            // Borrowed entry decoding must not first copy its encoded buffer;
+            // consuming entry methods can still transfer ownership to the codec.
+            for key in [0, 4] {
+                let entry = tree.range(key..=key).next().unwrap().unwrap();
+                assert!(entry.value().unwrap().borrowed);
+                assert!(entry.value().unwrap().borrowed);
+                assert!(!entry.into_value().unwrap().borrowed);
+            }
+            let entry = tree.range(121..=121).next().unwrap().unwrap();
+            assert!(matches!(entry.value(), Err(Error::Codec(_))));
         }
         assert_eq!(*backing.borrow(), before);
     }
@@ -519,13 +529,13 @@ fn large_free_blocks_split_without_losing_capacity_or_overlapping_live_records()
 
 // Check persisted shape independently of lookup results: equal leaf depth,
 // occupancy, separator ordering and unique live routing/value blocks.
-fn check(tree: &Tree<u64, Vec<u8>, VectorMemory>) {
-    fn walk(
-        tree: &Tree<u64, Vec<u8>, VectorMemory>,
+fn check<K: Storable + Ord + Clone>(tree: &Tree<K, Vec<u8>, VectorMemory>) {
+    fn walk<K: Storable + Ord + Clone>(
+        tree: &Tree<K, Vec<u8>, VectorMemory>,
         p: Pointer,
         root: bool,
-        low: Option<u64>,
-        high: Option<u64>,
+        low: Option<&K>,
+        high: Option<&K>,
         live: &mut BTreeSet<(u64, u64)>,
     ) -> (u64, usize) {
         assert!(live.insert((p.offset, p.offset + p.capacity())));
@@ -536,11 +546,11 @@ fn check(tree: &Tree<u64, Vec<u8>, VectorMemory>) {
         let keys: Vec<_> = node
             .entries
             .iter()
-            .map(|e| decode::<u64>(e.key.clone()).unwrap())
+            .map(|e| decode::<K>(e.key.clone()).unwrap())
             .collect();
         assert!(keys.windows(2).all(|w| w[0] < w[1]));
-        assert!(low.is_none_or(|k| keys[0] > k));
-        assert!(high.is_none_or(|k| *keys.last().unwrap() < k));
+        assert!(low.is_none_or(|k| &keys[0] > k));
+        assert!(high.is_none_or(|k| keys.last().unwrap() < k));
         for entry in &node.entries {
             if let Value::External(p) = entry.value {
                 assert!(live.insert((p.offset, p.offset + p.capacity())));
@@ -553,8 +563,8 @@ fn check(tree: &Tree<u64, Vec<u8>, VectorMemory>) {
                 tree,
                 *p,
                 false,
-                if i == 0 { low } else { Some(keys[i - 1]) },
-                keys.get(i).copied().or(high),
+                if i == 0 { low } else { Some(&keys[i - 1]) },
+                keys.get(i).or(high),
                 live,
             );
             count += n;
@@ -640,5 +650,12 @@ fn malformed_routing_and_value_records_refuse_without_writes() {
         assert!(tree.insert(1, vec![9; 1024]).is_err());
         assert!(tree.remove(&1).is_err());
         assert_eq!(*backing.borrow(), before);
+    }
+}
+
+// Private fixture helpers; excluded from production compilation.
+impl<K: Storable + Ord + Clone, V: Storable, M: Memory> Tree<K, V, M> {
+    fn node(&self, p: Pointer) -> Result<Node> {
+        Ok(self.read_node(p, MAX_DEPTH)?.owned())
     }
 }

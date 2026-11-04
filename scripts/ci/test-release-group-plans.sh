@@ -6,7 +6,8 @@ pin="$(sed -n 's/^channel = "\([^"]*\)"$/\1/p' rust-toolchain.toml)"
 cargo "+$pin" build -p ic-storage --example repo-tool --locked --offline
 metadata="$(cargo "+$pin" metadata --locked --offline --no-deps --format-version 1)"
 target="$(printf '%s' "$metadata" | jq -er .target_directory)"
-fixture="$(mktemp -d "${TMPDIR:-/tmp}/ic-storage-group-plans.XXXXXX")"
+mkdir -p "$target/fixtures"
+fixture="$(mktemp -d "$target/fixtures/ic-storage-group-plans.XXXXXX")"
 echo "Retained native group plan fixture: $fixture"
 mkdir "$fixture/bin"
 cat > "$fixture/bin/git" <<'STUB'

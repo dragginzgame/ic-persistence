@@ -3,6 +3,37 @@
 Current releases use the Storage naming. [Earlier published history](https://github.com/dragginzgame/ic-storage/blob/23deb81c48d58558ac3b0ce36bf266ddc25dca91/releases/persistence/CHANGELOG.md)
 retains its original package and release identities.
 
+## [0.66.2] - Unreleased
+
+### 🔧 Changed
+
+- Decode borrowed map-entry values without an intermediate encoded-buffer clone;
+  preserve consuming decode, codec errors, public APIs and stored formats.
+- Extend B-tree histories and the shared-backing study across changing key/value
+  sizes. Bulk benchmarks now exercise actual growth and check IC reply limits.
+  See the [ICSS re-audit](../../docs/audits/recurring/storage-icss-2026-11-03.md).
+
+- Adopt Shared Tooling 0.29.4 (`628ccc7`), including the earlier UTF-8 evidence
+  fixes and new test-layout, Metrics ownership and group-changelog rules.
+- Guard Git-side release state against excessive retention and nested build caches,
+  without deleting recovery evidence. Keep dependency-adoption evidence under `target/`.
+- Move inline unit tests and private fixture helpers into `tests.rs` or `tests/`
+  across Storage, its native helper and the independent qualification workspace.
+  Preserve behavior and ordinary module discovery. CI-selection fixtures now
+  remain under `target/ci-selection/`.
+
+- Move remaining consumer fixture scratch under workspace `target/`, preserving
+  failed evidence and explicit alias probes. Refresh the active audit guide for
+  Storage's directory/lease model and Rust 1.99.1.
+
+- Select eight-page buckets for the ICSS research comparison by default after
+  matched 1/8/128-page measurements; retain explicit stock-128 and low-memory-1
+  controls. Storage's production allocation policy is unchanged.
+
+- Add a native shared-backing experiment for 32/64 allocations, mixed record
+  sizes, interleaved growth and repeated churn, plus controlled external-value
+  allocation-boundary probes. Keep production geometry and defaults unchanged.
+
 ## [0.66.1] - 2026-11-03
 
 ### 🔧 Changed

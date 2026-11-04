@@ -5,7 +5,8 @@ ROOT="${BASH_SOURCE[0]}"
 [[ "$ROOT" == /* ]] || ROOT="$PWD/$ROOT"
 ROOT="$(cd -P "${ROOT%/*}/../.." && printf '%s/.' "$PWD")"
 ROOT="${ROOT%/.}"
-fixture="$(mktemp -d "${TMPDIR:-/tmp}/memory-fixture-retention.XXXXXX")"
+mkdir -p "$ROOT/target/fixtures"
+fixture="$(mktemp -d "$ROOT/target/fixtures/memory-fixture-retention.XXXXXX")"
 fixture="$(CDPATH="" cd -P -- "$fixture" && printf '%s/.' "$PWD")"
 fixture="${fixture%/.}"
 # shellcheck source=scripts/ci/fixture-lifecycle.sh
@@ -20,10 +21,12 @@ for name in release-adapters failure-evidence git-hooks; do
         release-adapters) directory_variable=FIXTURE ;;
         git-hooks) root_variable=root ;;
     esac
-    FIXTURE_PROBE_ROOT_VARIABLE="$root_variable" FIXTURE_PROBE_DIRECTORY_VARIABLE="$directory_variable" \
+    FIXTURE_PROBE_TEMPORARY_ROOT="$ROOT/target/fixtures" \
+        FIXTURE_PROBE_ROOT_VARIABLE="$root_variable" FIXTURE_PROBE_DIRECTORY_VARIABLE="$directory_variable" \
         fixture_probe_exits "$ROOT/scripts/ci/test-$name.sh" "$fixture" "$ROOT" "$name" || exit 1
 done
-FIXTURE_PROBE_ROOT_VARIABLE=root fixture_probe_exit "$ROOT/scripts/ci/test-git-hooks.sh" "$fixture" "$ROOT" git-hooks cleanup-failure || exit 1
+FIXTURE_PROBE_TEMPORARY_ROOT="$ROOT/target/fixtures" FIXTURE_PROBE_ROOT_VARIABLE=root \
+    fixture_probe_exit "$ROOT/scripts/ci/test-git-hooks.sh" "$fixture" "$ROOT" git-hooks cleanup-failure || exit 1
 # Run the actual checker against an owner returning the wrong failure status.
 # It must stop after the first observation, before testing any other case.
 assertion_root="$fixture/assertion-source"
@@ -35,7 +38,8 @@ for name in release-adapters failure-evidence git-hooks; do
     cat > "$assertion_root/scripts/ci/test-$name.sh" <<'PROBE'
 #!/usr/bin/env bash
 set -euo pipefail
-fixture="$(mktemp -d "${TMPDIR:-/tmp}/contradicted-owner.XXXXXX")"
+# This deliberately contradictory substitute receives an explicit probe root.
+fixture="$(mktemp -d "${TMPDIR:?probe root required}/contradicted-owner.XXXXXX")"
 printf 'called\n' >> "$RETENTION_ASSERTION_EVENTS"
 trap 'exit 23' EXIT
 PROBE
@@ -45,12 +49,12 @@ RETENTION_ASSERTION_EVENTS="$fixture/assertion-events" TMPDIR="$fixture" \
     "$BASH" "$assertion_root/scripts/ci/test-consumer-fixture-retention.sh" \
     > "$fixture/assertion.log" 2>&1 || status=$?
 [[ "$status" == 1 && "$(cat "$fixture/assertion-events")" == called ]] || exit 1
-# macOS and callers may select a temporary root through a directory alias.
+# Explicit fixture paths and child tools may use a relative directory alias.
 # Run the complete round trip so an earlier, unintended fixture failure
 # cannot masquerade as the controlled installed-tool failure.
 mkdir "$fixture/physical-temp"
 ln -s physical-temp "$fixture/aliased-temp"
-(cd "$fixture" && TMPDIR=aliased-temp "$BASH" "$ROOT/scripts/ci/test-failure-evidence.sh") \
+(cd "$fixture" && TMPDIR=aliased-temp "$BASH" "$ROOT/scripts/ci/test-failure-evidence.sh" aliased-temp/roundtrip) \
     > "$fixture/aliased-evidence.log" 2>&1
 echo 'Consumer fixture completion, failure status and evidence retention passed'
 fixture_complete=true

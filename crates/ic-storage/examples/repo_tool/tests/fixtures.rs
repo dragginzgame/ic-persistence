@@ -92,12 +92,18 @@ pub(super) struct Fixture {
 }
 
 impl Fixture {
+    fn default_parent() -> PathBuf {
+        let parent = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../target/repo-tool-fixtures");
+        fs::create_dir_all(&parent).unwrap();
+        parent.canonicalize().unwrap()
+    }
+
     pub(super) fn new() -> Self {
-        Self::new_in(&env::temp_dir())
+        Self::new_in(&Self::default_parent())
     }
 
     pub(super) fn for_group(group: &str) -> Self {
-        Self::new_in_group(&env::temp_dir(), group)
+        Self::new_in_group(&Self::default_parent(), group)
     }
 
     pub(super) fn new_in(parent: &Path) -> Self {

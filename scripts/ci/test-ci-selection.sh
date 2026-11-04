@@ -2,7 +2,8 @@
 # Exercise actual workflow scripts with substituted read-only Git observations.
 set -euo pipefail
 root="$(pwd -P)"
-fixture="$(mktemp -d "${TMPDIR:-/tmp}/ic-storage-ci-selection.XXXXXX")"
+mkdir -p "$root/target/ci-selection"
+fixture="$(mktemp -d "$root/target/ci-selection/attempt.XXXXXX")"
 echo "Retained CI selection fixture: $fixture"
 rg -F 'cargo +$(VALIDATION_TOOLCHAIN) check --workspace --locked --offline --all-targets --features test-support' Makefile > /dev/null
 yq -o=json '.' .github/workflows/ci.yml > "$fixture/workflow.json"
