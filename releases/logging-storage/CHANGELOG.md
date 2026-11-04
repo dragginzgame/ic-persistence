@@ -3,6 +3,15 @@
 Current releases use the Storage naming. [Earlier published history](https://github.com/dragginzgame/ic-storage/blob/23deb81c48d58558ac3b0ce36bf266ddc25dca91/releases/logging-stable/CHANGELOG.md)
 retains its original package and release identities.
 
+## [0.65.0] - Unreleased
+
+### ⚠️ Breaking
+
+- Adopt IC Wire 0.17 for logging checkpoint codec errors. Hosts exchanging Wire limits or
+  errors must align their dependency to the new type identity. Codec bytes,
+  budgets and stored layouts are unchanged; no backing reset is needed.
+  Codec-only builds no longer select Wire's metadata derive. [Details](0.65.md).
+
 ## [0.64.1] - 2026-11-04
 
 ### 🔧 Changed

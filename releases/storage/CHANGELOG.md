@@ -3,6 +3,15 @@
 Current releases use the Storage naming. [Earlier published history](https://github.com/dragginzgame/ic-storage/blob/23deb81c48d58558ac3b0ce36bf266ddc25dca91/releases/persistence/CHANGELOG.md)
 retains its original package and release identities.
 
+## [0.67.0] - Unreleased
+
+### ⚠️ Breaking
+
+- Adopt IC Wire 0.17 for StorageConfig::wire and Storage codec errors. Hosts exchanging Wire limits or
+  errors must align their dependency to the new type identity. Codec bytes,
+  budgets and stored layouts are unchanged; no backing reset is needed.
+  Codec-only builds no longer select Wire's metadata derive. [Details](0.67.md).
+
 ## [0.66.3] - 2026-11-04
 
 ### ⚡ Performance

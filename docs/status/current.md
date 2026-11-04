@@ -11,19 +11,19 @@ Preserve all failed logs, receipts and lock-preservation stashes, including
 `storage-0663-preserved-pending-lock-inputs`. Its pending selections are restored;
 only Storage's local lock identity advances to 0.66.3.
 
+## Pending IC Wire 0.17 adoption
+
+Both catalogs/locks select Wire 0.17.0 without metadata derive; codec bytes,
+budgets and stored layouts are unchanged. All 138 library tests, strict lint,
+native/Wasm graph checks and installed IO/upgrade/rollback qualification pass.
+Public Wire limits/error identities require the next minor lines: Storage 0.67.0,
+Metrics Storage 0.69.0 and Logging Storage 0.65.0. Notes/metadata paths are prepared;
+package versions remain published identities. Push requested; no publication.
+Unrelated root-lock selections are preserved separately; evidence: `target/wire-017-adoption/`.
+
 ## Included in Storage 0.66.3
 
-The ordinary matrix now covers 29 concrete cases and 52 type/size combinations.
-The boundaries recipe covers 48 combinations across Map/Vector/Cell/Region;
-sequential access also qualifies all four Set key types and bounded byte vectors.
-Installed ICSS 0.7.2 comparisons passed 3,096 boundary and 1,008 sequential calls,
-plus final-content checks. Fourteen native tests and strict benchmark Clippy pass.
-One sample, three rounds, 64 rows (Cell one), eight-page ICSS buckets, disabled
-map caches: these are scope-limited qualification runs, not a universal ranking.
-[Retained summaries/configurations](../measurements/storage-icss-expansion-2026-11-04.json)
-record source/Wasm digests; raw results remain under `target/storage-comparison/`.
-Both incoming lockfiles are unchanged. The sandbox server-bind failure is retained
-in `target/comparison-expansion/`; installed runs used authorized localhost access.
+The published matrix covers 29 cases/52 combinations; the linked audit retains evidence.
 The [hotspot investigation](../audits/recurring/storage-icss-hotspots-2026-11-04.md)
 finds checksum passes absent in ICSS Cell/Vector, existing reusable vector buffers,
 and an aggregate-round interpretation caveat. Per-round summaries now distinguish
