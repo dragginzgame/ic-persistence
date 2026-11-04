@@ -118,7 +118,7 @@ fn encode_checkpoint(checkpoint: &Checkpoint<impl Serialize>) -> Result<Vec<u8>,
 #[cfg(test)]
 mod tests;
 #[cfg(test)]
-pub(crate) use tests::encode_snapshot;
+pub use tests::encode_snapshot;
 
 pub fn decode(bytes: &[u8], identity: LogIdentity, limits: Limits) -> Result<Log, StoreError> {
     if bytes.len() > MAX_RECORD_BYTES {

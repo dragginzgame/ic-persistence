@@ -125,10 +125,10 @@ fn generated_histories_match_ordered_model_with_cache_collisions_and_reopen() {
 fn variable_keys_and_size_class_churn_preserve_cold_tree_and_free_lists() {
     // Vary routing-record capacity as well as external values. The eight-byte
     // prefix preserves numeric ordering while suffix lengths change node sizes.
-    let keys: Vec<Vec<u8>> = (0_u64..72)
+    let keys: Vec<Vec<u8>> = (0_u8..72)
         .map(|id| {
-            let mut key = id.to_be_bytes().to_vec();
-            key.resize(8 + [0, 31, 237, 1024][id as usize % 4], id as u8);
+            let mut key = u64::from(id).to_be_bytes().to_vec();
+            key.resize(8 + [0, 31, 237, 1024][usize::from(id) % 4], id);
             key
         })
         .collect();
@@ -143,7 +143,8 @@ fn variable_keys_and_size_class_churn_preserve_cold_tree_and_free_lists() {
                 if (index + round) % 5 == 0 {
                     assert_eq!(tree.remove(key).unwrap(), model.remove(key));
                 } else {
-                    let value = vec![round as u8; sizes[(index + round) % sizes.len()]];
+                    let value =
+                        vec![u8::try_from(round).unwrap(); sizes[(index + round) % sizes.len()]];
                     assert_eq!(
                         tree.insert(key.clone(), value.clone()).unwrap(),
                         model.insert(key.clone(), value)
