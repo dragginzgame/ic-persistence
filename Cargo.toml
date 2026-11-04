@@ -25,7 +25,7 @@ ic-storage = { path = "crates/ic-storage", version = "0.66.1" }
 
 # metrics-storage
 # Changelog : releases/metrics-storage/CHANGELOG.md
-ic-metrics-storage = { path = "crates/ic-metrics-storage", version = "0.67.0" }
+ic-metrics-storage = { path = "crates/ic-metrics-storage", version = "0.68.0" }
 
 # logging-storage
 # Changelog : releases/logging-storage/CHANGELOG.md
