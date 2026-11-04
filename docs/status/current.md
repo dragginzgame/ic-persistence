@@ -5,12 +5,11 @@
 Storage `8504539` / `storage-v0.66.3` is pushed and published. All 12 release
 stages and installed IO/upgrade/rollback qualification passed. The downloaded
 registry archive matches the qualified SHA-256 `901edc46ec51eadacaac3f3413cba19cc0ec06b009c4f4f045b0eb6442988f37`.
-Evidence: `target/storage-0663-deploy/`; runtime attempt `0K5mSN`.
-Logging remains published at `74f185e` / `logging-storage-v0.64.1`; adapters were
-not rereleased. Shared Tooling remains 0.29.4 (`628ccc7`, 153 files).
+Logging remains at `74f185e` / `logging-storage-v0.64.1`; adapters were not rereleased.
+Shared Tooling remains 0.29.4 (`628ccc7`, 153 files).
 Preserve all failed logs, receipts and lock-preservation stashes, including
-`storage-0663-preserved-pending-lock-inputs`. Restore its unrelated dependency
-selections after publication while retaining Storage's new local version.
+`storage-0663-preserved-pending-lock-inputs`. Its pending selections are restored;
+only Storage's local lock identity advances to 0.66.3.
 
 ## Included in Storage 0.66.3
 
