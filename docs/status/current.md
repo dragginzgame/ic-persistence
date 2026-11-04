@@ -1,24 +1,24 @@
 # Current handoff
 
-## Published Storage 0.66.3 and Logging Storage 0.64.1
+## Published Storage 0.67.0 and Logging Storage 0.64.1
 
-Storage `8504539` / `storage-v0.66.3` is pushed and published. All 12 release
+Storage `816e520` / `storage-v0.67.0` is pushed and published. All 12 release
 stages and installed IO/upgrade/rollback qualification passed. The downloaded
-registry archive matches the qualified SHA-256 `901edc46ec51eadacaac3f3413cba19cc0ec06b009c4f4f045b0eb6442988f37`.
+registry archive matches the qualified SHA-256 `427bcd5110c380fb2c2c2007fc2e3d05fd4550ebdc74046d65fbaaa52f0727f3`.
 Logging remains at `74f185e` / `logging-storage-v0.64.1`; adapters were not rereleased.
 Shared Tooling remains 0.29.4 (`628ccc7`, 153 files).
 Preserve all failed logs, receipts and lock-preservation stashes, including
-`storage-0663-preserved-pending-lock-inputs`. Its pending selections are restored;
-only Storage's local lock identity advances to 0.66.3.
+`storage-0670-preserved-pending-lock-inputs`. Its pending selections are restored;
+only Storage's local lock identity advances to 0.67.0. Evidence: `target/storage-0670-deploy/`.
 
-## Pending IC Wire 0.17 adoption
+## Wire 0.17 adoption and pending adapter releases
 
 Both catalogs/locks select Wire 0.17.0 without metadata derive; codec bytes,
 budgets and stored layouts are unchanged. All 138 library tests, strict lint,
 native/Wasm graph checks and installed IO/upgrade/rollback qualification pass.
-Public Wire limits/error identities require the next minor lines: Storage 0.67.0,
-Metrics Storage 0.69.0 and Logging Storage 0.65.0. Notes/metadata paths are prepared;
-package versions remain published identities. Push requested; no publication.
+Storage 0.67.0 publishes the new public Wire limits/error identities; hosts must
+align Wire 0.17. Metrics Storage 0.69.0 and Logging Storage 0.65.0 remain pending;
+their notes/metadata paths are prepared, but neither adapter was released.
 Unrelated root-lock selections are preserved separately; evidence: `target/wire-017-adoption/`.
 
 ## Included in Storage 0.66.3
