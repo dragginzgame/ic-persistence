@@ -1,29 +1,42 @@
 # Current handoff
 
-## Published Storage 0.67.0 and Logging Storage 0.64.1
+## Published on 2026-11-05
 
-Storage `816e520` / `storage-v0.67.0` is pushed and published. All 12 release
-stages and installed IO/upgrade/rollback qualification passed. The downloaded
-registry archive matches the qualified SHA-256 `427bcd5110c380fb2c2c2007fc2e3d05fd4550ebdc74046d65fbaaa52f0727f3`.
-Logging remains at `74f185e` / `logging-storage-v0.64.1`; adapters were not rereleased.
-Shared Tooling 0.30.0 (`b37a882`, 154 files) is adopted in the working tree;
-Storage 0.67.1 notes are pending. See the [adoption audit](../audits/2026-11-05-shared-tooling.md).
-Native/Wasm lint, 138 library and 88 helper tests, archive qualification and
-installed original-Wasm IO/upgrade/rollback pass; both LOC reports classify every
-source. No release, commit or push is part of this adoption.
-Preserve all failed logs, receipts and lock-preservation stashes, including
-`storage-0670-preserved-pending-lock-inputs`. Its pending selections are restored;
-only Storage's local lock identity advances to 0.67.0. Evidence: `target/storage-0670-deploy/`.
+| Package | Version | Release commit / tag |
+| --- | --- | --- |
+| Storage | 0.67.1 | `e89f222` / `storage-v0.67.1` |
+| Metrics Storage | 0.69.0 | `5f4dbdd` / `metrics-storage-v0.69.0` |
+| Logging Storage | 0.65.0 | `a90632c` / `logging-storage-v0.65.0` |
 
-## Wire 0.17 adoption and pending adapter releases
+All three releases are pushed to origin/main, published and unyanked on crates.io.
+Each passed all 12 release stages and final archive qualification. Downloaded
+registry archives match the qualified SHA-256 values:
 
-Both catalogs/locks select Wire 0.17.0 without metadata derive; codec bytes,
-budgets and stored layouts are unchanged. All 138 library tests, strict lint,
-native/Wasm graph checks and installed IO/upgrade/rollback qualification pass.
-Storage 0.67.0 publishes the new public Wire limits/error identities; hosts must
-align Wire 0.17. Metrics Storage 0.69.0 and Logging Storage 0.65.0 remain pending;
-their notes/metadata paths are prepared, but neither adapter was released.
-Unrelated root-lock selections are preserved separately; evidence: `target/wire-017-adoption/`.
+- Storage: `0621f56cfcc42a109d1d52ac39410c0b7d7c7d3bbb9f46274c2381dced2e9352`.
+- Metrics: `9429bc9b05c3eb251c201857c721157ddcfa88e6ba47c72f1e0aee9b58c02df8`.
+- Logging: `67b3b84edaf5c180c6268b68af0a97e6e02116272ce0753b6bf88d240e79a045`.
+
+Evidence: `target/tooling-030-deploy/` and group-bound receipts under
+`target/release-validation/`. Preserve failed attempts and their retained logs.
+Release qualification caught and corrected shared metadata ordering, fixture
+copying and recovery assertions. Storage and Logging now project their respective
+local identities into the independent fixture catalog/lock through Shared's
+`shared_metadata_files`; Metrics preserves those files.
+
+Shared Tooling 0.30.0 (`b37a882`, 154 files) is adopted. The
+[adoption audit](../audits/2026-11-05-shared-tooling.md) retains the directory,
+fixture and scoped-lint changes plus installed original-Wasm IO/upgrade/rollback
+proof. Both LOC reports classify every source. No new native macOS proof is claimed.
+All packages use Wire 0.17 without metadata derive; hosts exchanging public Wire
+limits/errors must align that dependency. Codec bytes and persistent layouts are
+unchanged; no backing reset is required. Neither adapter release remains pending.
+
+Unrelated root-lock supplier selections are preserved in
+`storage-tooling-030-preserved-pending-lock-inputs` and restored after deployment.
+Keep that stash and all earlier preservation stashes, including
+`storage-0670-preserved-pending-lock-inputs`; no historical evidence was deleted.
+Earlier Storage 0.67.0 and Wire-adoption evidence remains in
+`target/storage-0670-deploy/` and `target/wire-017-adoption/`.
 
 ## Included in Storage 0.66.3
 
@@ -46,7 +59,7 @@ fixtures and both adapters' real lint/features/docs/Wasm checks pass locally.
 See [the mapping](../storage-release-validation.md) and `target/ci-group-selection/`.
 No hosted acceptance, release or measured total speedup is claimed.
 
-## Published Metrics Storage 0.68.0
+## Previous Metrics Storage 0.68.0
 
 Metrics 0.29 adoption is published and unyanked: source `f99bceb`, release `7c71b60`,
 tag `metrics-storage-v0.68.0` on origin/main. All 12 release stages passed; downloaded
