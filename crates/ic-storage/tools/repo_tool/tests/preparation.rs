@@ -407,7 +407,9 @@ fn all_release_kinds_finalize_root_and_detail_notes_at_saved_date() {
                 "Cargo.toml",
                 "crates/ic-storage/Cargo.toml",
                 detail,
-                "releases/storage/CHANGELOG.md"
+                "releases/storage/CHANGELOG.md",
+                "testing/runtime-qualification/Cargo.lock",
+                "testing/runtime-qualification/Cargo.toml"
             ],
         );
         for path in ["releases/storage/CHANGELOG.md", detail] {

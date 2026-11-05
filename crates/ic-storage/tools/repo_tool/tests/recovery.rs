@@ -127,6 +127,10 @@ fn preparation_retains_primary_and_rollback_errors_and_restores_other_owned_file
                 std::io::ErrorKind::NotFound
             ),
             ("Cargo.lock", std::io::ErrorKind::PermissionDenied),
+            (
+                "testing/runtime-qualification/Cargo.lock",
+                std::io::ErrorKind::PermissionDenied
+            ),
         ])
     );
     assert_eq!(repo.version(None).unwrap(), "0.12.3");
@@ -450,7 +454,7 @@ fn interrupted_preparation_finishes_saved_candidate_without_revalidating() {
             } else {
                 "Cargo.lock"
             };
-            fixture.fail_files(FileFault::WriteBefore(unchanged.into()));
+            fixture.fail_files(FileFault::WriteBefore(fixture.repo.root.join(unchanged)));
             fixture.repo.prepare_selected(&fixture.selection).unwrap();
         } else {
             fixture.repo.prepared(&fixture.selection).unwrap();
