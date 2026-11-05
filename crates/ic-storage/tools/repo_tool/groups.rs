@@ -45,7 +45,7 @@ impl<E: Execute> Repository<E> {
         for group in &mut policy.groups {
             group
                 .metadata_files
-                .extend(policy.shared_metadata_files.iter().cloned());
+                .splice(0..0, policy.shared_metadata_files.iter().cloned());
             let identifier = |s: &str| {
                 !s.is_empty()
                     && s.bytes()
