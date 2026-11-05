@@ -34,13 +34,18 @@ pub(super) struct ReleaseGroup {
 struct ReleaseGroups {
     schema: u32,
     groups: Vec<ReleaseGroup>,
+    #[serde(default)]
+    shared_metadata_files: Vec<String>,
 }
 
 impl<E: Execute> Repository<E> {
     pub(super) fn release_groups(&self, revision: Option<&str>) -> Result<Vec<ReleaseGroup>> {
-        let policy: ReleaseGroups = serde_json::from_str(&self.text(GROUP_POLICY, revision)?)?;
+        let mut policy: ReleaseGroups = serde_json::from_str(&self.text(GROUP_POLICY, revision)?)?;
         require(policy.schema == 1, "unsupported release-group policy")?;
-        for group in &policy.groups {
+        for group in &mut policy.groups {
+            group
+                .metadata_files
+                .extend(policy.shared_metadata_files.iter().cloned());
             let identifier = |s: &str| {
                 !s.is_empty()
                     && s.bytes()

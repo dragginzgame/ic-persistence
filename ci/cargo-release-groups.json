@@ -13,9 +13,7 @@
         "ic-storage"
       ],
       "metadata_files": [
-        "releases/storage/0.67.md",
-        "testing/runtime-qualification/Cargo.toml",
-        "testing/runtime-qualification/Cargo.lock"
+        "releases/storage/0.67.md"
       ]
     },
     {
@@ -45,10 +43,12 @@
         "ic-logging-storage"
       ],
       "metadata_files": [
-        "releases/logging-storage/0.65.md",
-        "testing/runtime-qualification/Cargo.toml",
-        "testing/runtime-qualification/Cargo.lock"
+        "releases/logging-storage/0.65.md"
       ]
     }
+  ],
+  "shared_metadata_files": [
+    "testing/runtime-qualification/Cargo.toml",
+    "testing/runtime-qualification/Cargo.lock"
   ]
 }

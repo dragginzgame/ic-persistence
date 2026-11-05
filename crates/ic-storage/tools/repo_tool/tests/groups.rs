@@ -11,14 +11,7 @@ fn qualification_catalog_and_lock_follow_their_owning_group_and_roll_back_togeth
         let fixture = Fixture::for_group(name);
         let mut policy: serde_json::Value =
             serde_json::from_str(&fixture.repo.text(GROUP_POLICY, None).unwrap()).unwrap();
-        let storage = policy["groups"]
-            .as_array_mut()
-            .unwrap()
-            .iter_mut()
-            .find(|group| group["name"] == "storage")
-            .unwrap();
-        let metadata = storage["metadata_files"].as_array_mut().unwrap();
-        metadata.extend([catalog_path.into(), lock_path.into()]);
+        policy["shared_metadata_files"] = serde_json::json!([catalog_path, lock_path]);
         fixture.set_source(GROUP_POLICY, &serde_json::to_string(&policy).unwrap());
         fixture.set_source(catalog_path, catalog);
         fixture.set_source(lock_path, lock);
@@ -64,8 +57,8 @@ fn qualification_catalog_and_lock_follow_their_owning_group_and_roll_back_togeth
         );
         assert_eq!(fixture.repo.text(lock_path, None).unwrap(), expected_lock);
         let files = fixture.repo.release_files(None).unwrap();
-        assert_eq!(files.iter().any(|p| p == catalog_path), selected);
-        assert_eq!(files.iter().any(|p| p == lock_path), selected);
+        assert!(files.iter().any(|p| p == catalog_path));
+        assert!(files.iter().any(|p| p == lock_path));
         fixture.stage().unwrap();
     }
 }

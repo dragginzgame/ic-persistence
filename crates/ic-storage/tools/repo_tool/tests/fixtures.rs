@@ -237,6 +237,21 @@ impl Fixture {
                     });
             }
         }
+        for path in policy["shared_metadata_files"]
+            .as_array()
+            .into_iter()
+            .flatten()
+        {
+            let path = path.as_str().unwrap();
+            source.insert(
+                path.to_owned(),
+                if path.ends_with("Cargo.toml") {
+                    fixture_manifest()
+                } else {
+                    fixture_lock()
+                },
+            );
+        }
         source.insert(
             GROUP_POLICY.to_owned(),
             serde_json::to_string(&policy).unwrap(),
