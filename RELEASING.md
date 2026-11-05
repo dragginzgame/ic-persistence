@@ -32,11 +32,10 @@ one numbered pending entry in its canonical ledger. New detailed notes live at
 file as metadata. Update it during source work when the group's next minor line
 changes. An old crate-local changelog is only a navigation pointer.
 The unpublished independent runtime workspace keeps its own package versions
-and dependency selection. Its benchmark consumes the local Storage package, so
-Storage's declared metadata also includes that workspace's catalog and lockfile.
-The existing release transaction advances only the Storage requirement and local
-lock entry there; independent registry selections and adapter-only releases leave
-them unchanged. Benchmark execution is not a release gate.
+and dependency selection. Its benchmark and fixtures consume local Storage and Logging Storage packages.
+Both groups declare that workspace's catalog and lockfile as release metadata.
+Each transaction advances only its own requirement and local lock identity there;
+independent registry selections and unrelated groups remain unchanged. Benchmark execution is not a release gate.
 
 Release, resume and publication require an explicit `RELEASE_GROUP`. There is no
 default or implicit whole-workspace release. Missing selection refuses before

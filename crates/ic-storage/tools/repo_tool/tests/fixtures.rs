@@ -230,7 +230,11 @@ impl Fixture {
             for path in group["metadata_files"].as_array().into_iter().flatten() {
                 source
                     .entry(path.as_str().unwrap().to_owned())
-                    .or_insert_with(|| DETAIL_NOTES.to_owned());
+                    .or_insert_with(|| match path.as_str().unwrap() {
+                        "testing/runtime-qualification/Cargo.toml" => fixture_manifest(),
+                        "testing/runtime-qualification/Cargo.lock" => fixture_lock(),
+                        _ => DETAIL_NOTES.to_owned(),
+                    });
             }
         }
         source.insert(

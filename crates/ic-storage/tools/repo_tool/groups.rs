@@ -121,14 +121,16 @@ impl ReleaseGroup {
                 .map(|name| (package_manifest(name), SurfaceRole::Member)),
         );
         paths.extend(self.metadata_files.iter().map(|path| {
-            // The independent benchmark consumes this checkout's Storage version.
-            // Only its explicitly declared catalog/lock share Storage projection;
+            // Independent fixtures consume this checkout's Storage and Logging versions.
+            // Only explicitly declared catalog/lock inputs share group projection;
             // unrelated metadata, including other Cargo manifests, stays opaque.
-            let role = if self.name == "storage"
+            let role = if matches!(self.name.as_str(), "storage" | "logging-storage")
                 && path == "testing/runtime-qualification/Cargo.toml"
             {
                 SurfaceRole::Catalog
-            } else if self.name == "storage" && path == "testing/runtime-qualification/Cargo.lock" {
+            } else if matches!(self.name.as_str(), "storage" | "logging-storage")
+                && path == "testing/runtime-qualification/Cargo.lock"
+            {
                 SurfaceRole::Lock
             } else if Path::new(path).parent() == Path::new(&self.changelog).parent()
                 && Path::new(path)

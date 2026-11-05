@@ -2,11 +2,11 @@
 use super::*;
 
 #[test]
-fn benchmark_catalog_and_lock_follow_only_storage_and_roll_back_together() {
+fn qualification_catalog_and_lock_follow_their_owning_group_and_roll_back_together() {
     let catalog_path = "testing/runtime-qualification/Cargo.toml";
     let lock_path = "testing/runtime-qualification/Cargo.lock";
-    let catalog = "[workspace.dependencies]\nic-storage = { path = \"../../crates/ic-storage\", version = \"0.12.3\" }\nic-wire = \"0.12.3\"\n";
-    let lock = "version = 4\n[[package]]\nname = \"ic-storage\"\nversion = \"0.12.3\"\n[[package]]\nname = \"ic-wire\"\nversion = \"0.12.3\"\n";
+    let catalog = "[workspace.dependencies]\nic-storage = { path = \"../../crates/ic-storage\", version = \"0.12.3\" }\nic-logging-storage = { path = \"../../crates/ic-logging-storage\", version = \"0.12.3\" }\nic-wire = \"0.12.3\"\n";
+    let lock = "version = 4\n[[package]]\nname = \"ic-storage\"\nversion = \"0.12.3\"\n[[package]]\nname = \"ic-logging-storage\"\nversion = \"0.12.3\"\n[[package]]\nname = \"ic-wire\"\nversion = \"0.12.3\"\n";
     for name in ["storage", "metrics-storage", "logging-storage"] {
         let fixture = Fixture::for_group(name);
         let mut policy: serde_json::Value =
@@ -32,15 +32,28 @@ fn benchmark_catalog_and_lock_follow_only_storage_and_roll_back_together() {
             assert_eq!(fixture.repo.text(&path, None).unwrap(), bytes, "{path}");
         }
         fixture.prepare().unwrap();
-        let expected_catalog = if name == "storage" {
-            catalog.replace("version = \"0.12.3\"", "version = \"0.13.0\"")
+        let selected = matches!(name, "storage" | "logging-storage");
+        let package = format!("ic-{name}");
+        let expected_catalog = if selected {
+            catalog
+                .lines()
+                .map(|line| {
+                    if line.starts_with(&format!("{package} =")) {
+                        line.replace("0.12.3", "0.13.0")
+                    } else {
+                        line.to_owned()
+                    }
+                })
+                .collect::<Vec<_>>()
+                .join("\n")
+                + "\n"
         } else {
             catalog.to_owned()
         };
-        let expected_lock = if name == "storage" {
+        let expected_lock = if selected {
             lock.replace(
-                "name = \"ic-storage\"\nversion = \"0.12.3\"",
-                "name = \"ic-storage\"\nversion = \"0.13.0\"",
+                &format!("name = {package:?}\nversion = \"0.12.3\""),
+                &format!("name = {package:?}\nversion = \"0.13.0\""),
             )
         } else {
             lock.to_owned()
@@ -51,8 +64,8 @@ fn benchmark_catalog_and_lock_follow_only_storage_and_roll_back_together() {
         );
         assert_eq!(fixture.repo.text(lock_path, None).unwrap(), expected_lock);
         let files = fixture.repo.release_files(None).unwrap();
-        assert_eq!(files.iter().any(|p| p == catalog_path), name == "storage");
-        assert_eq!(files.iter().any(|p| p == lock_path), name == "storage");
+        assert_eq!(files.iter().any(|p| p == catalog_path), selected);
+        assert_eq!(files.iter().any(|p| p == lock_path), selected);
         fixture.stage().unwrap();
     }
 }
