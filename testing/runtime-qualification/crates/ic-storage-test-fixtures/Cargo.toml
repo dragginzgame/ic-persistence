@@ -1,0 +1,37 @@
+[package]
+name = "ic-storage-test-fixtures"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish = false
+
+[package.metadata.shared-tooling.loc]
+category = "tests"
+
+[dependencies]
+ic-wire.workspace = true
+serde.workspace = true
+
+[target.'cfg(target_arch = "wasm32")'.dev-dependencies]
+ic-platform-runtime = { workspace = true, features = ["cdk"] }
+
+[dev-dependencies]
+ic-logging.workspace = true
+ic-logging-storage.workspace = true
+ic-storage = { workspace = true, features = ["test-support"] }
+
+[[example]]
+name = "wasm-io-qualification"
+path = "tests/fixtures/wasm_io_qualification.rs"
+crate-type = ["cdylib"]
+
+[[example]]
+name = "wasm-storage-qualification"
+path = "tests/fixtures/wasm_storage_qualification.rs"
+crate-type = ["cdylib"]
+
+[[example]]
+name = "wasm-logging-qualification"
+path = "tests/fixtures/logging_qualification/main.rs"
+crate-type = ["cdylib"]

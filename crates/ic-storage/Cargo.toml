@@ -21,6 +21,11 @@ ic-host-artifacts.workspace = true
 ic-host-fs.workspace = true
 ic-host-process.workspace = true
 
+[package.metadata.shared-tooling.loc.paths]
+"tests/fixtures" = "tests"
+"tools" = "build_tooling"
+"tools/repo_tool/tests" = "tests"
+
 [features]
 test-support = []
 
@@ -44,37 +49,27 @@ test = true
 
 [[example]]
 name = "repo-tool"
-path = "examples/repo-tool.rs"
+path = "tools/repo-tool.rs"
 test = true
 
 [[example]]
 name = "wasm-core-size-probe"
-path = "examples/wasm_core_size_probe.rs"
+path = "tests/fixtures/wasm_core_size_probe.rs"
 crate-type = ["cdylib"]
 
 [[example]]
 name = "wasm-diagnostics-size-probe"
-path = "examples/wasm_diagnostics_size_probe.rs"
+path = "tests/fixtures/wasm_diagnostics_size_probe.rs"
 crate-type = ["cdylib"]
 
 [[example]]
 name = "wasm-admission-size-probe"
-path = "examples/wasm_admission_size_probe.rs"
+path = "tests/fixtures/wasm_admission_size_probe.rs"
 crate-type = ["cdylib"]
 
 [[example]]
 name = "wasm-runtime-integration-size-probe"
-path = "examples/wasm_runtime_integration_size_probe.rs"
-crate-type = ["cdylib"]
-
-[[example]]
-name = "wasm-io-qualification"
-path = "examples/wasm_io_qualification.rs"
-crate-type = ["cdylib"]
-
-[[example]]
-name = "wasm-storage-qualification"
-path = "examples/wasm_storage_qualification.rs"
+path = "tests/fixtures/wasm_runtime_integration_size_probe.rs"
 crate-type = ["cdylib"]
 
 [lints]

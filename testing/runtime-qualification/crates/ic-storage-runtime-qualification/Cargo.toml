@@ -6,8 +6,12 @@ rust-version.workspace = true
 publish = false
 license.workspace = true
 
+[package.metadata.shared-tooling.loc]
+category = "tests"
+
 [dependencies]
 clap.workspace = true
 ic-platform = { workspace = true, features = ["pocket-ic"] }
+ic-storage-test-fixtures.workspace = true
 ic-wire.workspace = true
 serde.workspace = true

@@ -1,11 +1,6 @@
 //! Installed Memory scenarios and actual valid-IO measurements.
-pub(super) mod protocol {
-    include!(concat!(
-        env!("CARGO_MANIFEST_DIR"),
-        "/../../../../crates/ic-storage/examples/support/io_protocol.rs"
-    ));
-}
 use ic_platform::{pocket_ic::PocketIc, principal::ExternalPrincipal};
+pub(super) use ic_storage_test_fixtures::io as protocol;
 use ic_wire::native;
 use protocol::Snapshot;
 use std::{env, fs, time::Duration};

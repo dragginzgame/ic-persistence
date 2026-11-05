@@ -6,6 +6,9 @@ rust-version.workspace = true
 license.workspace = true
 publish = false
 
+[package.metadata.shared-tooling.loc]
+category = "tests"
+
 # Deliberately compose the facade's runtime feature with Storage's backing.
 # This isolated consumer catches executor guard conflicts reported in #152.
 [dependencies]

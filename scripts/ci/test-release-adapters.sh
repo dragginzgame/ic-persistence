@@ -586,7 +586,7 @@ cp "$ROOT/scripts/ci/read-cargo-workspace-version.sh" \
 cp "$ROOT/scripts/dev/run-repo-tool.sh" "$FIXTURE/scripts/dev/"
 bash "$ROOT/scripts/ci/prepare-script-fixture.sh" "$ROOT" "$FIXTURE" scripts/ci/observe-cargo-release-bootstrap.sh
 cp "$ROOT/scripts/ci/read-storage-packages.sh" "$FIXTURE/scripts/ci/"
-mkdir -p "$FIXTURE/crates/ic-storage/examples/repo_tool"
+mkdir -p "$FIXTURE/crates/ic-storage/tools/repo_tool"
 cp "$ROOT/ci/cargo-release-groups.json" "$FIXTURE/ci/"
 # Exercise the real published renderer; substitute only tool-store selection.
 fixture_editor="$(RUSTUP_TOOLCHAIN="$FIXTURE_TOOLCHAIN" bash "$ROOT/scripts/dev/install-rust-tools.sh" \

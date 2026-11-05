@@ -100,7 +100,7 @@ impl<T: Storable, M: Memory> StableVec<T, M> {
         ensure(bytes.len() as u64 <= DATA, Error::Budget)?;
         Ok(bytes)
     }
-    fn healthy(&self) -> Result<()> {
+    const fn healthy(&self) -> Result<()> {
         ensure(!self.poisoned.get(), Error::Poisoned)
     }
 

@@ -1,7 +1,7 @@
 # Repository Instructions
 
 For scope, delegated delivery, validation, compiler support and reporting, use
-[Shared policy at 628ccc7](https://github.com/dragginzgame/shared-tooling/blob/628ccc75d813bfd9bae777bfbaef55838d25b1b2/DRAGGINZGAME.md)
+[Shared policy at b37a882](https://github.com/dragginzgame/shared-tooling/blob/b37a882314d22bf7ab393b3fe561809377ffd22d/DRAGGINZGAME.md)
 and its revision-bound references over older snapshot or local-guide wording.
 This includes Rust 1.99.1 as minimum and pinned development/release compiler;
 check local declarations and qualification before claiming adoption is complete.
@@ -158,8 +158,12 @@ or tests whose sole purpose is prohibiting a retired name.
 ## Independent runtime qualification
 
 `testing/runtime-qualification` is the approved unpublished independent workspace.
-Its own root catalog and lockfile own PocketIC integration; normal library gates
-exclude that graph. Installed qualification retains its explicit server and Wasm
+Its own root catalog and lockfile own PocketIC integration and the private
+`ic-storage-test-fixtures` crate, which shares passive protocols between its
+installed test canisters and the native runner. Root library gates exclude that
+graph. Size probes live under package `tests/fixtures/`, benchmark helpers under
+`benches/`, and the native release helper under `tools/`.
+Installed qualification retains its explicit server and Wasm
 requirements. This does not authorize other nested workspaces. Follow
 [the adoption boundary](docs/shared-tooling-adoption.md) when changing its setup.
 

@@ -81,13 +81,13 @@ runtime-server-check:
 # Focused installed IO/upgrade qualification, separate from the library gates.
 # Build before launch so compilation does not consume the server lifetime.
 test-runtime: runtime-server-check ic-tools-check
-	+cargo +$(VALIDATION_TOOLCHAIN) build --locked --offline --profile wasm-size --target wasm32-unknown-unknown --example wasm-io-qualification --example wasm-storage-qualification --example wasm-logging-qualification
+	+cargo +$(VALIDATION_TOOLCHAIN) build --manifest-path testing/runtime-qualification/Cargo.toml --target-dir target -p ic-storage-test-fixtures --locked --offline --profile wasm-size --target wasm32-unknown-unknown --example wasm-io-qualification --example wasm-storage-qualification --example wasm-logging-qualification
 	+cargo +$(VALIDATION_TOOLCHAIN) build --locked --offline --manifest-path testing/runtime-qualification/Cargo.toml --target-dir target/runtime-qualification
 	+@cli="$$($(TESTKIT_CLI) --check)" && \
 	  bash scripts/ci/qualify-runtime.sh "$(CURDIR)" "$$cli" "$(TESTKIT_SERVER_DIRECTORY)" "$(CURDIR)/.tools/ic/bin/wasm-opt" "$(IC_TOOL_PINS)"
 
 test-runtime-logging: runtime-server-check
-	+cargo +$(VALIDATION_TOOLCHAIN) build -p ic-logging-storage --locked --offline --profile wasm-size --target wasm32-unknown-unknown --example wasm-logging-qualification
+	+cargo +$(VALIDATION_TOOLCHAIN) build --manifest-path testing/runtime-qualification/Cargo.toml --target-dir target -p ic-storage-test-fixtures --locked --offline --profile wasm-size --target wasm32-unknown-unknown --example wasm-logging-qualification
 	+cargo +$(VALIDATION_TOOLCHAIN) build --locked --offline --manifest-path testing/runtime-qualification/Cargo.toml --target-dir target/runtime-qualification
 	+@cli="$$($(TESTKIT_CLI) --check)" && \
 	  bash scripts/ci/qualify-runtime.sh "$(CURDIR)" "$$cli" "$(TESTKIT_SERVER_DIRECTORY)" - "$(IC_TOOL_PINS)" --logging-only

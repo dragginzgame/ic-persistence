@@ -3,6 +3,14 @@
 Current releases use the Storage naming. [Earlier published history](https://github.com/dragginzgame/ic-storage/blob/23deb81c48d58558ac3b0ce36bf266ddc25dca91/releases/persistence/CHANGELOG.md)
 retains its original package and release identities.
 
+## [0.67.1] - Unreleased
+
+### 🔧 Tooling
+
+- Adopt Shared Tooling 0.30.0; align fixture, benchmark and helper directories with
+  LOC rules, replace broad lint allowances with fixes and scoped expectations,
+  and escape captured diagnostic controls. [Details](0.67.md).
+
 ## [0.67.0] - 2026-11-04
 
 ### ⚠️ Breaking

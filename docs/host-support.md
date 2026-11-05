@@ -167,7 +167,8 @@ load rejection, byte/page preservation, leases and update/upgrade rollback witho
 replaying Memory's IO suite or the release optimizer matrix:
 
 ```sh
-cargo +1.99.1 build -p ic-storage --locked --offline --profile wasm-size \
+cargo +1.99.1 build --manifest-path testing/runtime-qualification/Cargo.toml \
+  --target-dir target -p ic-storage-test-fixtures --locked --offline --profile wasm-size \
   --target wasm32-unknown-unknown --example wasm-storage-qualification
 testkit_cli="$(RUSTUP_TOOLCHAIN=1.99.1 bash scripts/dev/install-rust-tools.sh \
   --consumer "$PWD" --package ic-testkit --version 0.79.0 \
@@ -184,7 +185,7 @@ Retain the supplied Wasm, source hashes and Testkit server/test output with the
 task's qualification evidence. The ignored test requires explicit server URL and
 fixture inputs; ordinary tests never prepare or start a server.
 
-For backing-custody changes, build the `ic-storage` example
+For backing-custody changes, build the `ic-storage-test-fixtures` example
 `wasm-io-qualification` for the same Wasm target/profile and pass its artifact as
 `IC_MEMORY_QUALIFICATION_WASM`. Through the same prepared Testkit `run` command,
 select `ownership::tests::installed_backing_custody -- --ignored --nocapture`.

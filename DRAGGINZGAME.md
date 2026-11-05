@@ -108,6 +108,10 @@ when changing interfaces, persistence or installation/recovery behavior.
   report that limitation; do not silently broaden an ordinary task into the full
   suite. Name the changed behavior each selected check proves. Keep unchanged
   generic regression matrices with their producer.
+- Give repeated validation one execution owner: selected group scope must reach
+  the leaf commands, and aggregate gates must not repeat full lint/setup through
+  nested targets. Reuse unchanged release-stage evidence only through the
+  qualified contract; see [validation mechanics](rules/engineering-details.md#validation-and-evidence).
 - Reserve local full repository/workspace suites and broad gates for an explicitly
   authorized release or explicit request for those checks. Implementation,
   continuation, PR delivery and readiness wording do not authorize them. Focused
@@ -237,12 +241,15 @@ storage allocation, admission, backing access or persistence integrations.
 
 ## Rust workspaces and portable tooling
 
-Keep Rust tests and test-only helpers in `tests.rs` or a `tests/` directory
-wherever practical, so file-based LOC tools can distinguish test source.
-Follow the [test layout rule](docs/principles/rust-code-hygiene.md#tests).
+Keep Rust tests and test-only helpers in `tests.rs`, `*_tests.rs` or `tests/`;
+declare fixture-only package roles explicitly. Adopt the naming layout as a
+hard cut, including references, under the
+[test layout rule](docs/principles/rust-code-hygiene.md#tests).
 
 Use ordinary Rust module discovery. `#[path]` module attributes, including
-conditional path overrides, are prohibited. Follow the
+conditional path overrides, are prohibited. Do not inject embedded Rust source
+or patch generated entrypoints to change executable code, including in tests.
+Follow the
 [module layout rule](docs/principles/rust-code-hygiene.md#ownership-and-module-shape)
 for source, tests and generated code.
 

@@ -4,7 +4,7 @@ use std::{fmt, str::FromStr};
 const MAX_KEY_BYTES: usize = 128;
 
 ///
-/// StableKey
+/// `StableKey`
 ///
 /// Canonical durable logical allocation identity.
 ///
@@ -37,6 +37,9 @@ impl StableKey {
     ///
     /// Keys are bounded lowercase ASCII dot-separated names ending in a
     /// nonzero `.vN` suffix.
+    ///
+    /// # Errors
+    /// Returns an error when the name exceeds the length limit or violates stable-key syntax.
     pub fn parse(value: impl AsRef<str>) -> Result<Self, StableKeyError> {
         let value = value.as_ref();
         validate(value)?;
@@ -77,7 +80,7 @@ impl FromStr for StableKey {
 }
 
 ///
-/// StableKeyError
+/// `StableKeyError`
 ///
 /// Stable-key grammar validation failure.
 #[derive(Clone, Debug, Eq, thiserror::Error, PartialEq)]

@@ -434,6 +434,26 @@ contracts; ordinary development does not require rereading these mechanics.
   sequential recipes or dependency edges that also hold under parallel Make.
   A failed lint must prevent later stages, and a passing lint does not replace
   the remaining complete gate or existing recovery obligations.
+- Give each validation obligation one execution owner per admitted attempt and
+  configuration. Aggregate CI/release recipes must not repeatedly invoke full
+  lint, setup or build gates through nested product targets. Keep standalone
+  commands safe by sharing prerequisite dependencies or delegating to admitted
+  leaf stages; parallel Make must preserve ordering and avoid duplicate work.
+  Prepare shared test artifacts once for their exact inputs, then let applicable
+  suites consume them. Different features, targets, hosts, archives and installed
+  contracts remain distinct obligations.
+- A later release or publication step must freshly admit its inputs, but need
+  not automatically repeat every earlier check. Reuse only through the qualified
+  [stage evidence contract](../docs/release-validation-reuse.md); missing or
+  changed evidence requires execution. Neither a successful earlier group nor
+  a version-only diff proves reuse is safe. Preserve actual archive verification,
+  registry/source identity and recovery checks at their owning boundaries.
+- Run tooling regression fixtures when their implementation, callers or covered
+  contracts change, or when explicitly qualifying them. Do not attach a tool's
+  complete self-test suite to every ordinary use of that tool. For example,
+  verifying each release archive remains required where selected, while rerunning
+  the archive verifier's synthetic regression matrix needs its own applicability.
+  Keep those regressions in their owning CI roster and qualify any new selector.
 - Check for active builds before compilation or source mutation that could affect their inputs. Do not change
   source under active validation or compete for its build lock. Use the owning
   repository's build directory; preserve unrelated artifacts.

@@ -44,6 +44,6 @@ pub enum CollectionError {
 
 pub(super) type Result<T> = std::result::Result<T, CollectionError>;
 
-pub(super) fn ensure(condition: bool, error: CollectionError) -> Result<()> {
+pub(super) const fn ensure(condition: bool, error: CollectionError) -> Result<()> {
     if condition { Ok(()) } else { Err(error) }
 }

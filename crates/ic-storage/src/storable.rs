@@ -20,7 +20,7 @@ pub enum Bound {
 }
 
 ///
-/// CodecError
+/// `CodecError`
 ///
 /// Invalid application encoding or a violation of its declared byte bound.
 ///
@@ -45,14 +45,26 @@ pub trait Storable: Sized {
     /// Record size contract.
     const BOUND: Bound;
     /// Borrow or allocate an encoding.
+    ///
+    /// # Errors
+    /// Returns a codec error if the value cannot be represented by the implementation.
     fn to_bytes(&self) -> Result<Cow<'_, [u8]>, CodecError>;
     /// Consume a value into its encoding.
+    ///
+    /// # Errors
+    /// Returns the codec error from encoding this value.
     fn into_bytes(self) -> Result<Vec<u8>, CodecError> {
         Ok(self.to_bytes()?.into_owned())
     }
     /// Decode application bytes, returning an error for invalid encodings.
+    ///
+    /// # Errors
+    /// Returns a codec error if the bytes are not a valid value of this type.
     fn from_bytes(bytes: Cow<'_, [u8]>) -> Result<Self, CodecError>;
     /// Enforce the declared maximum and exact width where applicable.
+    ///
+    /// # Errors
+    /// Returns `CodecError::Bounds` when the declared maximum or exact width is violated.
     fn check_bounds(bytes: &[u8]) -> Result<(), CodecError> {
         if let Bound::Bounded {
             max_size,
@@ -66,12 +78,18 @@ pub trait Storable: Sized {
         Ok(())
     }
     /// Encode and enforce the declared bound.
+    ///
+    /// # Errors
+    /// Returns an encoding error or `CodecError::Bounds` if the encoded bytes violate the declared bound.
     fn to_bytes_checked(&self) -> Result<Cow<'_, [u8]>, CodecError> {
         let bytes = self.to_bytes()?;
         Self::check_bounds(&bytes)?;
         Ok(bytes)
     }
     /// Consume, encode and enforce the declared bound.
+    ///
+    /// # Errors
+    /// Returns an encoding error or `CodecError::Bounds` if the encoded bytes violate the declared bound.
     fn into_bytes_checked(self) -> Result<Vec<u8>, CodecError> {
         let bytes = self.into_bytes()?;
         Self::check_bounds(&bytes)?;

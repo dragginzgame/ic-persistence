@@ -1,10 +1,5 @@
 //! Focused installed Logging checkpoints using the fixture's shared Wire contract.
-mod protocol {
-    include!(concat!(
-        env!("CARGO_MANIFEST_DIR"),
-        "/../../../../crates/ic-logging-storage/examples/logging_qualification/protocol.rs"
-    ));
-}
+use ic_storage_test_fixtures::logging as protocol;
 
 use ic_platform::{pocket_ic::PocketIc, principal::ExternalPrincipal};
 use ic_wire::native;

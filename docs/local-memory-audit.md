@@ -376,7 +376,7 @@ explicit arguments or saved configuration of any completed run.
 
 ### Many allocations sharing one backing
 
-The [native executable](../testing/runtime-qualification/crates/ic-storage-benchmarks/examples/multi_allocations.rs)
+The [native executable](../testing/runtime-qualification/crates/ic-storage-benchmarks/benches/multi_allocations.rs)
 uses 32 and 64 maps, interleaved growth from 32 to 96 records per map, 256-byte
 values and 64 KiB values in every eighth map, then four delete/reinsert rounds.
 It uses actual governed Storage leases or actual ICSS virtual memories on one

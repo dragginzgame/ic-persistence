@@ -66,7 +66,7 @@ impl ReadNode {
             children,
         })
     }
-    pub fn len(&self) -> usize {
+    pub const fn len(&self) -> usize {
         self.entries.len()
     }
     pub fn search<K: Storable + Ord>(&self, key: &K) -> Result<std::result::Result<usize, usize>> {
@@ -129,7 +129,7 @@ impl ReadNode {
             children: self.children.clone(),
         }
     }
-    fn heap_bytes(&self) -> usize {
+    const fn heap_bytes(&self) -> usize {
         size_of::<Self>()
             + 2 * size_of::<usize>()
             + self.bytes.capacity()

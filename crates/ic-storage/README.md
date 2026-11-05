@@ -10,10 +10,10 @@ not depend on `ic-stable-structures`. Rust 1.99.1 or later is required.
 | Public type | Implementation | Known sibling use |
 | --- | --- | --- |
 | `StableCell` | Cached singleton with explicit create/load/reset | Canic, Blob |
-| `StableBTreeMap` | Owned degree-six B-tree with reusable blocks | Canic, IcyDB, Blob, Relay, Metrics and Logging Storage |
+| `StableBTreeMap` | Owned degree-six B-tree with reusable blocks | Canic, `IcyDB`, Blob, Relay, Metrics and Logging Storage |
 | `StableBTreeSet` | The same ordered-tree engine with unit values | Blob deletions |
 | `StableVec` | Fixed-stride indexed slots with bounded values | Canic templates and authentication |
-| `BTreeMapRegion` | Operation-local view of the owned tree inside a leased page range | IcyDB control storage |
+| `BTreeMapRegion` | Operation-local view of the owned tree inside a leased page range | `IcyDB` control storage |
 
 Map, Set and regions share one B-tree with up to eleven entries per node.
 Values up to 32 encoded bytes stay inline; larger values occupy separate
@@ -110,7 +110,7 @@ extraction.
 range within one admitted allocation. Construction performs no IO. `initialize`
 requires an empty region. Operations load the current owned root, allowing
 views to interleave without stale caches. The current marker is `ICMAP002`;
-old upstream `BTR`/`BTA` framing is unsupported. IcyDB must update its framing
+old upstream `BTR`/`BTA` framing is unsupported. `IcyDB` must update its framing
 admission together with fresh storage for this hard cut.
 
 `keys_range_limited(bounds, limit)` bounds the collected key count before

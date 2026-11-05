@@ -94,7 +94,7 @@ impl Memory for RefCell<Vec<u8>> {
 pub type DefaultMemoryImpl = VectorMemory;
 
 ///
-/// DefaultMemoryImpl
+/// `DefaultMemoryImpl`
 ///
 /// Canister stable memory through IC Platform's owned system-call boundary.
 ///

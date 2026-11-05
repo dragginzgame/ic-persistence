@@ -38,7 +38,7 @@ struct Pointer {
     order: u8,
 }
 impl Pointer {
-    fn capacity(self) -> u64 {
+    const fn capacity(self) -> u64 {
         1_u64 << self.order
     }
     fn check(self, cursor: u64) -> Result<()> {
@@ -304,6 +304,10 @@ impl<K: Storable + Ord + Clone, V: Storable, M: Memory> Tree<K, V, M> {
     pub fn contains_key(&self, key: &K) -> Result<bool> {
         Ok(self.find(key)?.is_some())
     }
+    #[expect(
+        clippy::needless_pass_by_ref_mut,
+        reason = "Mutations require exclusive collection access despite internal transactional borrowing."
+    )]
     pub fn insert(&mut self, key: K, value: V) -> Result<Option<V>> {
         self.healthy()?;
         let key_bytes = key.to_bytes_checked()?.into_owned();
@@ -326,6 +330,10 @@ impl<K: Storable + Ord + Clone, V: Storable, M: Memory> Tree<K, V, M> {
         tx.commit()?;
         Ok(old)
     }
+    #[expect(
+        clippy::needless_pass_by_ref_mut,
+        reason = "Mutations require exclusive collection access despite internal transactional borrowing."
+    )]
     pub fn remove(&mut self, key: &K) -> Result<Option<V>> {
         self.healthy()?;
         let mut tx = Transaction::new(self);
@@ -347,6 +355,10 @@ impl<K: Storable + Ord + Clone, V: Storable, M: Memory> Tree<K, V, M> {
         tx.commit()?;
         Ok(Some(value))
     }
+    #[expect(
+        clippy::needless_pass_by_ref_mut,
+        reason = "Mutations require exclusive collection access despite internal transactional borrowing."
+    )]
     pub fn clear(&mut self) -> Result<()> {
         self.healthy()?;
         let mut tx = Transaction::new(self);
@@ -513,11 +525,10 @@ impl<'a, K: Storable + Ord + Clone, V: Storable, M: Memory> Transaction<'a, K, V
     }
     fn bytes(&self, p: Pointer, magic: [u8; 8]) -> Result<Vec<u8>> {
         p.check(self.root.cursor)?;
-        if let Some(bytes) = self.writes.get(&p.offset) {
-            Ok(bytes.clone())
-        } else {
-            record::read_bytes(&self.tree.memory, p.offset, p.capacity(), magic)
-        }
+        self.writes.get(&p.offset).map_or_else(
+            || record::read_bytes(&self.tree.memory, p.offset, p.capacity(), magic),
+            |bytes| Ok(bytes.clone()),
+        )
     }
     fn node(&self, p: Pointer, depth: usize) -> Result<Node> {
         Ok(self.read_node(p, depth)?.owned())

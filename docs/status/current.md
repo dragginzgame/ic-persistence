@@ -6,7 +6,11 @@ Storage `816e520` / `storage-v0.67.0` is pushed and published. All 12 release
 stages and installed IO/upgrade/rollback qualification passed. The downloaded
 registry archive matches the qualified SHA-256 `427bcd5110c380fb2c2c2007fc2e3d05fd4550ebdc74046d65fbaaa52f0727f3`.
 Logging remains at `74f185e` / `logging-storage-v0.64.1`; adapters were not rereleased.
-Shared Tooling remains 0.29.4 (`628ccc7`, 153 files).
+Shared Tooling 0.30.0 (`b37a882`, 154 files) is adopted in the working tree;
+Storage 0.67.1 notes are pending. See the [adoption audit](../audits/2026-11-05-shared-tooling.md).
+Native/Wasm lint, 138 library and 88 helper tests, archive qualification and
+installed original-Wasm IO/upgrade/rollback pass; both LOC reports classify every
+source. No release, commit or push is part of this adoption.
 Preserve all failed logs, receipts and lock-preservation stashes, including
 `storage-0670-preserved-pending-lock-inputs`. Its pending selections are restored;
 only Storage's local lock identity advances to 0.67.0. Evidence: `target/storage-0670-deploy/`.
@@ -23,41 +27,13 @@ Unrelated root-lock selections are preserved separately; evidence: `target/wire-
 
 ## Included in Storage 0.66.3
 
-The published matrix covers 29 cases/52 combinations; the linked audit retains evidence.
-The [hotspot investigation](../audits/recurring/storage-icss-hotspots-2026-11-04.md)
-finds checksum passes absent in ICSS Cell/Vector, existing reusable vector buffers,
-and an aggregate-round interpretation caveat. Per-round summaries now distinguish
-initial state from post-Shrink Cell reads. A subsequent borrowed-key cursor fix
-passes 94 core tests and strict lint; matched scans improve 4–8% for array Map
-keys and 8.45% for u64 Set keys (String Set 0.5%). Before/after runs pass 984 calls
-each; Vector layout controls pass 672. Evidence: `target/cursor-investigation/`.
-Key-only scans now also skip unused inline-value copies: another 7.76% reduction
-in array-Map KeysScan (14.98% combined), with 0.3–0.6% Set scan increases versus
-the first candidate. Final u64 Set scanning is 7.87% below the original baseline.
-94 core tests, strict lint and 984 further installed calls pass. Evidence:
-`target/key-only-investigation/`. Cell/Vector checks and formats remain.
-The RSX-inspired inline replacement retains shared preparation: 3.74–7.47% fewer instructions for single replacements,
-19.53–26.60% for batches of 32 in matched 256-row Uniform/Hot16 runs. All three
-3,576-call traces pass; aggregate ICSS instructions and Storage pages match.
-Last regresses 2.66%; Wasm grows 4,054 bytes, 56% less than the first candidate.
-95 core tests/lint pass; evidence: hotspot audit and `target/encoded-update-size/`.
-Experiment 2 remains research: external-value-only 64-byte blocks save 30–44%
-of backing in the four-map small-record study, but Grow 33→132 costs up to 41%
-more. Both prototypes pass 95 tests and 3,576 installed calls each. Production
-format/minimum are restored; experiment 1 remains selected. Durable prototype
-patches/results are linked in the hotspot audit. `--small-records` is retained
-as a native benchmark selection; logs: `target/small-block-investigation/`.
-Deeper qualification: four policies, 36 native 24-phase histories, 24 installed
-runs / 39,168 calls; complete ICSS controls match. Retaining capacity with a
-64-byte initial floor fixes recurring write churn and improves batch cycles,
-but warm Uniform single-record 80-byte cycles regress 61.10%. No allocator
-promotion: preserve baseline/experiment 1. Eight cache trials (12,288 calls)
-identify protected-slot collisions at 18 KiB/64 KiB use. A mixer moves the failure
-to baseline (+58.59%); rejected. Selected two-way cache removes the target collision
-(−37.76%), with up to +2.04% warm-trace overhead; 9,408 new calls pass.
-Core tests/lint (95/95/96) and 6+10+1 harness tests pass; both locks are unchanged.
-Two-way cache adopted for 0.66.3; allocator unchanged. Sweep seeds/budgets next.
-96 core/87 helper tests and all-target lint pass; CI helper lint warning fixed.
+The [ICSS hotspot audit](../audits/recurring/storage-icss-hotspots-2026-11-04.md)
+retains the 29-case/52-combination matrix, cursor and inline replacement gains,
+and rejected allocator/cache experiments. The two-way cache and inline update
+are selected; 64-byte allocator prototypes remain research. Preserve their
+tracked patches and `target/cursor-investigation/`, `target/key-only-investigation/`,
+`target/encoded-update-size/` and `target/small-block-investigation/` evidence.
+These are collection-level comparisons, not whole-endpoint throughput claims.
 
 ## Included CI group selection
 

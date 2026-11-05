@@ -151,7 +151,7 @@ pub fn reserve(memory: &impl Memory, bytes: u64) -> Result<()> {
     Ok(())
 }
 
-pub fn bound<T: super::Storable>() -> Option<(u32, bool)> {
+pub const fn bound<T: super::Storable>() -> Option<(u32, bool)> {
     match T::BOUND {
         super::Bound::Unbounded => None,
         super::Bound::Bounded {

@@ -10,8 +10,7 @@
 //! Map and set iterators yield `Result` entries and stop after an iteration error.
 //! The allocation runtime enforces one live lease per allocation;
 //! hosts retain exclusive custody of the backing across runtimes.
-// Preserve the collection layer's pre-consolidation lint policy.
-#![allow(clippy::nursery)]
+// Collection APIs require public documentation in addition to workspace Clippy.
 #![warn(clippy::all, clippy::pedantic, missing_docs)]
 use crate::DefaultMemoryImpl;
 use crate::RuntimeMemory;

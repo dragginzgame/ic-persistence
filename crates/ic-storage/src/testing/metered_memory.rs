@@ -31,6 +31,10 @@ pub struct MemoryIoCounts {
     pub overflowed: bool,
 }
 
+#[expect(
+    clippy::empty_line_after_doc_comments,
+    reason = "Repository rustdoc style separates item docs from attributes."
+)]
 ///
 /// `MeteredMemory`
 ///

@@ -5,6 +5,7 @@ edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
 publish = false
+autobenches = false
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 clap.workspace = true
@@ -12,6 +13,9 @@ ic-platform = { workspace = true, features = ["pocket-ic"] }
 ic-platform-stable-benchmark = { workspace = true, features = ["stable-structures"], optional = true }
 ic-storage = { workspace = true, features = ["test-support"], optional = true }
 serde_json.workspace = true
+
+[package.metadata.shared-tooling.loc]
+category = "benchmarks"
 
 [features]
 owned = ["dep:ic-storage"]
@@ -30,10 +34,10 @@ serde.workspace = true
 
 [[example]]
 name = "storage-comparison-wasm"
-path = "examples/wasm.rs"
+path = "benches/wasm.rs"
 crate-type = ["cdylib"]
 
 [[example]]
 name = "multi-allocations"
-path = "examples/multi_allocations.rs"
+path = "benches/multi_allocations.rs"
 required-features = ["owned", "dfinity"]

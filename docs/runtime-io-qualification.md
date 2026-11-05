@@ -533,7 +533,7 @@ format changes. No compatibility readers or aliases were added.
   `into_bytes` output. The pending-commit UI case denies `unused_must_use` after
   consuming the enclosing result and observes the pending type's diagnostic.
 
-The installed [Wasm fixture](../crates/ic-storage/examples/wasm_io_qualification.rs) and
+The installed [Wasm fixture](../testing/runtime-qualification/crates/ic-storage-test-fixtures/tests/fixtures/wasm_io_qualification.rs) and
 [host runner](../testing/runtime-qualification/crates/ic-memory-runtime-qualification/src/main.rs) use the current root
 dependency graph. PocketIC 16.0.0 passed these executed checks:
 
@@ -657,7 +657,8 @@ prerequisites remain those in [host support](host-support.md).
 From the repository root, run these focused builds sequentially:
 
 ```sh
-cargo build --locked --offline --profile wasm-size \
+cargo build --manifest-path testing/runtime-qualification/Cargo.toml \
+  --target-dir target -p ic-storage-test-fixtures --locked --offline --profile wasm-size \
   --target wasm32-unknown-unknown --example wasm-io-qualification
 cargo build --locked --offline \
   --manifest-path testing/runtime-qualification/Cargo.toml \

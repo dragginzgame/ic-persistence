@@ -6,6 +6,7 @@ members = [
     "crates/ic-storage-default-qualification",
     "crates/ic-storage-platform-qualification",
     "crates/ic-storage-runtime-qualification",
+    "crates/ic-storage-test-fixtures",
 ]
 default-members = ["crates/ic-storage-runtime-qualification"]
 
@@ -17,6 +18,8 @@ license = "MIT"
 
 [workspace.dependencies]
 clap = { version = "4.6", default-features = false, features = ["derive", "std", "help", "usage", "error-context"] }
+ic-logging = { version = "0.24.0", default-features = false }
+ic-logging-storage = { path = "../../crates/ic-logging-storage", version = "0.64.1" }
 # Facade for the native client and explicit runtime-composition fixture.
 # Testkit retains server selection and lifecycle.
 ic-platform = { version = "0.19.0", default-features = false }
@@ -28,6 +31,7 @@ ic-platform-stable-benchmark = { package = "ic-platform", version = "0.17.0", de
 # The facade cannot select unpublished upstream code; no production consumer uses this.
 ic-stable-structures-head = { package = "ic-stable-structures", git = "https://github.com/dfinity/stable-structures", rev = "b5d1650463f477affb3d358e86b1113953fc9937" }
 ic-storage = { path = "../../crates/ic-storage", version = "0.67.0" }
+ic-storage-test-fixtures = { path = "crates/ic-storage-test-fixtures" }
 ic-wire = "0.17.0"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
@@ -38,3 +42,11 @@ opt-level = 3
 lto = "fat"
 codegen-units = 1
 panic = "abort"
+
+[profile.wasm-size]
+inherits = "release"
+opt-level = "z"
+lto = "fat"
+codegen-units = 1
+panic = "abort"
+strip = "symbols"

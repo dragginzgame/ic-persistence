@@ -9,12 +9,24 @@ local baseline. Future policy changes require reviewed snapshot adoption.
 
 ## Current source selection
 
-IC Storage selects committed Shared Tooling VERSION 0.29.4 at
-`628ccc75d813bfd9bae777bfbaef55838d25b1b2`, verified against GitHub's `main`.
-The clean sibling checkout was exported through the canonical exporter, with
-153 files recorded by the snapshot. Clean-source export keeps transient staging
-inside the consumer; explicit-revision preview requires external scratch and was
-not used. No sibling edits or additional checkout were needed.
+IC Storage selects committed Shared Tooling VERSION 0.30.0 at
+`b37a882314d22bf7ab393b3fe561809377ffd22d`, verified against GitHub's `main`.
+The clean sibling was exported through the canonical exporter; the snapshot
+records 154 unchanged shared files. No sibling edits or extra checkout were used.
+
+The [adoption audit](audits/2026-11-05-shared-tooling.md) records the directory,
+fixture ownership, lint and diagnostic changes. Evidence lives under
+`target/shared-tooling-0300-adoption/`. Release groups, public APIs, stored layouts
+and publication identities remain unchanged. Remaining root lock selections are
+preserved; the unused CDK-only closure is pruned, and the fixture dependency is confined to the unpublished qualification workspace.
+
+The follow-up refresh to `b37a882` fixes exported LOC documentation links and
+single-workspace table labels. Make's root/independent LOC callers, JSON manifest
+identity, snapshot integrity and affected documentation links are checked under
+`target/shared-tooling-b37a882/`. Existing Rust and installed-runtime evidence
+remains applicable; executable Rust and release policy did not change.
+
+## Previous 0.29.4 qualification
 
 The new retained-state guard admits the current Git-side recovery roots without
 cleanup. It runs before release work and around adapter hooks, preserves original

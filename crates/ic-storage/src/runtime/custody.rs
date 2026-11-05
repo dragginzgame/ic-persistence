@@ -4,7 +4,7 @@ use crate::{Memory, VectorMemory};
 use std::{collections::BTreeSet, rc::Rc, sync::Arc};
 
 ///
-/// BackingIdentity
+/// `BackingIdentity`
 ///
 /// Identity of a physical backing allocation, shared by all of its wrappers.
 /// This is host custody metadata, not a virtual memory ID or durable record.
@@ -30,7 +30,7 @@ impl BackingIdentity {
 }
 
 ///
-/// MemoryBacking
+/// `MemoryBacking`
 ///
 /// Host boundary for a backing whose aliases can be identified consistently.
 ///

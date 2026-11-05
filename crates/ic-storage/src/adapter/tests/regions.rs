@@ -34,7 +34,7 @@ fn region_growth_error_retains_the_runtime_source() {
     );
 }
 
-fn namespace(family: u8) -> std::ops::RangeInclusive<[u8; 33]> {
+const fn namespace(family: u8) -> std::ops::RangeInclusive<[u8; 33]> {
     let mut start = [0; 33];
     start[0] = family;
     let mut end = [u8::MAX; 33];

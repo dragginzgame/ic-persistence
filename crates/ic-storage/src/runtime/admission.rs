@@ -37,6 +37,9 @@ pub struct MemoryAuthority {
 }
 impl MemoryAuthority {
     /// Check owner and namespace syntax. Names do not select numeric IDs.
+    ///
+    /// # Errors
+    /// Rejects invalid authority labels or namespace prefixes.
     pub fn new(
         authority: impl Into<String>,
         prefix: impl Into<String>,
@@ -55,6 +58,9 @@ impl MemoryAuthority {
 pub struct AllocationGrants(Vec<MemoryAuthority>);
 impl AllocationGrants {
     /// Validate namespace overlap before runtime bootstrap.
+    ///
+    /// # Errors
+    /// Rejects duplicate or overlapping namespace grants.
     pub fn new(mut grants: Vec<MemoryAuthority>) -> Result<Self, AdmissionError> {
         grants.sort_unstable_by(|a, b| a.prefix.cmp(&b.prefix));
         if grants
@@ -84,6 +90,9 @@ pub struct MemoryRequest {
 }
 impl MemoryRequest {
     /// Construct a key-only allocation request.
+    ///
+    /// # Errors
+    /// Rejects invalid authority labels or stable-key syntax.
     pub fn new(authority: impl Into<String>, key: &str) -> Result<Self, AdmissionError> {
         let authority = authority.into();
         if !owner_valid(&authority) {
@@ -111,6 +120,9 @@ impl MemoryRequest {
 pub struct SealedDeclarationSnapshot(Vec<MemoryRequest>);
 impl SealedDeclarationSnapshot {
     /// Seal the complete host-composed requests.
+    ///
+    /// # Errors
+    /// Rejects duplicate stable keys in the declaration set.
     pub fn new(mut requests: Vec<MemoryRequest>) -> Result<Self, AdmissionError> {
         requests.sort_unstable_by(|a, b| a.key.cmp(&b.key));
         if requests.windows(2).any(|pair| pair[0].key == pair[1].key) {
@@ -178,6 +190,9 @@ impl<'a> BootstrapAdmission<'a> {
         self.keys.contains(key)
     }
     /// Select a retained name under current grants. An ignored failure still rejects bootstrap.
+    ///
+    /// # Errors
+    /// Rejects invalid or unauthorized names, missing retained entries, duplicates, capacity limits, or a previous admission failure.
     pub fn include_historical(&mut self, authority: &str, key: &str) -> Result<(), AdmissionError> {
         if let Some(error) = &self.failure {
             return Err(error.clone());
@@ -216,8 +231,14 @@ pub trait RuntimeBootstrapPolicy {
     /// Policy-specific rejection.
     type Error;
     /// Validate one admitted key; numeric placement is owned by Storage.
+    ///
+    /// # Errors
+    /// Returns the host policy error when this key is rejected.
     fn validate_allocation(&self, key: &StableKey) -> Result<(), Self::Error>;
     /// Inspect retained names and optionally select historical keys.
+    ///
+    /// # Errors
+    /// Returns the host policy error when recovered-state inspection rejects admission.
     fn prepare_bootstrap(
         &self,
         _admission: &mut BootstrapAdmission<'_>,

@@ -7,20 +7,20 @@ The default member remains the qualification runner; normal runtime qualificatio
 does not build or run the comparison.
 The package keeps PocketIC dependencies out of
 the library's normal graph. It installs the supplied
-[`wasm-io-qualification`](../../crates/ic-storage/examples/wasm_io_qualification.rs) fixture in a
+[`wasm-io-qualification`](crates/ic-storage-test-fixtures/tests/fixtures/wasm_io_qualification.rs) fixture in a
 caller-owned server selected by IC Testkit. The Storage-owned
-[`wasm-storage-qualification`](../../crates/ic-storage/examples/wasm_storage_qualification.rs)
+[`wasm-storage-qualification`](crates/ic-storage-test-fixtures/tests/fixtures/wasm_storage_qualification.rs)
 fixture additionally checks Cell, Map, Set, Vector and map regions across 1,031
 named allocations through successful upgrades and rollback of trapped
 updates/upgrades. It never starts or downloads a server.
 The Logging-owned
-[`wasm-logging-qualification`](../../crates/ic-logging-storage/examples/logging_qualification/main.rs)
+[`wasm-logging-qualification`](crates/ic-storage-test-fixtures/tests/fixtures/logging_qualification/main.rs)
 fixture checks query non-persistence, update/upgrade rollback, canonical reopen
 and watermarks after pruning every row. Its bounded native Wire protocol is shared
 with the host runner; it installs no library endpoint or lifecycle hook.
 Allocation and collection fixtures also share fixture-only bounded Wire contracts with the
-runner in [`io_protocol.rs`](../../crates/ic-storage/examples/support/io_protocol.rs)
-and [`qualification_protocol.rs`](../../crates/ic-storage/examples/support/qualification_protocol.rs).
+runner in [`io.rs`](crates/ic-storage-test-fixtures/src/io.rs)
+and [`storage.rs`](crates/ic-storage-test-fixtures/src/storage.rs).
 Requests and responses bind method identities, including unit requests and
 installation/upgrade arguments. Their limits are 128 encoded bytes, 4,096
 allocation units, 128 nodes and depth eight. Canisters reject oversized input

@@ -9,7 +9,7 @@ use std::collections::{BTreeMap, BTreeSet};
 const FRAME: &[u8] = b"ICDIRR01";
 
 ///
-/// StorageConfig
+/// `StorageConfig`
 ///
 /// Resource ceilings checked when creating, opening and extending the directory.
 /// Physical page accounting includes retained metadata and abandoned tails.
@@ -44,7 +44,7 @@ impl Default for StorageConfig {
 }
 
 ///
-/// AllocationId
+/// `AllocationId`
 ///
 /// Opaque durable identity assigned by the directory. It grants no access.
 ///

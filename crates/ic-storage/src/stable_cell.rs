@@ -8,8 +8,12 @@ pub const STABLE_CELL_HEADER_SIZE: usize = 24;
 /// Byte offset where the stable-cell value payload starts.
 pub const STABLE_CELL_VALUE_OFFSET: u64 = STABLE_CELL_HEADER_SIZE as u64;
 
+#[expect(
+    clippy::empty_line_after_doc_comments,
+    reason = "Repository rustdoc style separates item docs from attributes."
+)]
 ///
-/// StableCellPayloadError
+/// `StableCellPayloadError`
 ///
 /// Stable-cell payload decode failure.
 ///
@@ -42,6 +46,9 @@ pub enum StableCellPayloadError {
 ///
 /// # Panics
 /// Propagates backing `size`/`read` failures.
+///
+/// # Errors
+/// Rejects foreign or unsupported envelopes and lengths exceeding the backing extent or caller limit.
 pub fn stable_cell_payload_length<M: Memory>(
     memory: &M,
     maximum: usize,

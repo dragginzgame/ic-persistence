@@ -1,5 +1,8 @@
 //! Explicit host fixtures using the production namespace/bootstrap boundary.
-use crate::*;
+use crate::{
+    AllocationGrants, GenericAllocationPolicy, MemoryAuthority, MemoryBacking, MemoryRequest,
+    MemoryRuntime, SealedDeclarationSnapshot, StorageConfig,
+};
 
 #[cfg(not(target_arch = "wasm32"))]
 mod metered_memory;
@@ -7,6 +10,9 @@ mod metered_memory;
 pub use metered_memory::{MemoryIoCounts, MeteredMemory};
 
 /// Construct a host runtime with one namespace and a complete request roster.
+///
+/// # Errors
+/// Returns errors from backing construction, grant/key admission, declaration sealing, or bootstrap.
 pub fn fixture_runtime<M: MemoryBacking>(
     memory: M,
     authority: &str,

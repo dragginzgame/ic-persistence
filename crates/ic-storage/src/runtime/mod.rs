@@ -90,7 +90,7 @@ struct Binding {
 }
 
 ///
-/// MemoryRuntime
+/// `MemoryRuntime`
 ///
 /// One custodian of named allocations on a backing. Bootstrap validates namespace
 /// grants and host policy, commits bindings, then permits exclusive leases.
@@ -105,6 +105,9 @@ pub struct MemoryRuntime<M: Memory> {
 
 impl<M: Memory> MemoryRuntime<M> {
     /// Claim backing and create or read its owned directory. Never reset nonempty backing.
+    ///
+    /// # Errors
+    /// Rejects duplicate backing custody or invalid/non-admissible retained directory data.
     pub fn new(memory: M) -> Result<Self, RuntimeConstructionError>
     where
         M: MemoryBacking,
@@ -112,6 +115,9 @@ impl<M: Memory> MemoryRuntime<M> {
         Self::new_with_config(memory, StorageConfig::default())
     }
     /// Use explicit directory resource limits; reopening revalidates under those limits.
+    ///
+    /// # Errors
+    /// Rejects duplicate backing custody, invalid configuration, or invalid/non-admissible retained directory data.
     pub fn new_with_config(
         memory: M,
         config: StorageConfig,
@@ -135,6 +141,9 @@ impl<M: Memory> MemoryRuntime<M> {
         self.binding.is_some()
     }
     /// Current durable directory generation, after bootstrap admission.
+    ///
+    /// # Errors
+    /// Returns `NotBootstrapped` until bootstrap establishes a binding.
     pub fn committed_generation(&self) -> Result<u64, RuntimeOpenError> {
         if self.binding.is_none() {
             return Err(RuntimeOpenError::NotBootstrapped);
@@ -147,6 +156,9 @@ impl<M: Memory> MemoryRuntime<M> {
         self.config
     }
     /// Admit a complete declaration set, retaining omitted historical bindings.
+    ///
+    /// # Errors
+    /// Rejects invalid grants or declarations, host-policy refusal, conflicting bindings, and directory validation or commitment failures.
     pub fn bootstrap<P: RuntimeBootstrapPolicy>(
         &mut self,
         source: &SealedDeclarationSnapshot,
@@ -183,6 +195,9 @@ impl<M: Memory> MemoryRuntime<M> {
         Ok(self.owner.generation())
     }
     /// Compare the complete established binding without IO or policy callbacks.
+    ///
+    /// # Errors
+    /// Returns `NotBootstrapped` or `BindingMismatch` when the supplied composition differs from the established binding.
     pub fn verify_bootstrap<P: RuntimeBootstrapPolicy>(
         &self,
         source: &SealedDeclarationSnapshot,
@@ -205,6 +220,9 @@ impl<M: Memory> MemoryRuntime<M> {
     ///
     /// # Panics
     /// Propagates backing failures or a broken internal binding invariant.
+    ///
+    /// # Errors
+    /// Rejects unbootstrapped or unadmitted access, an existing lease, and invalid directory state.
     pub fn open_memory(&self, key: &StableKey) -> Result<RuntimeMemory<M>, RuntimeOpenError> {
         let binding = self
             .binding
@@ -222,6 +240,9 @@ impl<M: Memory> MemoryRuntime<M> {
         Ok(RuntimeMemory { lease })
     }
     /// Verify component requirements against current host admission without IO.
+    ///
+    /// # Errors
+    /// Rejects unbootstrapped access or requirements not admitted under the requested authority.
     pub fn verify_authority(
         &self,
         requirements: &SealedDeclarationSnapshot,
@@ -247,6 +268,9 @@ impl<M: Memory> MemoryRuntime<M> {
         self.owner.allocation_id(key)
     }
     /// Observe checked directory entries and actual logical extents.
+    ///
+    /// # Errors
+    /// Returns a directory error when ownership is poisoned or the retained directory fails validation.
     pub fn memory_allocations(&self) -> Result<Vec<MemoryAllocation>, DirectoryError> {
         self.owner.verify()?;
         Ok(self
@@ -275,7 +299,7 @@ impl<M: Memory> MemoryRuntime<M> {
 }
 
 ///
-/// StorageDiagnostics
+/// `StorageDiagnostics`
 ///
 /// Read-only totals from the validated current directory and physical backing.
 /// The protected root occupies one additional page: data, metadata, unassigned
@@ -308,7 +332,7 @@ pub struct StorageDiagnostics {
 }
 
 ///
-/// MemoryAllocation
+/// `MemoryAllocation`
 ///
 /// Passive diagnostic entry; no lease or allocation authority is carried.
 ///
@@ -323,7 +347,7 @@ pub struct MemoryAllocation {
 }
 
 ///
-/// RuntimeMemory
+/// `RuntimeMemory`
 ///
 /// Exclusive non-cloneable allocation lease. IO trusts custody between checked
 /// boundaries; growth commits the directory before publishing its new extent.
@@ -339,6 +363,9 @@ impl<M: Memory> RuntimeMemory<M> {
         self.lease.size()
     }
     /// Reserve additional zero-filled logical pages without exposing backing.
+    ///
+    /// # Errors
+    /// Rejects arithmetic overflow, resource limits, backing refusal, poisoned ownership, or invalid directory state.
     pub fn grow(&self, pages: u64) -> Result<u64, RuntimeGrowError> {
         self.lease.try_grow(pages).map_err(|error| match error {
             DirectoryError::ArithmeticOverflow => RuntimeGrowError::ArithmeticOverflow,

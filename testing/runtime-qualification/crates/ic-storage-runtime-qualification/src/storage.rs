@@ -1,14 +1,9 @@
 //! Installed Storage adapters under the same caller-owned server as Memory.
-mod protocol {
-    include!(concat!(
-        env!("CARGO_MANIFEST_DIR"),
-        "/../../../../crates/ic-storage/examples/support/qualification_protocol.rs"
-    ));
-}
 use ic_platform::{
     pocket_ic::{ClientError, PocketIc},
     principal::ExternalPrincipal,
 };
+use ic_storage_test_fixtures::storage as protocol;
 use ic_wire::native;
 fn frame(id: u64, value: &impl serde::Serialize) -> Vec<u8> {
     native::encode_request(id, value, protocol::REQUEST).unwrap()
