@@ -124,5 +124,7 @@ impl<T, I: DoubleEndedIterator<Item = Codec<T>>> DoubleEndedIterator for Iter<I>
         self.0.nth_back(n).map(|v| Ok(v.0))
     }
 }
-#[cfg(test)]
+// This suite meters host IO and injects corrupt bytes through native-only views.
+// Installed Wasm qualification exercises the production Vector separately.
+#[cfg(all(test, not(target_arch = "wasm32")))]
 mod tests;
