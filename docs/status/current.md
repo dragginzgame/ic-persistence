@@ -1,6 +1,6 @@
 # Current handoff — 2026-11-06
 
-## Pending Storage 0.68.1 release
+## Delivered: Storage 0.68.1
 
 This checkout owns Storage delivery; Platform is released from its own repository.
 Published Runtime 0.19.4 is adopted in both maintained workspaces and is the new
@@ -11,7 +11,17 @@ pass (`target/qualification/runtime/attempt.XawP1b`). Evidence is under
 `target/evidence/storage-0681-deploy/`. The earlier local-package proof remains
 under `target/evidence/runtime-local-4547033/`; it is distinct from registry proof.
 
-The pending compatible changes optimize Vector last(), fixed-width direct reads,
+Storage 0.68.1 is published, non-yanked, and independently downloaded. Its archive
+checksum and clean embedded VCS commit match the qualified receipt and pushed
+annotated tag `storage-v0.68.1` at `6ee75e906987fe20f73bb837c9107d9b5312da7e`.
+All 12 required stages passed on Rust/Cargo 1.99.1, including native tests,
+tooling/recovery, rustdoc, Wasm, size budgets and all-three-package archive
+integration. Receipt: `target/release-validation/storage-0.68.1.json`.
+Verification: `target/evidence/storage-0681-deploy/verified.json`. The crates.io
+API returned 403; independent sparse-index and static-archive verification passed.
+Hosted CI remains separate from the completed local release qualification.
+
+The released compatible changes optimize Vector last(), fixed-width direct reads,
 Map/region header admission and governed backing access. The
 [follow-through matrix](../audits/recurring/storage-068-followup-2026-11-06.md)
 and [backing matrix](../audits/recurring/storage-icss-backing-parity-2026-11-06.md)
@@ -24,11 +34,10 @@ Layouts and successful-call APIs are preserved; no backing migration is needed.
 Shared Tooling 0.30.7 and native IC Build 0.75.0 are included. Existing root
 Logging 0.24.10, Metrics 0.29.5 and Wire 0.17.4 selections are preserved and
 qualified as part of this release graph. Neither adapter has an independent
-source change requiring a release. Package versions remain unchanged until the
-standard storage release runner admits all required stages and prepares metadata.
-No release commit, tag, push or publication is claimed by this preparation.
+source change requiring a release. Metrics Storage remains 0.70.0 and Logging
+Storage remains 0.66.0; their compatible requirements admit Storage 0.68.1.
 
-## Delivered: Storage and both adapters
+## Previous delivery: Storage 0.68.0 and both adapters
 
 The authorized Storage-only delivery is complete on `origin/main`. All three
 annotated release tags are pushed and all packages are published, non-yanked,
