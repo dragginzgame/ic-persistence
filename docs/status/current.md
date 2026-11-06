@@ -1,88 +1,82 @@
-# Current handoff
+# Current handoff — 2026-11-06
 
-**Shared Tooling refresh (unreleased):** adopted 0.30.5 at `be37710`, the checked
-GitHub `main` revision, through the canonical exporter. All 156 payloads match
-the independently selected commit. The Candid source gate covers 161 Rust files;
-both workspaces reject named direct CBOR dependencies. Actual formatter/LOC
-callers, dependency pins/boundaries, a selected native release-note caller test
-and the benchmark output-route/refusal probe pass. Source review found no CBOR
-use; general CBOR import/macro/type-resolution enforcement is not supplied by
-the lexical Candid check. New raw comparisons use `target/evidence/`.
-Both lockfiles and 124 previously qualified Rust/manifest inputs are unchanged.
-Details are in [the adoption boundaries](../shared-tooling-adoption.md). The
-authorized measurement cleanup is complete; compact results replace bulk exports.
-Engine work, stashes and release/recovery artifacts remain preserved. Logs are
-under `target/evidence/shared-tooling-0305/`; no release or sibling edit occurred.
+## Delivered: Storage and both adapters
 
-**Completed:** the full ICSS + Storage type union now covers all five supported
-collection forms: 73 concrete types, 565 unique type/role cases and the full ICSS
-B-tree key/value grid. All 46,604 installed measured calls and final states pass,
-alongside 42 focused native tests and strict native/Wasm lint. The compatibility
-ledger explicitly records 53 verified runtime refusals and 18 non-Ord backend
-roles; absent ICSS measurements have blank costs/ratios. See the
-[full-catalogue record and results](../audits/recurring/benchmark-full-catalogue-2026-11-05.md).
-`BENCH_WORKLOAD=types make benchmark-storage` runs five automatic collection
-shards with a common eight-MiB synthetic benchmark stack and 30-minute server
-limits. Production stack settings and codecs are unchanged by this follow-up.
-Raw evidence is in `target/storage-comparison/attempt.tSHDxo/`; partial/failed
-attempts remain preserved. Previous 58-case evidence below is historical.
+The authorized Storage-only delivery is complete on `origin/main`. All three
+annotated release tags are pushed and all packages are published, non-yanked,
+with independently downloaded archives matching qualified checksums and VCS IDs.
+Sibling repositories were inspected only and remain unchanged by this delivery.
 
-## Pending Storage 0.68.0: copied ICSS collection baseline
+| Package | Version | Release commit | Tag |
+| --- | --- | --- | --- |
+| ic-storage | 0.68.0 | `6f87f36` | `storage-v0.68.0` |
+| ic-metrics-storage | 0.70.0 | `388c366` | `metrics-storage-v0.70.0` |
+| ic-logging-storage | 0.66.0 | `7ac245c` | `logging-storage-v0.66.0` |
 
-The maintainer selected all engines from copied published ICSS 0.7.2 source,
-with governed allocation, successful-call API shapes and ICSS trap behavior.
-Private `engine` contains algorithms; public `adapter` enforces checked leases.
-No production ICSS dependency or copied MemoryManager exists. Old tree/block/
-record implementations, node cache and Vector windows/epochs are deleted.
-[Provenance](../storage/upstreams.md) and [qualification/results](../audits/recurring/icss-engine-baseline-2026-11-05.md)
-record deliberate adaptations and original source hashes/notices.
+All 12 required release stages passed for each group on Rust/Cargo 1.99.1,
+including lint, features, policy, tooling/recovery, all collection/adapter tests,
+rustdoc, Wasm tests, size budgets and complete archive integration. Each group's
+metadata, exact source/index/tag and atomic push checks passed. Live publication
+and independent readback are separate completed observations.
 
-Every earlier Storage collection requires explicit rebuild/reset or fresh
-allocation; BTR2 (explicit page size), SVC1 and SCL1 are current. No legacy reader,
-migration or automatic reset exists. Directory bytes/checksums and application
-codecs are unchanged. Collection codecs/engine failures trap; collection
-checksums are gone. Native mutation unwinds poison the shared owner; IC rollback
-supplies Wasm atomicity. Positive cache ceilings do not enable a node cache.
+Receipts: `target/release-validation/storage-0.68.0.json`,
+`metrics-storage-0.70.0.json` and `logging-storage-0.66.0.json` in that directory.
+Release, publication and independent registry readback evidence is retained under
+`target/evidence/storage-068-deploy/`. Earlier failed gate logs remain untouched:
+the Candid roster expectation and native-only Vector test scope were corrected,
+then the complete gate passed. There is no pending publication to replay.
 
-Core collection/governance, custody, Metrics/Logging and reference/model tests
-pass, with native/Wasm lint and production-graph checks. Original final Wasm
-installed proof covers 1,031 allocations, all collections, successful upgrades
-and decoder/update/upgrade rollback. Counts and evidence are in the audit.
+Installed original/O3/Os/Oz qualification passed for IO, backing custody,
+collections and Logging, including 1,031 allocations, upgrade reopening and
+trapped decoder/update/upgrade rollback. Exact inputs and all four variants are
+in `target/qualification/runtime/attempt.P0oWYq/`. No deployed canister backing
+was reset and no sibling adoption is implied.
 
-The 3,196-call comparison plus 824 iterator reruns establish the reset baseline;
-the 480-call Auth preset also passes. No universal speedup is claimed. These use
-one ordinary seed/uniform access and ICSS eight-page research buckets. Evidence
-is in `target/icss-baseline-reset/` and attempts `difIFu`, `UZTbp1`, `Q4kJp3`.
+## Breaking collection baseline
 
-Changes are uncommitted/unpublished; manifests retain released versions.
-No release, sibling migration or backing reset is authorized. The independent
-lock preserves every selected package version/source and adds only the benchmark
-package's existing `ic_principal` dependency edge. Root supplier refreshes beyond the starting snapshot
-remain intact; root checks use Wire 0.17.2 / Runtime 0.19.2 / Build-Host 0.74.4,
-while the independent comparison retains Wire 0.17.0 / Runtime 0.19.0.
-Full release/packaging and optimized-Wasm qualification have not been run.
+Storage 0.68 owns private copied ICSS 0.7.2 engines behind governed adapters;
+Map/Set/regions share one B-tree, Vector uses fixed-stride slots and Cell caches
+its value. No production ICSS dependency or copied MemoryManager exists.
+Old independent engines, collection checksums, node cache and Vector windows/
+epochs are retired. [Provenance](../storage/upstreams.md) retains notices,
+source identities and the deliberate safety/integration adaptations.
 
-## Published on 2026-11-05
+Existing collection images require an explicit host rebuild/reset or fresh
+admitted allocation. BTR2 with explicit page size, SVC1 and SCL1 are current;
+there is no legacy reader, migration or automatic reset. Directory encoding and
+application codecs are unchanged. Engine/codec failures trap; framing admission
+and reservation retain typed errors. Native mutation unwinds poison the owner;
+Wasm relies on IC rollback. Positive cache ceilings do not enable a node cache.
 
-| Package | Version | Release commit / tag |
-| --- | --- | --- |
-| Storage | 0.67.1 | `e89f222` / `storage-v0.67.1` |
-| Metrics Storage | 0.69.0 | `5f4dbdd` / `metrics-storage-v0.69.0` |
-| Logging Storage | 0.65.0 | `a90632c` / `logging-storage-v0.65.0` |
+Metrics Storage 0.70 and Logging Storage 0.66 align public Storage handles/errors
+with 0.68. Metric snapshot and discriminator-3 logging payload semantics remain
+unchanged, but their underlying collection images require the same host action.
+See [Storage](../../releases/storage/0.68.md),
+[Metrics Storage](../../releases/metrics-storage/0.70.md) and
+[Logging Storage](../../releases/logging-storage/0.66.md) release notes.
 
-All three are pushed and published, with 12-stage gates and downloaded archive
-checksum verification. [The delivered handoff](https://github.com/dragginzgame/ic-storage/blob/4dea092/docs/status/current.md)
-retains full hashes, prior release identities and recovery evidence. Current
-release evidence remains in `target/tooling-030-deploy/` and group receipts under
-`target/release-validation/`. Do not repeat these publications.
+## Current tooling and comparison evidence
 
-Those publications included Shared Tooling 0.30.0 (`b37a882`, 154 files).
-All packages use Wire 0.17;
-hosts exchanging public Wire limits/errors must align that identity. Codec bytes
-and stored layouts are unchanged. The [adoption audit](../audits/2026-11-05-shared-tooling.md)
-retains installed original-Wasm IO/upgrade/rollback proof; no macOS rerun is claimed.
-Storage/Logging project their own identities into the independent catalog/lock
-through shared release metadata; Metrics preserves those files.
+Shared Tooling 0.30.5 (`be37710`, 156 files) is adopted through the canonical
+exporter. Candid source checking covers the complete first-party Rust roots;
+both workspaces reject named direct CBOR dependencies. General CBOR import/type
+resolution is not supplied by the lexical Candid check; current sources contain
+no direct CBOR use. [Adoption boundaries](../shared-tooling-adoption.md).
+
+The [type matrix](../audits/recurring/benchmark-full-catalogue-2026-11-05.md)
+qualified 73 types / 565 cases across all five forms, with 46,604 measured calls
+and final-state checks, 53 verified refusals and 18 non-Ord backend roles.
+Selected results retain every case; no universal speedup is claimed. The earlier
+reset baseline passed 3,196 calls, 824 iterator reruns and 480 Auth-shaped calls.
+Canic configuration preparation and Auth's inner decoder remain outside scope.
+The full type harness alone selects an eight-MiB stack; production settings are
+unchanged. New raw comparison output uses `target/evidence/`.
+
+Root qualification uses Wire 0.17.3, Runtime 0.19.2, Build/Host 0.74.4,
+Metrics 0.29.3 and Logging 0.24.8. The independent runtime/comparison graph keeps
+Wire 0.17.0, Runtime 0.19.0, Testkit 0.79.0 and PocketIC 16.1.0. Release-owned
+version projection aligns the local Storage/Logging packages without silently
+refreshing those supplier selections. No new macOS execution is claimed here.
 
 ## Historical evidence and preservation
 
