@@ -9,10 +9,48 @@ local baseline. Future policy changes require reviewed snapshot adoption.
 
 ## Current source selection
 
-IC Storage selects committed Shared Tooling VERSION 0.30.0 at
-`b37a882314d22bf7ab393b3fe561809377ffd22d`, verified against GitHub's `main`.
-The clean sibling was exported through the canonical exporter; the snapshot
-records 154 unchanged shared files. No sibling edits or extra checkout were used.
+IC Storage selects committed Shared Tooling VERSION 0.30.5 at
+`be3771031ebfb340583b238dee5446be65929c62`, verified against GitHub's `main`.
+The clean sibling was exported through the canonical exporter with an explicit
+commit selection. No sibling edits or extra checkout were used. The exporter
+used its own transient `/dev/shm` copies; retained local logs are under
+`target/evidence/shared-tooling-0305/`.
+
+`make check-candid-boundary` runs Shared's lexical checker once over `crates`
+and `testing`, including the native helper, benchmarks and independent runtime
+fixtures. The reviewed policy has no allowances because these sources contain
+no Candid trait references. `validate-policy` owns the check. Its documented
+macro expansion, alias and type-resolution limitations remain applicable.
+
+`make check-storage-boundary` also admits both workspaces' direct dependency
+declarations through Shared's existing metadata checker, including aliases,
+optional, development, build and target-specific declarations. Both policies
+forbid the named Serde CBOR, Ciborium, Minicbor, cbor4ii and DAG-CBOR packages;
+root production keeps its existing IC dependency exclusions. The independent
+benchmark's permitted ICSS codec reference is unchanged. Source review found no
+CBOR imports/codecs or first-party browser roots. This is named dependency
+enforcement and source review, not a new general CBOR import/type-resolution
+scanner; Shared's Candid checker does not supply that coverage.
+
+New raw comparisons use `target/evidence/storage-comparison/`. The maintainer
+subsequently authorized cleanup of the 83-file, 8,813,675-byte top-level measurement
+inventory. Sixty-nine bulk/repeated exports and obsolete prototype patches were
+retired. The [measurement index](measurements/README.md) owns compact topic summaries,
+selected data and the distinction from protected qualification/recovery records.
+The full type catalogue retains all 565 case statuses and selected absolute results
+in two small data files, within the 100 KiB topic budget. Complete raw tables and
+source archives are not a tracked archive or promised as durable evidence.
+Existing target artifacts were left untouched and remain subject to explicit clean.
+No release/recovery state, tool cache, preservation stash or pending code was removed.
+No new permanent archive or history rewrite was created by the cleanup.
+
+The refresh also adopts LOC/formatter target-local scratch defaults and release
+changelog heading fixes. Registry selections, package versions, collection
+engines, stored bytes and production runtime settings are unchanged. Consumer
+qualification results are recorded in the current handoff after the focused
+checks; this adoption does not qualify a release or another native host.
+
+## Previous 0.30.0 qualification
 
 The [adoption audit](audits/2026-11-05-shared-tooling.md) records the directory,
 fixture ownership, lint and diagnostic changes. Evidence lives under
@@ -619,8 +657,9 @@ Shared's current governance names `ic_storage::RuntimeMemory` as the checked
 allocation boundary; no local ownership override remains. The storage group
 contains only Storage; both storage adapters depend on it.
 
-The subsequent owned-engine hard cut removes the fixed-slot manager and all
-upstream collection implementations. `make check-production-graph` forbids the
+The subsequent allocation hard cut removes the fixed-slot manager. The current
+collection baseline copies ICSS 0.7.2 engines privately behind governed adapters;
+it does not restore an upstream dependency or independent memory manager. `make check-production-graph` forbids the
 retired substrate. Both selected lockfiles omit it. Named allocation and all
 collections require fresh/reset backing; old manager, map and vector formats
 have no decoder or implicit reset. See [the current directory contract](current-ledger.md).

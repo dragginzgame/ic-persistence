@@ -95,7 +95,27 @@ pub struct Lease<M: Memory> {
     id: AllocationId,
 }
 
+#[cfg(not(target_arch = "wasm32"))]
+pub struct PanicGuard<M: Memory> {
+    state: Rc<State<M>>,
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+impl<M: Memory> Drop for PanicGuard<M> {
+    fn drop(&mut self) {
+        if std::thread::panicking() {
+            self.state.store.borrow().poison();
+        }
+    }
+}
+
 impl<M: Memory> Lease<M> {
+    #[cfg(not(target_arch = "wasm32"))]
+    pub(crate) fn poison_on_unwind(&self) -> PanicGuard<M> {
+        PanicGuard {
+            state: Rc::clone(&self.state),
+        }
+    }
     pub fn try_grow(&self, pages: u64) -> Result<u64, Error> {
         let mut store = self.state.store.borrow_mut();
         let previous = store.pages(self.id)?;

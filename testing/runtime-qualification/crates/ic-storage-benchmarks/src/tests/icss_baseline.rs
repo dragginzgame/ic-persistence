@@ -1,0 +1,219 @@
+//! Cross-read actual collection images with the published ICSS reference.
+use ic_platform_stable_benchmark::stable_structures as icss;
+use ic_storage::{
+    Memory, RuntimeMemory, StableKey, StorageConfig,
+    adapter::{StableBTreeMap, StableBTreeSet, StableCell, StableVec},
+    testing::fixture_runtime,
+};
+use std::{borrow::Cow, collections::BTreeMap, rc::Rc};
+struct Checked<M>(M);
+impl<M: Memory> icss::Memory for Checked<M> {
+    fn size(&self) -> u64 {
+        self.0.size()
+    }
+    fn grow(&self, pages: u64) -> i64 {
+        self.0.grow(pages)
+    }
+    fn read(&self, offset: u64, bytes: &mut [u8]) {
+        self.0.read(offset, bytes);
+    }
+    fn write(&self, offset: u64, bytes: &[u8]) {
+        self.0.write(offset, bytes);
+    }
+}
+#[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd)]
+struct Reference<T>(T);
+impl<T: ic_storage::storable::Storable> icss::Storable for Reference<T> {
+    const BOUND: icss::storable::Bound = match T::BOUND {
+        ic_storage::storable::Bound::Unbounded => icss::storable::Bound::Unbounded,
+        ic_storage::storable::Bound::Bounded {
+            max_size,
+            is_fixed_size,
+        } => icss::storable::Bound::Bounded {
+            max_size,
+            is_fixed_size,
+        },
+    };
+    fn to_bytes(&self) -> Cow<'_, [u8]> {
+        self.0.to_bytes_checked().unwrap()
+    }
+    fn into_bytes(self) -> Vec<u8> {
+        self.0.into_bytes_checked().unwrap()
+    }
+    fn from_bytes(bytes: Cow<'_, [u8]>) -> Self {
+        Self(T::from_bytes(bytes).unwrap())
+    }
+}
+fn runtime() -> ic_storage::MemoryRuntime<ic_storage::VectorMemory> {
+    fixture_runtime(
+        ic_storage::VectorMemory::default(),
+        "baseline",
+        "baseline.",
+        &["baseline.data.v1"],
+        StorageConfig::default(),
+    )
+    .unwrap()
+}
+fn memory(
+    runtime: &ic_storage::MemoryRuntime<ic_storage::VectorMemory>,
+) -> RuntimeMemory<ic_storage::VectorMemory> {
+    runtime
+        .open_memory(&StableKey::parse("baseline.data.v1").unwrap())
+        .unwrap()
+}
+#[test]
+fn map_images_cross_read_after_splits_overflows_and_removals() {
+    let runtime = runtime();
+    let mut map = StableBTreeMap::<u64, Vec<u8>>::create(memory(&runtime)).unwrap();
+    let mut model = BTreeMap::new();
+    for key in (0u64..300).rev() {
+        let bytes = vec![
+            key.to_le_bytes()[0];
+            [0, 31, 256, 4096, 65536][usize::try_from(key % 5).unwrap()]
+        ];
+        map.insert(key, bytes.clone()).unwrap();
+        model.insert(key, bytes);
+    }
+    drop(map);
+    let mut stock =
+        icss::BTreeMap::<Reference<u64>, Reference<Vec<u8>>, _>::load(Checked(memory(&runtime)));
+    for (&k, v) in &model {
+        assert_eq!(stock.get(&Reference(k)).map(|v| v.0).as_ref(), Some(v));
+    }
+    for key in (0..300).step_by(3) {
+        assert_eq!(
+            stock.remove(&Reference(key)).map(|v| v.0),
+            model.remove(&key)
+        );
+    }
+    stock.insert(Reference(500), Reference(vec![9; 65537]));
+    model.insert(500, vec![9; 65537]);
+    drop(stock);
+    let map = StableBTreeMap::<u64, Vec<u8>>::load(memory(&runtime)).unwrap();
+    assert_eq!(
+        map.iter()
+            .map(|x| x.unwrap().into_pair().unwrap())
+            .collect::<Vec<_>>(),
+        model.into_iter().collect::<Vec<_>>()
+    );
+}
+#[derive(Clone)]
+struct Bytes(Vec<u8>);
+impl ic_storage::storable::Storable for Bytes {
+    const BOUND: ic_storage::storable::Bound = ic_storage::storable::Bound::Bounded {
+        max_size: 4096,
+        is_fixed_size: false,
+    };
+    fn to_bytes(&self) -> Result<Cow<'_, [u8]>, ic_storage::storable::CodecError> {
+        Ok(Cow::Borrowed(&self.0))
+    }
+    fn from_bytes(bytes: Cow<'_, [u8]>) -> Result<Self, ic_storage::storable::CodecError> {
+        Ok(Self(bytes.into_owned()))
+    }
+}
+impl icss::Storable for Bytes {
+    const BOUND: icss::storable::Bound = icss::storable::Bound::Bounded {
+        max_size: 4096,
+        is_fixed_size: false,
+    };
+    fn to_bytes(&self) -> Cow<'_, [u8]> {
+        Cow::Borrowed(&self.0)
+    }
+    fn into_bytes(self) -> Vec<u8> {
+        self.0
+    }
+    fn from_bytes(bytes: Cow<'_, [u8]>) -> Self {
+        Self(bytes.into_owned())
+    }
+}
+#[test]
+fn variable_vector_images_cross_read_and_update() {
+    let runtime = runtime();
+    let vector = StableVec::<Bytes>::create(memory(&runtime)).unwrap();
+    for index in 0..1024 {
+        vector
+            .push(&Bytes(vec![
+                u8::try_from(index % 251).unwrap();
+                if index % 2 == 0 { 256 } else { 2048 }
+            ]))
+            .unwrap();
+    }
+    drop(vector);
+    let stock = icss::Vec::<Bytes, _>::init(Checked(memory(&runtime)));
+    assert_eq!(stock.len(), 1024);
+    assert_eq!(stock.get(1023).unwrap().0, vec![19; 2048]);
+    stock.set(0, &Bytes(vec![9; 4096]));
+    stock.push(&Bytes(vec![10; 32]));
+    drop(stock);
+    let vector = StableVec::<Bytes>::load(memory(&runtime)).unwrap();
+    assert_eq!(vector.len(), 1025);
+    assert_eq!(vector.get(0).unwrap().unwrap().0, vec![9; 4096]);
+    assert_eq!(vector.pop().unwrap().unwrap().0, vec![10; 32]);
+}
+#[test]
+fn fixed_vector_images_cross_read_and_update() {
+    let runtime = runtime();
+    let vector = StableVec::<u64>::create(memory(&runtime)).unwrap();
+    for key in 0..129 {
+        vector.push(&key).unwrap();
+    }
+    drop(vector);
+    let stock = icss::Vec::<Reference<u64>, _>::init(Checked(memory(&runtime)));
+    assert_eq!(stock.get(128).map(|v| v.0), Some(128));
+    stock.set(64, &Reference(u64::MAX));
+    drop(stock);
+    let vector = StableVec::<u64>::load(memory(&runtime)).unwrap();
+    assert_eq!(vector.get(64).unwrap(), Some(u64::MAX));
+}
+#[test]
+fn cell_images_cross_read_and_update() {
+    let runtime = runtime();
+    drop(StableCell::create(memory(&runtime), vec![7; 4096]).unwrap());
+    let mut stock = icss::Cell::<Vec<u8>, _>::init(Checked(memory(&runtime)), Vec::new());
+    assert_eq!(stock.get(), &vec![7; 4096]);
+    stock.set(vec![8; 65536]);
+    drop(stock);
+    let cell = StableCell::<Vec<u8>>::load(memory(&runtime), 65536).unwrap();
+    assert_eq!(cell.get(), &vec![8; 65536]);
+}
+#[test]
+fn set_images_cross_read_and_update() {
+    let runtime = runtime();
+    let mut set = StableBTreeSet::<u64>::create(memory(&runtime)).unwrap();
+    for key in (0..129).rev() {
+        set.insert(key).unwrap();
+    }
+    drop(set);
+    let mut stock = icss::BTreeSet::<Reference<u64>, _>::init(Checked(memory(&runtime)));
+    assert!(stock.remove(&Reference(64)));
+    stock.insert(Reference(500));
+    drop(stock);
+    let set = StableBTreeSet::<u64>::load(memory(&runtime)).unwrap();
+    assert!(!set.contains(&64).unwrap());
+    assert!(set.contains(&500).unwrap());
+    assert_eq!(set.iter().next_back().unwrap().unwrap(), 500);
+}
+#[test]
+fn governed_region_images_cross_read_and_update() {
+    let runtime = runtime();
+    let lease = Rc::new(memory(&runtime));
+    lease.as_ref().grow(1).unwrap();
+    lease.write(0, b"host frame");
+    let mut region =
+        ic_storage::adapter::BTreeMapRegion::<u64, u64>::new(Rc::clone(&lease), 1..129);
+    region.initialize().unwrap();
+    region.insert(7, 11).unwrap();
+    drop(region);
+    let region = icss::RestrictedMemory::new(Checked(Rc::clone(&lease)), 1..129);
+    let mut stock = icss::BTreeMap::<Reference<u64>, Reference<u64>, _>::load(region);
+    assert_eq!(
+        stock.insert(Reference(7), Reference(12)).map(|v| v.0),
+        Some(11)
+    );
+    drop(stock);
+    let region = ic_storage::adapter::BTreeMapRegion::<u64, u64>::new(Rc::clone(&lease), 1..129);
+    assert_eq!(region.get(&7).unwrap(), Some(12));
+    let mut frame = [0; 10];
+    lease.read(0, &mut frame);
+    assert_eq!(&frame, b"host frame");
+}

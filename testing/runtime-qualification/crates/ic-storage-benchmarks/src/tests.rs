@@ -7,6 +7,7 @@ fn largest_matrix_responses_fit_protocol_budgets() {
         ic_wire::native::decode_response(3, &encoded, LIMITS).unwrap();
     assert_eq!(decoded, rows);
     let response = Response {
+        decode: None,
         instructions: 0,
         stable_pages: 0,
         length: 1,
@@ -92,6 +93,70 @@ fn sequential_trace_wraps_and_keeps_misses_outside_population() {
             operation: Operation::RemoveMiss,
             ..request
         }),
-        (69..77).collect::<Vec<_>>()
+        (13..21).collect::<Vec<_>>()
     );
 }
+
+#[test]
+fn insertion_and_missing_removal_ranges_are_disjoint_at_every_supported_batch_size() {
+    for case in [Case::U64Bytes, Case::SetString, Case::RegionBytes] {
+        for count in 1..=max_batch(case) {
+            let request = Request {
+                case,
+                operation: Operation::Insert,
+                rows: 256,
+                payload: case.payloads()[0],
+                count,
+                seed: 7,
+                pattern: Pattern::Uniform,
+            };
+            let inserted: std::collections::BTreeSet<_> = keys(request).into_iter().collect();
+            let absent: std::collections::BTreeSet<_> = keys(Request {
+                operation: Operation::RemoveMiss,
+                ..request
+            })
+            .into_iter()
+            .collect();
+            assert!(inserted.is_disjoint(&absent));
+            assert!(absent.iter().all(|&key| key >= u64::from(request.rows)));
+        }
+    }
+}
+
+#[test]
+fn session_envelope_preserves_full_identity_and_rejects_malformed_outer_frames() {
+    for size in Case::VectorSession.payloads() {
+        for key in [0, 255, 256, 2047] {
+            let value = SessionEnvelope::make(key, *size, false);
+            let encoded = value.encode().unwrap();
+            assert!(encoded.len() <= 4096);
+            assert_eq!(SessionEnvelope::decode(&encoded).unwrap(), value);
+            assert_eq!(&value.canonical()[..8], &key.to_le_bytes());
+            assert!(SessionEnvelope::decode(&encoded[..encoded.len() - 1]).is_err());
+        }
+    }
+    assert!(SessionEnvelope::decode(&[]).is_err());
+    for rows in crate::workloads::LOOKUP_POPULATIONS {
+        for (pattern, index) in [
+            (Pattern::First, 0),
+            (Pattern::Middle, rows / 2),
+            (Pattern::Last, rows - 1),
+        ] {
+            assert_eq!(
+                keys(Request {
+                    case: Case::VectorSession,
+                    operation: Operation::Get,
+                    rows,
+                    payload: 256,
+                    count: 1,
+                    seed: 7,
+                    pattern
+                }),
+                vec![u64::from(index)]
+            );
+        }
+    }
+}
+
+#[cfg(all(feature = "owned", feature = "dfinity"))]
+mod icss_baseline;

@@ -1,0 +1,109 @@
+{
+  "schema": 1,
+  "date": "2026-11-05",
+  "reference_engine": "published ic-stable-structures 0.7.2, 72b02ab65b6c6fbf53fbabf752732d2726539377",
+  "source_commit": "4dea092f07e06749eb3f14aa24817c0962fbc0be",
+  "source_archive_sha256": "7676d02b3b7e5c57e78816609b747dd5228dd338f09618e8b15929f1dce85b1d",
+  "compiler": "rustc 1.99.1 (58cf8f9c3 2026-10-13)\nbinary: rustc\ncommit-hash: 58cf8f9c35b355199727627d07ae34a4e2846d67\ncommit-date: 2026-10-13\nhost: x86_64-unknown-linux-gnu\nrelease: 1.99.1\nLLVM version: 23.1.1\n",
+  "cargo": "cargo 1.99.1 (5f94df478 2026-08-27)",
+  "wasm_rustflags": "-C link-arg=-zstack-size=8388608",
+  "module_sha256": {
+    "owned.wasm": "b7e48fdc147875952e78c78ab867939c6ce6fbaaf560b11dd6dd92de6ecf2dc8",
+    "dfinity.wasm": "4fd4654795eadd2996b0f5a724b205061dda864238522f41d2c38821fe34400b"
+  },
+  "coverage": {
+    "types": 73,
+    "cases": 565,
+    "coverage_entries": 1130,
+    "availability": {
+      "supported": 1059,
+      "not-applicable": 18,
+      "refused": 53
+    },
+    "availability_by_backend": {
+      "ic-storage": {
+        "supported": 540,
+        "not-applicable": 9,
+        "refused": 16
+      },
+      "ic-stable-structures": {
+        "supported": 519,
+        "not-applicable": 9,
+        "refused": 37
+      }
+    },
+    "availability_by_collection": {
+      "Map": {
+        "supported": 333,
+        "not-applicable": 6,
+        "refused": 7
+      },
+      "Set": {
+        "supported": 137,
+        "not-applicable": 6,
+        "refused": 3
+      },
+      "Vector": {
+        "supported": 110,
+        "refused": 36
+      },
+      "Cell": {
+        "supported": 146
+      },
+      "Region": {
+        "supported": 333,
+        "not-applicable": 6,
+        "refused": 7
+      }
+    },
+    "measured_calls": 46604,
+    "calls_by_collection": {
+      "Map": 24832,
+      "Set": 2704,
+      "Vector": 5044,
+      "Cell": 2400,
+      "Region": 11624
+    },
+    "calls_by_backend": {
+      "ic-storage": 23608,
+      "ic-stable-structures": 22996
+    },
+    "runtime_refusals_verified": 53,
+    "summary_rows": 23608,
+    "paired_rows": 22996,
+    "storage_only_rows": 612
+  },
+  "recipe": {
+    "rows": 32,
+    "finite_key_caps": true,
+    "cell_rows": 1,
+    "batch_sizes": [
+      1,
+      8
+    ],
+    "rounds": 1,
+    "samples": 1,
+    "pattern": "Uniform",
+    "shuffled_ordered_population": true,
+    "icss_bucket_pages": 8,
+    "stack_bytes": 8388608
+  },
+  "selected_csv": {
+    "path": "docs/measurements/storage-comparison-selected.csv",
+    "sha256": "379019a2ad83e646782464dd4e8510c26a88d480b9e0002879acabe5b38d07a4",
+    "selection": "One row per case. Batch 1, payload closest to 32 (lower breaks ties), Get and the named mutation. Stable pages are observed at Get. Unavailable timings are blank. No ratio aggregation."
+  },
+  "raw_evidence": {
+    "path": "target/storage-comparison/attempt.tSHDxo",
+    "local_only": true,
+    "retention": "Existing run directory left untouched; removable by explicit cargo clean. No durable raw archive is promised."
+  },
+  "limits": [
+    "Type/collection/role matrix, not all 73x73 key/value pairs.",
+    "One bounded seed/sample; no universal performance winner.",
+    "Common 8 MiB stack is a synthetic benchmark setting, not production qualification.",
+    "Setup, trace generation, normalization and reply encoding are outside the operation counter.",
+    "Published ICSS tuple/Blob/Principal codecs are shared through a wrapper.",
+    "Source hashes identify the recorded inputs; they do not replace missing raw artifacts."
+  ]
+}

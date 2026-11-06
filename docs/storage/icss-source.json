@@ -1,0 +1,69 @@
+{
+  "package": "ic-stable-structures",
+  "version": "0.7.2",
+  "source": "crates.io",
+  "files": [
+    {
+      "source": "base_vec.rs",
+      "sha256": "c007f3e1a82dec156ce54ee7879a862094958be076049fcc93330e1c0ab7a7f5"
+    },
+    {
+      "source": "vec.rs",
+      "sha256": "2690b57ea99009dc07af8b1f2494c73e873432600a9a618d68c494ba23b552a1"
+    },
+    {
+      "source": "cell.rs",
+      "sha256": "563120031a8cd0a3490cedc9a934e065db6ba815d401c2afe1fc70092ec4e508"
+    },
+    {
+      "source": "types.rs",
+      "sha256": "ff74ccabc2c619be90b680847d90ba40e89f786dded28da565630498e9e49440"
+    },
+    {
+      "source": "btreemap.rs",
+      "sha256": "6ba3932f9753ecdd5bab85e0d6f2df6c67f291afda3e8467e225437c18d79d82"
+    },
+    {
+      "source": "btreemap/allocator.rs",
+      "sha256": "e8d69b7fb35cbadac2cc5690280fe01716c50e5d6dd891424c7a44ea205ebf08"
+    },
+    {
+      "source": "btreemap/iter.rs",
+      "sha256": "584087adf7ef472b34f17f1dd2e71f20b3587745f530fc8e0028e41584529b64"
+    },
+    {
+      "source": "btreemap/node.rs",
+      "sha256": "7b01ccd362545ecfc810dbfc07ff3263157c0cd68fa80b91b33027dd8b539bc1"
+    },
+    {
+      "source": "btreemap/node/io.rs",
+      "sha256": "7aa49df5228e8acbe6601cbb4b2ba845d33f2deecb4c45e91a86e3ded44d20c0"
+    },
+    {
+      "source": "btreemap/node/v2.rs",
+      "sha256": "4fe18da78844dcd3a9cd4fbb6a0918b35b28a257ddaf0097aed96e679a832afa"
+    },
+    {
+      "source": "storable.rs",
+      "sha256": "9bd3ead18e7549c15f9978e97e1d1b928ecb9ad79028dd7d131ecc476b51d8b6"
+    },
+    {
+      "source": "lib.rs",
+      "sha256": "d6cbef435c86306f895f4c3a1ee1b810d005b2d156fb6d5ebfd7416dbc1f059d"
+    }
+  ],
+  "adaptations": [
+    "private module paths and governed-memory bridge",
+    "current map/node version only; no migrations or implicit initialization",
+    "safe byte representation for allocator allocation flag",
+    "Rust 2024 explicit unsafe blocks",
+    "read-only Cell load with admitted length",
+    "Vector finite-length check before buffer allocation",
+    "Map iterator raw-byte ownership adapter",
+    "Remove unused APIs and tests; checked conversions, mechanical lint fixes and scoped expectations",
+    "Private accessors for governed reservations and native-only unwind guards; no Wasm journal",
+    "No copied MemoryManager or default codecs; Storage application codecs remain unchanged"
+  ],
+  "source_git_revision": "72b02ab65b6c6fbf53fbabf752732d2726539377",
+  "crate_archive_sha256": "8ee3372ddc0cf2a747fc26ce2d075a240ed6bfab151e63bc70109e8967f7ce6f"
+}

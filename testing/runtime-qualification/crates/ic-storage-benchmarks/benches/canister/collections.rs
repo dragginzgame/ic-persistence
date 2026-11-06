@@ -52,6 +52,15 @@ impl<K: BenchKey + Storable> Benchmark for TypedSet<K> {
             for k in self.set.iter().take(r.count as usize) {
                 scan.push(checked!(k));
             }
+        } else if r.operation == Operation::Nth {
+            for (_, index) in inputs {
+                scan.push(checked!(
+                    self.set
+                        .iter()
+                        .nth(index as usize)
+                        .expect("admitted ordered index")
+                ));
+            }
         } else {
             for (k, id) in inputs {
                 let result = match r.operation {
@@ -70,7 +79,7 @@ impl<K: BenchKey + Storable> Benchmark for TypedSet<K> {
             }
         }
         let instructions = ic0::performance_counter(0) - start;
-        let entries = if matches!(r.operation, Operation::Scan | Operation::ReverseScan) {
+        let entries = if matches!(r.operation, Operation::Scan | Operation::Nth) {
             scan.into_iter().map(|k| (k.id(), Some(vec![]))).collect()
         } else {
             results
@@ -79,6 +88,7 @@ impl<K: BenchKey + Storable> Benchmark for TypedSet<K> {
                 .collect()
         };
         Response {
+            decode: None,
             instructions,
             entries,
             length: self.set.len(),
@@ -121,6 +131,10 @@ impl<V: BenchValue + Storable> Benchmark for TypedVector<V> {
             .map(|(i, id)| {
                 let id = if r.operation == Operation::Push {
                     len + i as u64
+                } else if r.operation == Operation::Last {
+                    len.saturating_sub(1)
+                } else if r.operation == Operation::NthBack {
+                    len - 1 - id
                 } else if r.operation == Operation::Pop {
                     len.saturating_sub(i as u64 + 1)
                 } else {
@@ -136,6 +150,32 @@ impl<V: BenchValue + Storable> Benchmark for TypedVector<V> {
                 )
             })
             .collect();
+        let changes: Vec<_> = if r.operation == Operation::ScanSet {
+            (1..u64::from(r.count).min(len))
+                .map(|id| V::make(id, r.payload, true))
+                .collect()
+        } else {
+            Vec::new()
+        };
+        let encoded: Vec<_> = if r.operation == Operation::Decode {
+            inputs
+                .iter()
+                .map(|(id, _)| {
+                    let value = V::make(*id, r.payload, false);
+                    checked!(value.to_bytes()).into_owned()
+                })
+                .collect()
+        } else {
+            Vec::new()
+        };
+        if r.operation == Operation::WarmGet {
+            for (id, _) in &inputs {
+                std::hint::black_box(checked!(self.vector.get(*id)));
+            }
+        }
+        if r.case == Case::VectorSession {
+            reset_decode_metrics();
+        }
         let mut entries = Vec::with_capacity(r.count as usize);
         let start = ic0::performance_counter(0);
         if r.operation == Operation::Scan {
@@ -146,14 +186,52 @@ impl<V: BenchValue + Storable> Benchmark for TypedVector<V> {
             for (i, v) in self.vector.iter().rev().take(r.count as usize).enumerate() {
                 entries.push((len - 1 - i as u64, Some(checked!(v))));
             }
+        } else if r.operation == Operation::AlternatingScan {
+            let mut iter = self.vector.iter();
+            for step in 0..u64::from(r.count).min(len) {
+                let (id, value) = if step % 2 == 0 {
+                    (step / 2, iter.next())
+                } else {
+                    (len - 1 - step / 2, iter.next_back())
+                };
+                entries.push((id, Some(checked!(value.unwrap()))));
+            }
+        } else if r.operation == Operation::ScanSet {
+            let mut iter = self.vector.iter();
+            for id in 0..u64::from(r.count).min(len) {
+                if id != 0 {
+                    checked!(self.vector.set(id, &changes[(id - 1) as usize]));
+                }
+                entries.push((id, Some(checked!(iter.next().unwrap()))));
+            }
         } else {
-            for (id, value) in inputs {
+            for (at, (id, value)) in inputs.into_iter().enumerate() {
                 let result = match r.operation {
                     Operation::Control => {
                         std::hint::black_box(id);
                         None
                     }
-                    Operation::Get | Operation::MissAbove => checked!(self.vector.get(id)),
+                    Operation::Get | Operation::WarmGet | Operation::MissAbove => {
+                        checked!(self.vector.get(id))
+                    }
+                    Operation::Decode => Some(checked!(V::from_bytes(std::borrow::Cow::Borrowed(
+                        &encoded[at]
+                    )))),
+                    Operation::Nth => Some(checked!(
+                        self.vector
+                            .iter()
+                            .nth(id as usize)
+                            .expect("admitted vector index")
+                    )),
+                    Operation::NthBack => Some(checked!(
+                        self.vector
+                            .iter()
+                            .nth_back((len - 1 - id) as usize)
+                            .expect("admitted reverse vector index")
+                    )),
+                    Operation::Last => Some(checked!(
+                        self.vector.iter().last().expect("populated vector")
+                    )),
                     Operation::Set => {
                         checked!(self.vector.set(id, &value.unwrap()));
                         None
@@ -170,6 +248,7 @@ impl<V: BenchValue + Storable> Benchmark for TypedVector<V> {
         }
         let instructions = ic0::performance_counter(0) - start;
         Response {
+            decode: (r.case == Case::VectorSession).then(decode_metrics),
             instructions,
             entries: entries
                 .into_iter()
@@ -239,6 +318,7 @@ impl<V: BenchValue + Storable> Benchmark for TypedCell<V> {
         }
         let instructions = ic0::performance_counter(0) - start;
         Response {
+            decode: None,
             instructions,
             entries: entries
                 .into_iter()
@@ -252,14 +332,16 @@ impl<V: BenchValue + Storable> Benchmark for TypedCell<V> {
 
 // Upstream has no BTreeMapRegion: this control recreates a map view from the
 // same virtual memory for each operation, matching Storage's root-load lifetime.
-pub(super) struct Region {
+pub(super) struct Region<K: BenchKey + Storable, V: BenchValue + Storable> {
+    case: Case,
+    record: std::marker::PhantomData<(K, V)>,
     #[cfg(feature = "owned")]
-    map: ic_storage::adapter::BTreeMapRegion<u64, Vec<u8>>,
+    map: ic_storage::adapter::BTreeMapRegion<K, V>,
     #[cfg(any(feature = "dfinity", feature = "dfinity-head"))]
     memory: BenchMemory,
 }
-impl Region {
-    pub(super) fn new(bucket_pages: std::num::NonZeroU16) -> Self {
+impl<K: BenchKey + Storable, V: BenchValue + Storable> Region<K, V> {
+    pub(super) fn new(case: Case, bucket_pages: std::num::NonZeroU16) -> Self {
         #[cfg(feature = "owned")]
         {
             let mut map = ic_storage::adapter::BTreeMapRegion::new(
@@ -267,43 +349,51 @@ impl Region {
                 0..4_194_304,
             );
             map.initialize().unwrap();
-            Self { map }
+            Self {
+                case,
+                record: std::marker::PhantomData,
+                map,
+            }
         }
         #[cfg(any(feature = "dfinity", feature = "dfinity-head"))]
         {
             let memory = new_memory(bucket_pages);
-            drop(Map::<u64, Vec<u8>>::new(memory.clone()));
-            Self { memory }
+            drop(Map::<K, V>::new(memory.clone()));
+            Self {
+                case,
+                record: std::marker::PhantomData,
+                memory,
+            }
         }
     }
-    fn get(&self, key: &u64) -> Option<Vec<u8>> {
+    fn get(&self, key: &K) -> Option<V> {
         #[cfg(feature = "owned")]
         {
             self.map.get(key).unwrap()
         }
         #[cfg(any(feature = "dfinity", feature = "dfinity-head"))]
         {
-            Map::<u64, Vec<u8>>::load(self.memory.clone()).get(key)
+            Map::<K, V>::load(self.memory.clone()).get(key)
         }
     }
-    fn insert(&mut self, key: u64, value: Vec<u8>) -> Option<Vec<u8>> {
+    fn insert(&mut self, key: K, value: V) -> Option<V> {
         #[cfg(feature = "owned")]
         {
             self.map.insert(key, value).unwrap()
         }
         #[cfg(any(feature = "dfinity", feature = "dfinity-head"))]
         {
-            Map::<u64, Vec<u8>>::load(self.memory.clone()).insert(key, value)
+            Map::<K, V>::load(self.memory.clone()).insert(key, value)
         }
     }
-    fn remove(&mut self, key: &u64) -> Option<Vec<u8>> {
+    fn remove(&mut self, key: &K) -> Option<V> {
         #[cfg(feature = "owned")]
         {
             self.map.remove(key).unwrap()
         }
         #[cfg(any(feature = "dfinity", feature = "dfinity-head"))]
         {
-            Map::<u64, Vec<u8>>::load(self.memory.clone()).remove(key)
+            Map::<K, V>::load(self.memory.clone()).remove(key)
         }
     }
     fn len(&self) -> u64 {
@@ -313,10 +403,10 @@ impl Region {
         }
         #[cfg(any(feature = "dfinity", feature = "dfinity-head"))]
         {
-            Map::<u64, Vec<u8>>::load(self.memory.clone()).len()
+            Map::<K, V>::load(self.memory.clone()).len()
         }
     }
-    fn keys(&self, start: u64, count: usize) -> Vec<u64> {
+    fn keys(&self, start: K, count: usize) -> Vec<K> {
         #[cfg(feature = "owned")]
         {
             self.map
@@ -326,39 +416,42 @@ impl Region {
         }
         #[cfg(any(feature = "dfinity", feature = "dfinity-head"))]
         {
-            Map::<u64, Vec<u8>>::load(self.memory.clone())
+            Map::<K, V>::load(self.memory.clone())
                 .keys_range(start..)
                 .take(count)
                 .collect()
         }
     }
 }
-impl Benchmark for Region {
+impl<K: BenchKey + Storable, V: BenchValue + Storable> Benchmark for Region<K, V> {
     fn setup(&mut self, r: Setup) -> u64 {
         for id in population_ids(&r) {
-            assert!(self.insert(id, value(id, r.payload, false)).is_none());
+            assert!(
+                self.insert(K::from_id(id), V::make(id, r.payload, false))
+                    .is_none()
+            );
         }
         self.len()
     }
     fn verify(&self, r: Setup) -> Vec<(u64, Vec<u8>)> {
-        self.keys(r.start, r.count as usize)
+        self.keys(K::from_id(r.start), r.count as usize)
             .into_iter()
-            .map(|k| (k, self.get(&k).unwrap()))
+            .map(|k| (k.id(), self.get(&k).unwrap().canonical()))
             .collect()
     }
     fn run(&mut self, r: Request) -> Response {
-        assert_eq!(r.case, Case::RegionBytes);
+        assert_eq!(r.case, self.case);
         let ids = keys(r);
-        let scan_start = ids[0];
+        let scan_start = K::from_id(ids[0]);
         let inputs: Vec<_> = ids
             .into_iter()
             .map(|id| {
                 (
-                    id,
+                    K::from_id(id),
                     if matches!(r.operation, Operation::Insert | Operation::Reinsert)
                         || replacement(r.operation)
                     {
-                        Some(value(id, payload_for(r), replacement(r.operation)))
+                        Some(V::make(id, payload_for(r), replacement(r.operation)))
                     } else {
                         None
                     },
@@ -366,36 +459,45 @@ impl Benchmark for Region {
             })
             .collect();
         let mut entries = Vec::with_capacity(r.count as usize);
+        let mut key_entries = None;
         let start = ic0::performance_counter(0);
         if r.operation == Operation::KeysScan {
-            for key in self.keys(scan_start, r.count as usize) {
-                entries.push((key, Some(vec![])));
-            }
+            key_entries = Some(self.keys(scan_start, r.count as usize));
         } else {
-            for (id, value) in inputs {
+            for (key, value) in inputs {
                 let result = match r.operation {
                     Operation::Control => {
-                        std::hint::black_box(id);
+                        std::hint::black_box(&key);
                         None
                     }
-                    Operation::Get | Operation::MissAbove => self.get(&id),
+                    Operation::Get | Operation::MissAbove => self.get(&key),
                     Operation::Insert
                     | Operation::Replace
                     | Operation::Reinsert
                     | Operation::Grow
-                    | Operation::Shrink => self.insert(id, value.unwrap()),
+                    | Operation::Shrink => self.insert(key.clone(), value.unwrap()),
                     Operation::Remove | Operation::RemoveMiss | Operation::RemoveInserted => {
-                        self.remove(&id)
+                        self.remove(&key)
                     }
                     _ => unreachable!(),
                 };
-                entries.push((id, result));
+                entries.push((key, result));
             }
         }
         let instructions = ic0::performance_counter(0) - start;
         Response {
+            decode: None,
             instructions,
-            entries,
+            entries: if let Some(keys) = key_entries {
+                keys.into_iter()
+                    .map(|key| (key.id(), Some(Vec::new())))
+                    .collect()
+            } else {
+                entries
+                    .into_iter()
+                    .map(|(key, value)| (key.id(), value.map(BenchValue::canonical)))
+                    .collect()
+            },
             length: self.len(),
             stable_pages: ic0::stable64_size(),
         }

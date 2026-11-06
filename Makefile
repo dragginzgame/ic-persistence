@@ -52,7 +52,7 @@ TESTKIT_SERVER_DIRECTORY := $(CURDIR)/.tools/ic-testkit-server
 
 help:
 	@echo 'Setup: install-tools (host, IC, Cargo tools), fetch-dependencies, install-hooks; prepare the Rust toolchain first.'
-	@echo 'Focused checks: shared-tooling-check, tools-check, test-tools, test-failure-evidence, check-pins, check-production-graph, test-tooling, test-fixture-cell, test-release-adapters, test-hooks, fmt-check, lint-tooling.'
+	@echo 'Focused checks: shared-tooling-check, tools-check, test-tools, test-failure-evidence, check-pins, check-production-graph, check-storage-boundary, check-candid-boundary, test-tooling, test-fixture-cell, test-release-adapters, test-hooks, fmt-check, lint-tooling.'
 	@echo 'Formatting: fmt. Full release checks: validate, validate-toolchain.'
 	@echo 'Installed runtime: install-runtime-server (explicit Testkit setup), runtime-server-check (offline), test-runtime (prepared server and locked caches).'
 	@echo 'Focused installed Logging proof: test-runtime-logging (original Wasm only; no optimizer or other runtime suites).'
@@ -94,7 +94,8 @@ test-runtime-logging: runtime-server-check
 
 # Explicit comparison only; excluded from product release and validation gates.
 BENCH_ROWS ?= 256
-BENCH_SAMPLES ?= 3
+# The ordered/iterator sweeps already cover many batch sizes and three rounds.
+BENCH_SAMPLES ?= $(if $(filter iterators ordered auth-lookups types,$(BENCH_WORKLOAD)),1,3)
 .PHONY: benchmark-storage
 benchmark-storage: runtime-server-check
 	+@cli="$$($(TESTKIT_CLI) --check)" && \
@@ -218,7 +219,7 @@ validate-features:
 	+bash scripts/ci/validation-cargo.sh features $(VALIDATION_TOOLCHAIN) "$(VALIDATION_PLAN)"
 
 validate-policy:
-	$(MAKE) --no-print-directory check-production-graph check-pins check-storage-boundary check-license check-doc-links fmt-check
+	$(MAKE) --no-print-directory check-production-graph check-pins check-storage-boundary check-candid-boundary check-license check-doc-links fmt-check
 
 validate-tooling:
 	$(MAKE) --no-print-directory test-release-adapters test-tools test-tooling test-hooks test-package-admission
@@ -286,9 +287,14 @@ publish:
 publish-dry-run:
 	+$(TOOL) publish --dry-run
 
-.PHONY: check-storage-boundary check-license check-doc-links
+.PHONY: check-storage-boundary check-candid-boundary check-license check-doc-links
 check-storage-boundary:
 	+RUSTUP_TOOLCHAIN=$(VALIDATION_TOOLCHAIN) RUSTUP_AUTO_INSTALL=0 CARGO_NET_OFFLINE=true bash scripts/ci/check-cargo-dependency-boundaries.sh --consumer "$(CURDIR)" --external-ic
+	+RUSTUP_TOOLCHAIN=$(VALIDATION_TOOLCHAIN) RUSTUP_AUTO_INSTALL=0 CARGO_NET_OFFLINE=true bash scripts/ci/check-cargo-dependency-boundaries.sh --consumer "$(CURDIR)/testing/runtime-qualification"
+
+# One lexical inventory covers packages, tools, benchmarks and runtime fixtures.
+check-candid-boundary:
+	perl scripts/ci/check-candid-boundary.pl "$(CURDIR)" ci/candid-boundary.json crates testing
 
 check-license:
 	perl scripts/ci/check-license.pl --kind mit --file LICENSE

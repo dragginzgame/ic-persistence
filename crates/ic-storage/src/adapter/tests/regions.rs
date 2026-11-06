@@ -45,9 +45,9 @@ const fn namespace(family: u8) -> std::ops::RangeInclusive<[u8; 33]> {
 // Representative consumer admission, before infallible collection loading.
 // Application header codecs/CRCs and recovery policy remain with IcyDB.
 fn admit<M: Memory>(view: &BTreeMapRegion<[u8; 33], Vec<u8>, M>) -> Result<(), ()> {
-    let mut frame = [0; 8];
+    let mut frame = [0; 4];
     view.read(0, &mut frame);
-    if frame != *b"ICMAP002" {
+    if frame != *b"BTR\x02" {
         return Err(());
     }
     let mut after_families = [0; 33];
@@ -158,7 +158,7 @@ fn retained_region_interleaves_namespaces_and_cold_reopens() {
 
 #[test]
 fn retained_region_admission_refuses_corruption_without_rewriting() {
-    for corruption in 0..7 {
+    for corruption in 0..5 {
         let backing = VectorMemory::default();
         let runtime = runtime(backing.clone());
         let lease = Rc::new(
@@ -171,13 +171,13 @@ fn retained_region_admission_refuses_corruption_without_rewriting() {
         view.initialize().unwrap();
         view.insert([0; 33], b"header".to_vec()).unwrap();
         match corruption {
-            0..=3 => {
-                let offset = [0, 3, 5, 7][corruption];
+            0..=1 => {
+                let offset = [0, 3][corruption];
                 lease.write(offset, &[0xff]);
             }
-            4 | 5 => {
+            2 | 3 => {
                 let mut key = [0; 33];
-                key[0] = if corruption == 4 { 0 } else { 3 };
+                key[0] = if corruption == 2 { 0 } else { 3 };
                 key[32] = 1;
                 view.insert(key, vec![0]).unwrap();
             }

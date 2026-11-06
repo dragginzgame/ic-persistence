@@ -47,21 +47,22 @@ not. Inactive snapshot arenas are reused only after checking that they are
 reserved metadata and do not overlap the active snapshot or application data.
 There is no fallback generation or automatic repair.
 
-Map/Set/region mutations stage affected B-tree nodes and external values and allocator metadata, reserve
-capacity, write records, then publish changed root metadata. Vector writes publish length last.
-Cell encodes and checks bounds before reserving capacity and replacing its value.
-These are ordered writes, not native transactions. A native panic can leave partial
-writes; poisoned owners must be dropped and retained state explicitly inspected.
-IC message rollback provides atomicity for trapped updates and upgrades.
+Collections use private copied ICSS 0.7.2 engines through governed adapters.
+Their writes are not native transactions. Mutation/codec/allocation failures
+can trap after partial writes. A native mutation unwind poisons the shared owner;
+discard the runtime and leases before explicit backing recovery/replacement.
+IC message rollback supplies atomicity for trapped updates and upgrades. No
+second journal is added. Cached Map lengths and Cell values are not recovery APIs.
 
-Record checksums detect accidental corruption; they are not authentication or
-malicious-controller protection. Root loading is bounded. Map node validation is
-lazy on accessed routing paths, with a traversal-depth cap; external values are
-checked when read, so membership and key-only scans are not value-integrity audits; loading a root is not a full
-audit of every node or free-list link. Caller codecs return typed encoding/decoding errors. A faulty implementation
-can still panic; no panic interception substitutes for a fallible codec contract.
-Cell/vector payload checksums run before decoding; cell loading also requires a
-caller-selected byte ceiling.
+Directory checksums remain; collection checksums do not. Collection admission
+checks current framing, not every node, free-list link or payload. Valid-looking
+corruption may be undetected. Engine and application-codec failures trap instead
+of providing typed mutation errors. Application schema and collection framing
+admission remain host obligations. Cell loading admits a caller-selected payload
+ceiling before allocation; Vector checks finite slot lengths before payload
+allocation. Allocator flags use validated bytes rather than reading arbitrary
+persisted data into Rust bools. Copied unsafe packed-header/buffer helpers stay
+private; backing access retains runtime bounds and custody checks.
 
 ## Resource limits and host policy
 

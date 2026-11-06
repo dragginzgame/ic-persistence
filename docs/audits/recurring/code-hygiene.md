@@ -37,8 +37,8 @@ the crate-specific obligations below. An audit does not authorize fixes.
   Ordinary IO validates ranges and translates admitted extents without repeating
   complete directory validation. Foreign formats require explicit host replacement,
   never an implicit reset, fallback generation or legacy decoder.
-- Collection boundaries include [record framing](../../../crates/ic-storage/src/adapter/record.rs),
-  [B-tree routing and allocation](../../../crates/ic-storage/src/adapter/tree.rs),
+- Collection boundaries include [record framing](https://github.com/dragginzgame/ic-storage/blob/4dea092f07e06749eb3f14aa24817c0962fbc0be/crates/ic-storage/src/adapter/record.rs),
+  [B-tree routing and allocation](https://github.com/dragginzgame/ic-storage/blob/4dea092f07e06749eb3f14aa24817c0962fbc0be/crates/ic-storage/src/adapter/tree.rs),
   [Cell](../../../crates/ic-storage/src/adapter/cell.rs),
   [Vector](../../../crates/ic-storage/src/adapter/vector.rs), and
   [map regions](../../../crates/ic-storage/src/adapter/region.rs).

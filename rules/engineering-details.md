@@ -1,5 +1,5 @@
 # Engineering contracts by task
-<!-- Shared companions: docs/tool-store-maintenance.md -->
+<!-- Shared companions: docs/candid-boundary.md docs/principles/rust-code-hygiene.md docs/tool-store-maintenance.md rules/agent-maintenance.md rules/change-reporting.md rules/contributions.md rules/rust-workspaces.md tasks/README.md tasks/cargo-tool-versions.md -->
 
 These contracts supplement the [engineering baseline](../DRAGGINZGAME.md).
 Read the applicable sections when the task touches their subject. This file is
@@ -211,6 +211,10 @@ an unqualified deploy has the defined fleet scope.
 
 ## IC application encoding
 
+- Enforce the lexical application-type boundary with the shared
+  [Candid source check](../docs/candid-boundary.md), using reviewed declaration
+  allowances for named external protocols and codec comparisons. Review macro
+  expansion and cross-module aliases separately; the check is not type resolution.
 - **Use `ic-wire` for all application endpoints we own**, including public
   endpoints called by third parties, owned canister RPC and frontend/client
   payloads. Caller location or endpoint visibility does not select the codec.
@@ -237,6 +241,46 @@ an unqualified deploy has the defined fleet scope.
 - A missing released Wire capability requires an owning issue and qualification
   before adoption, or an expressly approved scoped exception. Do not introduce
   a local codec or a Candid fallback to bypass that work.
+- **CBOR belongs to IC Platform's typed external-protocol boundary.** Consumers
+  use its certificate, hash-tree, ingress-envelope, controller-leaf and other
+  named protocol APIs. Browser consumers use the corresponding explicit
+  `@tokostudios/ic-platform` exports. Do not add direct CBOR dependencies,
+  generic CBOR imports/re-exports, arbitrary-value serializers, local parsers or
+  copied protocol codecs outside that owner. This includes general-purpose
+  packages such as `serde_cbor`, Ciborium and Minicbor, even though they are not
+  IC-specific dependencies. Missing typed operations belong in a Platform
+  capability issue; a generic serialization facade is not the replacement.
+- Owned application CBOR payloads, persisted records, release plans and canonical
+  hash inputs migrate to bounded Wire encoding in their product owner; do not
+  move application models or commitment policy into Platform. Treat changes to
+  encoded records, digests, signatures and retry identities as an explicit
+  format/identity cut. Trace both producers and readers, retained artifacts and
+  uncertain effects; define admission or retirement of old records before
+  changing bytes. Preserve active recovery inputs and never silently reinterpret
+  or regenerate them. Existing retained-byte obligations are migration debt,
+  not permission for new CBOR formats or an implicit fallback reader. This rule
+  does not replace human-authored configuration formats or external protocol bytes.
+- CBOR ownership applies to production, tests, examples, benchmarks, generators
+  and development tooling, including Rust and JavaScript/TypeScript. Use typed
+  Platform fixtures for external IC packets and Wire for owned payload fixtures.
+  Consumer code retains authentication, trust roots, budgets, semantic validation
+  and effect/retry policy; decoding a packet does not authenticate it. Preserve
+  exact external bytes, tags and certified-leaf commitments when adopting APIs.
+  Codec-comparison or other temporary exceptions require explicit maintainer
+  approval with a named scope, reason and retirement/review condition; fixture
+  privacy is not an exemption.
+- Consumer validation must reject forbidden direct codec dependencies and imports
+  across normal, build, development, optional and target-specific declarations,
+  independent fixture workspaces and browser roots. Include aliases, generated
+  entrypoints and re-exports in coverage; review dynamic/generated uses beyond
+  the checker's capabilities. Reuse shared dependency/import checks and improve
+  their shared owner for missing coverage rather than copying scanners locally.
+  Record narrow approved exceptions and reject stale allowances. Legitimate
+  transitive codecs behind Platform and the specifically enumerated native
+  Testkit exception remain permitted; that exception grants no direct CBOR use.
+  The Candid source checker alone does not enforce CBOR ownership, external DTO
+  provenance or byte compatibility. Passing checks and complete migration are
+  separate claims; report uncovered roots and remaining source exceptions.
 - Remove Candid derives, conversions and codec helpers from internal types when
   no remaining Candid contract needs them. Do not wrap an unchanged Candid payload
   in Wire merely to claim adoption. Storage layouts and canonical hash inputs
@@ -552,13 +596,46 @@ contracts; ordinary development does not require rereading these mechanics.
 
 ## Changelogs and artifact preservation
 
+- **Git retains decisions and compact results, not an archive of agent runs.**
+  Routine validation needs no new evidence directory or report: use the owning
+  changelog/issue and existing CI result. For a useful performance study or design
+  investigation, maintain one current summary per topic, normally at most 150
+  lines, recording the conclusion, limitations, source/tool identities, commands
+  and selected absolute results. Update it instead of making a directory for
+  each run, dependency adoption or patch release; Git history preserves revisions.
+- Default tracked experimental evidence budget: one summary plus at most two
+  small text/data files per topic, **100 KiB combined per topic and 5 MiB across
+  the repository**. These are ceilings, not targets. Do not commit raw run logs,
+  bulk measurement tables, source-tree snapshots, build outputs, Wasm binaries,
+  or compressed evidence bundles (`zip`, `tar.gz`, `xz`, etc.). Compression does
+  not make bulk evidence appropriate for Git. Maintained test vectors and source
+  fixtures belong with tests and require a concrete regression purpose; do not
+  rename historical output as a fixture to bypass this rule.
+- New raw experimental output belongs under `target/evidence/`, removable by
+  explicit `cargo clean`. Retain it while investigating a failure or preparing
+  the compact result; it is not a permanent archive. No automatic copying into
+  docs, another directory, Git history or remote storage. A claim requiring
+  durable raw evidence needs an explicit exception naming the claim, minimal
+  payload, measured size, owner, destination and retention/review period. Small
+  release receipts and active deployment/recovery records retain their separate
+  contracts; this experimental budget does not discard them.
+- For existing evidence excess, inventory and compact it under an authorized
+  cleanup. Preserve useful conclusions and repair references. Retire obsolete
+  claims or state that raw measurements are no longer retained; never present a
+  summary/hash as proof that missing artifacts remain independently verifiable.
+  Superseded exploratory output does not need another permanent archive merely
+  because an agent once produced it. Ordinary Git deletion leaves history intact;
+  history rewriting, remote archival and deleting active recovery evidence need
+  their own explicit scope. A new rule alone does not authorize sibling cleanup.
 - Before editing a changelog, read and apply [the changelog rules](changelogs.md).
   They are part of this mandatory baseline and own release-note content, issue
   links, draft/history preservation and detailed-note structure.
 - Releases and deployments preserve consumer-owned build and evidence artifacts
   on success, failure and retry. Never append cargo clean or equivalent cleanup.
   Cleanup requires explicit scope and authority. Tools may clean temporary files
-  they own; they must not erase consumer artifacts or the only retained evidence.
+  they own; they must not erase consumer artifacts or required evidence outside
+  the explicit cleanup scope. Preservation during delivery does not require
+  committing raw artifacts or retaining every completed experiment forever.
 - Managed tool setup retains current declared requirements across consumers,
   selected deliverables, small provenance receipts and explicitly needed recovery
   evidence. Successful builds discard their private compiler scratch after byte

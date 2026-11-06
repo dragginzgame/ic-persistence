@@ -3,6 +3,14 @@
 Current releases use the Storage naming. [Earlier published history](https://github.com/dragginzgame/ic-storage/blob/23deb81c48d58558ac3b0ce36bf266ddc25dca91/releases/metrics-stable/CHANGELOG.md)
 retains its original package and release identities.
 
+## [0.70.0] - Unreleased
+
+### ⚠️ Breaking
+
+- Align governed handles and errors with Storage 0.68. Existing underlying
+  collection images require host rebuild/reset or fresh allocations; metric
+  snapshot payloads and restoration semantics are unchanged. [Details](0.70.md).
+
 ## [0.69.0] - 2026-11-05
 
 ### ⚠️ Breaking

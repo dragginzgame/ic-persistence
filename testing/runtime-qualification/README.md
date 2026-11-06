@@ -12,7 +12,9 @@ caller-owned server selected by IC Testkit. The Storage-owned
 [`wasm-storage-qualification`](crates/ic-storage-test-fixtures/tests/fixtures/wasm_storage_qualification.rs)
 fixture additionally checks Cell, Map, Set, Vector and map regions across 1,031
 named allocations through successful upgrades and rollback of trapped
-updates/upgrades. It never starts or downloads a server.
+updates/upgrades. Vector coverage includes fixed u64 slots and variable
+4,096-byte-bound records, replacing 256-byte payloads with 2,048-byte payloads
+and back. It never starts or downloads a server.
 The Logging-owned
 [`wasm-logging-qualification`](crates/ic-storage-test-fixtures/tests/fixtures/logging_qualification/main.rs)
 fixture checks query non-persistence, update/upgrade rollback, canonical reopen
@@ -58,6 +60,9 @@ directly. `--measure-valid-io` skips the rejection
 and upgrade checks and does not require the Storage fixture; its output alone is not qualification evidence.
 `--logging-only` requires only the Logging Wasm and the server URL and conflicts
 with measurement mode. The Logging proof reports assertions, not cost measurements.
+`--storage-only` similarly requires only the Storage Wasm and server URL, and
+qualifies collection admission, IO, upgrades and rollback without running the
+allocation-IO or Logging suites. It conflicts with both other selection flags.
 `--help` lists the supported arguments without reading Wasm or contacting the
 server. Unknown and trailing arguments are rejected before runtime setup.
 Measurements retain the `valid_io` instruction rows and additionally report

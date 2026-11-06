@@ -1,7 +1,7 @@
 # Repository Instructions
 
 For scope, delegated delivery, validation, compiler support and reporting, use
-[Shared policy at b37a882](https://github.com/dragginzgame/shared-tooling/blob/b37a882314d22bf7ab393b3fe561809377ffd22d/DRAGGINZGAME.md)
+[Shared policy at be37710](https://github.com/dragginzgame/shared-tooling/blob/be3771031ebfb340583b238dee5446be65929c62/DRAGGINZGAME.md)
 and its revision-bound references over older snapshot or local-guide wording.
 This includes Rust 1.99.1 as minimum and pinned development/release compiler;
 check local declarations and qualification before claiming adoption is complete.
@@ -175,8 +175,12 @@ Platform/Runtime, runtime-guard or Types dependency. Wasm selects only `ic0` fro
 published Runtime >=0.19.0 for safe stable64 IO; it must not activate runtime,
 executor, CDK, guard, Types or Candid. No `ic-stable-structures` dependency is
 allowed in the production graph. Memory, codec traits, allocation metadata and
-collection layouts are owned here. Changes require appropriate native corruption,
-growth, custody and installed IO/upgrade qualification. Do not restore old manager
+collection integration are owned here. The maintainer selected copied ICSS 0.7.2
+engines under private `src/engine`; retain provenance and notices. The public
+`adapter` layer preserves governed leases and successful-call APIs, with ICSS
+trap behavior. No ICSS memory manager or retired image readers are admitted.
+Changes require appropriate native corruption, growth, custody and installed
+IO/upgrade qualification. Do not restore old manager
 or collection compatibility paths during the rewrite.
 
 The independent qualification workspace consumes PocketIC through IC Platform's
@@ -236,5 +240,6 @@ Consumers import runtime, leases and keys from `ic_storage`; no `ic-memory`
 package, re-export crate or dependency remains. The named directory replaces the fixed-slot manager and ledger by explicit
 hard cut. Production runtime interfaces use StorageConfig, AllocationGrants and
 opaque AllocationId values. The supported collections are Cell, Map, Set, Vector
-and map regions; no upstream implementation or compatibility decoder remains.
+and map regions. Copied ICSS 0.7.2 engines are private behind governed adapters;
+no production upstream dependency or compatibility decoder is admitted.
 Qualification and publication state belong to the current handoff.

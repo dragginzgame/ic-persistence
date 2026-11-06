@@ -1,0 +1,100 @@
+//! Owned entries and iterator views over the copied ICSS engine.
+use super::{
+    Memory, Storable,
+    bridge::{Backing, Codec},
+    error::Result,
+};
+use crate::{DefaultMemoryImpl, RuntimeMemory, engine};
+use std::{borrow::Cow, marker::PhantomData};
+
+///
+/// `MapEntry`
+///
+/// An owned key and encoded value from an ordered scan. Decoding failures trap.
+///
+pub struct MapEntry<K, V> {
+    key: K,
+    bytes: Vec<u8>,
+    value: PhantomData<V>,
+}
+impl<K, V: Storable> MapEntry<K, V> {
+    /// Borrow the decoded key.
+    pub const fn key(&self) -> &K {
+        &self.key
+    }
+    /// Decode the value. Malformed stored bytes trap.
+    /// # Errors
+    /// Engine failures trap instead of returning an ordinary error.
+    pub fn value(&self) -> Result<V> {
+        Ok(<Codec<V> as engine::Storable>::from_bytes(Cow::Borrowed(&self.bytes)).0)
+    }
+    /// Consume the entry and decode its value.
+    /// # Errors
+    /// Engine failures trap instead of returning an ordinary error.
+    pub fn into_pair(self) -> Result<(K, V)> {
+        Ok((
+            self.key,
+            <Codec<V> as engine::Storable>::from_bytes(Cow::Owned(self.bytes)).0,
+        ))
+    }
+    /// Consume only the key without decoding its value.
+    pub fn into_key(self) -> K {
+        self.key
+    }
+    /// Consume and decode only the value.
+    /// # Errors
+    /// Engine failures trap instead of returning an ordinary error.
+    pub fn into_value(self) -> Result<V> {
+        Ok(<Codec<V> as engine::Storable>::from_bytes(Cow::Owned(self.bytes)).0)
+    }
+}
+///
+/// `MapIter`
+///
+/// Bidirectional ICSS traversal retaining its governed map borrow.
+///
+pub struct MapIter<'a, K: Storable + Ord + Clone, V: Storable, M: Memory = DefaultMemoryImpl>(
+    pub(super) engine::btreemap::Iter<'a, Codec<K>, Codec<V>, Backing<RuntimeMemory<M>>>,
+);
+fn entry<K: Storable + Ord + Clone, V: Storable, M: Memory>(
+    entry: engine::btreemap::LazyEntry<'_, Codec<K>, Codec<V>, Backing<RuntimeMemory<M>>>,
+) -> MapEntry<K, V> {
+    let (key, bytes) = entry.into_raw();
+    MapEntry {
+        key: key.0,
+        bytes,
+        value: PhantomData,
+    }
+}
+impl<K: Storable + Ord + Clone, V: Storable, M: Memory> Iterator for MapIter<'_, K, V, M> {
+    type Item = Result<MapEntry<K, V>>;
+    fn next(&mut self) -> Option<Self::Item> {
+        self.0.next().map(|e| Ok(entry(e)))
+    }
+    fn nth(&mut self, n: usize) -> Option<Self::Item> {
+        self.0.nth(n).map(|e| Ok(entry(e)))
+    }
+    #[expect(
+        clippy::double_ended_iterator_last,
+        reason = "Delegate to the ICSS iterator unchanged for the initial engine baseline"
+    )]
+    fn last(self) -> Option<Self::Item> {
+        self.0.last().map(|e| Ok(entry(e)))
+    }
+    fn count(self) -> usize {
+        self.0.count()
+    }
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.0.size_hint()
+    }
+}
+impl<K: Storable + Ord + Clone, V: Storable, M: Memory> DoubleEndedIterator
+    for MapIter<'_, K, V, M>
+{
+    fn next_back(&mut self) -> Option<Self::Item> {
+        self.0.next_back().map(|e| Ok(entry(e)))
+    }
+    fn nth_back(&mut self, n: usize) -> Option<Self::Item> {
+        self.0.nth_back(n).map(|e| Ok(entry(e)))
+    }
+}

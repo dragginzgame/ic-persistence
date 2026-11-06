@@ -1,83 +1,78 @@
-# Upstream ownership
+# Collection engine provenance
 
-Storage owns the allocator, backing trait, codec trait and Cell, Map, Set, Vector
-and map-region implementations. No imported `ic-stable-structures` source,
-re-export, feature or selected dependency remains. Production graph admission
-forbids that package. The replacement is a complete retained-format hard cut.
+Storage owns allocation governance, backing custody, named directory and public
+collection adapters. Its private `engine` module copies the collection algorithms
+from published `ic-stable-structures` **0.7.2**. The maintainer explicitly selected
+this source baseline instead of another independently maintained implementation.
+There is no production dependency or public re-export of ICSS.
 
-IC Platform supplies Wasm stable-memory system access. IC Wire supplies bounded
-directory and collection-record encoding. Storage owns their framing, checksums,
-resource limits and allocation/collection invariants. Hosts own application
-codecs, comparators, schema compatibility, lifecycle and recovery decisions.
-See [Storage](../../crates/ic-storage/README.md) and
-[allocation](../../crates/ic-storage/ALLOCATION.md).
+[The source inventory](icss-source.json) records original source SHA-256 hashes.
+The relevant map/node/allocator/iterator, BaseVec/Vec, Cell, address and helper
+code is copied under `crates/ic-storage/src/engine/`. Each copied file retains
+DFINITY attribution and an Apache-2.0 notice; the package includes LICENSE-APACHE.
+Storage-authored code remains MIT. This is adapted source, not an unchanged
+vendored executable snapshot.
 
-Collections accept only admitted `RuntimeMemory` leases. `BTreeMapRegion` uses an
-`Rc<RuntimeMemory>` over a caller-selected page range and reloads the owned tree
-root per operation. Hosts must admit disjoint framing and update old `BTR`/`BTA`
-checks to the current `ICMAP002` contract. No region allocates another identity.
+## The two collection layers
 
-Shared Tooling owns the reviewed engineering baseline, formatting, setup and
-release runner. The snapshot remains unchanged by this rewrite. Build and Host
-own reusable native metadata, filesystem, process and archive operations;
-Storage's repo-tool retains consumer release policy and qualification receipts.
-Testkit owns server selection/lifecycle; the independent runner owns installed
-Storage and adapter scenarios. None of those native tools enters the production
-canister graph. See [adoption boundaries](../shared-tooling-adoption.md).
+- Private `engine` owns one implementation of each algorithm. Set uses the same
+  map engine with unit values; region views use that map over a bounded lease.
+- Public `adapter` preserves successful-call API shapes and requires admitted
+  `RuntimeMemory` handles. Its private bridge connects Storage's existing
+  `Memory`, `Storable` and `Bound` contracts to the copied private traits.
 
-The test-support `fixture_runtime` performs the same namespace admission and
-bootstrap as production. Tests choose their own backing, stable keys and
-`StorageConfig`. Sibling repositories remain separately responsible for adopting
-the changed public types and explicit reset requirement.
+The old independent tree, block allocator, record envelopes, node cache, Vector
+windows and mutation epochs are deleted. No alternative production engine stays
+selected or maintained. Directory allocation remains Storage's implementation:
+ICSS's MemoryManager, ID assignment and unrestricted backing constructors are
+not copied. Physical access still passes through checked Storage handles.
 
-## B-tree design provenance
+## Deliberate adaptations
 
-The pending 0.65 engine applies the multi-entry B-tree design used by DFINITY's
-`ic-stable-structures` 0.7.2: minimum degree six, binary search within nodes,
-split/borrow/merge balancing and avoiding unrelated value reads. Reference
-implementation: `src/btreemap.rs`, `src/btreemap/node.rs` and
-`src/btreemap/node/v2.rs` in that published crate (DFINITY Foundation, Apache-2.0).
-No upstream source files are vendored and no production dependency is added.
-This is an independently implemented format, not a port of upstream bytes.
+The algorithms, current node/overflow layouts, fixed-stride Vector slots and
+scalar iterators follow 0.7.2. Changes are limited to integration and safety:
 
-Storage uses bottom-up splits and underflow repair with staged mutations, a
-checked compact routing encoding, inline values up to 32 bytes, and separately
-checksummed larger values. It retains its existing governed memory and reusable
-block allocator. DFINITY's exact node layout, overflow pages and bucket manager
-are not reproduced. The comparison harness measures these different stacks;
-results do not isolate the B-tree algorithm from allocation or integrity costs.
+- Private module paths and checked backing/codec views; existing application
+  codecs remain unchanged. Storage unsigned codecs are little-endian, whereas
+  ICSS's default unsigned codecs are big-endian. Same-image interoperability
+  requires matching codecs, bounds, ordering and collection framing.
+- Explicit create/load/reset admission. Remove upstream implicit initialization
+  and old B-tree/node migration readers. Only current explicit-page-size BTR2,
+  SVC1 and SCL1 images are admitted. No previous Storage image is read or reset.
+- Cell admits the host's byte ceiling before buffer allocation. Vector checks
+  a variable slot length against its declared bound before allocating payload.
+- A persisted allocator allocation flag is read as u8, checked, then interpreted,
+  preserving valid bytes without constructing an invalid Rust bool on corruption.
+- Native mutation unwind guards poison the shared owner after a panic. They add
+  no Wasm journal or runtime work; IC rollback remains the atomicity mechanism.
+- An owned raw-value iterator adapter retains Storage's public MapEntry API.
+  Skipping delegates to the engine before materializing the selected entry.
+- Remove unused APIs and upstream tests; qualify the copied subset using Storage
+  models and the separately published reference. Rust 2024 unsafe blocks, checked
+  conversions, lint fixes and narrowly explained expectations are mechanical
+  adaptations, not performance enhancements.
 
-`ICMAP002` requires explicit replacement of earlier map/set/region state.
-There is no legacy reader, implicit repair or automatic reset. Root loading
-validates framing and bounds without scanning all nodes. Key-only operations
-check routing records but deliberately do not audit external value payloads.
+Codec and engine failures trap. Framing admission and explicit reservations can
+still return typed errors; Result signatures do not promise pre-write rejection.
+There are no collection checksums. Existing Storage collection images require an
+explicit host rebuild/reset or fresh allocations. The directory format and its
+integrity checks are unchanged. See [the collection contract](../../crates/ic-storage/README.md).
 
-## Follow-through from upstream comparison
+## Qualification and research controls
 
-The 0.65.1 draft additionally studies upstream commit
-[`b5d1650`](https://github.com/dfinity/stable-structures/commit/b5d1650463f477affb3d358e86b1113953fc9937),
-including its configurable node cache, mutation invalidation, property tests and
-cache-sensitive benchmarks. Published 0.7.2 remains a separate comparison control.
+The independent workspace retains published ICSS 0.7.2 through its Platform 0.17
+benchmark facade and optional Git `b5d1650` as separate research controls. Neither
+enters production. Same-image tests exchange current collections using matching
+application codecs and governed Storage backing. Installed lifecycle tests and
+matched IC benchmarks establish behavior and costs separately.
 
-Local changes apply those mechanisms within Storage's current contracts:
+Historical audits and measurements describe the engines selected when they ran;
+they do not establish current performance. The copied baseline deliberately
+removes earlier local optimizations so later changes can be compared cleanly.
+No universal improvement or ICSS default-codec compatibility is claimed.
 
-- Validated routing buffers can be cached under an opt-in byte budget. Accounting
-  uses retained vector capacities and cache bookkeeping rather than upstream's
-  slot count and approximate heap estimate. Allocator overhead and iterator-held
-  nodes remain outside that budget; this is not a whole-canister heap limit.
-- One checksummed buffer supplies read-only entry views. Storage continues to
-  check the complete routing record, while upstream can defer individual keys.
-- Unchanged ancestors stay unwritten. Substantially shrinking records reuse an
-  available smaller block and free the original whole block through staged free
-  lists. Otherwise capacity stays reserved, preserving reuse under size churn.
-  This differs from upstream's page-based unused overflow reclamation.
-- Fixed-size vector IO and reusable iterator buffers retain Storage's per-slot
-  length/index checksum; upstream's lighter encoding has different integrity costs.
-- Translation caching retains allocation admission, range validation and global
-  poisoning. It does not adopt upstream's fixed memory-ID/bucket manager.
-
-These are independently implemented adaptations, not imported source or a claim
-of general superiority. Bounded key-only ranges and generated model histories
-close existing gaps. The matched installed comparison must establish performance
-for each workload; removing instructions or reads locally does not prove a 2×
-whole-call improvement. Production has no upstream dependency or format migration.
+IC Platform supplies Wasm stable-memory system access; IC Wire supplies bounded
+directory encoding and optional application codecs. Testkit owns server lifecycle;
+Shared Tooling owns its reviewed engineering snapshot, unchanged by this port.
+Hosts retain lifecycle, comparators, schema and recovery decisions. Sibling code
+and retained images have not been migrated by this change.

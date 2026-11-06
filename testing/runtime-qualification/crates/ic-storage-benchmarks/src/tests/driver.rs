@@ -82,7 +82,7 @@ fn named_workloads_refuse_mixed_knobs_and_preserve_operation_semantics() {
         "--output",
         "report",
     ];
-    for name in ["control", "records", "bulk", "boundaries"] {
+    for name in ["control", "records", "bulk", "boundaries", "types"] {
         let args = Arguments::try_parse_from(base.into_iter().chain(["--workload", name])).unwrap();
         let workload = args.workload.unwrap();
         assert!(
@@ -388,4 +388,270 @@ fn round_summary_keeps_initial_and_shrunk_cell_costs_separate() {
     assert!(rounds.lines().nth(1).unwrap().contains(",100,10,10.0000,"));
     assert!(rounds.lines().nth(1).unwrap().ends_with(",0"));
     assert!(rounds.lines().nth(3).unwrap().ends_with(",2"));
+}
+
+#[test]
+fn iterator_model_checks_skipping_mixed_ends_and_persisted_interleaved_writes() {
+    let mut model: BTreeMap<_, _> = (0..8)
+        .map(|id| (id, Case::VectorU64.expected_value(id, 8, false)))
+        .collect();
+    let request = Request {
+        case: Case::VectorU64,
+        rows: 8,
+        payload: 8,
+        count: 3,
+        seed: 1,
+        pattern: Pattern::Sequential,
+        operation: Operation::Nth,
+    };
+    let ids =
+        |rows: Vec<(u64, Option<Vec<u8>>)>| rows.into_iter().map(|(id, _)| id).collect::<Vec<_>>();
+    assert_eq!(ids(expected(&mut model, request)), vec![1, 2, 3]);
+    assert_eq!(
+        ids(expected(
+            &mut model,
+            Request {
+                operation: Operation::NthBack,
+                ..request
+            }
+        )),
+        vec![6, 5, 4]
+    );
+    assert_eq!(
+        ids(expected(
+            &mut model,
+            Request {
+                operation: Operation::AlternatingScan,
+                ..request
+            }
+        )),
+        vec![0, 7, 1]
+    );
+    assert_eq!(
+        ids(expected(
+            &mut model,
+            Request {
+                operation: Operation::Last,
+                ..request
+            }
+        )),
+        vec![7, 7, 7]
+    );
+    let original = model.clone();
+    let rows = expected(
+        &mut model,
+        Request {
+            operation: Operation::ScanSet,
+            count: 4,
+            ..request
+        },
+    );
+    assert_eq!(rows[0], (0, Some(original[&0].clone())));
+    for id in 1..4 {
+        assert_eq!(model[&id], Case::VectorU64.expected_value(id, 8, true));
+    }
+    for id in [0, 4, 5, 6, 7] {
+        assert_eq!(model[&id], original[&id]);
+    }
+    assert_eq!(model.len(), 8);
+}
+
+#[test]
+fn ordered_iteration_model_preserves_key_identity_rank_and_range_endpoints() {
+    let mut model: BTreeMap<_, _> = [2, 5, 8, 9, 12]
+        .into_iter()
+        .map(|key| (key, vec![key as u8]))
+        .collect();
+    let request = Request {
+        case: Case::U64Bytes,
+        operation: Operation::Nth,
+        rows: 5,
+        payload: 33,
+        count: 3,
+        seed: 0,
+        pattern: Pattern::Sequential,
+    };
+    assert_eq!(
+        expected(&mut model, request),
+        vec![(2, Some(vec![2])), (5, Some(vec![5])), (8, Some(vec![8]))]
+    );
+    assert_eq!(
+        expected(
+            &mut model,
+            Request {
+                operation: Operation::NthBack,
+                ..request
+            }
+        ),
+        vec![(12, Some(vec![12])), (9, Some(vec![9])), (8, Some(vec![8]))]
+    );
+    assert_eq!(
+        expected(
+            &mut model,
+            Request {
+                operation: Operation::ValuesScan,
+                ..request
+            }
+        ),
+        vec![(0, Some(vec![2])), (1, Some(vec![5])), (2, Some(vec![8]))]
+    );
+    assert_eq!(
+        expected(
+            &mut model,
+            Request {
+                operation: Operation::ReverseKeysScan,
+                ..request
+            }
+        ),
+        vec![(12, Some(vec![])), (9, Some(vec![])), (8, Some(vec![]))]
+    );
+    assert_eq!(
+        expected(
+            &mut model,
+            Request {
+                operation: Operation::AlternatingScan,
+                ..request
+            }
+        ),
+        vec![(2, Some(vec![2])), (12, Some(vec![12])), (5, Some(vec![5]))]
+    );
+    assert_eq!(
+        expected(
+            &mut model,
+            Request {
+                operation: Operation::BoundedKeysScan,
+                rows: 20,
+                seed: 5,
+                count: 6,
+                ..request
+            }
+        ),
+        vec![(5, Some(vec![]))]
+    );
+}
+
+#[test]
+fn ordinary_selection_is_a_unique_subset_of_the_complete_type_suite() {
+    let defaults: std::collections::BTreeSet<_> = DEFAULT_CASES.iter().copied().collect();
+    let complete: std::collections::BTreeSet<_> = CASES.into_iter().collect();
+    assert_eq!(defaults.len(), DEFAULT_CASES.len());
+    assert_eq!(complete.len(), CASES.len());
+    assert!(defaults.is_subset(&complete));
+    assert!(defaults.contains(&Case::RegionBytes));
+    assert!(!defaults.contains(&Case::VectorBounded65536));
+    assert_eq!(Workload::Types.cases(), MATRIX_CASES);
+}
+
+#[test]
+fn scalar_cell_type_trace_reads_both_original_and_replaced_optional_variants() {
+    let case = Case::Typed {
+        collection: Collection::Cell,
+        key: DataType::U64,
+        value: DataType::OptionU64,
+    };
+    let trace = phases(case, false);
+    assert!(trace.contains(&("GetAfterReplace".into(), Operation::Get)));
+    let mut model = [(0, case.expected_value(0, 8, false))]
+        .into_iter()
+        .collect();
+    let mut reads = Vec::new();
+    for (_, operation) in trace {
+        let response = expected(
+            &mut model,
+            Request {
+                case,
+                operation,
+                rows: 1,
+                payload: 8,
+                count: 1,
+                seed: 1,
+                pattern: Pattern::Uniform,
+            },
+        );
+        if operation == Operation::Get {
+            reads.push(response[0].1.clone().unwrap());
+        }
+    }
+    assert_eq!(reads[0], vec![0]);
+    assert_eq!(reads[1][0], 1);
+    assert_eq!(reads[1].len(), 9);
+}
+#[test]
+fn summary_quotes_tuple_labels_and_does_not_invent_missing_reference_costs() {
+    let case = Case::Typed {
+        collection: Collection::Map,
+        key: DataType::PairFixed,
+        value: DataType::U64,
+    };
+    let mut samples = Samples::new();
+    samples.insert(
+        (
+            case,
+            8,
+            1,
+            Pattern::Uniform,
+            "Get".into(),
+            "ic-storage".into(),
+        ),
+        vec![Measurement {
+            round: 0,
+            instructions: 100,
+            stable_pages: 4,
+        }],
+    );
+    let mut output = Vec::new();
+    write_summary(
+        &mut output,
+        &samples,
+        32,
+        std::num::NonZeroU16::new(8).unwrap(),
+        1,
+        false,
+    )
+    .unwrap();
+    let text = String::from_utf8(output).unwrap();
+    assert!(text.contains("\"(u64,[u8;20])\""));
+    assert!(text.contains(",100,,,4,,8,"));
+}
+#[test]
+fn combined_type_report_requires_all_five_complete_subreports() {
+    let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../../../target/benchmark-full-catalogue/report-test")
+        .join(format!(
+            "{}-{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+    for (index, collection) in Collection::ALL.into_iter().enumerate() {
+        let part = root.join(collection.name().to_ascii_lowercase());
+        fs::create_dir_all(&part).unwrap();
+        for file in [
+            "summary.csv",
+            "round-summary.csv",
+            "coverage.csv",
+            "lookup-stages.csv",
+        ] {
+            fs::write(part.join(file), format!("column\n{index}\n")).unwrap();
+        }
+        for file in ["samples.jsonl", "refusals.jsonl"] {
+            fs::write(part.join(file), "{}\n").unwrap();
+        }
+        fs::write(part.join("configuration.json"), "{}").unwrap();
+        combine_collections(&root).unwrap();
+        assert_eq!(root.join("summary.csv").exists(), index == 4);
+    }
+    assert_eq!(
+        fs::read_to_string(root.join("summary.csv"))
+            .unwrap()
+            .lines()
+            .count(),
+        6
+    );
+    let config: serde_json::Value =
+        serde_json::from_slice(&fs::read(root.join("configuration.json")).unwrap()).unwrap();
+    assert_eq!(config["status"], "complete");
+    assert_eq!(config["collections"].as_array().unwrap().len(), 5);
 }

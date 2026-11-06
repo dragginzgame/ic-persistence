@@ -5,6 +5,11 @@ canisters. Siblings were read-only. Many have pending migrations; their current
 declarations must not be confused with their published versions or selected
 lockfiles. No consumer layout, public API or retained image was changed.
 
+Some inspected files were uncommitted and have since moved or disappeared.
+Unavailable source paths are recorded as text, not live links. Inventory hashes
+identify the inspected bytes but cannot verify an absent snapshot; re-inspect
+consumers before making current layout or sizing decisions.
+
 ## What a memory count means
 
 The inspected current consumers use Storage-issued named allocations. These
@@ -24,11 +29,11 @@ mutually exclusive deployments.
 
 | Component | Named allocation inventory | Implementation and actual use |
 | --- | --- | --- |
-| Canic core | 27 unconditional, plus up to 7 feature-selected | [Key/request factory](../../canic/crates/canic-core/src/memory/keys/mod.rs): three optional auth-state keys, two portable enrollment keys and two sharding keys. [Memory bootstrap](../../canic/crates/canic-core/src/memory/mod.rs) admits the complete inventory; [intent stores](../../canic/crates/canic-core/src/storage/stable/intent.rs) initialize lazily. |
+| Canic core | 27 unconditional, plus up to 7 feature-selected | [Key/request factory](../../canic/crates/canic-core/src/memory/keys/mod.rs): three optional auth-state keys, two portable enrollment keys and two sharding keys. [Memory bootstrap](../../canic/crates/canic-core/src/memory/mod.rs) admits the complete inventory; intent stores (`canic/crates/canic-core/src/storage/stable/intent.rs`) initialize lazily. |
 | Canic control plane | Root adds 21; fleet coordinator adds 3; Wasm store adds 6 | [Role-gated keys](../../canic/crates/canic-control-plane/src/memory/keys/mod.rs): 17 root-only, 3 fleet-only, 2 Wasm-only, 4 shared root/Wasm. [Composition](../../canic/crates/canic-control-plane/src/memory/mod.rs) adds these to core. Combined feature builds use the union, not the sum. |
 | Canic metrics | 0 or 1 additional allocation per role | [Provider host](../../canic/crates/canic-core/src/ops/runtime/metric_providers/host.rs) declares one shared metrics map only when a compiled role provider needs stable storage. It is not one memory per metric. |
 | Blob Storage | 14 per installation | [Thirteen service stores](../../ic-blob-storage/crates/ic-blob-storage/src/ops/service/stores/grants/mod.rs): ten upload, two funding, one gateway; [installation](../../ic-blob-storage/crates/ic-blob-storage/src/ops/service/installation/mod.rs) adds configuration. [Canic adapter](../../canic/crates/canic-blob-service/src/ops/memory/mod.rs) composes these with its framework inventory. |
-| Relay | 3 per channel; +1 per responder, dispatch, mailbox or durable allocator instance | [Channel](../../ic-relay/crates/ic-relay/src/channel/mod.rs) creates stream/outbox/inbox maps; [responder](../../ic-relay/crates/ic-relay/src/responder/mod.rs), [dispatch](../../ic-relay/crates/ic-relay/src/dispatch/mod.rs), [mailbox](../../ic-relay/crates/ic-relay/src/mailbox/mod.rs), and [resources](../../ic-relay/crates/ic-relay/src/resources/mod.rs) own the additions. The actual [two-peer qualification host](../../ic-relay/crates/ic-relay-persistence-probe/examples/mailbox_peers/installed/storage.rs) declares 18: four shared plus seven per peer. This is a fixture count, not a universal Relay count. |
+| Relay | 3 per channel; +1 per responder, dispatch, mailbox or durable allocator instance | [Channel](../../ic-relay/crates/ic-relay/src/channel/mod.rs) creates stream/outbox/inbox maps; [responder](../../ic-relay/crates/ic-relay/src/responder/mod.rs), [dispatch](../../ic-relay/crates/ic-relay/src/dispatch/mod.rs), [mailbox](../../ic-relay/crates/ic-relay/src/mailbox/mod.rs), and [resources](../../ic-relay/crates/ic-relay/src/resources/mod.rs) own the additions. The actual two-peer qualification host (`ic-relay/crates/ic-relay-persistence-probe/examples/mailbox_peers/installed/storage.rs`) declares 18: four shared plus seven per peer. This is a fixture count, not a universal Relay count. |
 | IcyDB | `3 + 4 × journaled stores` per generated canister | [Generator](../../icydb/crates/icydb-model/src/build/actor/db/store.rs) adds commit, integrity progress and startup, then data/index/schema/journal per journaled store. Heap stores add none. [Facade fixture](../../icydb/testing/model-facade-only/src/design/mod.rs) has one journaled store (7); [logical-memory fixture](../../icydb/testing/logical-memory/src/schema.rs) has two (11) unless its retiring-store omission feature is enabled. |
 | Metrics Storage / Logging Storage | One host-supplied map per store instance | [Metrics](../crates/ic-metrics-storage/src/lib.rs) and [Logging](../crates/ic-logging-storage/src/lib.rs) wrap supplied governed maps; they do not construct independent managers. Hosts decide how many instances exist. |
 | Auth / Scheduling | No fixed production allocation count imposed by the library | Their qualification consumers use explicit host memories; those fixtures are not allocations automatically created by linking the libraries. |
@@ -82,7 +87,7 @@ deployment migration. No sibling implementation or migration was attempted.
 
 ## 2. Requalify Canic's capacity reservation against its actual engine
 
-**Verified:** [application receipt reservation](../../canic/crates/canic-core/src/storage/stable/intent.rs)
+**Verified:** application receipt reservation (`canic/crates/canic-core/src/storage/stable/intent.rs`)
 computes capacity using explicitly ICSS 0.7.2-specific constants: five entries
 per node, a 2,378-byte chunk and 116 fixed bytes. The active map imports Storage,
 and [receipt admission](../../canic/crates/canic-core/src/ops/storage/intent/mod.rs)
@@ -154,7 +159,7 @@ keys, coordinator adds three, and Wasm-store adds six; shared keys count once.
 
 | Owner | Allocation key / supplied role | Structure | Condition | Workload family | Implementation |
 | --- | --- | --- | --- | --- | --- |
-| canic-core | `canic.core.application_receipt.eligibility.v1` | Map | always | records | [source](../../canic/crates/canic-core/src/storage/stable/intent.rs) |
+| canic-core | `canic.core.application_receipt.eligibility.v1` | Map | always | records | source (`canic/crates/canic-core/src/storage/stable/intent.rs`) |
 | canic-core | `canic.core.async_job_recovery.v1` | Cell | always | control | [source](../../canic/crates/canic-core/src/storage/stable/async_job_recovery/mod.rs) |
 | canic-core | `canic.core.auth.delegated_token_issuer.state.v1` | Cell | cfg(any(test, feature = "auth-delegated-token-issuer-state")) | control | [source](../../canic/crates/canic-core/src/storage/stable/auth/mod.rs) |
 | canic-core | `canic.core.auth.local_application_authorization.replays.v1` | Vector | always | records | [source](../../canic/crates/canic-core/src/storage/stable/auth/mod.rs) |
@@ -167,25 +172,25 @@ keys, coordinator adds three, and Wasm-store adds six; shared keys count once.
 | canic-core | `canic.core.authority_restore.fence.v1` | Cell | always | control | [source](../../canic/crates/canic-core/src/storage/stable/authority_restore/mod.rs) |
 | canic-core | `canic.core.caller_authority.header.v1` | Cell | always | control | [source](../../canic/crates/canic-core/src/storage/stable/caller_authority/mod.rs) |
 | canic-core | `canic.core.caller_authority.rows.v1` | Map | always | records | [source](../../canic/crates/canic-core/src/storage/stable/caller_authority/mod.rs) |
-| canic-core | `canic.core.cycles.funding_ledger.v1` | Map | always | records | [source](../../canic/crates/canic-core/src/storage/stable/cycles.rs) |
-| canic-core | `canic.core.cycles.icp_refill_records.v1` | Map | always | records | [source](../../canic/crates/canic-core/src/storage/stable/icp_refill.rs) |
-| canic-core | `canic.core.cycles.topup_events.v1` | Map | always | records | [source](../../canic/crates/canic-core/src/storage/stable/cycles.rs) |
-| canic-core | `canic.core.cycles.tracker.v1` | Map | always | records | [source](../../canic/crates/canic-core/src/storage/stable/cycles.rs) |
+| canic-core | `canic.core.cycles.funding_ledger.v1` | Map | always | records | source (`canic/crates/canic-core/src/storage/stable/cycles.rs`) |
+| canic-core | `canic.core.cycles.icp_refill_records.v1` | Map | always | records | source (`canic/crates/canic-core/src/storage/stable/icp_refill.rs`) |
+| canic-core | `canic.core.cycles.topup_events.v1` | Map | always | records | source (`canic/crates/canic-core/src/storage/stable/cycles.rs`) |
+| canic-core | `canic.core.cycles.tracker.v1` | Map | always | records | source (`canic/crates/canic-core/src/storage/stable/cycles.rs`) |
 | canic-core | `canic.core.fleet.activation.v1` | Cell | always | bulk | [source](../../canic/crates/canic-core/src/storage/stable/fleet_activation/mod.rs) |
 | canic-core | `canic.core.fleet_admission.projection.v1` | Cell | always | control | [source](../../canic/crates/canic-core/src/storage/stable/fleet_admission_projection/mod.rs) |
-| canic-core | `canic.core.fleet.state.v1` | Cell | always | control | [source](../../canic/crates/canic-core/src/storage/stable/state/fleet.rs) |
-| canic-core | `canic.core.intent.expiry_index.v1` | Map | always | records | [source](../../canic/crates/canic-core/src/storage/stable/intent.rs) |
-| canic-core | `canic.core.intent.meta.v1` | Cell | always | control | [source](../../canic/crates/canic-core/src/storage/stable/intent.rs) |
-| canic-core | `canic.core.intent.pending.v1` | Map | always | records | [source](../../canic/crates/canic-core/src/storage/stable/intent.rs) |
-| canic-core | `canic.core.intent.receipt_backed_records.v1` | Map | always | records | [source](../../canic/crates/canic-core/src/storage/stable/intent.rs) |
-| canic-core | `canic.core.intent.records.v1` | Map | always | records | [source](../../canic/crates/canic-core/src/storage/stable/intent.rs) |
-| canic-core | `canic.core.intent.totals.v1` | Map | always | records | [source](../../canic/crates/canic-core/src/storage/stable/intent.rs) |
-| canic-core | `canic.core.placement.acknowledgement_index.v1` | Map | always | records | [source](../../canic/crates/canic-core/src/storage/stable/intent.rs) |
-| canic-core | `canic.core.placement.index_registry.v1` | Map | always | records | [source](../../canic/crates/canic-core/src/storage/stable/placement_index.rs) |
+| canic-core | `canic.core.fleet.state.v1` | Cell | always | control | source (`canic/crates/canic-core/src/storage/stable/state/fleet.rs`) |
+| canic-core | `canic.core.intent.expiry_index.v1` | Map | always | records | source (`canic/crates/canic-core/src/storage/stable/intent.rs`) |
+| canic-core | `canic.core.intent.meta.v1` | Cell | always | control | source (`canic/crates/canic-core/src/storage/stable/intent.rs`) |
+| canic-core | `canic.core.intent.pending.v1` | Map | always | records | source (`canic/crates/canic-core/src/storage/stable/intent.rs`) |
+| canic-core | `canic.core.intent.receipt_backed_records.v1` | Map | always | records | source (`canic/crates/canic-core/src/storage/stable/intent.rs`) |
+| canic-core | `canic.core.intent.records.v1` | Map | always | records | source (`canic/crates/canic-core/src/storage/stable/intent.rs`) |
+| canic-core | `canic.core.intent.totals.v1` | Map | always | records | source (`canic/crates/canic-core/src/storage/stable/intent.rs`) |
+| canic-core | `canic.core.placement.acknowledgement_index.v1` | Map | always | records | source (`canic/crates/canic-core/src/storage/stable/intent.rs`) |
+| canic-core | `canic.core.placement.index_registry.v1` | Map | always | records | source (`canic/crates/canic-core/src/storage/stable/placement_index.rs`) |
 | canic-core | `canic.core.placement.scaling_registry.v1` | Map | always | records | [source](../../canic/crates/canic-core/src/storage/stable/scaling.rs) |
-| canic-core | `canic.core.replay.receipts.v1` | Map | always | records | [source](../../canic/crates/canic-core/src/storage/stable/replay.rs) |
+| canic-core | `canic.core.replay.receipts.v1` | Map | always | records | source (`canic/crates/canic-core/src/storage/stable/replay.rs`) |
 | canic-core | `canic.core.runtime.bindings.v1` | Cell | always | control | [source](../../canic/crates/canic-core/src/storage/stable/env.rs) |
-| canic-core | `canic.core.runtime.canister_children.v1` | Map | always | records | [source](../../canic/crates/canic-core/src/storage/stable/children.rs) |
+| canic-core | `canic.core.runtime.canister_children.v1` | Map | always | records | source (`canic/crates/canic-core/src/storage/stable/children.rs`) |
 | canic-core | `canic.core.sharding.assignments.v1` | Map | cfg(feature = "sharding") | records | [source](../../canic/crates/canic-core/src/storage/stable/sharding/mod.rs) |
 | canic-core | `canic.core.sharding.registry.v1` | Map | cfg(feature = "sharding") | records | [source](../../canic/crates/canic-core/src/storage/stable/sharding/mod.rs) |
 | canic-control-plane | `canic.control_plane.root.application_checkpoint.v1` | Cell | cfg(feature = "root-control-plane") | control | [source](../../canic/crates/canic-control-plane/src/storage/stable/application_checkpoint/mod.rs) |
@@ -208,11 +213,11 @@ keys, coordinator adds three, and Wasm-store adds six; shared keys count once.
 | canic-control-plane | `canic.control_plane.root.component.subtree_removal_history.v1` | Map | cfg(feature = "root-control-plane") | records | [source](../../canic/crates/canic-control-plane/src/storage/stable/component_registry/mod.rs) |
 | canic-control-plane | `canic.control_plane.root.fleet_registry_mirror.v1` | Cell | cfg(feature = "root-control-plane") | control | [source](../../canic/crates/canic-control-plane/src/storage/stable/fleet_registry_mirror/mod.rs) |
 | canic-control-plane | `canic.control_plane.root.funding.v1` | Cell | cfg(feature = "root-control-plane") | control | [source](../../canic/crates/canic-control-plane/src/storage/stable/root_funding/mod.rs) |
-| canic-control-plane | `canic.control_plane.root.wasm_store.state.v1` | Cell | cfg(feature = "root-control-plane") | control | [source](../../canic/crates/canic-control-plane/src/storage/stable/state/root_wasm_store.rs) |
-| canic-control-plane | `canic.control_plane.template.chunk_payloads.v1` | Vector | cfg(any(feature = "root-control-plane", feature = "wasm-store-canister")) | bulk | [source](../../canic/crates/canic-control-plane/src/storage/stable/template/chunked.rs) |
-| canic-control-plane | `canic.control_plane.template.chunk_refs.v1` | Map | cfg(any(feature = "root-control-plane", feature = "wasm-store-canister")) | records | [source](../../canic/crates/canic-control-plane/src/storage/stable/template/chunked.rs) |
-| canic-control-plane | `canic.control_plane.template.chunk_sets.v1` | Map | cfg(any(feature = "root-control-plane", feature = "wasm-store-canister")) | records | [source](../../canic/crates/canic-control-plane/src/storage/stable/template/chunked.rs) |
-| canic-control-plane | `canic.control_plane.template.manifests.v1` | Map | cfg(any(feature = "root-control-plane", feature = "wasm-store-canister")) | records | [source](../../canic/crates/canic-control-plane/src/storage/stable/template/manifest.rs) |
+| canic-control-plane | `canic.control_plane.root.wasm_store.state.v1` | Cell | cfg(feature = "root-control-plane") | control | source (`canic/crates/canic-control-plane/src/storage/stable/state/root_wasm_store.rs`) |
+| canic-control-plane | `canic.control_plane.template.chunk_payloads.v1` | Vector | cfg(any(feature = "root-control-plane", feature = "wasm-store-canister")) | bulk | source (`canic/crates/canic-control-plane/src/storage/stable/template/chunked.rs`) |
+| canic-control-plane | `canic.control_plane.template.chunk_refs.v1` | Map | cfg(any(feature = "root-control-plane", feature = "wasm-store-canister")) | records | source (`canic/crates/canic-control-plane/src/storage/stable/template/chunked.rs`) |
+| canic-control-plane | `canic.control_plane.template.chunk_sets.v1` | Map | cfg(any(feature = "root-control-plane", feature = "wasm-store-canister")) | records | source (`canic/crates/canic-control-plane/src/storage/stable/template/chunked.rs`) |
+| canic-control-plane | `canic.control_plane.template.manifests.v1` | Map | cfg(any(feature = "root-control-plane", feature = "wasm-store-canister")) | records | source (`canic/crates/canic-control-plane/src/storage/stable/template/manifest.rs`) |
 | canic-control-plane | `canic.control_plane.wasm_store.gc_state.v1` | Cell | cfg(feature = "wasm-store-canister") | control | [source](../../canic/crates/canic-control-plane/src/storage/stable/template/gc/mod.rs) |
 | metrics host | `canic.core.metrics.providers.v1` | Map | role provider needs stable metrics | records | [source](../../canic/crates/canic-core/src/ops/runtime/metric_providers/host.rs) |
 | service | `blob.tenants.v1` | Map | per installation | records | [source](../../ic-blob-storage/crates/ic-blob-storage/src/ops/service/stores/grants/mod.rs) |
@@ -282,7 +287,7 @@ Useful source bounds, not observed occupancy:
 - [IcyDB journal chunks](../../icydb/crates/icydb-core/src/db/journal/store.rs)
   are bounded at 64 KiB. Its 16 MiB commit buffer and schema map at page 257 are
   separate layout concerns; the bulk recipe does not reproduce that reserved prefix.
-- [Canic chunk payloads](../../canic/crates/canic-control-plane/src/storage/stable/template/chunked.rs)
+- Canic chunk payloads (`canic/crates/canic-control-plane/src/storage/stable/template/chunked.rs`)
   are Vector records up to 1 MiB, with a separate Map of 12-byte references.
   Blob's fourteen service stores hold metadata/accounting, not those Wasm bodies.
 - Metrics Storage records are bounded at 6 KiB and Logging Storage records at
@@ -306,7 +311,7 @@ No production default or sibling layout has changed in this pass.
 
 ### Initial qualification
 
-[Retained qualification](measurements/consumer-workload-qualification.json) records
+The historical initial qualification recorded
 all three profiles with the same binaries, ICSS 0.7.2, eight-page buckets and one
 sample: 276 control calls, 5,076 record calls and 172 bulk calls. All results and
 final contents matched the independent model. Twelve native tests, strict native
@@ -324,9 +329,14 @@ multi-allocation controls extend this evidence without changing production geome
 
 ## Completed bucket and shared-backing study
 
-[Compact results and provenance](measurements/storage-memory-study.json) retain
-all nine IC comparisons, native capacity/IO phases and controlled allocation
-boundaries. The IC runs used identical frozen driver and Wasm binaries, published
+Historical pre-0.68 results: the independent tree/block/record engines described
+below were subsequently replaced. These tables do not measure the current copied
+engines or select a current allocation policy.
+
+[Selected historical results](measurements/storage-memory-study.json) retain
+the bucket totals and native capacity table. Bulk per-run exports were retired
+in the authorized cleanup; rebuilds measure current code, not the removed engines.
+The IC runs used identical frozen driver and Wasm binaries, published
 **ICSS 0.7.2**, Rust 1.99.1 and PocketIC 16.1.0. Each profile used one sample per
 bucket with its existing rounds and population; every bucket was explicit.
 All **16,572 calls** and final contents passed the independent ordered model.
@@ -347,7 +357,7 @@ profiles perform different work and must not be combined into one score.
 
 Individual rows vary more: the records trace's largest increases are 7.61% at one
 page and 7.05% at eight. Bulk 64 KiB vector reads improve by 51.38% at one page
-and 34.27% at eight; retained per-row extrema identify the exact cases. Neither smaller bucket is
+and 34.27% at eight; the per-row extrema were historical observations, not retained current qualification. Neither smaller bucket is
 universally faster. Timing excludes request/reply codecs and setup, as described
 in the [benchmark boundaries](../testing/runtime-qualification/crates/ic-storage-benchmarks/README.md#comparison-boundaries).
 
@@ -402,7 +412,8 @@ history, not a general fragmentation or recovery proof.
 For the 64-map growth phase, Storage writes 37,773,544 backing bytes, versus
 416,622,512 / 416,622,032 / 416,621,968 bytes for ICSS 1/8/128. ICSS 0.7.2's
 `btreemap/node/v2.rs::save_v2` serializes every entry's value when saving a node;
-Storage retains external-value references and saves changed payloads separately.
+That historical Storage engine retained external-value references and saved
+changed payloads separately.
 This explains a concrete IO advantage, alongside Storage's larger capacity.
 Native IO counts do not establish an equivalent IC instruction ratio.
 
@@ -414,8 +425,8 @@ extents, per-allocation pages and expected value payload.
 
 ### External-value allocation boundary
 
-[Record framing](../crates/ic-storage/src/adapter/record.rs) adds 20 bytes.
-[Tree allocation](../crates/ic-storage/src/adapter/tree.rs) rounds external
+[Record framing](https://github.com/dragginzgame/ic-storage/blob/4dea092f07e06749eb3f14aa24817c0962fbc0be/crates/ic-storage/src/adapter/record.rs) adds 20 bytes.
+[Tree allocation](https://github.com/dragginzgame/ic-storage/blob/4dea092f07e06749eb3f14aa24817c0962fbc0be/crates/ic-storage/src/adapter/tree.rs) rounds external
 allocations to a power of two with a 256-byte minimum. The geometry probe keeps
 32 records, insertion history and tree shape fixed and checks adjacent sizes:
 
@@ -425,10 +436,10 @@ allocations to a power of two with a 256-byte minimum. The geometry probe keeps
 | 65,516 / 65,517 | 65,536 / 131,072 | 33 / 65 |
 | 1,048,556 / 1,048,557 | 1,048,576 / 2,097,152 | 513 / 1,025 |
 
-This verifies the source-derived cause of substantial slack near these boundaries.
-The smallest next experiment is finer external-value allocation while preserving
-selective IO, corruption checks and free/reuse safety. It needs a bounded design,
-native rejection/reuse tests and matched IC measurements before selecting any
-production layout. No new geometry, public API, stored format, production
-dependency or sibling release is part of this study. Keeping the current
-allocator remains simpler until those tradeoffs are qualified.
+This verified the old implementation's source-derived slack. The copied-ICSS
+reset retires that external-block format; these tables are historical and do not
+select current allocator defaults.
+Finer external-value allocation was a proposal for that retired engine, not a
+current implementation plan. Measure the copied-ICSS baseline before selecting
+any new class, threshold or persistent-format change. No production geometry,
+public API, stored format, dependency or sibling release changed in this study.

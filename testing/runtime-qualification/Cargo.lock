@@ -918,7 +918,9 @@ dependencies = [
  "ic-stable-structures 0.7.2 (git+https://github.com/dfinity/stable-structures?rev=b5d1650463f477affb3d358e86b1113953fc9937)",
  "ic-storage",
  "ic-wire",
+ "ic_principal",
  "serde",
+ "serde_bytes",
  "serde_json",
 ]
 

@@ -1,5 +1,5 @@
 # Dragginzgame Engineering Baseline
-<!-- Shared companions: rules/engineering-details.md rules/rpc-budgets.md -->
+<!-- Shared companions: audits/README.md docs/principles/rust-code-hygiene.md rules/change-reporting.md rules/contributions.md rules/engineering-details.md rules/rpc-budgets.md rules/rust-workspaces.md -->
 
 Shared Tooling owns the common engineering rules for `dragginzgame` repositories.
 Read this core, the local `AGENTS.md` and the current handoff when present. Read
@@ -172,7 +172,10 @@ when adding, changing or reviewing metrics and logging.
 
 Owned application types must not derive or implement `CandidType`. Use `ic-wire`
 for owned RPC; keep unavoidable Candid in dedicated external-protocol boundary
-types, not our domain, state or RPC models. Read the [encoding contract](rules/engineering-details.md#ic-application-encoding)
+types, not our domain, state or RPC models. CBOR belongs to Platform's typed
+external-protocol APIs, including browser and test fixtures. Replace owned CBOR
+records and hash inputs with Wire through an explicit format/identity migration.
+Read the [encoding contract](rules/engineering-details.md#ic-application-encoding)
 and [RPC budgets](rules/rpc-budgets.md) for codecs, bindings or protocol changes.
 
 ## Wasm optimization
@@ -213,6 +216,13 @@ of the selected release. Independent groups may adopt an explicitly qualified
 the existing full gate. Repository-wide CI remains separate and unchanged.
 
 ## Changelogs and artifact preservation
+
+Keep decisions and compact results in Git, not raw experiment archives. Routine
+checks need no new evidence report. Experimental evidence defaults to one current
+summary and at most two small data files per topic, 100 KiB combined, with a 5 MiB
+repository budget; raw output belongs under `target/evidence/`. See the
+[retention contract](rules/engineering-details.md#changelogs-and-artifact-preservation)
+for exceptions, historical cleanup and protected release/recovery records.
 
 Use IcyDB-style emoji category sections in the owning release changelog; read the
 [changelog rules](rules/changelogs.md) when updating them. Every issue fixed must

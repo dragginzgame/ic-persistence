@@ -20,7 +20,35 @@ mod canister {
     };
     use ic_wire::native;
     use serde::{Serialize, de::DeserializeOwned};
-    use std::{cell::RefCell, rc::Rc};
+    use std::{borrow::Cow, cell::RefCell, rc::Rc};
+
+    struct SessionBytes(Vec<u8>);
+    impl ic_storage::storable::Storable for SessionBytes {
+        const BOUND: ic_storage::storable::Bound = ic_storage::storable::Bound::Bounded {
+            max_size: 4096,
+            is_fixed_size: false,
+        };
+        fn to_bytes(&self) -> Result<Cow<'_, [u8]>, ic_storage::storable::CodecError> {
+            Ok(Cow::Borrowed(&self.0))
+        }
+        fn from_bytes(bytes: Cow<'_, [u8]>) -> Result<Self, ic_storage::storable::CodecError> {
+            Ok(Self(bytes.into_owned()))
+        }
+    }
+
+    fn sessions(
+        runtime: &MemoryRuntime<DefaultMemoryImpl>,
+        create: bool,
+    ) -> StableVec<SessionBytes> {
+        let memory = runtime
+            .open_memory(&ic_storage::StableKey::parse("storage.extra.n1022.v1").unwrap())
+            .unwrap();
+        if create {
+            StableVec::create(memory).unwrap()
+        } else {
+            StableVec::load(memory).unwrap()
+        }
+    }
 
     thread_local! {
         static RUNTIME: RefCell<Option<MemoryRuntime<DefaultMemoryImpl>>> = const { RefCell::new(None) };
@@ -133,6 +161,9 @@ mod canister {
             )
             .unwrap();
             vector.push(&10).unwrap();
+            let records = sessions(runtime, true);
+            records.push(&SessionBytes(vec![10; 256])).unwrap();
+            records.push(&SessionBytes(vec![11; 2048])).unwrap();
             let _ = StableCell::create(
                 runtime
                     .open_memory(&ic_storage::StableKey::parse("storage.extra.n1023.v1").unwrap())
@@ -196,6 +227,10 @@ mod canister {
             )
             .unwrap();
             vector.set(0, &value).unwrap();
+            let records = sessions(runtime, false);
+            let byte = u8::try_from(value).unwrap();
+            records.set(0, &SessionBytes(vec![byte; 2048])).unwrap();
+            records.set(1, &SessionBytes(vec![byte + 1; 256])).unwrap();
             map.insert(0, value).unwrap();
             region(runtime).insert(0, value + 1).unwrap();
             StableCell::<u64>::load(
@@ -244,7 +279,7 @@ mod canister {
                 let memory = runtime
                     .open_memory(&ic_storage::StableKey::parse("storage.probe.v1").unwrap())
                     .unwrap();
-                // Hosts may deliberately trap on a typed codec refusal; IC rollback
+                // Malformed stored codecs trap in the ICSS baseline. IC rollback
                 // must restore both bytes and the exclusive lease in this case.
                 let _ =
                     StableCell::<u64>::load(memory, 8).expect("host chose rollback on codec error");
@@ -255,11 +290,11 @@ mod canister {
                     memory.grow(1).unwrap();
                 }
                 let mut header = [0; ic_storage::STABLE_CELL_HEADER_SIZE];
-                header[..8].copy_from_slice(b"ICCELL01");
+                header[..4].copy_from_slice(b"SCL\x01");
                 match mode {
-                    1 => header[..8].copy_from_slice(b"FOREIGN!"),
-                    2 => header[12] = 1,
-                    3 => header[8..12].copy_from_slice(&u32::MAX.to_le_bytes()),
+                    1 => header[..4].copy_from_slice(b"BAD!"),
+                    2 => header[3] = 255,
+                    3 => header[4..8].copy_from_slice(&u32::MAX.to_le_bytes()),
                     _ => panic!("unknown probe mode"),
                 }
                 memory.write(0, &header);
@@ -359,6 +394,16 @@ mod canister {
                 vector.iter().collect::<Result<Vec<_>, _>>().unwrap(),
                 [map.get(&0).unwrap().unwrap()]
             );
+            let records = sessions(runtime, false);
+            let value = u8::try_from(map.get(&0).unwrap().unwrap()).unwrap();
+            let (first, second) = if value == 10 {
+                (256, 2048)
+            } else {
+                (2048, 256)
+            };
+            assert_eq!(records.len(), 2);
+            assert_eq!(records.get(0).unwrap().unwrap().0, vec![value; first]);
+            assert_eq!(records.get(1).unwrap().unwrap().0, vec![value + 1; second]);
             let high = StableCell::<u64>::load(
                 runtime
                     .open_memory(&ic_storage::StableKey::parse("storage.extra.n1023.v1").unwrap())

@@ -357,6 +357,10 @@ pub struct RuntimeMemory<M: Memory> {
     lease: Lease<M>,
 }
 impl<M: Memory> RuntimeMemory<M> {
+    #[cfg(not(target_arch = "wasm32"))]
+    pub(crate) fn poison_on_unwind(&self) -> directory_model::leases::PanicGuard<M> {
+        self.lease.poison_on_unwind()
+    }
     /// Logical page extent.
     #[must_use]
     pub fn size(&self) -> u64 {

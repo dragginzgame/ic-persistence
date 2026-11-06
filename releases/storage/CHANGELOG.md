@@ -3,6 +3,53 @@
 Current releases use the Storage naming. [Earlier published history](https://github.com/dragginzgame/ic-storage/blob/23deb81c48d58558ac3b0ce36bf266ddc25dca91/releases/persistence/CHANGELOG.md)
 retains its original package and release identities.
 
+## [0.68.0] - Unreleased
+
+### ⚠️ Breaking
+
+- Hard-cut every collection to private copied ICSS 0.7.2 engines, retaining
+  governed handles and successful-call APIs. Previous collection images require
+  explicit rebuild/reset or fresh allocation; codec and engine failures trap.
+  No collection checksums or legacy readers remain. [Details](0.68.md).
+
+### 🔧 Changed
+
+- Remove competing engines, custom block/record formats, node cache and Vector
+  windows/epochs. Keep allocation governance and application codecs unchanged;
+  qualify current-image interoperability with published ICSS. [Details](0.68.md).
+
+### 🧪 Testing
+
+- Generate a shared 73-type, 565-case Storage/ICSS matrix across all five supported
+  collections, including ICSS's complete B-tree type grid and Storage's extra
+  types. Verify results and runtime refusals, reporting unavailable comparisons
+  explicitly. [Details](0.68.md).
+
+### 🔧 Tooling
+
+- Compact experimental evidence into current summaries and selected results;
+  retire bulk exports and obsolete prototype patches while preserving current
+  code and release/recovery records. [Details](0.68.md).
+
+- Adopt Shared Tooling 0.30.5, enforce the Candid source boundary and CBOR
+  dependency ownership in both workspaces, and keep new raw benchmark evidence
+  under `target/evidence/`. [Details](0.68.md).
+
+- Add per-read alignment diagnostics over original Vector images, explaining
+  the 80k/160k instruction steps and untimed pre-read accounting. [Details](0.68.md).
+
+- Expand Storage/ICSS Vector comparisons with a repeatable iterator preset,
+  boundary lengths through 256 items, direct skipping, alternating ends and
+  interleaved mutation. Keep wide-value controls separately bounded. [Details](0.68.md).
+
+- Add a bounded ordered Map/Set comparison preset with iterator and range
+  coverage around tree-node boundaries. Derive disjoint missing-key traces from
+  batch size so larger runs cannot remove newly inserted records. [Details](0.68.md).
+
+- Cover session-shaped Vector lookups at 1–2,048 records, with separate outer
+  codec counters and query/update measurements; assert bounded native lookup IO
+  and one decode after reopening. [Details](0.68.md).
+
 ## [0.67.1] - 2026-11-05
 
 ### 🔧 Tooling
@@ -67,7 +114,7 @@ retains its original package and release identities.
   preserve consuming decode, codec errors, public APIs and stored formats.
 - Extend B-tree histories and the shared-backing study across changing key/value
   sizes. Bulk benchmarks now exercise actual growth and check IC reply limits.
-  See the [ICSS re-audit](../../docs/audits/recurring/storage-icss-2026-11-03.md).
+  See the [ICSS re-audit](../../docs/audits/recurring/storage-icss-hotspots-2026-11-04.md).
 
 - Adopt Shared Tooling 0.29.4 (`628ccc7`), including the earlier UTF-8 evidence
   fixes and new test-layout, Metrics ownership and group-changelog rules.

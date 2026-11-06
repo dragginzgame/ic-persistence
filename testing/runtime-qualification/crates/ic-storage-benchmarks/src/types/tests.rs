@@ -9,6 +9,9 @@ fn check_keys<K: BenchKey + std::fmt::Debug>() {
 fn concrete_keys_preserve_order_and_identity() {
     check_keys::<u64>();
     check_keys::<u128>();
+    check_keys::<Vec<u8>>();
+    check_keys::<BoundedBytes<255>>();
+    check_keys::<TupleKey>();
     check_keys::<[u8; 64]>();
     let ids = [0, 1, 31, 32, 33, 16_415, i64::MAX as u64];
     let keys = ids.map(Signed64::from_id);
@@ -17,6 +20,10 @@ fn concrete_keys_preserve_order_and_identity() {
     assert_eq!(keys[2..5], [-1, 0, 1].map(Signed64));
     check_keys::<[u8; 32]>();
     check_keys::<String>();
+    let narrow = [0, 1, 255, 256, 65_535, 65_536, u64::from(u32::MAX)];
+    let keys = narrow.map(u32::from_id);
+    assert!(keys.windows(2).all(|p| p[0] < p[1]));
+    assert_eq!(keys.map(|key| key.id()), narrow);
 }
 #[test]
 fn values_cover_declared_sizes_and_record_fields() {

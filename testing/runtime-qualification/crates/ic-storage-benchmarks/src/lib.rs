@@ -1,12 +1,16 @@
 //! Matched map workload and bounded benchmark protocol; not a production API.
 use serde::{Deserialize, Serialize};
+pub mod catalogue;
+pub mod read_probe;
 mod types;
+pub use catalogue::{Collection, DataType, MATRIX_CASES, ReferenceValue};
+pub use ic_platform_stable_benchmark::stable_structures as codec_reference;
+pub use ic_principal::Principal as BenchmarkPrincipal;
 #[cfg(not(target_arch = "wasm32"))]
 pub mod workloads;
 #[cfg(all(
-    target_arch = "wasm32",
     feature = "dfinity",
-    not(feature = "dfinity-head")
+    any(not(target_arch = "wasm32"), not(feature = "dfinity-head"))
 ))]
 pub use ic_platform_stable_benchmark::stable_structures as upstream;
 #[cfg(all(target_arch = "wasm32", feature = "dfinity-head"))]
@@ -23,6 +27,9 @@ pub enum Pattern {
     Hot16,
     Zipf,
     Sequential,
+    First,
+    Middle,
+    Last,
 }
 
 #[derive(Clone, Copy, Debug, Serialize, Deserialize)]
@@ -95,8 +102,17 @@ pub enum Operation {
     First,
     Last,
     BoundedScan,
+    Nth,
+    NthBack,
+    AlternatingScan,
+    ScanSet,
+    ValuesScan,
+    ReverseKeysScan,
+    BoundedKeysScan,
+    Decode,
+    WarmGet,
 }
-pub const OPERATIONS: [Operation; 18] = [
+pub const OPERATIONS: [Operation; 24] = [
     Operation::Control,
     Operation::Get,
     Operation::MissAbove,
@@ -115,6 +131,12 @@ pub const OPERATIONS: [Operation; 18] = [
     Operation::First,
     Operation::Last,
     Operation::BoundedScan,
+    Operation::Nth,
+    Operation::NthBack,
+    Operation::AlternatingScan,
+    Operation::ValuesScan,
+    Operation::ReverseKeysScan,
+    Operation::BoundedKeysScan,
 ];
 ///
 /// Request
@@ -144,6 +166,19 @@ pub struct Response {
     pub entries: Vec<(u64, Option<Vec<u8>>)>,
     pub length: u64,
     pub stable_pages: u64,
+    pub decode: Option<DecodeMetrics>,
+}
+///
+/// DecodeMetrics
+///
+/// Instrumented outer-record decoder work, not Auth's inner session decoder.
+///
+
+#[derive(Clone, Copy, Debug, Default, Serialize, Deserialize)]
+pub struct DecodeMetrics {
+    pub calls: u64,
+    pub bytes: u64,
+    pub instructions: u64,
 }
 /// Identical allocation/codec bytes for both engines; no Candid in the workload.
 pub fn value(key: u64, length: u32, replacement: bool) -> Vec<u8> {
@@ -151,10 +186,18 @@ pub fn value(key: u64, length: u32, replacement: bool) -> Vec<u8> {
         .map(|i| (key as u8).wrapping_add(i as u8) ^ if replacement { 128 } else { 0 })
         .collect()
 }
+/// Bound result construction independently of population and selected payload.
+pub fn max_batch(case: Case) -> u32 {
+    match case.structure() {
+        "Vector" => 256,
+        "Map" | "Set" => 128,
+        _ => 32,
+    }
+}
 /// Generate the complete trace outside the measured interval.
 pub fn keys(request: Request) -> Vec<u64> {
     assert!((1..=MAX_ROWS).contains(&request.rows));
-    assert!((1..=32).contains(&request.count));
+    assert!((1..=max_batch(request.case)).contains(&request.count));
     assert!(request.case.accepts_payload(request.payload));
     let mut state = request.seed;
     let cdf = if request.pattern == Pattern::Zipf {
@@ -174,12 +217,20 @@ pub fn keys(request: Request) -> Vec<u64> {
                 .wrapping_mul(6_364_136_223_846_793_005)
                 .wrapping_add(1);
             match request.operation {
-                Operation::RemoveMiss => u64::from(request.rows) + 64 + u64::from(index),
+                Operation::RemoveMiss => {
+                    u64::from(request.rows) + u64::from(request.count) + u64::from(index)
+                }
                 Operation::MissAbove
                 | Operation::Insert
                 | Operation::RemoveInserted
                 | Operation::Push => u64::from(request.rows) + u64::from(index),
                 _ => {
+                    match request.pattern {
+                        Pattern::First => return 0,
+                        Pattern::Middle => return u64::from(request.rows / 2),
+                        Pattern::Last => return u64::from(request.rows - 1),
+                        _ => {}
+                    }
                     if request.pattern == Pattern::Sequential {
                         return (request.seed % u64::from(request.rows) + u64::from(index))
                             % u64::from(request.rows);

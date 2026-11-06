@@ -198,6 +198,11 @@ impl<M: Memory> Store<M> {
         }
     }
 
+    #[cfg(not(target_arch = "wasm32"))]
+    pub(super) fn poison(&self) {
+        self.poisoned.set(true);
+    }
+
     pub(super) fn verify(&self) -> Result<(), Error> {
         self.healthy()?;
         // Metadata checks occur at ownership boundaries, never on each data IO.

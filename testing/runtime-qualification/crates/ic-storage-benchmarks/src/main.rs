@@ -1,16 +1,21 @@
 //! Installed, matched map comparison. Testkit owns the explicitly prepared server.
 use clap::Parser;
 use ic_platform::{pocket_ic::PocketIcBuilder, principal::ExternalPrincipal};
-use ic_storage_benchmarks::workloads::{Workload, transfer_rows};
+use ic_storage_benchmarks::workloads::{LOOKUP_POPULATIONS, Workload, transfer_rows};
 use ic_storage_benchmarks::*;
 use std::{collections::BTreeMap, fs, io::Write, path::PathBuf};
 
-#[derive(Parser)]
+#[derive(Clone, Parser)]
 #[command(about = "Compare original Wasm map workloads on a prepared PocketIC server")]
 struct Arguments {
     /// Fixed consumer workload; owns cases, sizes, population, batching and access patterns.
     #[arg(long, value_enum, conflicts_with_all = ["rows", "cases", "payloads", "growth_cycles", "patterns", "shuffled", "cache_bytes", "upstream_cache_slots", "cold_cache", "rounds"])]
     workload: Option<Workload>,
+    /// Type-suite shard; the Make runner executes all five automatically.
+    #[arg(long, value_enum)]
+    collection: Option<Collection>,
+    #[arg(skip)]
+    query: bool,
     #[arg(long)]
     owned_wasm: PathBuf,
     #[arg(long)]
@@ -72,22 +77,113 @@ fn phases(case: Case, growth_cycles: bool) -> Vec<(String, Operation)> {
         .map(|(name, op)| (name.into(), op))
         .collect();
     }
+    if matches!(
+        case,
+        Case::Typed {
+            collection: Collection::Cell,
+            ..
+        }
+    ) {
+        let mut result = Vec::new();
+        for operation in case.operations() {
+            result.push((format!("{operation:?}"), operation));
+            if operation == Operation::Replace {
+                result.push(("GetAfterReplace".into(), Operation::Get));
+            }
+        }
+        return result;
+    }
     case.operations()
         .into_iter()
         .map(|op| (format!("{op:?}"), op))
         .collect()
 }
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let mut args = Arguments::parse();
+    let args = Arguments::parse();
+    if args.collection.is_some() && !matches!(args.workload, Some(Workload::Types)) {
+        return Err("--collection requires --workload types".into());
+    }
+    if args.cache_bytes != 0 {
+        return Err(
+            "Storage's copied ICSS 0.7.2 baseline has no node cache; --cache-bytes must be zero"
+                .into(),
+        );
+    }
+    if matches!(args.workload, Some(Workload::AuthLookups)) {
+        fs::create_dir(&args.output)?;
+        let mut reports = Vec::new();
+        for rows in LOOKUP_POPULATIONS {
+            for (query, mode) in [(false, "update"), (true, "query")] {
+                let mut selected = args.clone();
+                selected.rows = rows;
+                selected.query = query;
+                selected.output = args.output.join(format!("rows-{rows}-{mode}"));
+                reports.push((selected.output.clone(), mode));
+                run(selected)?;
+            }
+        }
+        for name in ["summary.csv", "round-summary.csv", "lookup-stages.csv"] {
+            let mut output = fs::File::create(args.output.join(name))?;
+            let mut header = None;
+            for (report, mode) in &reports {
+                let text = fs::read_to_string(report.join(name))?;
+                let mut lines = text.lines();
+                let first = lines.next().ok_or("empty report")?;
+                if let Some(previous) = &header {
+                    assert_eq!(previous, first);
+                } else {
+                    writeln!(output, "{first},execution_mode")?;
+                    header = Some(first.to_owned());
+                }
+                for line in lines {
+                    writeln!(output, "{line},{mode}")?;
+                }
+            }
+        }
+        let mut raw = fs::File::create(args.output.join("samples.jsonl"))?;
+        for (report, mode) in &reports {
+            use std::io::BufRead as _;
+            let input = std::io::BufReader::new(fs::File::open(report.join("samples.jsonl"))?);
+            for line in input.lines() {
+                let mut record: serde_json::Value = serde_json::from_str(&line?)?;
+                record
+                    .as_object_mut()
+                    .ok_or("expected raw record")?
+                    .insert("execution_mode".into(), serde_json::json!(mode));
+                writeln!(raw, "{record}")?;
+            }
+        }
+        fs::write(
+            args.output.join("configuration.json"),
+            serde_json::to_vec_pretty(
+                &serde_json::json!({"workload":"auth-lookups", "populations":LOOKUP_POPULATIONS,"subreports":reports,"execution_modes":["update","query"],"instrumented":true,"scope":"outer Wire envelope only; opaque inner Auth bytes"}),
+            )?,
+        )?;
+        return Ok(());
+    }
+    if let Some(collection) = args.collection {
+        let root = args.output.clone();
+        fs::create_dir_all(&root)?;
+        let mut selected = args;
+        selected.output = root.join(collection.name().to_ascii_lowercase());
+        run(selected)?;
+        combine_collections(&root)?;
+        Ok(())
+    } else {
+        run(args)
+    }
+}
+fn run(mut args: Arguments) -> Result<(), Box<dyn std::error::Error>> {
     if let Some(workload) = args.workload {
-        args.rows = workload.rows();
-        args.cases = workload
-            .cases()
-            .iter()
-            .map(|case| format!("{case:?}"))
-            .collect();
+        if !matches!(workload, Workload::AuthLookups) {
+            args.rows = workload.rows();
+        }
+        args.cases = workload.cases().iter().map(|case| case.label()).collect();
         args.patterns = workload.patterns().to_vec();
-        args.shuffled = matches!(workload, Workload::Records | Workload::Boundaries);
+        args.shuffled = matches!(
+            workload,
+            Workload::Records | Workload::Boundaries | Workload::Ordered | Workload::Types
+        );
         args.rounds = workload.rounds();
     }
     let batches: &[u32] = args.workload.map_or(&[1, 32], Workload::counts);
@@ -98,16 +194,25 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         args.workload
             .map_or_else(|| case.payloads(), |workload| workload.payloads(case))
     };
-    let cases: Vec<_> = CASES
-        .into_iter()
-        .filter(|case| args.cases.is_empty() || args.cases.contains(&format!("{case:?}")))
+    let explicit: Vec<_> = CASES.iter().chain(MATRIX_CASES).copied().collect();
+    let catalogue = if matches!(args.workload, Some(Workload::Types)) {
+        MATRIX_CASES
+    } else if args.cases.is_empty() {
+        DEFAULT_CASES
+    } else {
+        &explicit
+    };
+    let cases: Vec<_> = catalogue
+        .iter()
+        .copied()
+        .filter(|case| args.cases.is_empty() || args.cases.contains(&case.label()))
         .collect();
     assert!(
         !cases.is_empty()
             && args
                 .cases
                 .iter()
-                .all(|name| cases.iter().any(|case| name == &format!("{case:?}"))),
+                .all(|name| cases.iter().any(|case| name == &case.label())),
         "unknown or empty case selection"
     );
     assert!(
@@ -120,19 +225,25 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         !args.growth_cycles || cases == [Case::U64Bytes],
         "growth cycles require only U64Bytes"
     );
+    let cases: Vec<_> = cases
+        .into_iter()
+        .filter(|case| args.collection.is_none_or(|c| case.structure() == c.name()))
+        .collect();
+    assert!(!cases.is_empty(), "empty collection shard");
     let url = std::env::var("IC_TESTKIT_POCKET_IC_URL")?;
     let wasm = [fs::read(&args.owned_wasm)?, fs::read(&args.dfinity_wasm)?];
     fs::create_dir(&args.output)?;
     fs::write(
         args.output.join("configuration.json"),
         serde_json::to_vec_pretty(&serde_json::json!({
-            "rows": args.rows, "structures": ["Map","Set","Vector","Cell","Region"], "samples": args.samples, "cases": cases.iter().map(|case| serde_json::json!({"case":case, "key_type":case.key_type(), "value_type":case.value_type(), "logical_value_bytes":payloads(*case), "structure":case.structure(), "operations":case.operations(), "population_rows":case.rows(args.rows)})).collect::<Vec<_>>(), "batch_sizes": batches, "workload": args.workload,
+            "execution_mode": if args.query {"query"} else {"update"}, "rows": args.rows, "structures": ["Map","Set","Vector","Cell","Region"], "samples": args.samples, "cases": cases.iter().map(|case| serde_json::json!({"case":case, "key_type":case.key_type(), "value_type":case.value_type(), "key_bound":case.key_bound(), "value_bound":case.value_bound(), "logical_value_bytes":payloads(*case), "structure":case.structure(), "operations":case.operations(), "phases":phases(*case,args.growth_cycles), "payload_scope":match case {Case::Typed{value,..}=>value.payload_scope(),_=>"logical-value-bytes"}, "population_rows":case.rows(args.rows)})).collect::<Vec<_>>(), "batch_sizes": batches, "workload": args.workload,
             "patterns": args.patterns, "seed": if args.growth_cycles { "sample + 1 (same keys across rounds)" } else { "sample + 1 + round * 7919" }, "shuffled": args.shuffled,
             "growth_cycles": args.growth_cycles, "phase_override": args.growth_cycles.then(|| phases(Case::U64Bytes, true).into_iter().map(|(name,_)|name).collect::<Vec<_>>()),
-            "cache_bytes": args.cache_bytes, "upstream_cache_slots": args.upstream_cache_slots, "cold_cache": args.cold_cache, "cache_scope": "ordinary Map only", "rounds": args.rounds, "reference_revision": args.reference_revision,
+            "cache_bytes": args.cache_bytes, "upstream_cache_slots": args.upstream_cache_slots, "cold_cache": args.cold_cache, "cache_scope": "Storage has no node cache; optional Git reference ordinary Map only", "rounds": args.rounds, "reference_revision": args.reference_revision,
             "upstream_bucket_pages": args.upstream_bucket_pages,
             "backend_order": "alternates each sample", "measurement": "performance_counter(0) around operations; setup, trace/value creation, validation and Wire response excluded",
-            "owned_wasm_bytes": wasm[0].len(), "dfinity_wasm_bytes": wasm[1].len(),
+            "owned_wasm_bytes": module_size(&wasm[0]), "dfinity_wasm_bytes": module_size(&wasm[1]),
+            "install_payload_bytes": [wasm[0].len(),wasm[1].len()], "install_encoding": [install_encoding(&wasm[0]),install_encoding(&wasm[1])],
             "state": "fresh canister per case/sample/backend; operations run in declared order"
         }))?,
     )?;
@@ -141,13 +252,75 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .with_application_subnet()
         .build()?;
     let mut raw = fs::File::create(args.output.join("samples.jsonl"))?;
+    let mut stages = fs::File::create(args.output.join("lookup-stages.csv"))?;
+    writeln!(
+        stages,
+        "rows,payload,pattern,phase,backend,round,total_instructions,decoder_instructions,decoder_calls,decoder_input_bytes"
+    )?;
+    let mut coverage = fs::File::create(args.output.join("coverage.csv"))?;
+    writeln!(
+        coverage,
+        "case,collection,key_type,value_type,key_source,value_source,backend,status,phase,reason"
+    )?;
+    let mut refusals = fs::File::create(args.output.join("refusals.jsonl"))?;
     let mut timings: Samples = BTreeMap::new();
     for case in cases {
+        for backend in 0..2 {
+            let name = ["ic-storage", "ic-stable-structures"][backend];
+            let limitation = catalogue::unavailable(case, backend == 1);
+            if let Some((phase, reason)) = limitation {
+                if phase != "trait" {
+                    let error = probe_refusal(
+                        &pic,
+                        &wasm[backend],
+                        case,
+                        args.upstream_bucket_pages,
+                        phase,
+                    )?;
+                    writeln!(
+                        refusals,
+                        "{}",
+                        serde_json::json!({"case":case,"backend":name,"phase":phase,"error":error})
+                    )?;
+                }
+                writeln!(
+                    coverage,
+                    "{},{},{},{},{},{},{name},{},{phase},{}",
+                    csv_field(&case.label()),
+                    case.structure(),
+                    csv_field(case.key_type()),
+                    csv_field(case.value_type()),
+                    case_sources(case).0,
+                    case_sources(case).1,
+                    if phase == "trait" {
+                        "not-applicable"
+                    } else {
+                        "refused"
+                    },
+                    csv_field(reason)
+                )?;
+            } else {
+                writeln!(
+                    coverage,
+                    "{},{},{},{},{},{},{name},supported,,",
+                    csv_field(&case.label()),
+                    case.structure(),
+                    csv_field(case.key_type()),
+                    csv_field(case.value_type()),
+                    case_sources(case).0,
+                    case_sources(case).1
+                )?;
+            }
+            coverage.flush()?;
+        }
         for &payload in payloads(case) {
             for &count in batches {
                 for &pattern in &args.patterns {
                     for sample in 0..args.samples {
                         for backend in if sample % 2 == 0 { [0, 1] } else { [1, 0] } {
+                            if catalogue::unavailable(case, backend == 1).is_some() {
+                                continue;
+                            }
                             let name = ["ic-storage", "ic-stable-structures"][backend];
                             let canister = pic.create_canister()?;
                             pic.add_cycles(canister, 100_000_000_000_000)?;
@@ -218,16 +391,24 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                                     };
                                     // Admit the intended phase before executing either backend.
                                     let expected = expected(&mut model, request);
-                                    let reply = pic
-                                        .update_call(
+                                    let bytes =
+                                        ic_wire::native::encode_request(RUN_ID, &request, LIMITS)?;
+                                    let reply = if args.query {
+                                        pic.query_call(
+                                            canister,
+                                            ExternalPrincipal::anonymous(),
+                                            "benchmark_read",
+                                            bytes,
+                                        )
+                                    } else {
+                                        pic.update_call(
                                             canister,
                                             ExternalPrincipal::anonymous(),
                                             "benchmark",
-                                            ic_wire::native::encode_request(
-                                                RUN_ID, &request, LIMITS,
-                                            )?,
+                                            bytes,
                                         )
-                                        .map_err(|e| format!("{name} {operation:?}: {e:?}"))?;
+                                    }
+                                    .map_err(|e| format!("{name} {operation:?}: {e:?}"))?;
                                     let actual: Response =
                                         ic_wire::native::decode_response(RUN_ID, &reply, LIMITS)?;
                                     writeln!(
@@ -236,6 +417,41 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                                         serde_json::json!({"backend":name,"sample":sample,"round":round,"phase":phase,"request":request,"response":actual})
                                     )?;
                                     raw.flush()?;
+                                    assert_eq!(
+                                        actual.decode.is_some(),
+                                        case == Case::VectorSession
+                                    );
+                                    if let Some(metrics) = actual.decode {
+                                        let calls = if operation == Operation::MissAbove
+                                            || operation == Operation::Control
+                                        {
+                                            0
+                                        } else {
+                                            u64::from(count)
+                                        };
+                                        assert_eq!(metrics.calls, calls);
+                                        let encoded =
+                                            SessionEnvelope::make(0, payload, false).encode()?;
+                                        assert_eq!(metrics.bytes, calls * encoded.len() as u64);
+                                        if calls != 0 {
+                                            assert!(metrics.instructions > 0);
+                                        }
+                                        assert!(metrics.instructions <= actual.instructions);
+                                        writeln!(
+                                            stages,
+                                            "{},{},{:?},{},{},{},{},{},{},{}",
+                                            args.rows,
+                                            payload,
+                                            pattern,
+                                            phase,
+                                            name,
+                                            round,
+                                            actual.instructions,
+                                            metrics.instructions,
+                                            metrics.calls,
+                                            metrics.bytes
+                                        )?;
+                                    }
                                     assert_eq!(
                                         actual.entries, expected,
                                         "{name} {operation:?}: result mismatch"
@@ -316,21 +532,21 @@ fn write_summary(
 ) -> std::io::Result<()> {
     writeln!(
         summary,
-        "rows,structure,case,key_type,value_type,logical_value_bytes,batch_or_scan_limit,pattern,operation,storage_median_instructions,dfinity_median_instructions,storage_over_dfinity,storage_median_stable_pages,dfinity_median_stable_pages,upstream_bucket_pages{}",
+        "rows,structure,case,key_type,value_type,logical_value_bytes,batch_or_scan_limit,pattern,operation,storage_median_instructions,dfinity_median_instructions,storage_over_dfinity,storage_median_stable_pages,dfinity_median_stable_pages,upstream_bucket_pages,payload_scope{}",
         if per_round { ",round" } else { "" }
     )?;
     for ((case, payload, count, pattern, operation, backend), samples) in timings {
         if backend != "ic-storage" {
             continue;
         }
-        let other = &timings[&(
+        let other = timings.get(&(
             *case,
             *payload,
             *count,
             *pattern,
             operation.clone(),
             "ic-stable-structures".into(),
-        )];
+        ));
         for selected_round in if per_round {
             (0..rounds).map(Some).collect()
         } else {
@@ -341,22 +557,32 @@ fn write_summary(
                 .filter(|s| selected_round.is_none_or(|round| s.round == round))
                 .collect();
             let other: Vec<_> = other
-                .iter()
+                .into_iter()
+                .flatten()
                 .filter(|s| selected_round.is_none_or(|round| s.round == round))
                 .collect();
             let a = median(&samples.iter().map(|s| s.instructions).collect::<Vec<_>>());
-            let b = median(&other.iter().map(|s| s.instructions).collect::<Vec<_>>());
+            let b = (!other.is_empty())
+                .then(|| median(&other.iter().map(|s| s.instructions).collect::<Vec<_>>()));
             let a_pages = median(&samples.iter().map(|s| s.stable_pages).collect::<Vec<_>>());
-            let b_pages = median(&other.iter().map(|s| s.stable_pages).collect::<Vec<_>>());
+            let b_pages = (!other.is_empty())
+                .then(|| median(&other.iter().map(|s| s.stable_pages).collect::<Vec<_>>()));
             writeln!(
                 summary,
-                "{},{},{case:?},{},{},{payload},{count},{pattern:?},{operation},{a},{b},{:.4},{a_pages},{b_pages},{}{}",
+                "{},{},{},{},{},{payload},{count},{pattern:?},{operation},{a},{},{},{a_pages},{},{},{}{}",
                 case.rows(rows),
                 case.structure(),
-                case.key_type(),
-                case.value_type(),
-                a as f64 / b as f64,
+                csv_field(&case.label()),
+                csv_field(case.key_type()),
+                csv_field(case.value_type()),
+                b.map_or_else(String::new, |n| n.to_string()),
+                b.map_or_else(String::new, |n| format!("{:.4}", a as f64 / n as f64)),
+                b_pages.map_or_else(String::new, |n| n.to_string()),
                 bucket_pages,
+                match case {
+                    Case::Typed { value, .. } => value.payload_scope(),
+                    _ => "logical-value-bytes",
+                },
                 selected_round.map_or_else(String::new, |round| format!(",{round}"))
             )?;
         }
@@ -368,6 +594,157 @@ fn median(values: &[u64]) -> u64 {
     let mut values = values.to_vec();
     values.sort_unstable();
     values[values.len() / 2]
+}
+
+fn install_encoding(bytes: &[u8]) -> &'static str {
+    if bytes.starts_with(&[0x1f, 0x8b]) {
+        "gzip"
+    } else {
+        "raw"
+    }
+}
+fn module_size(bytes: &[u8]) -> usize {
+    if install_encoding(bytes) == "gzip" {
+        // Gzip's ISIZE is exact for these sub-4-GiB modules. The IC validates
+        // the compressed module; this field is reporting metadata only.
+        u32::from_le_bytes(bytes[bytes.len() - 4..].try_into().unwrap()) as usize
+    } else {
+        bytes.len()
+    }
+}
+fn csv_field(text: &str) -> String {
+    if text.contains([',', '"', '\r', '\n']) {
+        format!("\"{}\"", text.replace('"', "\"\""))
+    } else {
+        text.to_owned()
+    }
+}
+fn case_sources(case: Case) -> (&'static str, &'static str) {
+    match case {
+        Case::Typed { key, value, .. } => (key.source(), value.source()),
+        _ => ("storage", "storage"),
+    }
+}
+fn probe_refusal(
+    pic: &ic_platform::pocket_ic::PocketIc,
+    wasm: &[u8],
+    case: Case,
+    bucket: std::num::NonZeroU16,
+    phase: &str,
+) -> Result<String, Box<dyn std::error::Error>> {
+    let canister = pic.create_canister()?;
+    pic.add_cycles(canister, 100_000_000_000_000)?;
+    let settings = Initialization {
+        case,
+        cache_bytes: 0,
+        upstream_cache_slots: 0,
+        upstream_bucket_pages: bucket,
+        cold_cache: false,
+    };
+    let installed = pic.install_canister(
+        canister,
+        wasm.to_vec(),
+        ic_wire::native::encode_request(0, &settings, LIMITS)?,
+        None,
+    );
+    let error = if phase == "init" {
+        format!(
+            "{:?}",
+            installed.expect_err("unbounded Vector unexpectedly initialized")
+        )
+    } else {
+        installed?;
+        format!(
+            "{:?}",
+            pic.update_call(
+                canister,
+                ExternalPrincipal::anonymous(),
+                "setup",
+                ic_wire::native::encode_request(
+                    SETUP_ID,
+                    &Setup {
+                        start: 0,
+                        count: 1,
+                        payload: case.payloads()[0],
+                        ids: vec![0]
+                    },
+                    LIMITS
+                )?
+            )
+            .expect_err("native ICSS fixed Option unexpectedly accepted None")
+        )
+    };
+    if phase == "init" {
+        assert!(
+            error.contains("unbounded"),
+            "unexpected init refusal: {error}"
+        );
+    } else {
+        assert!(
+            error.contains("fixed-size"),
+            "unexpected setup refusal: {error}"
+        );
+    }
+    pic.stop_canister(canister, None)?;
+    pic.delete_canister(canister, None)?;
+    Ok(error)
+}
+fn combine_collections(root: &std::path::Path) -> Result<(), Box<dyn std::error::Error>> {
+    let directories: Vec<_> = Collection::ALL
+        .iter()
+        .map(|c| root.join(c.name().to_ascii_lowercase()))
+        .collect();
+    if !directories.iter().all(|p| p.join("summary.csv").is_file()) {
+        return Ok(());
+    }
+    for filename in [
+        "summary.csv",
+        "round-summary.csv",
+        "coverage.csv",
+        "lookup-stages.csv",
+    ] {
+        let mut output = fs::File::create(root.join(filename))?;
+        let mut header = None;
+        for directory in &directories {
+            let text = fs::read_to_string(directory.join(filename))?;
+            let mut lines = text.lines();
+            let first = lines.next().ok_or("empty subreport")?;
+            if let Some(previous) = &header {
+                assert_eq!(previous, first);
+            } else {
+                writeln!(output, "{first}")?;
+                header = Some(first.to_owned());
+            }
+            for line in lines {
+                writeln!(output, "{line}")?;
+            }
+        }
+    }
+    for filename in ["samples.jsonl", "refusals.jsonl"] {
+        let mut output = fs::File::create(root.join(filename))?;
+        for directory in &directories {
+            std::io::copy(&mut fs::File::open(directory.join(filename))?, &mut output)?;
+        }
+    }
+    let configurations: Vec<serde_json::Value> = directories
+        .iter()
+        .map(|p| {
+            Ok(serde_json::from_slice(&fs::read(
+                p.join("configuration.json"),
+            )?)?)
+        })
+        .collect::<Result<_, Box<dyn std::error::Error>>>()?;
+    fs::write(
+        root.join("configuration.json"),
+        serde_json::to_vec_pretty(
+            &serde_json::json!({"workload":"types","types":catalogue::DATA_TYPES.len(),"cases":MATRIX_CASES.len(),"collections":configurations,"status":"complete"}),
+        )?,
+    )?;
+    println!(
+        "Validated complete type matrix: {}",
+        root.join("summary.csv").display()
+    );
+    Ok(())
 }
 fn population(rows: u32, shuffled: bool, mut state: u64) -> Vec<u64> {
     let mut ids: Vec<_> = (0..u64::from(rows)).collect();
@@ -387,6 +764,55 @@ fn expected(model: &mut BTreeMap<u64, Vec<u8>>, r: Request) -> Vec<(u64, Option<
     admit_phase(model, r);
     let ids = keys(r);
     let structure = r.case.structure();
+    if r.operation == ValuesScan {
+        return model
+            .values()
+            .take(r.count as usize)
+            .enumerate()
+            .map(|(rank, value)| (rank as u64, Some(value.clone())))
+            .collect();
+    }
+    if matches!(r.operation, Nth | NthBack) {
+        return ids
+            .into_iter()
+            .filter_map(|index| {
+                let entry = if r.operation == Nth {
+                    model.iter().nth(index as usize)
+                } else {
+                    model.iter().nth_back(index as usize)
+                };
+                entry.map(|(&key, value)| (key, Some(value.clone())))
+            })
+            .collect();
+    }
+    if r.operation == AlternatingScan {
+        let mut rows: std::collections::VecDeque<_> = model
+            .iter()
+            .map(|(&key, value)| (key, Some(value.clone())))
+            .collect();
+        return (0..r.count)
+            .map_while(|step| {
+                if step % 2 == 0 {
+                    rows.pop_front()
+                } else {
+                    rows.pop_back()
+                }
+            })
+            .collect();
+    }
+    if r.operation == ScanSet {
+        return model
+            .iter_mut()
+            .take(r.count as usize)
+            .enumerate()
+            .map(|(index, (&key, value))| {
+                if index != 0 {
+                    *value = r.case.expected_value(key, r.payload, true);
+                }
+                (key, Some(value.clone()))
+            })
+            .collect();
+    }
     if matches!(r.operation, First | Last) {
         let entry = if r.operation == First {
             model.first_key_value()
@@ -397,10 +823,13 @@ fn expected(model: &mut BTreeMap<u64, Vec<u8>>, r: Request) -> Vec<(u64, Option<
             .map(|(&k, v)| vec![(k, Some(v.clone())); r.count as usize])
             .unwrap_or_default();
     }
-    if matches!(r.operation, Scan | ReverseScan | KeysScan | BoundedScan) {
+    if matches!(
+        r.operation,
+        Scan | ReverseScan | KeysScan | BoundedScan | ReverseKeysScan | BoundedKeysScan
+    ) {
         let all = structure == "Set"
             || structure == "Vector"
-            || (r.operation == KeysScan && structure == "Map");
+            || (matches!(r.operation, KeysScan | ReverseKeysScan) && structure == "Map");
         let rows: Vec<_> = model
             .iter()
             .filter(|(k, _)| {
@@ -408,22 +837,26 @@ fn expected(model: &mut BTreeMap<u64, Vec<u8>>, r: Request) -> Vec<(u64, Option<
                     **k <= ids[0]
                 } else {
                     **k >= ids[0]
-                        && (r.operation != BoundedScan
+                        && (!matches!(r.operation, BoundedScan | BoundedKeysScan)
                             || **k < ids[0] + u64::from(r.count.div_ceil(2)))
                 }
             })
             .map(|(&k, v)| {
                 (
                     k,
-                    Some(if r.operation == KeysScan || structure == "Set" {
-                        vec![]
-                    } else {
-                        v.clone()
-                    }),
+                    Some(
+                        if matches!(r.operation, KeysScan | ReverseKeysScan | BoundedKeysScan)
+                            || structure == "Set"
+                        {
+                            vec![]
+                        } else {
+                            v.clone()
+                        },
+                    ),
                 )
             })
             .collect();
-        return if r.operation == ReverseScan {
+        return if matches!(r.operation, ReverseScan | ReverseKeysScan) {
             rows.into_iter().rev().take(r.count as usize).collect()
         } else {
             rows.into_iter().take(r.count as usize).collect()
@@ -442,7 +875,7 @@ fn expected(model: &mut BTreeMap<u64, Vec<u8>>, r: Request) -> Vec<(u64, Option<
             };
             let result = match r.operation {
                 Control => None,
-                Get | MissAbove => {
+                Get | WarmGet | Decode | MissAbove => {
                     if structure == "Set" {
                         Some(vec![u8::from(model.contains_key(&key))])
                     } else {
@@ -497,7 +930,8 @@ fn admit_phase(model: &BTreeMap<u64, Vec<u8>>, r: Request) {
                     r.operation
                 );
             }
-            Get | Contains | Replace | Set | Remove | RemoveInserted | Grow | Shrink => {
+            Get | WarmGet | Decode | Contains | Replace | Set | Remove | RemoveInserted | Grow
+            | Shrink => {
                 let old = model
                     .get(&key)
                     .unwrap_or_else(|| panic!("{:?}: key {key} must exist", r.operation));

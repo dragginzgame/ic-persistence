@@ -220,167 +220,6 @@ fn reservation_is_observable_effect_free_when_satisfied_and_retryable_after_refu
     assert_eq!(map.get(&8).unwrap(), Some(12));
 }
 
-use std::borrow::Cow;
-#[derive(Clone, Debug, Eq, PartialEq)]
-struct Record<const FIXED: bool = false>(Vec<u8>);
-
-impl<const FIXED: bool> Storable for Record<FIXED> {
-    const BOUND: Bound = Bound::Bounded {
-        max_size: 4,
-        is_fixed_size: FIXED,
-    };
-    fn to_bytes(&self) -> Result<Cow<'_, [u8]>, CodecError> {
-        Ok(Cow::Borrowed(&self.0))
-    }
-    fn into_bytes(self) -> Result<Vec<u8>, CodecError> {
-        Ok(self.0)
-    }
-    fn from_bytes(bytes: Cow<[u8]>) -> Result<Self, CodecError> {
-        Ok(Self(bytes.into_owned()))
-    }
-}
-
-#[test]
-fn bounded_cell_rejects_oversize_without_mutation_and_reopens() {
-    let backing = VectorMemory::default();
-    let runtime = runtime(backing.clone());
-    let mut cell = StableCell::create(
-        runtime
-            .open_memory(&crate::StableKey::parse("test.cell.v1").unwrap())
-            .unwrap(),
-        None::<Record>,
-    )
-    .unwrap();
-    cell.set(Some(Record(vec![7; 4]))).unwrap();
-    let before = backing.borrow().clone();
-    let failed = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-        cell.set(Some(Record(vec![8; 5]))).unwrap();
-    }));
-    assert!(failed.is_err());
-    assert_eq!(*backing.borrow(), before);
-    assert_eq!(cell.get(), &Some(Record(vec![7; 4])));
-    assert!(matches!(
-        runtime.open_memory(&crate::StableKey::parse("test.cell.v1").unwrap()),
-        Err(RuntimeOpenError::AlreadyOpen { .. })
-    ));
-    drop(cell);
-    drop(runtime);
-    let runtime = self::runtime(backing);
-    let mut cell = StableCell::<Option<Record>>::load(
-        runtime
-            .open_memory(&crate::StableKey::parse("test.cell.v1").unwrap())
-            .unwrap(),
-        16 * 1024 * 1024,
-    )
-    .unwrap();
-    assert_eq!(cell.get(), &Some(Record(vec![7; 4])));
-    cell.set(None).unwrap();
-    drop(cell);
-    let cell = StableCell::<Option<Record>>::load(
-        runtime
-            .open_memory(&crate::StableKey::parse("test.cell.v1").unwrap())
-            .unwrap(),
-        16 * 1024 * 1024,
-    )
-    .unwrap();
-    assert!(cell.get().is_none());
-}
-
-#[test]
-fn cell_creation_rejects_invalid_fixed_and_variable_encodings_before_writing() {
-    let backing = VectorMemory::default();
-    let runtime = runtime(backing.clone());
-    let before = backing.borrow().clone();
-    for fixed in [true, false] {
-        let memory = runtime
-            .open_memory(&crate::StableKey::parse("test.cell.v1").unwrap())
-            .unwrap();
-        let rejected = if fixed {
-            StableCell::create(memory, Record::<true>(vec![1; 3])).map(drop)
-        } else {
-            StableCell::create(memory, Record::<false>(vec![1; 5])).map(drop)
-        };
-        assert!(rejected.is_err());
-        assert_eq!(*backing.borrow(), before);
-    }
-}
-
-#[test]
-fn bounded_cell_rejects_short_and_long_fixed_replacements_before_writing() {
-    let backing = VectorMemory::default();
-    let runtime = runtime(backing.clone());
-    let mut cell = StableCell::create(
-        runtime
-            .open_memory(&crate::StableKey::parse("test.cell.v1").unwrap())
-            .unwrap(),
-        Record::<true>(vec![7; 4]),
-    )
-    .unwrap();
-    let before = backing.borrow().clone();
-    for length in [0, 3, 5] {
-        let rejected = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-            cell.set(Record(vec![8; length])).unwrap();
-        }));
-        assert!(rejected.is_err());
-        assert_eq!(*backing.borrow(), before);
-        assert_eq!(cell.get(), &Record(vec![7; 4]));
-    }
-    assert_eq!(cell.set(Record(vec![9; 4])).unwrap(), Record(vec![7; 4]));
-    drop(cell);
-    let reopened = StableCell::<Record<true>>::load(
-        runtime
-            .open_memory(&crate::StableKey::parse("test.cell.v1").unwrap())
-            .unwrap(),
-        16 * 1024 * 1024,
-    )
-    .unwrap();
-    assert_eq!(reopened.get(), &Record(vec![9; 4]));
-}
-
-#[test]
-fn bounded_cell_validates_retained_bytes_without_rewriting_or_leaking_lease() {
-    let backing = VectorMemory::default();
-    let runtime = runtime(backing.clone());
-    for fixed in [false, true] {
-        for length in [0, 3, 4, 5] {
-            let bytes = vec![7; length];
-            // Produce retained cell bytes through the supported adapter.
-            let existing = StableCell::reset(
-                runtime
-                    .open_memory(&crate::StableKey::parse("test.cell.v1").unwrap())
-                    .unwrap(),
-                bytes.clone(),
-            )
-            .unwrap();
-            drop(existing);
-            let before = backing.borrow().clone();
-            let memory = runtime
-                .open_memory(&crate::StableKey::parse("test.cell.v1").unwrap())
-                .unwrap();
-            let opened = if fixed {
-                StableCell::<Record<true>>::load(memory, 16)
-                    .map(|cell| assert_eq!(cell.get().0, bytes))
-            } else {
-                StableCell::<Record<false>>::load(memory, 16)
-                    .map(|cell| assert_eq!(cell.get().0, bytes))
-            };
-            assert_eq!(
-                opened.is_ok(),
-                if fixed { length == 4 } else { length <= 4 }
-            );
-            assert_eq!(*backing.borrow(), before);
-            let existing = StableCell::<Vec<u8>>::load(
-                runtime
-                    .open_memory(&crate::StableKey::parse("test.cell.v1").unwrap())
-                    .unwrap(),
-                16 * 1024 * 1024,
-            )
-            .unwrap();
-            assert_eq!(existing.get(), &bytes);
-        }
-    }
-}
-
 #[test]
 fn map_sequences_match_model_across_splits_removals_and_reopens() {
     use std::collections::BTreeMap;
@@ -431,4 +270,51 @@ fn map_sequences_match_model_across_splits_removals_and_reopens() {
         drop(map);
         drop(host);
     }
+}
+
+#[test]
+fn native_growth_trap_poisons_the_shared_allocation_owner() {
+    let memory = ControlledMemory {
+        backing: VectorMemory::default(),
+        refuse_growth: Rc::new(Cell::new(false)),
+        growth_calls: Rc::new(Cell::new(0)),
+    };
+    let runtime = runtime(memory.clone());
+    let mut map = StableBTreeMap::<u64, Vec<u8>, _>::create(
+        runtime
+            .open_memory(&crate::StableKey::parse("test.map.v1").unwrap())
+            .unwrap(),
+    )
+    .unwrap();
+    memory.refuse_growth.set(true);
+    assert!(
+        std::panic::catch_unwind(std::panic::AssertUnwindSafe(
+            || map.insert(1, vec![7; 1_048_576])
+        ))
+        .is_err()
+    );
+    assert!(
+        runtime
+            .open_memory(&crate::StableKey::parse("test.set.v1").unwrap())
+            .is_err()
+    );
+}
+
+#[test]
+fn malformed_allocator_flag_traps_without_forming_an_invalid_rust_bool() {
+    let runtime = runtime(VectorMemory::default());
+    let key = crate::StableKey::parse("test.map.v1").unwrap();
+    drop(StableBTreeMap::<u64, u64>::create(runtime.open_memory(&key).unwrap()).unwrap());
+    let memory = runtime.open_memory(&key).unwrap();
+    // Current ICSS geometry: allocator at 52, its header is 48 bytes,
+    // and the first chunk's allocation flag follows its four-byte marker.
+    memory.write(104, &[2]);
+    drop(memory);
+    let mut map = StableBTreeMap::<u64, u64>::load(runtime.open_memory(&key).unwrap()).unwrap();
+    assert!(std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| map.insert(7, 11))).is_err());
+    assert!(
+        runtime
+            .open_memory(&crate::StableKey::parse("test.set.v1").unwrap())
+            .is_err()
+    );
 }

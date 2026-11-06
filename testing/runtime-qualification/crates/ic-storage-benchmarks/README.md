@@ -26,6 +26,249 @@ they are not retried or treated as collection results. The production graph has
 no DFINITY dependency. Both Wasm backends use the same comparison profile:
 optimization level 3, fat LTO, one codegen unit, abort panics, no Binaryen pass.
 
+### Complete type-by-collection matrix
+
+```sh
+BENCH_WORKLOAD=types make benchmark-storage
+```
+
+One catalogue owns **73 concrete types** from the published ICSS test suite and
+Storage's additional comparisons. It generates every type on Map, Set, Vector,
+Cell and map regions for both backends. Maps and regions cover each type as a
+value with u64 keys, and as an ordered key with u64 values. They additionally run
+ICSS's complete four-key/five-value grid and Storage's existing paired-type cases.
+This is type-by-collection/role coverage, not every possible key/value pairing.
+
+The catalogue includes primitives and both float widths; unit/bool; arrays;
+bounded Blobs; ICSS's eight-byte `UnfixedU64` with 255/65,000/68,000 maxima;
+fixed/variable/unbounded pairs and triples; all eight fixed/Blob8 triple-bound
+arrangements and seven Blob8/String arrangements; optional scalars/strings/tuples;
+actual Principal values; and Storage's signed scalar, Wire/session records,
+chunk/bounded bytes and application tuple/optional codecs. See
+[`catalogue.rs`](src/catalogue.rs) for exact types, origins, bounds and payloads.
+
+Every case is a real generic instantiation. Composite/Principal types that do
+not implement Storage's trait use a local `ReferenceValue<T>` codec bridge to
+published ICSS codecs in **this unpublished benchmark only**. No production
+collection or codec dependency changes. This avoids inventing another tuple
+encoding while comparing the same concrete application type on both engines.
+Decoded results normalize every field independently of the storage codec.
+
+The preset owns 32 population rows (Cell one; finite key domains are capped),
+shuffled Map/Set/Region insertion, uniform accesses, batches 1/8, one round and
+one sample. Full-width bounded payloads join smaller controls. `payload_scope`
+distinguishes whole values from variable-component/optional-inner size caps;
+requested payload is not a claim about encoded bytes. Cell traces read before
+and after replacement to cover both optional variants and scalar states.
+
+The Make runner builds both original Wasm modules, then executes five automatic
+collection shards with separate prepared Testkit server lifetimes, each bounded
+at 30 minutes for this full-width matrix. It writes the
+aggregate only after every shard completes. Ordinary defaults retain their
+curated selection and runtime. No manual type/size choices are needed. Deterministic gzip reduces install
+transport while retaining original modules. The synthetic modules select an
+8 MiB stack identically on both backends and record the exact Rust flags: the
+multi-operation handler plus a node-load frame exceeds the ordinary 1 MiB stack
+for a 64 KiB inline key. This benchmark setting does not alter production stacks.
+Raw module sizes and compressed install-payload sizes are reported separately.
+
+New comparison attempts live under `target/evidence/storage-comparison/`.
+Keep full CSV/JSON logs, original modules and archives there; Git retains compact
+topic summaries and selected results within Shared's evidence budgets. Earlier
+attempt paths remain valid historical locations and are not moved or deleted.
+
+Compatibility is part of the output:
+
+- Unbounded values are instantiated on Map/Region/Cell, while their Vector
+  initialization refusals are checked on both backends.
+- Floats and optional floats do not implement Ord, so ordered-key/Set entries are
+  marked not applicable, with no invented timing.
+- Native ICSS fixed optional bounds reject None during checked Map/Set/Vector/
+  Region setup. Those traps are verified. Storage timings remain visible where
+  its native Option codec succeeds; absent ICSS costs/ratios stay blank. Cached
+  Cell uses the actual native codec on both sides.
+- Unit/bool keys use their real finite populations. Inapplicable absent-key and
+  out-of-domain range operations are omitted rather than fabricated.
+
+`coverage.csv` records each case/backend status and reason; `refusals.jsonl`
+retains verified runtime failures. Raw samples and complete retained-state checks
+remain mandatory for every supported case. CSV tuple labels are quoted correctly.
+Configuration and source/module hashes retain exact measured inputs.
+The [current coverage summary](../../../../docs/audits/recurring/benchmark-full-catalogue-2026-11-05.md)
+retains selected results and compatibility counts. The earlier 58-case selection
+is superseded. Full per-run tables and artifacts belong in transient target
+evidence, rather than tracked per-run reports.
+
+### Iterator coverage
+
+Run the fixed, bounded iterator preset without choosing window parameters:
+
+```sh
+BENCH_WORKLOAD=iterators make benchmark-storage
+```
+
+It owns 256 population rows, seven Vector types, eleven batch/scan lengths
+(`1, 2, 31, 32, 63, 64, 65, 127, 128, 129, 256`), and three stateful rounds.
+Make defaults this heavier preset to one sample; ordinary comparisons retain
+three, and explicit `BENCH_SAMPLES` still overrides either. Types cover u64,
+i64, u128, f64, fixed 32-byte arrays, Wire records and variable bytes. Variable
+values use logical lengths 0/32/256. The three byte lengths give nine case/payload
+combinations: 1,287 aggregate rows and 7,722 timed backend calls per sample.
+
+All Vector selections, including the ordinary matrix, now cover thirteen
+operations. Existing Get/Set/Push/Pop and forward/reverse scans are joined by:
+
+| Operation | Timed behavior |
+| --- | --- |
+| `Nth` / `NthBack` | Fresh iterator, direct skip to each generated forward/reverse index |
+| `Last` | Fresh iterator's `last()` for each query |
+| `AlternatingScan` | One iterator, alternating front/back until the requested limit |
+| `ScanSet` | One iterator, replace each next slot before reading it, leaving the first slot untouched |
+
+Interleaved replacement inputs are built before timing, as for ordinary Set;
+collection encoding and writes remain timed. Results are checked against an
+independent native model, then stored contents are verified after all rounds.
+Each batch gets a fresh collection; rounds share its mutation history. Scan
+length, query count and population are recorded separately. Setup/final checking,
+RPC codec work and result canonicalization remain outside collection timing.
+
+The preset bounds reply volume. Use the existing selection for wide-value
+controls at the ordinary 1/32-item limits:
+
+```sh
+BENCH_CASES=VectorBytes BENCH_PAYLOADS=4096 BENCH_ROUNDS=3 \
+  BENCH_PATTERNS=uniform make benchmark-storage BENCH_ROWS=256 BENCH_SAMPLES=1
+```
+
+Crossing all 256 items with 4 KiB values exhausted the 900-second server budget
+in qualification; its partial evidence remains a failed run, not a pass. Wide
+fallback behavior is covered separately instead of inflating every iterator run.
+Correctness refusals, corrupt slots, empty collections and poisoned ownership
+remain library tests; successful-operation timing does not qualify those paths.
+The new private operation schema requires rebuilding both Wasm backends and the
+driver together, which the Make command does. Older frozen results retain their
+original binaries and cannot be relabeled as this expanded matrix.
+
+### Ordered collection coverage
+
+```sh
+BENCH_WORKLOAD=ordered make benchmark-storage
+```
+
+This preset uses one sample, three stateful rounds and shuffled population of
+256 entries. Seven Map/Set cases cover integer, fixed-byte and string keys;
+variable Map values use 31/32/33/256 bytes. These sizes retain coverage of the
+previous engine's inline threshold; the copied engine has ICSS geometry.
+Batch/scan lengths are `1, 5, 6, 11, 12, 31, 32, 64, 128`. The ten case/payload
+combinations produce 1,746 aggregate rows and 10,476 measured backend calls.
+
+The normal Map matrix also includes direct `Nth`/`NthBack`, `AlternatingScan`,
+`ValuesScan`, `ReverseKeysScan` and `BoundedKeysScan`. Value-only responses use
+ordinal ranks as labels, so preparing keys does not warm the measured traversal.
+Bounded key scans use the same lower-inclusive, upper-exclusive interval as
+bounded pair scans. Key-only paths call each library's public key iterator;
+values are not fetched merely to normalize results. Skipping uses each public
+iterator API, including any traversal needed by that implementation.
+
+Paired Set measurements include forward scans and `Nth`. Published ICSS's Set
+iterator and the pinned Git control are forward-only; reverse/mixed-end Set
+traversals are not approximated by collecting or repeatedly rescanning keys.
+Storage's bidirectional Set iterator remains covered by its native tests.
+
+The private request envelope admits Map/Set batches through 128, Vector through
+256 and other structures through 32. Inserted and missing-removal IDs use
+adjacent disjoint ranges derived from the batch length; a former fixed offset
+of 64 overlapped at larger batches and was caught by model admission. The new
+regression checks every admitted Map/Set/Region batch size. Historical traces
+retain their original identities; these binaries establish a new baseline.
+
+All operations still check results, length and complete persisted state against
+an independent model. This preset studies one population size and one shuffled
+insertion history per cell, not production-scale trees or every cache policy.
+
+### Session lookup coverage
+
+```sh
+BENCH_WORKLOAD=auth-lookups make benchmark-storage
+```
+
+This instrumented preset isolates the outer stored record used by Canic's Auth
+adapter: a Wire byte-vector envelope with `CSW\x01` framing and a variable
+4,096-byte Storable bound. Inner bytes are synthetic opaque data, not valid Auth
+sessions. It fully populates 1/512/1,024/2,048 records with 256/2,048-byte inner
+payloads, then reads first/middle/last indices in separate query and update
+executions. Each cell has one round and defaults to one sample, yielding 480
+timed backend calls and 240 paired rows. Explicit samples still scale the run.
+
+The five phases are Control, Get, WarmGet, Decode and MissAbove. Get includes the
+collection's IO, validation, allocation and outer Wire decoding. WarmGet performs
+one untimed get in the same execution before measuring another. Decode measures
+the outer decoder over bytes prepared before timing, without collection IO.
+Preparation can already warm memory; Get is not a guaranteed cold whole endpoint.
+Query dispatch accepts only these read operations for this case.
+
+WarmGet is an untimed pre-read followed by a timed read, not a guarantee that
+all memory charges are already paid. Stable-read dispatch can defer a native
+mapping charge until the second read. In the checksummed baseline's 1,024-row
+last-record case, Get costs 25,613 instructions while WarmGet costs 105,613.
+Do not treat their difference as an ordinary cache benefit or instruction-only
+decoder cost. See the [confirmed source-page diagnosis](../../../../docs/audits/recurring/vector-stable-read-charges-2026-11-05.md).
+
+`lookup-stages.csv` records total instructions, nested outer-decoder instructions,
+decoder calls and decoder input bytes. Decoder cost is included in the total;
+do not add it again. The driver checks counts/bytes, every returned value and the
+entire final population. Aggregated reports carry `execution_mode`; per-population
+and mode subdirectories retain their full configurations and raw samples.
+
+The library's native regression separately asserts bounded backing reads, exact
+requested byte volume, one decode per successful get and one length read with no decode on a miss,
+including reopened vectors. Native IO counters are not IC page charges. Neither
+test supplies malloc counts or a page-fault oracle. Canic configuration projection,
+caller-to-index lookup and Auth's inner `Session::decode()` remain outside scope.
+See the [qualified results](../../../../docs/audits/recurring/icss-engine-baseline-2026-11-05.md).
+
+The original results above use the historical checksummed Vector. The following
+ICVEC002 experiment is also superseded. The current copied ICSS SVC1 baseline
+reads the durable eight-byte length and, for a successful lookup at this bound,
+two length bytes plus the payload. New runs retain their own binary/source
+identities. Neither historical format's measurements describe the current engine.
+
+### Stable-read alignment diagnostic
+
+The independent examples below reproduce actual source addresses from saved
+original Vector Wasm. They fully populate each vector, capture its stable image,
+upgrade to a passive read-only probe, then time prefix/payload/repeated reads
+and a combined-read control. The raw IO is confined to this diagnostic fixture;
+production integrations continue to use governed leases.
+
+```sh
+cargo build --locked --offline --manifest-path testing/runtime-qualification/Cargo.toml \
+  -p ic-storage-benchmarks --example stable-read-probe-wasm --features owned \
+  --target wasm32-unknown-unknown --profile comparison --target-dir target/storage-comparison-build/owned
+cargo build --locked --offline --manifest-path testing/runtime-qualification/Cargo.toml \
+  -p ic-storage-benchmarks --example stable-read-probe --target-dir target/runtime-qualification
+probe_cli=$(bash scripts/dev/install-rust-tools.sh --consumer "$PWD" \
+  --package ic-testkit --version 0.79.0 --bin ic-testkit-server \
+  --profile release --features cli --check)
+"$probe_cli" run --directory .tools/ic-testkit-server --ttl 900 -- \
+target/runtime-qualification/debug/examples/stable-read-probe \
+  --baseline-wasm target/storage-comparison/attempt.c6YVkt/owned.wasm \
+  --candidate-wasm target/storage-comparison/attempt.xIWOoI/owned.wasm \
+  --probe-wasm target/storage-comparison-build/owned/wasm32-unknown-unknown/comparison/examples/stable_read_probe_wasm.wasm \
+  --output target/vector-read-probe-report
+```
+
+The output directory must be new. Frozen input Wasm and source archives remain
+part of the earlier studies; this command neither reconstructs nor relabels them.
+The selected matrix covers 512/1,024/2,048 rows, both payload sizes, first and
+last indices with neighbours, and compact-layout index 2,015 with its neighbours.
+It checks all returned bytes against the captured image. All heap destinations
+are filled before timing; no source stable pages are read before the measured
+sequence. Each sequence is a fresh query execution. The CSV's region counts
+are physical range intersections, not independently observed fault counters.
+The raw system-call experiment excludes Vector traversal, decoding and normal
+host state. Its result is not a whole-Get or whole-endpoint benchmark.
+
 ### Extended controls
 
 The independent workspace also pins upstream Git revision
@@ -37,17 +280,17 @@ graphs. Prepare its locked source with the existing explicit fetch command.
 ```sh
 BENCH_REFERENCE=dfinity-head BENCH_CASES=U64U64,VectorU64 \
 BENCH_PATTERNS=uniform,hot16,zipf BENCH_SHUFFLED=1 BENCH_ROUNDS=3 \
-BENCH_CACHE_BYTES=131072 BENCH_UPSTREAM_CACHE_SLOTS=32 \
+BENCH_UPSTREAM_CACHE_SLOTS=32 \
 make benchmark-storage BENCH_ROWS=4096 BENCH_SAMPLES=1
 ```
 
-Case selection uses the exact case names from `types.rs`. Cache settings apply
-to ordinary maps only: Storage accepts a byte budget and current upstream accepts
-a slot count. These are different limits, not equivalent heap budgets. Both
-default to zero in the comparison; published 0.7.2 has no node-cache setting.
-Other structures retain their implementation defaults. `BENCH_COLD_CACHE=1`
-clears ordinary-map caches before each timed call; clearing cost is excluded.
-This measures cold routing, not collection reopening or whole-call cost.
+Case selection uses the exact case names from `types.rs`. Storage's copied
+0.7.2 engine has no node cache. Positive `BENCH_CACHE_BYTES` now refuses, so an
+inert ceiling cannot be mislabeled as an active cache. Published ICSS 0.7.2 also
+has no cache; only the optional Git reference supports upstream slot counts.
+`BENCH_COLD_CACHE=1` affects that Git reference's ordinary maps; it adds no
+Storage cache or cold-reopen measurement. Historical cached-engine runs remain
+valid only for their recorded source and binaries.
 
 `BENCH_UPSTREAM_BUCKET_PAGES=1..65535` selects the ICSS MemoryManager bucket size
 for every structure; the comparison default is eight pages (512 KiB); stock ICSS defaults to 128 (8 MiB). One Wasm page is 64 KiB.
@@ -105,7 +348,7 @@ trace totals when comparing recurring work.
 BENCH_CASES=U64Bytes BENCH_PAYLOADS=33,80 BENCH_PATTERNS=uniform,hot16 \
 BENCH_SHUFFLED=1 BENCH_ROUNDS=12 BENCH_GROWTH_CYCLES=1 \
 make benchmark-storage BENCH_ROWS=4096 BENCH_SAMPLES=2
-# Repeat with BENCH_CACHE_BYTES=65536 to expose cache/placement interactions.
+# Optional: select the Git reference and BENCH_UPSTREAM_CACHE_SLOTS to study its cache.
 ```
 
 These controls change only the research workload. They do not change production
@@ -175,6 +418,7 @@ from a successful smoke run.
 | Map | u64 → [u8;31/32/33/256]; u64 → WireRecord | 31, 32, 33, 256; 60 |
 | Set | u64; String; Signed64; [u8;64] | unit values |
 | Vector | u64; Signed64; u128; f64; [u8;32]; WireRecord; ChunkBytes | 8; 8; 16; 8; 32; 60; 0/31/32/33/1024/4096 |
+| Vector | SessionEnvelope (variable 4,096-byte bound) | 256, 2048 inner bytes |
 | Cell | bytes; WireRecord; u128; [u8;32] | 0, 31, 32, 33, 1024, 4096; 60; 16; 32 |
 | Map region | u64 → bytes | 0, 31, 32, 33, 1024, 4096 |
 
@@ -183,13 +427,13 @@ generation and 32-byte tag, using the same IC Wire codec on both backends. Its
 60 field bytes are not its encoded size; the declared encoding ceiling is 256
 bytes. Fixed array keys and zero-padded string keys preserve logical ID order.
 String values use two-byte UTF-8 characters. Scalars exercise high bits.
-There are 29 concrete cases and 52 type/size combinations in the ordinary matrix.
+There are 30 concrete cases and 54 type/size combinations in the ordinary matrix.
 `VectorBytes` is included by default: both backends declare a variable-length
-1 MiB maximum (`ChunkBytes`), matching Canic’s chunk vector. ICSS slots reserve
-that maximum even for shorter values; this is part of the comparison, not an
-equal-layout claim. The 31/32/33-byte
-fixed and variable Map values straddle Storage's inline-value threshold; fixed
-256-byte values and 4 KiB variable values extend the payload comparison.
+1 MiB maximum (`ChunkBytes`), matching Canic’s chunk vector. Both current Vector engines reserve
+that maximum even for shorter values. The 31/32/33-byte
+fixed and variable Map values preserve the earlier threshold controls; fixed
+256-byte values and 4 KiB variable values extend the payload comparison. Both
+current engines use the ICSS node layout.
 
 `Signed64` wraps i64 because upstream has no primitive i64 Storable implementation.
 Both backends use the same eight-byte little-endian benchmark codec. Signed keys
@@ -246,8 +490,13 @@ Controls are included. The extra cleanup phase changes counts from older runs.
 
 Storage uses admitted governed leases. DFINITY uses its stock MemoryManager
 and memory ID 0. This measures their configured stacks, not tree algorithms over
-identical allocators. The new Storage B-tree keeps values up to 32 bytes inline
-and checksums external values separately. DFINITY has its own node/page layout.
+identical allocators. Storage now copies ICSS 0.7.2 engines privately, including
+its node/page layout, rather than maintaining a different B-tree. Storage's
+application codecs, checked backing, explicit load admission and owned MapEntry
+API remain different. Its primitive unsigned codecs use little-endian bytes;
+ICSS defaults use big-endian bytes. Shared Wire/byte codecs match. Native
+same-image tests explicitly adapt codecs rather than assuming every default
+encoding matches. No collection checksums or custom node cache remain.
 
 DFINITY has no `BTreeMapRegion`: that control reloads a BTreeMap from the same
 VirtualMemory for each operation. Storage uses its actual region API, which also
@@ -260,7 +509,8 @@ allocation, loops and result collection. Decoding the request, generating typed
 inputs, reserving output capacity, normalizing results, verification and encoding
 the reply are outside timing. Returned values stay live through the endpoint.
 Preparation can warm heap regions before the counter. Each measured call is a
-separate IC update; batches share that execution's tracking state. Controls are
+separate IC update, or a query in the explicit `auth-lookups` preset; batches
+share that execution's tracking state. Controls are
 reported without automatic subtraction.
 
 The native ordered model checks every result and length, including displaced
@@ -322,7 +572,7 @@ selection changes the benchmark workload, not production allocation policy.
 Alternatively, `--allocation-histories` selects nine Storage-only histories over
 four governed 1,024-record maps: fixed 33/80-byte values, 33↔132 and 80↔320
 alternation, one-time growth, 10%/50% growth, staircase sizes through 4,096 bytes,
-and external↔inline transitions. Each history has 24 phases, full content checks
+and transitions across the previous inline threshold. Each history has 24 phases, full content checks
 after cold reopening every fourth phase, complete deletion and small refill.
 Mutation returns are checked against an independent map. Initial population uses
 a deterministic permutation; final refill is sorted, so its capacity difference
@@ -337,8 +587,7 @@ population and growth (32 then 96 rows per store), then performs four rounds of
 deleting half the keys and reinserting in reverse order. Displaced and final
 values are checked. Diagnostic reads are excluded from phase IO counters.
 Six subsequent replacement rounds rotate values through 31/32/33,
-236/237, 4076/4077 and 65516/65517 bytes. These cross inline and external
-allocation boundaries without changing the live key population. Every displaced
+236/237, 4076/4077 and 65516/65517 bytes. These retain historical allocation-boundary controls without changing the live key population. Every displaced
 value and the final contents are checked; each phase reports its actual live
 payload rather than reusing the original fixed-size estimate. The original
 same-size phases remain directly comparable with retained runs.
@@ -357,11 +606,11 @@ This is native memory accounting, not an IC instruction or fault-charge model.
 It preserves the production custody boundary for Storage, with ICSS confined to
 the independent research graph. Native helper dependencies are explicitly optional.
 
-A separate controlled Storage geometry probe holds tree shape and row count
-fixed (32 records) and tests adjacent payloads around a power-of-two boundary
-minus the current 20-byte external record prefix. It reports actual directory/
-allocation capacity alongside the source-derived block-size prediction. This
-investigates current overhead without changing allocator bytes or public APIs.
+The native helper also retains a historical geometry probe with predictions
+for the retired power-of-two allocator and its 20-byte record prefix. Those
+predictions do not describe the copied ICSS allocator and cannot qualify current
+layout efficiency. Actual capacity/IO fields remain observations; use the matched
+current workload for present comparisons.
 
 The completed matched study is recorded in
 [the memory audit](../../../../docs/local-memory-audit.md#completed-bucket-and-shared-backing-study).

@@ -1,5 +1,5 @@
 # Supported Hosts And Dependencies
-<!-- Shared companions: docs/ci-change-selection.md docs/rust-toolchains.md -->
+<!-- Shared companions: docs/ci-change-selection.md docs/rust-toolchains.md docs/tag-maintenance.md rules/agent-maintenance.md tasks/ci-health.md tasks/local-schedule.md -->
 
 For reviewed prose-only changes, use the [documentation-only CI selection](ci-change-selection.md)
 contract. Code and tooling changes retain the required native host coverage below.

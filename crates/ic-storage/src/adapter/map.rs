@@ -1,180 +1,162 @@
-//! Governed map collection implementation.
+//! Governed map operations over the copied ICSS B-tree.
+use super::bridge::{self, Backing, Codec};
 use super::error::{CollectionError as Error, Result, ensure};
-use super::tree::Tree;
 use super::{MapIter, Memory, Storable};
-use crate::DefaultMemoryImpl;
-use crate::RuntimeMemory;
+use crate::{DefaultMemoryImpl, RuntimeMemory};
 use std::ops::RangeBounds;
 
-/// Governed ordered map backed by Storage’s owned B-tree and reusable blocks.
+///
+/// `StableBTreeMap`
+///
+/// ICSS-baseline ordered map owning one governed allocation. Stored codec and
+/// engine failures trap. Native callers must discard the runtime after a mutation panic.
+///
 pub struct StableBTreeMap<K: Storable + Ord + Clone, V: Storable, M: Memory = DefaultMemoryImpl> {
-    inner: Tree<K, V, RuntimeMemory<M>>,
+    inner: bridge::Map<K, V, RuntimeMemory<M>>,
 }
 impl<K: Storable + Ord + Clone, V: Storable, M: Memory> StableBTreeMap<K, V, M> {
-    /// Create a collection only in zero-page memory.
-    ///
+    /// Create only in empty admitted memory.
     /// # Errors
-    /// Refuses nonempty memory, invalid encoding or capacity exhaustion before writes.
+    /// Refuses nonempty memory or initial growth refusal.
     pub fn create(memory: RuntimeMemory<M>) -> Result<Self> {
         ensure(memory.size() == 0, Error::NotEmpty)?;
         Self::reset(memory)
     }
-
-    /// Deliberately replace any contents in this admitted allocation.
-    ///
+    /// Explicitly replace this allocation's collection image.
     /// # Errors
-    /// Returns encoding, capacity or structural admission errors.
+    /// Refuses initial growth before creating the map.
     pub fn reset(memory: RuntimeMemory<M>) -> Result<Self> {
+        bridge::reserve(&memory)?;
+        #[cfg(not(target_arch = "wasm32"))]
+        let _guard = memory.poison_on_unwind();
         Ok(Self {
-            inner: Tree::reset(memory)?,
+            inner: bridge::Map::new(Backing(memory)),
         })
     }
-
-    /// Load retained collection state without initializing a replacement.
-    ///
+    /// Load the current BTR version without initialization or migration.
     /// # Errors
-    /// Refuses empty, foreign or corrupt memory and incompatible bounds without writing.
+    /// Refuses empty or foreign framing.
     pub fn load(memory: RuntimeMemory<M>) -> Result<Self> {
+        bridge::admit_map(&memory)?;
         Ok(Self {
-            inner: Tree::load(memory)?,
+            inner: bridge::Map::load(Backing(memory)),
         })
     }
-    /// Clear entries while retaining this allocation's exclusive lease.
-    ///
+    /// Clear entries and reuse the map's existing backing capacity.
     /// # Errors
-    /// Reports a poisoned owner or metadata encoding/capacity refusal.
+    /// Engine failures trap instead of returning an ordinary error.
     pub fn clear(&mut self) -> Result<()> {
-        self.inner.clear()
+        #[cfg(not(target_arch = "wasm32"))]
+        let _guard = self.inner.memory().0.poison_on_unwind();
+        self.inner.clear_new();
+        Ok(())
     }
-    /// Set the heap budget for cached, validated routing nodes; zero disables it.
-    ///
-    /// Caching is disabled initially. Changing the budget discards cached nodes.
-    /// The budget accounts for buffer capacities and cache bookkeeping, excluding
-    /// allocator overhead and nodes retained by an active iterator. External
-    /// values are never cached. Writes invalidate affected nodes; reloads start
-    /// cold. The exclusive backing-custody contract applies while caching.
-    /// Slot capacity scales with the budget; upper routing nodes take priority
-    /// over deeper colliding nodes. Very small budgets may retain no nodes.
-    pub fn set_node_cache_budget(&mut self, bytes: usize) {
-        self.inner.set_cache_budget(bytes);
+    /// Bound routing-cache memory. The baseline engine caches no routing nodes,
+    /// so every supplied ceiling is satisfied with zero cached bytes.
+    pub const fn set_node_cache_budget(&mut self, _bytes: usize) {
+        let _ = &self.inner;
     }
-    /// Reserve a minimum virtual extent without exposing or duplicating the lease.
-    ///
-    /// Returns the map on both success and ordinary growth refusal. Entries are
-    /// preserved; the cached tree remains unchanged.
-    /// Backing traps follow the host transaction contract.
-    ///
-    /// `minimum` is an absolute virtual extent in 65,536-byte Wasm pages, not an
-    /// entry count or additional pages. Existing extents never shrink. A request
-    /// already covered performs no growth or writes. This reserves backing only:
-    /// it does not promise that any particular number or encoding of entries fits.
-    /// Callers own their byte/page budget and must qualify it for their codecs;
-    /// internal node-layout constants are not a supported capacity contract.
+    /// Reserve backing pages without promising entry capacity.
     pub fn reserve_pages(
         self,
         minimum: u64,
     ) -> (Self, std::result::Result<(), crate::RuntimeGrowError>) {
-        let additional = minimum.saturating_sub(self.inner.memory.size());
-        let result = self.inner.memory.grow(additional).map(|_| ());
+        let additional = minimum.saturating_sub(self.inner.memory().0.size());
+        let result = self.inner.memory().0.grow(additional).map(|_| ());
         (self, result)
     }
-    /// Observe the virtual extent in 65,536-byte pages while retaining the lease.
-    ///
-    /// Consumes and returns the map while retaining the exclusive lease.
-    /// Observing the allocation performs no writes or growth.
-    /// This is allocated extent, not free space or guaranteed entry capacity.
+    /// Observe allocated pages while retaining exclusive custody.
     #[must_use]
     pub fn allocated_pages(self) -> (Self, u64) {
-        let pages = self.inner.memory.size();
+        let pages = self.inner.memory().0.size();
         (self, pages)
     }
-    /// Perform `insert` on the governed ordered map.
-    ///
+    /// Insert or replace. Invalid codecs and allocation failures trap.
     /// # Errors
-    /// Rejects encoding, decoding, structural or capacity errors before committing writes.
+    /// Engine failures trap instead of returning an ordinary error.
     pub fn insert(&mut self, key: K, value: V) -> Result<Option<V>> {
-        self.inner.insert(key, value)
+        #[cfg(not(target_arch = "wasm32"))]
+        let _guard = self.inner.memory().0.poison_on_unwind();
+        Ok(self.inner.insert(Codec(key), Codec(value)).map(|v| v.0))
     }
-    /// Perform `get` on the governed ordered map.
-    ///
+    /// Read a matching value; malformed stored values trap.
     /// # Errors
-    /// Reports structural, integrity or application decoding failures without writing.
+    /// Engine failures trap instead of returning an ordinary error.
     pub fn get(&self, key: &K) -> Result<Option<V>> {
-        self.inner.get(key)
+        Ok(self.inner.get(Codec::borrowed(key)).map(|v| v.0))
     }
-    /// Perform `contains_key` on the governed ordered map.
-    ///
+    /// Test key membership without decoding values.
     /// # Errors
-    /// Reports structural, integrity or application decoding failures without writing.
+    /// Engine failures trap instead of returning an ordinary error.
     pub fn contains_key(&self, key: &K) -> Result<bool> {
-        self.inner.contains_key(key)
+        Ok(self.inner.contains_key(Codec::borrowed(key)))
     }
-    /// Perform `is_empty` on the governed ordered map.
-    ///
-    /// # Errors
-    /// Reports invalid region metadata or incompatible codec bounds.
-    pub fn is_empty(&self) -> bool {
-        self.inner.len() == 0
+    /// Whether no entries are committed.
+    #[must_use]
+    pub const fn is_empty(&self) -> bool {
+        self.inner.is_empty()
     }
-    /// Perform `len` on the governed ordered map.
-    pub fn len(&self) -> u64 {
+    /// Number of entries.
+    #[must_use]
+    pub const fn len(&self) -> u64 {
         self.inner.len()
     }
-    /// Perform `remove` on the governed ordered map.
-    ///
+    /// Remove a matching value; codec and engine failures trap.
     /// # Errors
-    /// Rejects decoding or structural errors before committing removal.
+    /// Engine failures trap instead of returning an ordinary error.
     pub fn remove(&mut self, key: &K) -> Result<Option<V>> {
-        self.inner.remove(key)
+        #[cfg(not(target_arch = "wasm32"))]
+        let _guard = self.inner.memory().0.poison_on_unwind();
+        Ok(self.inner.remove(Codec::borrowed(key)).map(|v| v.0))
     }
-    /// Perform `first_key_value` on the governed ordered map.
-    ///
+    /// First ordered key/value pair.
     /// # Errors
-    /// Reports invalid structure, integrity failures or application codec errors.
+    /// Engine failures trap instead of returning an ordinary error.
     pub fn first_key_value(&self) -> Result<Option<(K, V)>> {
-        self.iter()
-            .next()
-            .map(|entry| entry?.into_pair())
-            .transpose()
+        Ok(self.inner.first_key_value().map(|(k, v)| (k.0, v.0)))
     }
-    /// Perform `last_key_value` on the governed ordered map.
-    ///
+    /// Last ordered key/value pair.
     /// # Errors
-    /// Reports invalid structure, integrity failures or application codec errors.
+    /// Engine failures trap instead of returning an ordinary error.
     pub fn last_key_value(&self) -> Result<Option<(K, V)>> {
-        self.iter()
-            .next_back()
-            .map(|entry| entry?.into_pair())
-            .transpose()
+        Ok(self.inner.last_key_value().map(|(k, v)| (k.0, v.0)))
     }
-    /// Perform `iter` on the governed ordered map.
+    /// Iterate in key order.
+    #[must_use]
     pub fn iter(&self) -> MapIter<'_, K, V, M> {
-        self.inner.range(..)
+        MapIter(self.inner.iter())
     }
-    /// Perform `range` on the governed ordered map.
-    pub fn range(&self, key_range: impl RangeBounds<K>) -> MapIter<'_, K, V, M> {
-        self.inner.range(key_range)
+    /// Iterate a bounded key range.
+    pub fn range(&self, bounds: impl RangeBounds<K>) -> MapIter<'_, K, V, M> {
+        MapIter(self.inner.range(codec_bounds(&bounds)))
     }
-    /// Perform `keys` on the governed ordered map.
+    /// Iterate keys without reading value payloads.
     pub fn keys(&self) -> impl DoubleEndedIterator<Item = Result<K>> + '_ {
-        self.inner.keys_range(..)
+        self.inner.keys().map(|k| Ok(k.0))
     }
-    /// Traverse bounded keys without reading external value records.
-    ///
-    /// Routing records and key codecs remain checked. External value integrity
-    /// is checked only by operations that request values.
+    /// Iterate bounded keys without reading value payloads.
     pub fn keys_range(
         &self,
         bounds: impl RangeBounds<K>,
     ) -> impl DoubleEndedIterator<Item = Result<K>> + '_ {
-        self.inner.keys_range(bounds)
+        self.inner
+            .keys_range(codec_bounds(&bounds))
+            .map(|k| Ok(k.0))
     }
-    /// Perform `values` on the governed ordered map.
+    /// Iterate decoded values.
     pub fn values(&self) -> impl DoubleEndedIterator<Item = Result<V>> + '_ {
-        self.iter().map(|entry| entry?.into_value())
+        self.inner.values().map(|v| Ok(v.0))
     }
 }
 
+pub(super) fn codec_bounds<K: Clone>(
+    range: &impl RangeBounds<K>,
+) -> (std::ops::Bound<Codec<K>>, std::ops::Bound<Codec<K>>) {
+    (
+        range.start_bound().map(|k| Codec(k.clone())),
+        range.end_bound().map(|k| Codec(k.clone())),
+    )
+}
 impl<'a, K: Storable + Ord + Clone, V: Storable, M: Memory> IntoIterator
     for &'a StableBTreeMap<K, V, M>
 {

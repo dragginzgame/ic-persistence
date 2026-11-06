@@ -1,5 +1,67 @@
 # Current handoff
 
+**Shared Tooling refresh (unreleased):** adopted 0.30.5 at `be37710`, the checked
+GitHub `main` revision, through the canonical exporter. All 156 payloads match
+the independently selected commit. The Candid source gate covers 161 Rust files;
+both workspaces reject named direct CBOR dependencies. Actual formatter/LOC
+callers, dependency pins/boundaries, a selected native release-note caller test
+and the benchmark output-route/refusal probe pass. Source review found no CBOR
+use; general CBOR import/macro/type-resolution enforcement is not supplied by
+the lexical Candid check. New raw comparisons use `target/evidence/`.
+Both lockfiles and 124 previously qualified Rust/manifest inputs are unchanged.
+Details are in [the adoption boundaries](../shared-tooling-adoption.md). The
+authorized measurement cleanup is complete; compact results replace bulk exports.
+Engine work, stashes and release/recovery artifacts remain preserved. Logs are
+under `target/evidence/shared-tooling-0305/`; no release or sibling edit occurred.
+
+**Completed:** the full ICSS + Storage type union now covers all five supported
+collection forms: 73 concrete types, 565 unique type/role cases and the full ICSS
+B-tree key/value grid. All 46,604 installed measured calls and final states pass,
+alongside 42 focused native tests and strict native/Wasm lint. The compatibility
+ledger explicitly records 53 verified runtime refusals and 18 non-Ord backend
+roles; absent ICSS measurements have blank costs/ratios. See the
+[full-catalogue record and results](../audits/recurring/benchmark-full-catalogue-2026-11-05.md).
+`BENCH_WORKLOAD=types make benchmark-storage` runs five automatic collection
+shards with a common eight-MiB synthetic benchmark stack and 30-minute server
+limits. Production stack settings and codecs are unchanged by this follow-up.
+Raw evidence is in `target/storage-comparison/attempt.tSHDxo/`; partial/failed
+attempts remain preserved. Previous 58-case evidence below is historical.
+
+## Pending Storage 0.68.0: copied ICSS collection baseline
+
+The maintainer selected all engines from copied published ICSS 0.7.2 source,
+with governed allocation, successful-call API shapes and ICSS trap behavior.
+Private `engine` contains algorithms; public `adapter` enforces checked leases.
+No production ICSS dependency or copied MemoryManager exists. Old tree/block/
+record implementations, node cache and Vector windows/epochs are deleted.
+[Provenance](../storage/upstreams.md) and [qualification/results](../audits/recurring/icss-engine-baseline-2026-11-05.md)
+record deliberate adaptations and original source hashes/notices.
+
+Every earlier Storage collection requires explicit rebuild/reset or fresh
+allocation; BTR2 (explicit page size), SVC1 and SCL1 are current. No legacy reader,
+migration or automatic reset exists. Directory bytes/checksums and application
+codecs are unchanged. Collection codecs/engine failures trap; collection
+checksums are gone. Native mutation unwinds poison the shared owner; IC rollback
+supplies Wasm atomicity. Positive cache ceilings do not enable a node cache.
+
+Core collection/governance, custody, Metrics/Logging and reference/model tests
+pass, with native/Wasm lint and production-graph checks. Original final Wasm
+installed proof covers 1,031 allocations, all collections, successful upgrades
+and decoder/update/upgrade rollback. Counts and evidence are in the audit.
+
+The 3,196-call comparison plus 824 iterator reruns establish the reset baseline;
+the 480-call Auth preset also passes. No universal speedup is claimed. These use
+one ordinary seed/uniform access and ICSS eight-page research buckets. Evidence
+is in `target/icss-baseline-reset/` and attempts `difIFu`, `UZTbp1`, `Q4kJp3`.
+
+Changes are uncommitted/unpublished; manifests retain released versions.
+No release, sibling migration or backing reset is authorized. The independent
+lock preserves every selected package version/source and adds only the benchmark
+package's existing `ic_principal` dependency edge. Root supplier refreshes beyond the starting snapshot
+remain intact; root checks use Wire 0.17.2 / Runtime 0.19.2 / Build-Host 0.74.4,
+while the independent comparison retains Wire 0.17.0 / Runtime 0.19.0.
+Full release/packaging and optimized-Wasm qualification have not been run.
+
 ## Published on 2026-11-05
 
 | Package | Version | Release commit / tag |
@@ -8,132 +70,60 @@
 | Metrics Storage | 0.69.0 | `5f4dbdd` / `metrics-storage-v0.69.0` |
 | Logging Storage | 0.65.0 | `a90632c` / `logging-storage-v0.65.0` |
 
-All three releases are pushed to origin/main, published and unyanked on crates.io.
-Each passed all 12 release stages and final archive qualification. Downloaded
-registry archives match the qualified SHA-256 values:
+All three are pushed and published, with 12-stage gates and downloaded archive
+checksum verification. [The delivered handoff](https://github.com/dragginzgame/ic-storage/blob/4dea092/docs/status/current.md)
+retains full hashes, prior release identities and recovery evidence. Current
+release evidence remains in `target/tooling-030-deploy/` and group receipts under
+`target/release-validation/`. Do not repeat these publications.
 
-- Storage: `0621f56cfcc42a109d1d52ac39410c0b7d7c7d3bbb9f46274c2381dced2e9352`.
-- Metrics: `9429bc9b05c3eb251c201857c721157ddcfa88e6ba47c72f1e0aee9b58c02df8`.
-- Logging: `67b3b84edaf5c180c6268b68af0a97e6e02116272ce0753b6bf88d240e79a045`.
+Those publications included Shared Tooling 0.30.0 (`b37a882`, 154 files).
+All packages use Wire 0.17;
+hosts exchanging public Wire limits/errors must align that identity. Codec bytes
+and stored layouts are unchanged. The [adoption audit](../audits/2026-11-05-shared-tooling.md)
+retains installed original-Wasm IO/upgrade/rollback proof; no macOS rerun is claimed.
+Storage/Logging project their own identities into the independent catalog/lock
+through shared release metadata; Metrics preserves those files.
 
-Evidence: `target/tooling-030-deploy/` and group-bound receipts under
-`target/release-validation/`. Preserve failed attempts and their retained logs.
-Release qualification caught and corrected shared metadata ordering, fixture
-copying and recovery assertions. Storage and Logging now project their respective
-local identities into the independent fixture catalog/lock through Shared's
-`shared_metadata_files`; Metrics preserves those files.
+## Historical evidence and preservation
 
-Shared Tooling 0.30.0 (`b37a882`, 154 files) is adopted. The
-[adoption audit](../audits/2026-11-05-shared-tooling.md) retains the directory,
-fixture and scoped-lint changes plus installed original-Wasm IO/upgrade/rollback
-proof. Both LOC reports classify every source. No new native macOS proof is claimed.
-All packages use Wire 0.17 without metadata derive; hosts exchanging public Wire
-limits/errors must align that dependency. Codec bytes and persistent layouts are
-unchanged; no backing reset is required. Neither adapter release remains pending.
+The 2026-11-06 authorized cleanup retired 69 bulk/repeated experimental data and
+prototype files and consolidated five superseded reports. The
+[measurement index](../measurements/README.md) links current summaries and selected
+results. All 565 cases retain backend status and selected Get/mutation costs;
+complete per-run outputs are no longer tracked documentation. Historical figures
+are not measurements of the current copied engines. Existing target run directories
+were left untouched but remain removable by explicit cargo clean; no permanent
+raw archive is promised and a digest cannot verify missing raw data.
 
-Unrelated root-lock supplier selections are preserved in
-`storage-tooling-030-preserved-pending-lock-inputs` and restored after deployment.
-Keep that stash and all earlier preservation stashes, including
-`storage-0670-preserved-pending-lock-inputs`; no historical evidence was deleted.
-Earlier Storage 0.67.0 and Wire-adoption evidence remains in
-`target/storage-0670-deploy/` and `target/wire-017-adoption/`.
+Source, release/recovery records, small qualification tables and consumer inventory
+remain intact. No cache, stash or target-tree cleanup was performed. Old collection
+formats/prototypes are retired, rather than maintained as alternate implementations.
+CI group qualification remains in `target/ci-group-selection/` and
+[the validation mapping](../storage-release-validation.md).
 
-## Included in Storage 0.66.3
+Preserve `storage-tooling-030-preserved-pending-lock-inputs`,
+`storage-0670-preserved-pending-lock-inputs`, all `metrics-068-*` stashes,
+`storage-0660-unselected-lock-edits`, `storage-0660-preserved-pending-inputs`,
+`storage-0655-unselected-lock-edits`, `storage-0654-unselected-lock-edits`,
+`storage-0653-unselected-lock-edits`, `storage-0653-hotspot-integration`, all other
+preservation stashes, failed attempts, historical caches, receipts and archives.
+Closed #153/#154 and publication evidence remain linked by the delivered handoff.
 
-The [ICSS hotspot audit](../audits/recurring/storage-icss-hotspots-2026-11-04.md)
-retains the 29-case/52-combination matrix, cursor and inline replacement gains,
-and rejected allocator/cache experiments. The two-way cache and inline update
-are selected; 64-byte allocator prototypes remain research. Preserve their
-tracked patches and `target/cursor-investigation/`, `target/key-only-investigation/`,
-`target/encoded-update-size/` and `target/small-block-investigation/` evidence.
-These are collection-level comparisons, not whole-endpoint throughput claims.
+## Deferred work and boundaries
 
-## Included CI group selection
+The [consumer inventory](../local-memory-audit.md) lists declarations, not live
+usage. Canic receipt bounds and complete Auth endpoints remain unqualified.
+Any adoption must explicitly replace old collection images and host framing.
+No current public API raw-backing extraction or independent ID assignment is added.
 
-Private adapter PRs now reuse the qualified release selector; non-docs pushes,
-core/shared/public/unknown changes remain full. Admitted plans scope four Cargo
-stages to the adapter, retaining workspace archives, policy and native/runtime
-obligations. CI source identity, runner checkpoints and upload evidence remain
-required. 87 helper tests, actual runner/Make scope fixtures, workflow/evidence
-fixtures and both adapters' real lint/features/docs/Wasm checks pass locally.
-See [the mapping](../storage-release-validation.md) and `target/ci-group-selection/`.
-No hosted acceptance, release or measured total speedup is claimed.
+The authorized IcyDB layout preparation exists only in `/tmp/icydb-control-layout`,
+branch `storage/control-allocation`, base `03c5713e`. Preserve its complete
+uncommitted tracked/untracked work; do not clean or continue implementation there.
+Its 685 focused tests and native/Wasm lint passed; installed composition is unqualified.
+Approval is pending for durable retention at `/home/adam/projects/icydb-control-layout`
+or an authorized draft PR. Do not modify the sibling or create an unsolicited PR.
 
-## Previous Metrics Storage 0.68.0
-
-Metrics 0.29 adoption is published and unyanked: source `f99bceb`, release `7c71b60`,
-tag `metrics-storage-v0.68.0` on origin/main. All 12 release stages passed; downloaded
-registry bytes match the qualified archive. Evidence: `target/metrics-068-deploy/`.
-Unrelated work is restored; preserve both `metrics-068-*` stashes and failed logs.
-
-## Prior Metrics 0.28 and Wire 0.16 adoption
-
-Storage 0.66.0, Metrics Storage 0.67.0 and Logging Storage 0.64.0 were published
-with matching archives; historical identities and qualification paths remain in the
-[delivered handoff](https://github.com/dragginzgame/ic-storage/blob/7c5cf83660ccefd98fb0947a011c99fdab464ef1/docs/status/current.md).
-Do not repeat publication; Linux proof does not claim native macOS completion.
-[Storage #154](https://github.com/dragginzgame/ic-storage/issues/154) is closed;
-schema decoupling shipped in PR #155, supplier Observability #128 closed upstream.
-Metrics Storage requires Metrics 0.28, Storage 0.66 and Wire 0.16; hosts align
-public Rust identities. Backing/metric rows need no reset; Logging's migration
-duties remain. Preserve `storage-0660-unselected-lock-edits`,
-`storage-0660-preserved-pending-inputs`, prior failed attempts and tool caches.
-
-## Published ICSS re-audit follow-through
-
-Storage 0.66.2 includes borrowed entry decoding and corrected bulk/size-churn
-benchmarks. The [re-audit](../audits/recurring/storage-icss-2026-11-03.md) preserves
-scope, raw evidence and the distinction between published ICSS 0.7.2 and b5d1650.
-
-## Prior publication and recovery
-
-[Storage #153](https://github.com/dragginzgame/ic-storage/issues/153) is closed on
-published Storage **0.65.5**, commit `127031ee`, tag `storage-v0.65.5`, and IcyDB's
-registry consumer evidence. Its verified archive SHA-256 is
-`4a5b1ea9a7b8f61e0ea22b257be5282795bd24ba77ab3d730afd02a46462b9aa`.
-Prior full gate, archives and original/O3/Os/Oz installed IO/upgrade/rollback proof
-remain in `target/storage-0655-deploy/`; do not repeat that release/upload.
-[Its delivered handoff](https://github.com/dragginzgame/ic-storage/blob/ce52130d9e945aefee017faf905fc65e1db40cb3/docs/status/current.md) retains earlier qualification paths and interpretations.
-
-Keep the `storage-0655-unselected-lock-edits`, `storage-0654-unselected-lock-edits`,
-`storage-0653-unselected-lock-edits` and `storage-0653-hotspot-integration` stashes.
-Earlier gate failures involved external lock edits and shared-target trybuild path
-mismatches; their logs and final successful independent qualification remain intact.
-Keep historical tool caches, recovery receipts and archives.
-
-## Deferred memory and performance work
-
-The [consumer audit](../local-memory-audit.md) records source inventories, not live
-usage. Canic receipt bounds still need qualification against Storage; no capacity
-failure or quantified saving is claimed. Role/feature counts are in the audit.
-
-The explicitly authorized IcyDB layout preparation exists only in
-`/tmp/icydb-control-layout`, branch `storage/control-allocation`, base `03c5713e`.
-It is uncommitted: preserve it, do not clean or continue implementation there.
-It separates schema controls, admits fresh images and rejects incompatible ones;
-685 focused tests and native/Wasm lint passed, but installed composition is unqualified.
-Approval remains pending to retain its complete tracked/untracked changes at
-`/home/adam/projects/icydb-control-layout` or prepare an authorized draft PR there.
-Do not change the normal sibling checkout or create an unsolicited PR.
-
-The prior node-buffer study shows small integer-path improvements but a **12.74%
-4 KiB batch-scan regression**, with total 4 KiB trace +0.15%; cause is unverified.
-Cell checksum throughput and external-payload scans remain profiling candidates.
-Matched measurements remain in `target/storage-node-buffers/` and
-`target/storage-comparison/`; nine matched 1/8/128-page ICSS bucket comparisons
-remain in `target/storage-bucket-study/`. These are collection-level measurements,
-not whole-endpoint speedups or a universal Storage/ICSS ranking.
-
-## Retained product boundaries
-
-Storage owns allocation, custody and five collection forms; opaque IDs, host
-lifecycle/framing and explicit fresh/reset backing remain. Map/Set/regions retain
-`ICMAP002`; retired manager/collection images require explicit rebuild, never
-an automatic reset or legacy decoder. Native failures poison ownership; IC traps
-use rollback. Current rows are unchanged by this Metrics/Wire adoption.
-
-Native production has no Runtime/Types. Default Wasm uses Runtime 0.19 IC0 only,
-without executor, CDK, guard, Types or Candid. The independent qualifier uses
-Platform/PocketIC 0.19.0, Testkit 0.79.0 and server 16.1.0. Platform 0.17 remains
-only as the explicit ICSS 0.7.2 benchmark facade; pinned DFINITY Git `b5d1650` is
-another research control. No sibling release or backing reset is authorized here.
+Native production has no Runtime/Types. Wasm selects Runtime IC0 only, without
+executor, CDK, guard, Types or Candid. Independent qualification uses Platform/
+PocketIC 0.19.0, Testkit 0.79.0 and server 16.1.0. Platform 0.17 remains only as
+the explicit ICSS 0.7.2 benchmark facade; pinned Git `b5d1650` is a research control.

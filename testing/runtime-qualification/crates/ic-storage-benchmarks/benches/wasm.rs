@@ -137,9 +137,14 @@ mod canister {
         map
     }
     mod collections;
+    mod matrix;
     use collections::{Region, TypedCell, TypedSet, TypedVector};
     #[unsafe(export_name = "canister_init")]
     extern "C" fn init() {
+        // Refusal probes must identify the violated bound, rather than treating
+        // every unreachable trap as the expected incompatibility. The hook is
+        // outside measured operations and only runs on failure.
+        std::panic::set_hook(Box::new(|info| ic0::trap(info.to_string().as_bytes())));
         let settings: Initialization = argument(0);
         let case = settings.case;
         macro_rules! typed {
@@ -152,6 +157,87 @@ mod canister {
             };
         }
         let map = match case {
+            Case::Typed {
+                collection,
+                key,
+                value,
+            } => matrix::create(case, collection, key, value, settings),
+            Case::U32U32 => typed!(u32, u32),
+            Case::U64Unit => typed!(u64, ()),
+            Case::U64BoundedBytes => typed!(u64, BoundedBytes<255>),
+            Case::BoundedBytesU64 => typed!(BoundedBytes<255>, u64),
+            Case::BoundedBytesBoundedBytes => typed!(BoundedBytes<255>, BoundedBytes<255>),
+            Case::BoundedBytesBytes => typed!(BoundedBytes<255>, Vec<u8>),
+            Case::BytesU64 => typed!(Vec<u8>, u64),
+            Case::BytesBoundedBytes => typed!(Vec<u8>, BoundedBytes<255>),
+            Case::BytesBytes => typed!(Vec<u8>, Vec<u8>),
+            Case::TupleOption => typed!(TupleKey, OptionalU64),
+            Case::SetBytes => Box::new(TypedSet::<Vec<u8>>::new(
+                case,
+                settings.upstream_bucket_pages,
+            )),
+            Case::SetBoundedBytes => Box::new(TypedSet::<BoundedBytes<255>>::new(
+                case,
+                settings.upstream_bucket_pages,
+            )),
+            Case::SetTuple => Box::new(TypedSet::<TupleKey>::new(
+                case,
+                settings.upstream_bucket_pages,
+            )),
+            Case::VectorUnit => {
+                Box::new(TypedVector::<()>::new(case, settings.upstream_bucket_pages))
+            }
+            Case::VectorU8 => {
+                Box::new(TypedVector::<u8>::new(case, settings.upstream_bucket_pages))
+            }
+            Case::VectorU16 => Box::new(TypedVector::<u16>::new(
+                case,
+                settings.upstream_bucket_pages,
+            )),
+            Case::VectorU32 => Box::new(TypedVector::<u32>::new(
+                case,
+                settings.upstream_bucket_pages,
+            )),
+            Case::VectorBool => Box::new(TypedVector::<bool>::new(
+                case,
+                settings.upstream_bucket_pages,
+            )),
+            Case::VectorF32 => Box::new(TypedVector::<f32>::new(
+                case,
+                settings.upstream_bucket_pages,
+            )),
+            Case::VectorOption => Box::new(TypedVector::<OptionalU64>::new(
+                case,
+                settings.upstream_bucket_pages,
+            )),
+            Case::VectorBounded255 => Box::new(TypedVector::<BoundedBytes<255>>::new(
+                case,
+                settings.upstream_bucket_pages,
+            )),
+            Case::VectorBounded256 => Box::new(TypedVector::<BoundedBytes<256>>::new(
+                case,
+                settings.upstream_bucket_pages,
+            )),
+            Case::VectorBounded65535 => Box::new(TypedVector::<BoundedBytes<65535>>::new(
+                case,
+                settings.upstream_bucket_pages,
+            )),
+            Case::VectorBounded65536 => Box::new(TypedVector::<BoundedBytes<65536>>::new(
+                case,
+                settings.upstream_bucket_pages,
+            )),
+            Case::CellString => Box::new(TypedCell::<String>::new(
+                case,
+                settings.upstream_bucket_pages,
+            )),
+            Case::CellUnit => Box::new(TypedCell::<()>::new(case, settings.upstream_bucket_pages)),
+            Case::CellBool => {
+                Box::new(TypedCell::<bool>::new(case, settings.upstream_bucket_pages))
+            }
+            Case::CellOption => Box::new(TypedCell::<OptionalU64>::new(
+                case,
+                settings.upstream_bucket_pages,
+            )),
             Case::U64Bytes => typed!(u64, Vec<u8>),
             Case::U64U64 => typed!(u64, u64),
             Case::U64U128 => typed!(u64, u128),
@@ -175,6 +261,10 @@ mod canister {
                 case,
                 settings.upstream_bucket_pages,
             )),
+            Case::VectorSession => Box::new(TypedVector::<SessionEnvelope>::new(
+                case,
+                settings.upstream_bucket_pages,
+            )),
             Case::VectorRecord => Box::new(TypedVector::<WireRecord>::new(
                 case,
                 settings.upstream_bucket_pages,
@@ -187,7 +277,10 @@ mod canister {
                 case,
                 settings.upstream_bucket_pages,
             )),
-            Case::RegionBytes => Box::new(Region::new(settings.upstream_bucket_pages)),
+            Case::RegionBytes => Box::new(Region::<u64, Vec<u8>>::new(
+                case,
+                settings.upstream_bucket_pages,
+            )),
             Case::I64I64 => typed!(Signed64, Signed64),
             Case::U128U128 => typed!(u128, u128),
             Case::Bytes64U128 => typed!([u8; 64], u128),
@@ -238,9 +331,25 @@ mod canister {
         assert!(r.count <= 128);
         MAP.with(|slot| reply(3, &slot.borrow().as_ref().unwrap().verify(r)));
     }
+    #[unsafe(export_name = "canister_query benchmark_read")]
+    extern "C" fn benchmark_read() {
+        let r: Request = argument(RUN_ID);
+        assert_eq!(r.case, Case::VectorSession);
+        assert!((1..=max_batch(r.case)).contains(&r.count));
+        assert!(matches!(
+            r.operation,
+            Operation::Control
+                | Operation::Get
+                | Operation::WarmGet
+                | Operation::Decode
+                | Operation::MissAbove
+        ));
+        MAP.with(|slot| reply(RUN_ID, &slot.borrow_mut().as_mut().unwrap().run(r)));
+    }
     #[unsafe(export_name = "canister_update benchmark")]
     extern "C" fn benchmark() {
         let r: Request = argument(RUN_ID);
+        assert!((1..=max_batch(r.case)).contains(&r.count));
         MAP.with(|slot| reply(RUN_ID, &slot.borrow_mut().as_mut().unwrap().run(r)));
     }
     impl<K: BenchKey + Storable, V: BenchValue + Storable> Benchmark for TypedMap<K, V> {
@@ -274,8 +383,17 @@ mod canister {
             assert_eq!(r.case, self.case);
             assert!(self.case.accepts_payload(r.payload));
             let ids = keys(r);
+            let skips: Vec<_> = if matches!(r.operation, Operation::Nth | Operation::NthBack) {
+                ids.iter().map(|&id| id as usize).collect()
+            } else {
+                Vec::new()
+            };
             let scan_start = K::from_id(ids[0]);
-            let scan_end = K::from_id(ids[0] + u64::from(r.count.div_ceil(2)));
+            let scan_end = matches!(
+                r.operation,
+                Operation::BoundedScan | Operation::BoundedKeysScan
+            )
+            .then(|| K::from_id(ids[0] + u64::from(r.count.div_ceil(2))));
             // Prepare owned input and result keys before timing: inserts consume keys.
             let inputs: Vec<_> = ids
                 .into_iter()
@@ -298,15 +416,56 @@ mod canister {
             let mut entries = Vec::with_capacity(r.count as usize);
             let mut booleans = Vec::with_capacity(r.count as usize);
             let mut key_entries = Vec::with_capacity(r.count as usize);
+            let mut values = if r.operation == Operation::ValuesScan {
+                Vec::with_capacity(r.count as usize)
+            } else {
+                Vec::new()
+            };
             let start = ic0::performance_counter(0);
             if r.operation == Operation::KeysScan {
-                #[cfg(feature = "owned")]
                 for key in self.map.keys().take(r.count as usize) {
                     key_entries.push(checked!(key));
                 }
-                #[cfg(any(feature = "dfinity", feature = "dfinity-head"))]
-                for key in self.map.keys().take(r.count as usize) {
-                    key_entries.push(key);
+            } else if r.operation == Operation::ReverseKeysScan {
+                for key in self.map.keys().rev().take(r.count as usize) {
+                    key_entries.push(checked!(key));
+                }
+            } else if r.operation == Operation::BoundedKeysScan {
+                for key in self
+                    .map
+                    .keys_range(scan_start..scan_end.expect("bounded key scan endpoint"))
+                    .take(r.count as usize)
+                {
+                    key_entries.push(checked!(key));
+                }
+            } else if r.operation == Operation::ValuesScan {
+                for value in self.map.values().take(r.count as usize) {
+                    values.push(checked!(value));
+                }
+            } else if matches!(r.operation, Operation::Nth | Operation::NthBack) {
+                for skip in skips {
+                    let entry = if r.operation == Operation::Nth {
+                        self.map.iter().nth(skip)
+                    } else {
+                        self.map.iter().nth_back(skip)
+                    };
+                    let (key, value) =
+                        checked!(checked!(entry.expect("admitted ordered index")).into_pair());
+                    entries.push((key, Some(value)));
+                }
+            } else if r.operation == Operation::AlternatingScan {
+                let mut iter = self.map.iter();
+                for step in 0..r.count {
+                    let entry = if step % 2 == 0 {
+                        iter.next()
+                    } else {
+                        iter.next_back()
+                    };
+                    let Some(entry) = entry else {
+                        break;
+                    };
+                    let (key, value) = checked!(checked!(entry).into_pair());
+                    entries.push((key, Some(value)));
                 }
             } else if matches!(r.operation, Operation::First | Operation::Last) {
                 for _ in 0..r.count {
@@ -320,7 +479,11 @@ mod canister {
                     }
                 }
             } else if r.operation == Operation::BoundedScan {
-                for entry in self.map.range(scan_start..scan_end).take(r.count as usize) {
+                for entry in self
+                    .map
+                    .range(scan_start..scan_end.expect("bounded scan endpoint"))
+                    .take(r.count as usize)
+                {
                     let (key, value) = checked!(checked!(entry).into_pair());
                     entries.push((key, Some(value)));
                 }
@@ -364,6 +527,7 @@ mod canister {
             }
             let instructions = ic0::performance_counter(0) - start;
             Response {
+                decode: None,
                 instructions,
                 // Normalization is deliberately after the measured interval.
                 entries: if r.operation == Operation::Contains {
@@ -371,7 +535,16 @@ mod canister {
                         .into_iter()
                         .map(|(k, v)| (k.id(), Some(vec![u8::from(v)])))
                         .collect()
-                } else if r.operation == Operation::KeysScan {
+                } else if r.operation == Operation::ValuesScan {
+                    values
+                        .into_iter()
+                        .enumerate()
+                        .map(|(rank, value)| (rank as u64, Some(value.canonical())))
+                        .collect()
+                } else if matches!(
+                    r.operation,
+                    Operation::KeysScan | Operation::ReverseKeysScan | Operation::BoundedKeysScan
+                ) {
                     key_entries
                         .into_iter()
                         .map(|k| (k.id(), Some(vec![])))

@@ -26,6 +26,9 @@ struct Arguments {
     /// Qualify only the supplied logging fixture, without Memory/Storage suites.
     #[arg(long, conflicts_with = "measure_valid_io")]
     logging_only: bool,
+    /// Qualify only collection IO, admission, upgrade and rollback in the Storage fixture.
+    #[arg(long, conflicts_with_all = ["measure_valid_io", "logging_only"])]
+    storage_only: bool,
 }
 
 fn assert_trap(error: ClientError) {
@@ -64,7 +67,9 @@ fn install_fixture(pic: &PocketIc, wasm: &[u8], init: Vec<u8>) -> ExternalPrinci
 fn main() {
     let arguments = Arguments::parse();
     let pic = connect_to_server();
-    if arguments.logging_only {
+    if arguments.storage_only {
+        storage::qualify(&pic);
+    } else if arguments.logging_only {
         logging::qualify(&pic);
     } else {
         memory::qualify(&pic, arguments.measure_valid_io);

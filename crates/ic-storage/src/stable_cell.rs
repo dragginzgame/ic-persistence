@@ -2,9 +2,9 @@ use crate::{Memory, WASM_PAGE_SIZE_BYTES};
 use thiserror::Error;
 
 /// Stable-cell magic prefix written by `Storage Cell`.
-pub const STABLE_CELL_MAGIC: &[u8; 8] = b"ICCELL01";
+pub const STABLE_CELL_MAGIC: &[u8; 3] = b"SCL";
 /// Stable-cell header byte length.
-pub const STABLE_CELL_HEADER_SIZE: usize = 24;
+pub const STABLE_CELL_HEADER_SIZE: usize = 8;
 /// Byte offset where the stable-cell value payload starts.
 pub const STABLE_CELL_VALUE_OFFSET: u64 = STABLE_CELL_HEADER_SIZE as u64;
 
@@ -59,10 +59,10 @@ pub fn stable_cell_payload_length<M: Memory>(
 
     let mut header = [0; STABLE_CELL_HEADER_SIZE];
     memory.read(0, &mut header);
-    if &header[..8] != STABLE_CELL_MAGIC || header[12..16].iter().any(|&byte| byte != 0) {
+    if &header[..3] != STABLE_CELL_MAGIC || header[3] != 1 {
         return Err(StableCellPayloadError::NotStableCell);
     }
-    let value_len = u64::from(u32::from_le_bytes(header[8..12].try_into().unwrap()));
+    let value_len = u64::from(u32::from_le_bytes(header[4..8].try_into().unwrap()));
     let available_bytes = memory.size().saturating_mul(WASM_PAGE_SIZE_BYTES);
     let payload_capacity = available_bytes.saturating_sub(STABLE_CELL_VALUE_OFFSET);
     if value_len > payload_capacity {

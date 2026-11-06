@@ -74,10 +74,15 @@ measurements. Use the current guides above for present-day API instructions.
 - [Recurring audit records](audits/recurring)
 
 Current maintenance reviews use the [shared methods and Persistence overlay](audits/README.md).
-Historical reports retain their original methods and measurements.
+Historical reports identify the methods and selected results they retain.
 
-Measurement CSVs under `measurements/` belong to the historical reports that
-link to them.
+The [current Storage/ICSS comparison](audits/recurring/benchmark-full-catalogue-2026-11-05.md)
+retains a compact selection covering all 565 cases. Superseded experiment exports
+and prototype patches were retired in the authorized evidence cleanup; they are
+not a permanent archive. New raw output belongs under `target/evidence/` and is
+removable by explicit `cargo clean`. Small historical qualification tables and
+consumer inventories remain with their existing owners; see the
+[measurement index](measurements/README.md).
 
 ## Maintainers
 

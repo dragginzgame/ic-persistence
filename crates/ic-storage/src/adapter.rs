@@ -5,15 +5,14 @@
 //! Use distinct admitted allocations for owning collections. Region views retain
 //! a shared lease for disjoint application frames and reload roots per operation.
 //! Drop collections and all shared lease owners before reopening.
-//! Collection IO and codecs return typed errors for validation and capacity
-//! refusal. Backing panics/traps remain host failures; native writes are not atomic.
-//! Map and set iterators yield `Result` entries and stop after an iteration error.
+//! Framing admission and explicit reservation can return typed errors. Collection
+//! engine and codec failures trap. Successful-call `Result` signatures remain;
+//! native callers must discard the runtime after a mutation panic.
 //! The allocation runtime enforces one live lease per allocation;
 //! hosts retain exclusive custody of the backing across runtimes.
 // Collection APIs require public documentation in addition to workspace Clippy.
 #![warn(clippy::all, clippy::pedantic, missing_docs)]
 use crate::DefaultMemoryImpl;
-use crate::RuntimeMemory;
 pub use crate::storable::{Bound, CodecError, Storable};
 /// Storage-owned interfaces for backing bounds and record codecs.
 /// Implementing `Memory` grants no allocation authority; constructors require
@@ -24,9 +23,9 @@ pub use crate::{Memory, storable};
 mod tests;
 
 mod error;
-mod record;
 pub use error::CollectionError;
-mod tree;
+mod bridge;
+mod iteration;
 
 mod region;
 pub use region::{BTreeMapRegion, RegionGrowError};
@@ -41,7 +40,6 @@ mod vector;
 pub use vector::StableVec;
 
 /// Ordered map iterator retaining the collection borrow.
-pub type MapIter<'a, K, V, M = DefaultMemoryImpl> = tree::TreeIter<'a, K, V, RuntimeMemory<M>>;
-pub use tree::MapEntry;
+pub use iteration::{MapEntry, MapIter};
 /// Ordered set iterator retaining the collection borrow.
 pub type SetIter<'a, K, M = DefaultMemoryImpl> = set::SetIter<'a, K, M>;

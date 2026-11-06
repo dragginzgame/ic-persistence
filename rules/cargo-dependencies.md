@@ -1,5 +1,5 @@
 # Cargo dependency ownership
-<!-- Shared companions: ci/examples/platform-owner-boundaries.json -->
+<!-- Shared companions: ci/examples/platform-owner-boundaries.json rules/rust-workspaces.md -->
 
 These rules are part of the mandatory [engineering baseline](../DRAGGINZGAME.md).
 The repository's root `Cargo.toml` is the authoritative catalog of direct
@@ -172,6 +172,12 @@ Cargo boundary checker does not inspect npm manifests or JavaScript imports.
   application codecs and resource admission. Platform owns the external dependency boundary;
   this rule does not move those product implementations into Platform. General
   purpose dependencies such as Serde remain with their consuming crates.
+
+CBOR is an explicit exception to that general-purpose allowance: its dependency,
+codec and fixture ownership follows the
+[application encoding contract](engineering-details.md#ic-application-encoding),
+even when a CBOR package is not IC-specific. The native Testkit exception above
+does not include CBOR codecs.
 
 Apply the baseline's [IC application encoding policy](../DRAGGINZGAME.md#ic-application-encoding)
 before adding or retaining a Candid dependency or requesting another Platform

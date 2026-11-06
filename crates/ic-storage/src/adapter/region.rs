@@ -1,6 +1,6 @@
 //! Operation-local collection access within a retained allocation region.
+use super::bridge::{self, Backing, Codec};
 use super::error::{CollectionError as Error, Result as CollectionResult, ensure};
-use super::tree::Tree;
 use super::{Memory, Storable};
 use crate::DefaultMemoryImpl;
 use crate::{RuntimeGrowError, RuntimeMemory, WASM_PAGE_SIZE_BYTES as PAGE_BYTES};
@@ -38,7 +38,8 @@ pub enum RegionGrowError {
 /// Applications own namespace bounds, codec admission and recovery policy.
 ///
 /// Construction performs no IO. Inspect retained framing with [`Self::read`]
-/// before calling collection operations, which return collection admission errors. Only [`Self::initialize`] creates a tree, and only in an empty
+/// before calling collection operations. Framing admission returns errors;
+/// engine and codec failures trap. Only [`Self::initialize`] creates a tree, and only in an empty
 /// region. No method reinitializes nonempty memory or exports raw backing.
 /// As with ordinary collections, callers must not reenter collection access
 /// from a codec or mutate the tree's bytes through their retained lease.
@@ -68,7 +69,7 @@ impl<K: Storable + Ord + Clone, V: Storable, M: Memory> BTreeMapRegion<K, V, M> 
     /// Return the currently allocated relative extent in Wasm pages.
     #[must_use]
     pub fn allocated_pages(&self) -> u64 {
-        (&self.memory).size()
+        self.memory.size()
     }
 
     /// Read relative bytes for the application's retained-framing admission.
@@ -77,7 +78,7 @@ impl<K: Storable + Ord + Clone, V: Storable, M: Memory> BTreeMapRegion<K, V, M> 
     /// Panics before IO if the complete read exceeds the allocated region.
     /// An empty read is valid at the region's end, but not beyond it.
     pub fn read(&self, offset: u64, dst: &mut [u8]) {
-        (&self.memory).read(offset, dst);
+        self.memory.read(offset, dst);
     }
 
     /// Create an owned tree only when the selected region has zero pages.
@@ -89,7 +90,10 @@ impl<K: Storable + Ord + Clone, V: Storable, M: Memory> BTreeMapRegion<K, V, M> 
     /// Rejects a nonempty region or capacity refusal without initializing a replacement.
     pub fn initialize(&mut self) -> CollectionResult<()> {
         ensure(self.allocated_pages() == 0, Error::NotEmpty)?;
-        Tree::<K, V, _>::reset(&self.memory)?;
+        bridge::reserve(&self.memory)?;
+        #[cfg(not(target_arch = "wasm32"))]
+        let _guard = self.memory.memory.poison_on_unwind();
+        bridge::Map::<K, V, _>::new(Backing(&self.memory));
         Ok(())
     }
 
@@ -108,31 +112,41 @@ impl<K: Storable + Ord + Clone, V: Storable, M: Memory> BTreeMapRegion<K, V, M> 
     /// Read a record using the current retained root.
     ///
     /// # Errors
-    /// Reports structural, integrity or application decoding failures without writing.
+    /// Refuses foreign framing; engine and stored-codec failures trap.
     pub fn get(&self, key: &K) -> CollectionResult<Option<V>> {
-        self.current_map()?.get(key)
+        Ok(self.current_map()?.get(Codec::borrowed(key)).map(|v| v.0))
     }
 
-    /// Insert using the current retained root and staged node updates.
+    /// Insert using the current retained root and copied ICSS engine.
     ///
     /// # Errors
-    /// Rejects encoding, decoding, structural or capacity errors before committing writes.
+    /// Refuses foreign framing. Engine/codec failures trap, possibly after native writes.
     pub fn insert(&mut self, key: K, value: V) -> CollectionResult<Option<V>> {
-        self.current_map()?.insert(key, value)
+        #[cfg(not(target_arch = "wasm32"))]
+        let _guard = self.memory.memory.poison_on_unwind();
+        Ok(self
+            .current_map()?
+            .insert(Codec(key), Codec(value))
+            .map(|v| v.0))
     }
 
-    /// Remove using the current retained root and staged node updates.
+    /// Remove using the current retained root and copied ICSS engine.
     ///
     /// # Errors
-    /// Rejects decoding or structural errors before committing removal.
+    /// Refuses foreign framing. Engine/codec failures trap, possibly after native writes.
     pub fn remove(&mut self, key: &K) -> CollectionResult<Option<V>> {
-        self.current_map()?.remove(key)
+        #[cfg(not(target_arch = "wasm32"))]
+        let _guard = self.memory.memory.poison_on_unwind();
+        Ok(self
+            .current_map()?
+            .remove(Codec::borrowed(key))
+            .map(|v| v.0))
     }
 
     /// Return the current tree's record count across all namespaces.
     ///
     /// # Errors
-    /// Reports invalid region metadata or incompatible codec bounds.
+    /// Refuses foreign framing; malformed engine state traps.
     pub fn len(&self) -> CollectionResult<u64> {
         Ok(self.current_map()?.len())
     }
@@ -140,7 +154,7 @@ impl<K: Storable + Ord + Clone, V: Storable, M: Memory> BTreeMapRegion<K, V, M> 
     /// Return whether the current tree has no records.
     ///
     /// # Errors
-    /// Reports invalid region metadata or incompatible codec bounds.
+    /// Refuses foreign framing; malformed engine state traps.
     pub fn is_empty(&self) -> CollectionResult<bool> {
         Ok(self.current_map()?.len() == 0)
     }
@@ -151,7 +165,7 @@ impl<K: Storable + Ord + Clone, V: Storable, M: Memory> BTreeMapRegion<K, V, M> 
     /// with no collection cache, memory handle or borrow across later mutations.
     ///
     /// # Errors
-    /// Reports invalid ranges, retained structure or key decoding failures.
+    /// Refuses foreign framing; invalid ranges, engine state or key codecs can trap.
     pub fn keys_range(
         &self,
         bounds: impl RangeBounds<K>,
@@ -167,7 +181,7 @@ impl<K: Storable + Ord + Clone, V: Storable, M: Memory> BTreeMapRegion<K, V, M> 
     /// The limit bounds key count, not encoded bytes or instruction cost.
     ///
     /// # Errors
-    /// Reports invalid ranges, retained structure or key decoding failures.
+    /// Refuses foreign framing; invalid ranges, engine state or key codecs can trap.
     pub fn keys_range_limited(
         &self,
         bounds: impl RangeBounds<K>,
@@ -178,14 +192,16 @@ impl<K: Storable + Ord + Clone, V: Storable, M: Memory> BTreeMapRegion<K, V, M> 
         }
         Ok(self
             .current_map()?
-            .keys_range(bounds)
+            .keys_range(super::map::codec_bounds(&bounds))
             .take(limit)
-            .collect::<CollectionResult<Vec<_>>>()?
+            .map(|k| k.0)
+            .collect::<Vec<_>>()
             .into_iter())
     }
 
-    fn current_map(&self) -> CollectionResult<Tree<K, V, &RegionMemory<M>>> {
-        Tree::load(&self.memory)
+    fn current_map(&self) -> CollectionResult<bridge::Map<K, V, &RegionMemory<M>>> {
+        bridge::admit_map(&self.memory)?;
+        Ok(bridge::Map::load(Backing(&self.memory)))
     }
 }
 
@@ -218,7 +234,7 @@ impl<M: Memory> RegionMemory<M> {
     }
 }
 
-impl<M: Memory> Memory for &RegionMemory<M> {
+impl<M: Memory> Memory for RegionMemory<M> {
     fn size(&self) -> u64 {
         self.memory.size().clamp(self.pages.start, self.pages.end) - self.pages.start
     }

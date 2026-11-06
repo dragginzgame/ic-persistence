@@ -82,6 +82,14 @@ fn memory_wire_frames_admit_extremes_and_refuse_identity_trailing_and_budget_err
 #[test]
 fn measurement_arguments_reject_extra_tokens() {
     assert!(
+        Arguments::try_parse_from(["runner", "--storage-only"])
+            .unwrap()
+            .storage_only
+    );
+    for other in ["--logging-only", "--measure-valid-io"] {
+        assert!(Arguments::try_parse_from(["runner", "--storage-only", other]).is_err());
+    }
+    assert!(
         Arguments::try_parse_from(["runner", "--logging-only"])
             .unwrap()
             .logging_only
