@@ -1,15 +1,32 @@
 # Current handoff — 2026-11-06
 
-## Local Shared Tooling refresh after publication
+## Delivered: Storage 0.68.2 through Shared release batches
 
-Shared Tooling 0.31.0 (`7431394`, 159 files) is adopted locally. Grouped releases
-capture automatically; the candidate setup hook owns initial tool/cache preparation
-and offline tool admission during recovery. Publication remains explicit. The old
-opt-in names and runner are retired. Current instructions are in RELEASING.md
-and the shared batch guide. Consumer routing/setup tests use substituted release
-effects; no live batch delivery is claimed by adoption. Both incoming lockfiles
-are preserved. Evidence: `target/evidence/shared-tooling-0310/`. Published Storage
-0.68.1 remains unchanged; the next pending tooling notes are under 0.68.2.
+Storage 0.68.2 is published and non-yanked, with annotated tag `storage-v0.68.2`
+at `1c08ecf6ec8c0aa01c9c9fe73f5d2d818df2d9dc`. Shared 0.31.0 (`7431394`)
+captured source `f911ba0` in `batch-1QTqeCag`, prepared its tools/caches and ran
+all 12 required stages in that checkout. Native tests, tooling/recovery,
+documentation, Wasm, size budgets and all-three-package archive qualification pass.
+The batch recorded the release commit before publication, completed index 1 of 1,
+and left the normal checkout unchanged. Shared's guarded reconciliation then
+fast-forwarded the clean normal branch. Neither adapter version changed.
+
+The downloaded registry archive and sparse index match the final receipt checksum
+`accdfc2a7880dcdd5ce38495a71fc19e70c54d7546ce1cea47adeb7858745c2b`;
+its clean embedded VCS identity matches the independently observed GitHub tag.
+Receipt/logs remain under `target/release-frozen/batch-1QTqeCag/target/`;
+durable intent/Git state is `.git/release-state/frozen/batch-1QTqeCag/`.
+Verification, status and reconciliation evidence: `target/evidence/storage-0682-deploy/`.
+No batch or old evidence was retired. Hosted CI remains a separate observation.
+
+The first attempt, `batch-DqMimxOk`, failed before metadata mutation because the
+routing fixture inherited the publication setting. The fixture now clears its
+independent batch selections and passes with that setting present. Its failed
+source, journal and logs remain intact; no release commit or publication occurred
+in that attempt. The corrected source was captured in a new batch, without
+rewriting the failed candidate. The initial adoption evidence remains under
+`target/evidence/shared-tooling-0310/`. The batch also qualified the pre-existing
+locked IC Wire 0.17.5 selection without upgrading additional dependencies.
 
 ## Delivered: Storage 0.68.1
 

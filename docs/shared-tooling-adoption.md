@@ -34,6 +34,17 @@ Evidence, failed observations and incoming lock hashes are under
 `target/evidence/shared-tooling-0310/`. Both selected lockfiles are preserved,
 including the maintainer's unrelated pending root dependency selection.
 
+Storage 0.68.2 subsequently qualifies the actual Storage-only batch delivery on
+Linux: captured setup, all 12 native/archive stages, push, publication, recorded
+release identity and guarded reconciliation pass in `batch-1QTqeCag`. The downloaded
+archive matches the receipt and tag. The first live attempt exposed inherited
+publication context in the consumer routing fixture; the fixture now clears its
+owned selections, and the failed batch remains retained without mutation.
+See the current handoff and `target/evidence/storage-0682-deploy/`. This is actual
+single-group delivery proof, not a claim of multi-group isolation, interrupted
+publication recovery or another native host. No alternate implementation checkout
+or generic producer fixture was used.
+
 ## Previous 0.30.8 qualification
 
 IC Storage selects committed Shared Tooling VERSION 0.30.8 at
