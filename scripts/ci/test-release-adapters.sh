@@ -19,7 +19,7 @@ ROOT="${ROOT%/.}"
 FIXTURE_TOOLCHAIN="$(sed -n 's/^channel = "\([^"]*\)"$/\1/p' "$ROOT/rust-toolchain.toml")"
 [[ "$FIXTURE_TOOLCHAIN" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || exit 1
 export FIXTURE_TOOLCHAIN
-bash "$ROOT/scripts/ci/check-release-commands.sh" "$ROOT" rust-toolchain.toml ci/release-tools.env ci/runtime-tools.env ci/tool-versions.env make/consumer.mk make/tools.mk make/release.mk make/rust-format.mk make/execution.mk scripts/ci/check-make-execution.sh scripts/ci/check-release-delivery.sh
+RELEASE_BATCH_ACTIVE=1 bash "$ROOT/scripts/ci/check-release-commands.sh" "$ROOT" rust-toolchain.toml ci/release-tools.env ci/runtime-tools.env ci/tool-versions.env make/consumer.mk make/tools.mk make/release.mk make/rust-format.mk make/execution.mk scripts/ci/check-make-execution.sh scripts/ci/check-release-delivery.sh
 mkdir -p "$ROOT/target/fixtures"
 FIXTURE="$(mktemp -d "$ROOT/target/fixtures/ic-storage-release-adapters.XXXXXX")"
 FIXTURE="$(CDPATH="" cd -P -- "$FIXTURE" && printf '%s/.' "$PWD")"
@@ -61,6 +61,8 @@ cp "$ROOT/scripts/ci/validation-cargo.sh" "$ROOT/scripts/ci/validate-storage-wor
 test_make_admission() (
     # Keep child exit handling and environment local; the outer trap owns retention.
     trap - EXIT
+    # Exercise hooks inside the admitted batch; outer dispatch is checked separately.
+    export RELEASE_BATCH_ACTIVE=1
     local FIXTURE="$suite_root/make"
     prepare_make_fixture "$FIXTURE"
 cat > "$FIXTURE/scripts/ci/run-release.sh" <<'STUB'
@@ -1006,11 +1008,68 @@ for package in ic-storage ic-metrics-storage ic-logging-storage; do
 done
 )
 
+test_release_batch_adoption() (
+    trap - EXIT
+    local FIXTURE="$suite_root/batch"
+    prepare_make_fixture "$FIXTURE"
+    cat > "$FIXTURE/scripts/ci/run-release-batch.pl" <<'STUB'
+use strict;
+use warnings;
+open my $out, '>', 'batch-argv' or die $!;
+print {$out} join("\n", @ARGV), "\n";
+close $out or die $!;
+STUB
+    for group in storage metrics-storage logging-storage; do
+        for kind in patch minor major; do
+            (cd "$FIXTURE"; env -u RELEASE_BATCH_ACTIVE make --no-print-directory \
+                "release-$kind" RELEASE_GROUP="$group" RELEASE_PUBLISH_TARGET=publish)
+            printf '%s\n' --root "$FIXTURE" --groups "$group" --kind "$kind" \
+                --remote origin --branch main --delivery direct --publish-target publish \
+                --setup-target release-candidate-setup > "$FIXTURE/expected-argv"
+            cmp "$FIXTURE/expected-argv" "$FIXTURE/batch-argv"
+        done
+    done
+    (cd "$FIXTURE"; env -u RELEASE_BATCH_ACTIVE make --no-print-directory release-patch \
+        RELEASE_GROUP= RELEASE_GROUPS=storage,metrics-storage,logging-storage)
+    printf '%s\n' --root "$FIXTURE" --groups storage,metrics-storage,logging-storage \
+        --kind patch --remote origin --branch main --delivery direct \
+        --setup-target release-candidate-setup > "$FIXTURE/expected-argv"
+    cmp "$FIXTURE/expected-argv" "$FIXTURE/batch-argv"
+    cat > "$FIXTURE/setup-make" <<'STUB'
+#!/usr/bin/env bash
+printf '%s\n' "$*" >> setup-events
+exit "${SETUP_STATUS:-0}"
+STUB
+    chmod +x "$FIXTURE/setup-make"
+    for mode in prepare check; do
+        (cd "$FIXTURE"; make --no-print-directory release-candidate-setup \
+            RELEASE_SETUP_MODE="$mode" MAKE=./setup-make)
+    done
+    printf '%s\n' '--no-print-directory install-tools fetch-dependencies' \
+        '--no-print-directory tools-check format-tools-check' > "$FIXTURE/setup-expected"
+    cmp "$FIXTURE/setup-expected" "$FIXTURE/setup-events"
+    if (cd "$FIXTURE"; SETUP_STATUS=23 make --no-print-directory release-candidate-setup \
+        RELEASE_SETUP_MODE=prepare MAKE=./setup-make) > "$FIXTURE/setup-failure.log" 2>&1; then
+        echo 'batch setup swallowed prerequisite failure' >&2; exit 1
+    fi
+    cp "$FIXTURE/setup-events" "$FIXTURE/setup-before"
+    if (cd "$FIXTURE"; make --no-print-directory release-candidate-setup \
+        RELEASE_SETUP_MODE=unknown MAKE=./setup-make) > "$FIXTURE/setup-mode.log" 2>&1; then
+        echo 'batch setup accepted unknown recovery mode' >&2; exit 1
+    fi
+    cmp "$FIXTURE/setup-before" "$FIXTURE/setup-events"
+)
+
 if [[ "${1:-}" == --bootstrap-only && $# == 1 ]]; then
     test_bootstrap_recovery
+elif [[ "${1:-}" == --make-only && $# == 1 ]]; then
+    test_make_admission
+    test_release_batch_adoption
+    test_jobserver_handoff
 else
     [[ $# == 0 ]] || exit 2
     test_make_admission
+    test_release_batch_adoption
     test_jobserver_handoff
     test_release_receipts
     test_bootstrap_recovery

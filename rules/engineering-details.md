@@ -532,6 +532,13 @@ contracts; ordinary development does not require rereading these mechanics.
 
 ## Release commands
 
+- Grouped Cargo increment commands capture frozen inputs by default; an explicit
+  `RELEASE_GROUP` selects one group, and multiple groups require an explicit roster.
+  Keep publication on that captured source so concurrent
+  normal-checkout lock updates belong to the next batch. Use Shared's
+  [batch setup, recovery and custody interfaces](../docs/release-batches.md),
+  rather than adding local orchestration wrappers. Qualify the consumer's real
+  hooks before activation; an imported helper alone does not complete adoption.
 - Every `dragginzgame` repository, including Shared Tooling, must expose
   `make release-patch`, `make release-minor` and `make release-major`.
   All three use the same [release contract and Makefile pattern](../docs/releases.md):

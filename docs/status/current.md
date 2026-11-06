@@ -1,5 +1,16 @@
 # Current handoff — 2026-11-06
 
+## Local Shared Tooling refresh after publication
+
+Shared Tooling 0.31.0 (`7431394`, 159 files) is adopted locally. Grouped releases
+capture automatically; the candidate setup hook owns initial tool/cache preparation
+and offline tool admission during recovery. Publication remains explicit. The old
+opt-in names and runner are retired. Current instructions are in RELEASING.md
+and the shared batch guide. Consumer routing/setup tests use substituted release
+effects; no live batch delivery is claimed by adoption. Both incoming lockfiles
+are preserved. Evidence: `target/evidence/shared-tooling-0310/`. Published Storage
+0.68.1 remains unchanged; the next pending tooling notes are under 0.68.2.
+
 ## Delivered: Storage 0.68.1
 
 This checkout owns Storage delivery; Platform is released from its own repository.

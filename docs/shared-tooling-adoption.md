@@ -9,6 +9,48 @@ local baseline. Future policy changes require reviewed snapshot adoption.
 
 ## Current source selection
 
+Storage selects Shared Tooling 0.31.0 at
+`74313941af2fce4399bec0e6909ca6229673c3f8`, verified against pushed main and
+exported with the canonical exporter. The 159-file closure replaces the old
+runner/guide with `run-release-batch.pl` and `release-batches.md`; it also adopts
+strict snapshot annotation/checksum and npm schema-3 admission. This repository
+has no npm workspace. There are no active pre-0.31 batch journals to migrate;
+completed standard release receipts remain with their original source/tooling.
+
+Grouped releases now capture automatically. Storage declares one candidate setup
+hook: prepare selected tools and locked dependencies before version lookup;
+check existing tools offline on recovery. Publication stays explicitly selected.
+Both single-group and explicit multi-group rosters route through Shared; native
+group hooks retain their receipt/source/archive admission. Consumer fixtures
+separately exercise outer batch argv and inner hook dispatch using effect
+substitutes, including setup refusal and failure propagation. No test creates a
+Git commit/tag, publishes a package or invokes a maintainer release command.
+The real setup target passes prepare/check in the normal checkout with the
+existing selected tooling. Snapshot/source verification, dependency pins,
+Perl syntax, ShellCheck 0.11.0 and local documentation links also pass.
+These focused consumer checks do not establish live captured delivery, remote
+reconciliation or a new native-host acceptance result. Those remain release proof.
+Evidence, failed observations and incoming lock hashes are under
+`target/evidence/shared-tooling-0310/`. Both selected lockfiles are preserved,
+including the maintainer's unrelated pending root dependency selection.
+
+## Previous 0.30.8 qualification
+
+IC Storage selects committed Shared Tooling VERSION 0.30.8 at
+`dc9df707b3b1e616973494eab961c1c214d12260`, verified against GitHub main.
+The canonical exporter retains the 159-file selection; only the frozen-release
+runner payload changes. It now accepts underscores in generated batch IDs when
+resuming, preserving existing recovery paths. Impact/export/check evidence is
+under `target/evidence/shared-tooling-0308/`; exporter scratch used `/dev/shm`.
+Frozen-release mode remains disabled pending consumer qualification. The standard
+Storage release path, package versions and both dependency selections are unchanged.
+Shared owns the forced-underscore regression fixture; no producer fixture or
+live release is replayed to qualify this consumer refresh.
+Snapshot/source comparison, pins, Perl syntax, local documentation links and
+diff checks pass. Both lockfiles match their incoming hashes; the sibling is clean.
+
+## Previous 0.30.7 qualification
+
 IC Storage selects committed Shared Tooling VERSION 0.30.7 at
 `22a853e26c05ec323f06c57fa316c08b808f252b`, verified against GitHub's `main`.
 The canonical exporter refreshed 159 files from the clean sibling with an explicit

@@ -3,6 +3,15 @@
 Current releases use the Storage naming. [Earlier published history](https://github.com/dragginzgame/ic-storage/blob/23deb81c48d58558ac3b0ce36bf266ddc25dca91/releases/persistence/CHANGELOG.md)
 retains its original package and release identities.
 
+## [0.68.2] - Unreleased
+
+### 🔧 Tooling
+
+- Adopt Shared Tooling 0.31.0 with automatic grouped release capture, centralized
+  candidate setup and shared batch recovery commands. Include snapshot checksum
+  validation fixes and retire the old opt-in interface.
+  [Details](0.68.md).
+
 ## [0.68.1] - 2026-11-06
 
 ### 🔧 Tooling

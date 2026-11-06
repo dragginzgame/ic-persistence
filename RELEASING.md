@@ -9,6 +9,26 @@ supplies consumer policy to the existing Shared runner; it is not canister code.
 
 ## Release groups
 
+Shared 0.31 captures grouped releases automatically. Select one `RELEASE_GROUP`
+or an explicit supplier-first comma-separated `RELEASE_GROUPS` roster. Git-only
+release remains the default; deployment selects publication in the same batch:
+
+```sh
+make RELEASE_GROUP=storage RELEASE_PUBLISH_TARGET=publish release-patch
+```
+
+The captured checkout is `target/release-frozen/BATCH`; durable Git, intent and
+receipts belong to `.git/release-state/frozen/BATCH`. Later normal-checkout edits
+are deferred. `release-candidate-setup` prepares selected tools and locked caches
+before version lookup; recovery checks prepared tools offline without installing.
+The existing native hooks retain their source, receipt, group and archive checks.
+Use the shared status/resume/reconcile/retire commands in
+[the batch guide](docs/release-batches.md). Reconcile only after preserving deferred
+work and verifying publication. Run manual publication from the qualified captured
+checkout, never from an unrelated normal-tree HEAD. Retire only a selected complete
+batch after its commits and evidence have been reconciled. No old-name aliases or
+schema-1 batch conversion exist. Historical releases retain their original tooling.
+
 All three crates remain in one development workspace and one dependency catalog.
 The approved [group policy](ci/cargo-release-groups.json) is the executable owner;
 root `Cargo.toml` lists each group once beside its member declarations and ledger.
@@ -37,8 +57,9 @@ Both groups declare that workspace's catalog and lockfile as release metadata.
 Each transaction advances only its own requirement and local lock identity there;
 independent registry selections and unrelated groups remain unchanged. Benchmark execution is not a release gate.
 
-Release, resume and publication require an explicit `RELEASE_GROUP`. There is no
-default or implicit whole-workspace release. Missing selection refuses before
+Release starts require explicit `RELEASE_GROUP` or `RELEASE_GROUPS`; exact-version
+resume and manual publication require `RELEASE_GROUP`. There is no implicit
+whole-workspace release. Missing selection refuses before
 cache setup, helper compilation or release effects. For example:
 
 ```sh

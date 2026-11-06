@@ -10,9 +10,14 @@
         release-tagged-check release-push-check qualify-release package publish publish-dry-run
 
 export RELEASE_GROUP
-ifneq ($(filter release-patch release-minor release-major release-resume qualify-release publish publish-dry-run,$(MAKECMDGOALS)),)
+ifneq ($(filter release-resume qualify-release publish publish-dry-run,$(MAKECMDGOALS)),)
 ifeq ($(strip $(RELEASE_GROUP)),)
 $(error Select RELEASE_GROUP explicitly for release, resume or publication)
+endif
+endif
+ifneq ($(filter release-patch release-minor release-major,$(MAKECMDGOALS)),)
+ifeq ($(strip $(RELEASE_GROUP)$(RELEASE_GROUPS)),)
+$(error Select RELEASE_GROUP or an explicit supplier-first RELEASE_GROUPS roster)
 endif
 endif
 export RELEASE_DELIVERY ?= direct
@@ -36,6 +41,7 @@ FORMAT_RUST_ARGS = --extra-workspace testing/runtime-qualification \
 IC_TOOLS := wasm-opt
 LOCAL_TOOL_INSTALL_TARGETS += install-ic-tools install-release-tools
 LOCAL_TOOL_CHECK_TARGETS += ic-tools-check release-tools-check
+RELEASE_SETUP_TARGET := release-candidate-setup
 include make/consumer.mk
 export PATH := $(CURDIR)/.tools/ic/bin:$(PATH)
 # GNU Make 3.81 cannot combine target-specific override and export. Reclassify
@@ -256,6 +262,14 @@ ifneq ($(origin RELEASE_CACHE_PREPARE),undefined)
 override RELEASE_CACHE_PREPARE := $(RELEASE_CACHE_PREPARE)
 endif
 release-patch release-minor release-major release-resume: export RELEASE_CACHE_PREPARE := 1
+
+.PHONY: release-candidate-setup
+release-candidate-setup:
+	+@case "$(RELEASE_SETUP_MODE)" in \
+	  prepare) $(MAKE) --no-print-directory install-tools fetch-dependencies ;; \
+	  check) $(MAKE) --no-print-directory tools-check format-tools-check ;; \
+	  *) echo 'Select RELEASE_SETUP_MODE=prepare or check' >&2; exit 2 ;; \
+	esac
 
 release-version:
 	+@$(TOOL) version
