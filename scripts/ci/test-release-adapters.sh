@@ -272,7 +272,7 @@ printf '%s\n' \
 cp "$FIXTURE/lint-failure-expected" "$FIXTURE/lint-success-expected"
 printf '%s\n' \
     "cargo +$FIXTURE_TOOLCHAIN check --workspace --locked --offline --all-targets --features ic-storage/test-support" \
-    'make --no-print-directory check-production-graph check-pins check-storage-boundary check-license check-doc-links fmt-check' \
+    'make --no-print-directory check-production-graph check-pins check-storage-boundary check-candid-boundary check-license check-doc-links fmt-check' \
     'make --no-print-directory test-release-adapters test-tools test-tooling test-hooks test-package-admission' \
     'make --no-print-directory test-fixture-cell' \
     "cargo +$FIXTURE_TOOLCHAIN test -p ic-storage --locked --offline -- --test-threads=1 --skip repo_tool::tests::" \
