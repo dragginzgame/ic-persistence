@@ -1,8 +1,10 @@
 //! Fixed consumer-shaped experiments, not production allocation presets.
-use crate::{Case, Pattern};
+use crate::{Case, Collection, DataType, Pattern};
 
 /// Population sweep grounded in the retained Auth/Canic cost report.
 pub const LOOKUP_POPULATIONS: [u32; 4] = [1, 512, 1024, 2048];
+/// Matched small and populated controls for every supported collection form.
+pub const DEPTH_POPULATIONS: [u32; 2] = [256, 4096];
 
 ///
 /// Workload
@@ -21,11 +23,31 @@ pub enum Workload {
     Ordered,
     AuthLookups,
     Types,
+    Depth,
+    VectorReads,
 }
 
 impl Workload {
     pub fn cases(self) -> &'static [Case] {
         match self {
+            Self::VectorReads => &[
+                Case::VectorU64,
+                Case::VectorBytes32,
+                Case::VectorBytes,
+                Case::VectorRecord,
+            ],
+            Self::Depth => &[
+                Case::U64U64,
+                Case::U64Bytes,
+                Case::SetU64,
+                Case::VectorU64,
+                Case::CellFixed32,
+                Case::Typed {
+                    collection: Collection::Region,
+                    key: DataType::U64,
+                    value: DataType::U64,
+                },
+            ],
             Self::Types => crate::MATRIX_CASES,
             Self::Control => &[Case::CellBytes, Case::U64Bytes],
             Self::AuthLookups => &[Case::VectorSession],
@@ -63,6 +85,10 @@ impl Workload {
     }
     pub fn payloads(self, case: Case) -> &'static [u32] {
         match (self, case) {
+            (Self::VectorReads, Case::VectorBytes) => &[31, 4096],
+            (Self::VectorReads, _) => case.payloads(),
+            (Self::Depth, Case::U64Bytes) => &[32],
+            (Self::Depth, _) => case.payloads(),
             (Self::Types, _) => case.payloads(),
             (Self::AuthLookups, _) => case.payloads(),
             (Self::Ordered, Case::U64Bytes) => &[31, 32, 33, 256],
@@ -83,16 +109,16 @@ impl Workload {
         match self {
             Self::Control => 16,
             Self::AuthLookups => LOOKUP_POPULATIONS[LOOKUP_POPULATIONS.len() - 1],
-            Self::Records => 4096,
+            Self::Records | Self::Depth => 4096,
             Self::Bulk => 8,
             Self::Boundaries => 64,
             Self::Types => 32,
-            Self::Iterators | Self::Ordered => 256,
+            Self::Iterators | Self::Ordered | Self::VectorReads => 256,
         }
     }
     pub const fn counts(self) -> &'static [u32] {
         match self {
-            Self::Records => &[1, 32],
+            Self::Records | Self::Depth | Self::VectorReads => &[1, 32],
             Self::Types => &[1, 8],
             Self::AuthLookups => &[1],
             Self::Ordered => &[1, 5, 6, 11, 12, 31, 32, 64, 128],
@@ -102,6 +128,7 @@ impl Workload {
     }
     pub const fn patterns(self) -> &'static [Pattern] {
         match self {
+            Self::Depth | Self::VectorReads => &[Pattern::Uniform, Pattern::Hot16],
             Self::Records => &[Pattern::Uniform, Pattern::Hot16, Pattern::Zipf],
             Self::AuthLookups => &[Pattern::First, Pattern::Middle, Pattern::Last],
             Self::Control | Self::Bulk | Self::Iterators | Self::Ordered | Self::Types => {
@@ -112,7 +139,13 @@ impl Workload {
     }
     pub const fn rounds(self) -> u32 {
         match self {
-            Self::Control | Self::Records | Self::Boundaries | Self::Iterators | Self::Ordered => 3,
+            Self::Control
+            | Self::Records
+            | Self::Boundaries
+            | Self::Iterators
+            | Self::Ordered
+            | Self::Depth
+            | Self::VectorReads => 3,
             Self::Bulk | Self::AuthLookups | Self::Types => 1,
         }
     }

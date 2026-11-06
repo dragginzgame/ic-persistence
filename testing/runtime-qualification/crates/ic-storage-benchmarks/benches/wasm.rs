@@ -16,13 +16,7 @@ mod canister {
     #[cfg(feature = "owned")]
     type Map<K, V> = ic_storage::adapter::StableBTreeMap<K, V>;
     #[cfg(any(feature = "dfinity", feature = "dfinity-head"))]
-    type Map<K, V> = ic_storage_benchmarks::upstream::BTreeMap<
-        K,
-        V,
-        ic_storage_benchmarks::upstream::memory_manager::VirtualMemory<
-            ic_storage_benchmarks::upstream::DefaultMemoryImpl,
-        >,
-    >;
+    type Map<K, V> = ic_storage_benchmarks::upstream::BTreeMap<K, V, BenchMemory>;
     #[cfg(feature = "owned")]
     use ic_storage::adapter::Storable;
     #[cfg(any(feature = "dfinity", feature = "dfinity-head"))]
@@ -71,12 +65,38 @@ mod canister {
     }
     #[cfg(feature = "owned")]
     type BenchMemory = ic_storage::RuntimeMemory<ic_storage::DefaultMemoryImpl>;
-    #[cfg(any(feature = "dfinity", feature = "dfinity-head"))]
+    #[cfg(all(
+        any(feature = "dfinity", feature = "dfinity-head"),
+        not(feature = "dfinity-governed")
+    ))]
     type BenchMemory = ic_storage_benchmarks::upstream::memory_manager::VirtualMemory<
         ic_storage_benchmarks::upstream::DefaultMemoryImpl,
     >;
+    #[cfg(feature = "dfinity-governed")]
+    #[derive(Clone)]
+    struct BenchMemory(std::rc::Rc<ic_storage::RuntimeMemory<ic_storage::DefaultMemoryImpl>>);
+    #[cfg(feature = "dfinity-governed")]
+    impl ic_storage_benchmarks::upstream::Memory for BenchMemory {
+        fn size(&self) -> u64 {
+            self.0.size()
+        }
+        fn grow(&self, pages: u64) -> i64 {
+            ic_storage::Memory::grow(self.0.as_ref(), pages)
+        }
+        fn read(&self, offset: u64, bytes: &mut [u8]) {
+            self.0.read(offset, bytes);
+        }
+        unsafe fn read_unsafe(&self, offset: u64, dst: *mut u8, count: usize) {
+            // SAFETY: ICSS and Storage require the same exclusive destination
+            // and guarantee complete initialization on successful return.
+            unsafe { ic_storage::Memory::read_unsafe(self.0.as_ref(), offset, dst, count) }
+        }
+        fn write(&self, offset: u64, bytes: &[u8]) {
+            self.0.write(offset, bytes);
+        }
+    }
     fn new_memory(bucket_pages: std::num::NonZeroU16) -> BenchMemory {
-        #[cfg(feature = "owned")]
+        #[cfg(any(feature = "owned", feature = "dfinity-governed"))]
         {
             let _ = bucket_pages;
             use ic_storage::*;
@@ -92,11 +112,22 @@ mod canister {
             runtime
                 .bootstrap(&requests, &grants, &GenericAllocationPolicy)
                 .unwrap();
-            runtime
+            let memory = runtime
                 .open_memory(&StableKey::parse("benchmark.rows.v1").unwrap())
-                .unwrap()
+                .unwrap();
+            #[cfg(feature = "owned")]
+            {
+                memory
+            }
+            #[cfg(feature = "dfinity-governed")]
+            {
+                BenchMemory(std::rc::Rc::new(memory))
+            }
         }
-        #[cfg(any(feature = "dfinity", feature = "dfinity-head"))]
+        #[cfg(all(
+            any(feature = "dfinity", feature = "dfinity-head"),
+            not(feature = "dfinity-governed")
+        ))]
         {
             use ic_storage_benchmarks::upstream::{
                 DefaultMemoryImpl,

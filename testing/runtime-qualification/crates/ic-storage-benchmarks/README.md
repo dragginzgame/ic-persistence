@@ -26,6 +26,32 @@ they are not retried or treated as collection results. The production graph has
 no DFINITY dependency. Both Wasm backends use the same comparison profile:
 optimization level 3, fat LTO, one codegen unit, abort panics, no Binaryen pass.
 
+### Governed-backing attribution
+
+`BENCH_REFERENCE=dfinity-governed` runs published ICSS 0.7.2 over the same admitted
+Storage allocation as the owned backend. This separates much of the backing cost
+from the copied collection engine. The ordinary `dfinity` reference continues
+to use ICSS's own manager; its default benchmark bucket is eight Wasm pages.
+
+```sh
+BENCH_REFERENCE=dfinity-governed BENCH_CASES=U64U64,Region-U64-U64 \
+  BENCH_PATTERNS=uniform BENCH_ROUNDS=3 make benchmark-storage
+```
+
+The governed control retains an Rc wrapper for region reopening and each
+backend's primitive codecs. It is not an exact algorithm-only measurement.
+ICSS has no bounded region API; the reference reopens its map per operation.
+Bucket selection has no effect on governed backing. Existing CSV `dfinity_`
+columns identify the chosen reference through configuration/revision metadata.
+
+The pending direct-read candidate requires Platform's public
+`stable64_read_uninit` export. Selected registry Runtime does not supply it.
+Current local qualification uses an explicit Cargo patch to the fixed package
+from Platform `998764c`, with a separately prepared qualification lock; it does
+not establish registry adoption. See the [backing study](../../../../docs/audits/recurring/storage-icss-backing-parity-2026-11-06.md)
+for source identities, comparisons and the delivery blocker. Normal locks remain
+unchanged; do not relabel the local package as published Runtime 0.19.2.
+
 ### Complete type-by-collection matrix
 
 ```sh
@@ -100,6 +126,79 @@ is superseded. Full per-run tables and artifacts belong in transient target
 evidence, rather than tracked per-run reports.
 
 ### Iterator coverage
+
+Use `BENCH_WORKLOAD=vector-reads make benchmark-storage` to isolate read/update
+history from the full iterator mix. It fixes 256 rows, u64/fixed-32-byte/raw-chunk/
+WireRecord values, uniform/hot-16 queries, batches 1/32 and three rounds of Get,
+Set, Push and Pop. Chunk payloads are 31/4096 bytes; the other cases retain their
+declared payload sizes. Push/Pop restores the population while Set's
+updates remain visible to the next round. Results and final contents are checked
+for both libraries. Additional GetAfterSet/GetAfterPush/GetAfterPop phases locate
+changes within each round; each phase is a separate physical execution.
+This complements the full suite; it is not an Auth endpoint
+benchmark. Report per-round results as well as the aggregate because earlier
+operations can change allocation history and later instruction charges.
+
+For address/cost attribution, `benches/trace_stable_reads.pl` instruments frozen
+comparison modules using Binaryen 133 folded WAT. It appends bounded Wasm globals
+and functions without changing existing memory/data/global declarations. It wraps
+`stable64_read` and the selected dlmalloc malloc/free functions; the latter are
+counted only between the two existing measurement counters. A separate query
+exports records through idle stack scratch, without committing query writes.
+The driver rejects incomplete/overflowed Get traces or unexpected counter counts.
+This is a diagnostic, not a general allocator profiler or production timing mode.
+
+Prepare both modules under a target evidence directory, with no optimization passes:
+
+```sh
+# Select an existing attempt containing frozen owned.wasm and dfinity.wasm.
+source_attempt=target/evidence/storage-comparison/attempt.REPLACE
+trace_output=target/evidence/vector-read-trace
+mkdir -p "$trace_output"
+for backend in owned dfinity; do
+    .tools/ic/bin/wasm-opt "$source_attempt/$backend.wasm" -S -o "$trace_output/$backend.wat"
+    perl testing/runtime-qualification/crates/ic-storage-benchmarks/benches/trace_stable_reads.pl \
+        "$trace_output/$backend.wat" "$trace_output/$backend-traced.wat"
+    .tools/ic/bin/wasm-opt "$trace_output/$backend-traced.wat" --all-features \
+        -o "$trace_output/$backend-traced.wasm"
+    gzip -n -c "$trace_output/$backend-traced.wasm" > "$trace_output/$backend-traced.wasm.gz"
+done
+```
+
+Through the same explicitly admitted Testkit server runner, invoke the native
+driver with those gzip modules, `--workload vector-reads --samples 1
+--trace-stable-reads` and an explicit `--upstream-bucket-pages`. Repeat at 1/8/128.
+`samples.jsonl` records `[destination, source, length, instructions]` per read;
+`heap` records measurement-counter calls, malloc calls/cost and free calls/cost.
+Read records include setup/cleanup reads outside the timer. Costs include probe
+overhead and are not additive to ordinary results. Keep the normal run as the
+headline comparison. First qualify an uninstrumented WAT round trip against the
+original module's instructions, results and final state; verify existing layout
+declarations and retain module/driver hashes. Installed IC validation still applies.
+
+For the full benchmark handler, run the same injector on the **original** WAT
+with `--execution-only` as its third argument. Assemble/install those modules
+with the same commands and use driver `--trace-execution-cost` instead of the
+read-trace flag. It measures request decoding, input preparation, the collection
+loop, result conversion, response encoding/reply and cleanup. It excludes setup
+population and host execution setup, and includes boundary probe overhead.
+The ordinary inner-loop columns remain; `execution-summary.csv` and
+`execution-round-summary.csv` report the outer scope separately, with raw
+`execution_instructions` in each sample. The two diagnostic modes cannot be mixed.
+Both are restricted to the Vector read-history preset. This large synthetic
+reply is not a measurement of Auth's endpoint.
+
+For deeper attribution, apply `benches/trace_allocator_accesses.pl` to the
+**read-instrumented** WAT, then assemble it identically. Add driver
+`--trace-allocator-accesses` alongside `--trace-stable-reads`. It instruments the
+six selected dlmalloc functions and records up to 64 loads/stores costing at
+least 10,000 instructions, including accesses before/after the inner timer.
+Records are `[address, phase * 16 + kind, instructions, site]`, where phases
+0/1/2 mean before/during/after the loop and kinds 0–5 mean i32 load/store,
+u8 load/store and i64 load/store. The adjacent generated `.sites.tsv` identifies
+original functions, operations and offsets. Unknown memory operations or function
+rosters refuse instrumentation. These are costly-access observations, not a
+complete memory profile; neither these costs nor probe timings are throughput.
 
 Run the fixed, bounded iterator preset without choosing window parameters:
 
@@ -356,6 +455,51 @@ allocation policy. A comparison with published ICSS 0.7.2 does not give both
 engines equal cache budgets; that release has no selectable node cache.
 
 ## Consumer workloads
+
+### Population depth and IO attribution
+
+`BENCH_WORKLOAD=depth make benchmark-storage` compares 256 and 4,096 populated
+records across Map (u64 and 32-byte variable values), Set, Vector, fixed Cell
+and u64 map regions. Cell has one value at either population. The preset uses
+shuffled population, uniform/hot-16 access, batches 1/32 and three stateful rounds;
+the default three samples use independent seeds and alternate backend order.
+All ordinary operations remain, including insertion/removal/reinsertion and
+variable-map growth/shrink. It supplements the 73-type catalogue rather than
+repeating its shallow population. Per-population reports and an aggregate matrix
+retain every phase, instruction median and stable-memory capacity. Aggregate CSV
+and raw JSONL include `population_context_rows` separately from actual collection
+rows, so the singleton Cell observations remain distinguishable.
+
+```sh
+for pages in 1 8 128; do
+    make benchmark-storage BENCH_WORKLOAD=depth BENCH_UPSTREAM_BUCKET_PAGES=$pages
+done
+# Repeated growth of the same keys, without the intervening removal phases:
+BENCH_CASES=U64Bytes BENCH_PAYLOADS=33,80 BENCH_PATTERNS=uniform,hot16 \
+BENCH_SHUFFLED=1 BENCH_ROUNDS=6 BENCH_GROWTH_CYCLES=1 \
+make benchmark-storage BENCH_ROWS=4096 BENCH_SAMPLES=3
+```
+
+For attribution, the native `collection-io` example compares Storage with
+published ICSS 0.7.2 both on governed Storage memory and on its MemoryManager.
+Identical counted codecs, insertion histories and requests isolate duplicated IO
+and encoding/decoding work for Map/region Get, Replace and variable-value growth.
+It checks every returned value and all final records against a separate model.
+
+```sh
+cargo run --locked --offline --manifest-path testing/runtime-qualification/Cargo.toml \
+  -p ic-storage-benchmarks --example collection-io --features owned,dfinity \
+  --target-dir target/runtime-qualification -- target/evidence/collection-io.jsonl
+```
+
+The output must be new and its parent must exist. This diagnostic records
+physical read/write calls and bytes, codec calls, growth/capacity and distinct
+4/64 KiB stable byte ranges. It does not measure native time, heap allocations,
+heap fault sets or IC page charges. Zero-length IO and the stable-access helper
+make range counts insufficient to price instructions. Use installed comparisons
+for timings; instrumentation remains outside production and those timed modules.
+The governed ICSS stack is an isolated research control, not a second production
+collection integration or public allocation bypass.
 
 The [local memory inventory](../../../../docs/local-memory-audit.md#complete-declaration-inventory-and-repeatable-workloads)
 selects three consumer recipes plus a size-boundary experiment. Use a name instead of repeating a collection of

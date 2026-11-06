@@ -37,9 +37,8 @@ impl<K: Storable + Ord + Clone, V: Storable, M: Memory> StableBTreeMap<K, V, M> 
     /// # Errors
     /// Refuses empty or foreign framing.
     pub fn load(memory: RuntimeMemory<M>) -> Result<Self> {
-        bridge::admit_map(&memory)?;
         Ok(Self {
-            inner: bridge::Map::load(Backing(memory)),
+            inner: bridge::Map::load(Backing(memory)).ok_or(Error::Format)?,
         })
     }
     /// Clear entries and reuse the map's existing backing capacity.

@@ -1,9 +1,60 @@
 use super::*;
+
+#[test]
+fn vector_read_history_preserves_updates_and_restores_population_each_round() {
+    let profile = Workload::VectorReads;
+    for &case in profile.cases() {
+        let trace = phases(case, false, Some(profile));
+        assert!(trace.iter().all(|(_, op)| case.operations().contains(op)));
+        for &payload in profile.payloads(case) {
+            let mut model: BTreeMap<_, _> = (0..u64::from(profile.rows()))
+                .map(|id| (id, case.expected_value(id, payload, false)))
+                .collect();
+            let request = Request {
+                case,
+                operation: Operation::Get,
+                rows: profile.rows(),
+                payload,
+                count: 32,
+                seed: 1,
+                pattern: Pattern::Hot16,
+            };
+            for round in 0..profile.rounds() {
+                let mut updated = model.clone();
+                let mut replaced = round != 0;
+                for (_, operation) in &trace {
+                    let response = expected(
+                        &mut model,
+                        Request {
+                            operation: *operation,
+                            ..request
+                        },
+                    );
+                    if *operation == Operation::Get {
+                        for (id, value) in response {
+                            assert_eq!(value, Some(case.expected_value(id, payload, replaced)));
+                        }
+                    }
+                    if *operation == Operation::Set {
+                        replaced = true;
+                        updated = model.clone();
+                    }
+                }
+                assert_eq!(
+                    model, updated,
+                    "push/pop must preserve updated base records"
+                );
+                assert_eq!(model.len(), profile.rows() as usize);
+            }
+        }
+    }
+}
+
 #[test]
 fn growth_cycles_keep_the_same_external_records_and_preserve_default_phases() {
     for case in CASES {
         assert_eq!(
-            phases(case, false)
+            phases(case, false, None)
                 .into_iter()
                 .map(|(_, op)| op)
                 .collect::<Vec<_>>(),
@@ -14,7 +65,7 @@ fn growth_cycles_keep_the_same_external_records_and_preserve_default_phases() {
         .map(|key| (key, Case::U64Bytes.expected_value(key, 33, false)))
         .collect();
     for _ in 0..4 {
-        for (phase, operation) in phases(Case::U64Bytes, true) {
+        for (phase, operation) in phases(Case::U64Bytes, true, None) {
             let request = Request {
                 case: Case::U64Bytes,
                 operation,
@@ -549,7 +600,7 @@ fn scalar_cell_type_trace_reads_both_original_and_replaced_optional_variants() {
         key: DataType::U64,
         value: DataType::OptionU64,
     };
-    let trace = phases(case, false);
+    let trace = phases(case, false, None);
     assert!(trace.contains(&("GetAfterReplace".into(), Operation::Get)));
     let mut model = [(0, case.expected_value(0, 8, false))]
         .into_iter()
@@ -654,4 +705,112 @@ fn combined_type_report_requires_all_five_complete_subreports() {
         serde_json::from_slice(&fs::read(root.join("configuration.json")).unwrap()).unwrap();
     assert_eq!(config["status"], "complete");
     assert_eq!(config["collections"].as_array().unwrap().len(), 5);
+}
+
+#[test]
+fn population_reports_distinguish_singleton_cells_in_csv_and_raw_output() {
+    let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../../../target/evidence/storage-population-report-tests")
+        .join(format!(
+            "{}-{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+    let mut reports = Vec::new();
+    for population in [256, 4096] {
+        let part = root.join(format!("rows-{population}-update"));
+        fs::create_dir_all(&part).unwrap();
+        for file in ["summary.csv", "round-summary.csv", "lookup-stages.csv"] {
+            fs::write(part.join(file), "rows,structure\n1,Cell\n").unwrap();
+        }
+        fs::write(part.join("samples.jsonl"), "{\"request\":{\"rows\":1}}\n").unwrap();
+        reports.push((part, "update", population));
+    }
+    combine_populations(&root, &reports).unwrap();
+    for file in ["summary.csv", "round-summary.csv", "lookup-stages.csv"] {
+        assert_eq!(
+            fs::read_to_string(root.join(file)).unwrap(),
+            "rows,structure,execution_mode,population_context_rows\n1,Cell,update,256\n1,Cell,update,4096\n"
+        );
+    }
+    let raw = fs::read_to_string(root.join("samples.jsonl")).unwrap();
+    let records: Vec<serde_json::Value> = raw
+        .lines()
+        .map(|line| serde_json::from_str(line).unwrap())
+        .collect();
+    assert_eq!(records.len(), 2);
+    for (record, population) in records.iter().zip([256, 4096]) {
+        assert_eq!(record["request"]["rows"], 1);
+        assert_eq!(record["execution_mode"], "update");
+        assert_eq!(record["population_context_rows"], population);
+    }
+}
+
+#[test]
+fn stable_read_trace_rejects_overflow_and_truncation() {
+    let mut bytes = vec![0; 8 + 160 * 32 + 40];
+    bytes[5128..5136].copy_from_slice(&2_u64.to_le_bytes());
+    bytes[..8].copy_from_slice(&1_u64.to_le_bytes());
+    for (i, value) in [65535_u64, 1048576, 4096, 80_042].into_iter().enumerate() {
+        bytes[8 + i * 8..16 + i * 8].copy_from_slice(&value.to_le_bytes());
+    }
+    assert_eq!(
+        decode_read_trace(&bytes).unwrap().reads,
+        [[65535, 1048576, 4096, 80_042]]
+    );
+    assert!(decode_read_trace(&bytes[..bytes.len() - 1]).is_err());
+    bytes[..8].copy_from_slice(&161_u64.to_le_bytes());
+    assert!(decode_read_trace(&bytes).is_err());
+    bytes[..8].fill(0);
+    assert!(decode_read_trace(&bytes).unwrap().reads.is_empty());
+    bytes[5128..5136].fill(0);
+    assert!(decode_read_trace(&bytes).is_err());
+}
+
+#[test]
+fn allocator_trace_admits_its_capacity_and_rejects_partial_records() {
+    let mut bytes = vec![0_u8; 8 + 64 * 32];
+    bytes[..8].copy_from_slice(&64_u64.to_le_bytes());
+    bytes[8..16].copy_from_slice(&8_659_336_u64.to_le_bytes());
+    let rows = decode_trace_rows(&bytes, 64).unwrap();
+    assert_eq!(rows.len(), 64);
+    assert_eq!(rows[0][0], 8_659_336);
+    assert!(decode_trace_rows(&bytes[..bytes.len() - 1], 64).is_err());
+    bytes[..8].copy_from_slice(&65_u64.to_le_bytes());
+    assert!(decode_trace_rows(&bytes, 64).is_err());
+}
+
+#[test]
+fn execution_boundary_and_operation_probes_cannot_be_mixed() {
+    let base = [
+        "bench",
+        "--owned-wasm",
+        "a",
+        "--dfinity-wasm",
+        "b",
+        "--output",
+        "report",
+    ];
+    assert!(
+        Arguments::try_parse_from(
+            base.into_iter()
+                .chain(["--trace-execution-cost", "--trace-stable-reads",])
+        )
+        .is_err()
+    );
+    assert!(
+        Arguments::try_parse_from(base.into_iter().chain(["--trace-allocator-accesses",])).is_err()
+    );
+    assert!(
+        Arguments::try_parse_from(base.into_iter().chain([
+            "--trace-stable-reads",
+            "--trace-allocator-accesses",
+            "--workload",
+            "vector-reads",
+        ]))
+        .is_ok()
+    );
 }

@@ -9,6 +9,41 @@ local baseline. Future policy changes require reviewed snapshot adoption.
 
 ## Current source selection
 
+IC Storage selects committed Shared Tooling VERSION 0.30.7 at
+`22a853e26c05ec323f06c57fa316c08b808f252b`, verified against GitHub's `main`.
+The canonical exporter refreshed 159 files from the clean sibling with an explicit
+commit selection. Exporter scratch used `/dev/shm`; retained impact, export and
+consumer-check logs are under `target/evidence/shared-tooling-0307/`.
+
+The existing `check-candid-boundary` target now enables Shared's `--cbor` mode
+over all 164 Rust files in `crates` and `testing`, without source allowances.
+Root Cargo admission uses Shared's central CBOR inventory; its duplicate local
+CBOR list is removed. Independent Cargo admission retains an explicit nine-package
+CBOR policy, including `icrc-cbor`: Shared's combined `--external-ic` mode would
+also prohibit the authorized optional ICSS Git comparison dependency. The checker
+does not offer CBOR-only Cargo admission. This bounded duplication preserves the
+existing research control; it is not a new exception to CBOR ownership. No first-party
+browser roots or additional Cargo manifest templates were found. Lexical source
+checks do not resolve arbitrary aliases, macro expansion or copied parsers.
+
+Frozen-release tooling is exported but not enabled: actual Storage release and
+publication hooks need independent-checkout qualification before that opt-in.
+Existing group admission and archive obligations remain in force. The reviewed
+lint and feature stages differ (`--all-targets` default features versus explicit
+`ic-storage/test-support`); Wasm and archive checks also retain distinct contracts.
+No duplicate compilation was removed or release-speed improvement claimed.
+Both catalogs and all members retain Rust 1.99.1; package versions, dependency
+selections and pending collection work are preserved. Source adoption is separate
+from activation of a new release mode, installed runtime proof and publication.
+
+Snapshot/source identity, pin admission, both Cargo boundaries, combined source
+checking, local documentation links and the consumer release-adapter substitutes
+pass. Actual Cargo/rustc identities are 1.99.1. Both lockfiles match their incoming
+hashes, and the sibling remains clean. No runtime rebuild or release was needed
+for this tooling-only refresh; the pending Storage Runtime-export blocker remains.
+
+## Previous 0.30.5 qualification
+
 IC Storage selects committed Shared Tooling VERSION 0.30.5 at
 `be3771031ebfb340583b238dee5446be65929c62`, verified against GitHub's `main`.
 The clean sibling was exported through the canonical exporter with an explicit

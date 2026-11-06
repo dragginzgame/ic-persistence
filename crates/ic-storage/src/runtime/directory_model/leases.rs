@@ -86,6 +86,7 @@ impl<M: Memory> Owner<M> {
         Ok(Lease {
             state: Rc::clone(&self.0),
             id,
+            index: *store.directory.by_id.get(&id).ok_or(Error::Missing)?,
         })
     }
 }
@@ -93,6 +94,9 @@ impl<M: Memory> Owner<M> {
 pub struct Lease<M: Memory> {
     state: Rc<State<M>>,
     id: AllocationId,
+    // Admission resolves this once. Committed directory mutations append entries
+    // and extend their extents; they never reorder or remove live bindings.
+    index: usize,
 }
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -118,7 +122,7 @@ impl<M: Memory> Lease<M> {
     }
     pub fn try_grow(&self, pages: u64) -> Result<u64, Error> {
         let mut store = self.state.store.borrow_mut();
-        let previous = store.pages(self.id)?;
+        let previous = store.pages(self.index)?;
         previous
             .checked_add(pages)
             .ok_or(Error::ArithmeticOverflow)?;
@@ -127,14 +131,16 @@ impl<M: Memory> Lease<M> {
         }
         Ok(previous)
     }
+    #[inline]
     pub fn size(&self) -> u64 {
         self.state
             .store
             .borrow()
-            .pages(self.id)
+            .pages(self.index)
             .expect("invalid allocation lease")
     }
 
+    #[inline]
     pub fn read(&self, offset: u64, bytes: &mut [u8]) {
         self.state
             .store
@@ -143,6 +149,25 @@ impl<M: Memory> Lease<M> {
             .expect("allocation read");
     }
 
+    /// # Safety
+    /// The destination must satisfy `Memory::read_unsafe`'s exclusive range contract.
+    #[inline]
+    #[expect(
+        unsafe_code,
+        reason = "Forward an admitted destination through complete governed range checks"
+    )]
+    pub unsafe fn read_unsafe(&self, offset: u64, dst: *mut u8, count: usize) {
+        // SAFETY: the same destination retains the caller's guarantees.
+        unsafe {
+            self.state
+                .store
+                .borrow()
+                .read_data_unsafe(self.id, offset, dst, count)
+                .expect("allocation read");
+        }
+    }
+
+    #[inline]
     pub fn write(&self, offset: u64, bytes: &[u8]) {
         self.state
             .store

@@ -401,6 +401,14 @@ impl<M: Memory> Memory for RuntimeMemory<M> {
     fn read(&self, offset: u64, bytes: &mut [u8]) {
         self.read(offset, bytes);
     }
+    #[expect(
+        unsafe_code,
+        reason = "Forward the raw-read contract through the governed lease"
+    )]
+    unsafe fn read_unsafe(&self, offset: u64, dst: *mut u8, count: usize) {
+        // SAFETY: forwarding preserves the caller's exclusive destination.
+        unsafe { self.lease.read_unsafe(offset, dst, count) }
+    }
     fn write(&self, offset: u64, bytes: &[u8]) {
         self.write(offset, bytes);
     }

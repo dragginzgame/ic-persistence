@@ -249,9 +249,9 @@ impl<M: Memory> Store<M> {
         })
     }
 
-    pub(super) fn pages(&self, id: AllocationId) -> Result<u64, Error> {
+    #[inline]
+    pub(super) fn pages(&self, index: usize) -> Result<u64, Error> {
         self.healthy()?;
-        let index = *self.directory.by_id.get(&id).ok_or(Error::Missing)?;
         // Disjoint extents fit within the admitted physical page budget.
         Ok(self.directory.logical_ends[index]
             .last()
@@ -259,6 +259,7 @@ impl<M: Memory> Store<M> {
             .unwrap_or(0))
     }
 
+    #[inline]
     fn access(
         &self,
         id: AllocationId,
@@ -281,6 +282,22 @@ impl<M: Memory> Store<M> {
             self.poisoned.set(false);
             return Ok(());
         }
+        self.access_uncached(id, offset, length, end, io)
+    }
+
+    // Keep extent walking and errors out of the span-hit path copied into each
+    // collection's tiny IO operations. The complete range is still admitted first.
+    // Without this boundary LLVM folds the walk back into the hot read wrapper,
+    // preventing small fixed-width callers from inlining its cache-hit path.
+    #[inline(never)]
+    fn access_uncached(
+        &self,
+        id: AllocationId,
+        offset: u64,
+        length: usize,
+        end: u64,
+        mut io: impl FnMut(u64, std::ops::Range<usize>),
+    ) -> Result<(), Error> {
         let index = *self.directory.by_id.get(&id).ok_or(Error::Missing)?;
         let ends = &self.directory.logical_ends[index];
         let capacity = ends
@@ -316,6 +333,7 @@ impl<M: Memory> Store<M> {
         Ok(())
     }
 
+    #[inline]
     pub(super) fn read_data(
         &self,
         id: AllocationId,
@@ -327,6 +345,32 @@ impl<M: Memory> Store<M> {
         })
     }
 
+    /// # Safety
+    /// The destination must satisfy `Memory::read_unsafe`'s exclusive range contract.
+    #[inline]
+    #[expect(
+        unsafe_code,
+        reason = "Read each admitted extent into a disjoint portion of the caller's destination"
+    )]
+    pub(super) unsafe fn read_data_unsafe(
+        &self,
+        id: AllocationId,
+        offset: u64,
+        dst: *mut u8,
+        count: usize,
+    ) -> Result<(), Error> {
+        self.access(id, offset, count, |physical, range| {
+            // SAFETY: access preflights the complete range, then covers each
+            // destination byte exactly once. Every chunk lies within count;
+            // successful backing reads initialize it before returning.
+            unsafe {
+                self.memory
+                    .read_unsafe(physical, dst.add(range.start), range.len());
+            }
+        })
+    }
+
+    #[inline]
     pub(super) fn write_data(
         &self,
         id: AllocationId,

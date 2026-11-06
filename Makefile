@@ -294,7 +294,7 @@ check-storage-boundary:
 
 # One lexical inventory covers packages, tools, benchmarks and runtime fixtures.
 check-candid-boundary:
-	perl scripts/ci/check-candid-boundary.pl "$(CURDIR)" ci/candid-boundary.json crates testing
+	perl scripts/ci/check-candid-boundary.pl --cbor "$(CURDIR)" ci/candid-boundary.json crates testing
 
 check-license:
 	perl scripts/ci/check-license.pl --kind mit --file LICENSE

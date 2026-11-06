@@ -195,9 +195,25 @@ impl<T: Storable, M: Memory> BaseVec<T, M> {
         }
     }
     fn read_entry(&self, index: u64) -> T {
+        // Common fixed-width scalars and digests need no temporary heap buffer.
+        // Drop-bearing values keep owned bytes so their decoder can reuse them.
+        let entry_bounds = bounds::<T>();
+        if entry_bounds.is_fixed_size && entry_bounds.max_size <= 32 && !std::mem::needs_drop::<T>()
+        {
+            return self.read_small_entry(index);
+        }
         let mut data = std::vec::Vec::new();
         self.read_entry_to(index, &mut data);
         T::from_bytes(Cow::Owned(data))
+    }
+    // Keep stack preparation out of the caller's out-of-range path.
+    #[inline(never)]
+    fn read_small_entry(&self, index: u64) -> T {
+        let mut bytes = [0; 32];
+        let bytes = &mut bytes[..bounds::<T>().max_size as usize];
+        let offset = DATA_OFFSET + u64::from(slot_size::<T>()) * index;
+        self.memory.read(offset, bytes);
+        T::from_bytes(Cow::Borrowed(bytes))
     }
     fn read_entry_to(&self, index: u64, buf: &mut Vec<u8>) {
         let offset = DATA_OFFSET + u64::from(slot_size::<T>()) * index;
@@ -338,6 +354,20 @@ where
             .saturating_sub(self.range.start)
             .try_into()
             .expect("Cannot express count as usize")
+    }
+
+    fn last(mut self) -> Option<T> {
+        if self.range.is_empty() {
+            return None;
+        }
+        // Like repeated next(), restrict the original range to the surviving
+        // prefix. next_back() alone would return None after a truncation.
+        let end = min(self.vec.len(), self.range.end);
+        if end <= self.range.start {
+            return None;
+        }
+        self.vec.read_entry_to(end - 1, &mut self.buf);
+        Some(T::from_bytes(Cow::Borrowed(&self.buf)))
     }
 
     fn nth(&mut self, n: usize) -> Option<T> {

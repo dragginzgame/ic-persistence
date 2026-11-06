@@ -6,6 +6,7 @@ use crate::{
 use std::{cell::Cell, rc::Rc};
 
 mod cells;
+mod framing;
 mod improvements;
 mod owned;
 mod regions;

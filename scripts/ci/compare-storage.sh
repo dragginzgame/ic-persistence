@@ -13,7 +13,7 @@ output="$(mktemp -d "$root/target/evidence/storage-comparison/attempt.XXXXXX")"
 printf 'Storage comparison evidence: %s\n' "$output"
 manifest=testing/runtime-qualification/Cargo.toml
 reference="${BENCH_REFERENCE:-dfinity}"
-[[ "$reference" == dfinity || "$reference" == dfinity-head ]]
+[[ "$reference" == dfinity || "$reference" == dfinity-head || "$reference" == dfinity-governed ]]
 if [[ -n "${BENCH_WORKLOAD:-}" ]]; then
     # Named workloads own the knobs below. Refuse silently mixed experiments.
     for variable in BENCH_CASES BENCH_PAYLOADS BENCH_GROWTH_CYCLES BENCH_PATTERNS BENCH_ROUNDS BENCH_SHUFFLED BENCH_CACHE_BYTES BENCH_UPSTREAM_CACHE_SLOTS BENCH_COLD_CACHE; do
@@ -34,6 +34,9 @@ fi
 arguments+=(--upstream-bucket-pages "${BENCH_UPSTREAM_BUCKET_PAGES:-8}")
 if [[ "$reference" == dfinity-head ]]; then
     arguments+=(--reference-revision b5d1650463f477affb3d358e86b1113953fc9937)
+fi
+if [[ "$reference" == dfinity-governed ]]; then
+    arguments+=(--reference-revision 0.7.2-governed)
 fi
 rustc -vV > "$output/compiler.txt"
 cargo -V > "$output/cargo.txt"

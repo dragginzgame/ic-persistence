@@ -3,6 +3,45 @@
 Current releases use the Storage naming. [Earlier published history](https://github.com/dragginzgame/ic-storage/blob/23deb81c48d58558ac3b0ce36bf266ddc25dca91/releases/persistence/CHANGELOG.md)
 retains its original package and release identities.
 
+## [0.68.1] - Unreleased
+
+### 🔧 Tooling
+
+- Adopt Shared Tooling 0.30.7, enable lexical CBOR source checks and use its
+  central CBOR dependency policy for the main workspace. [Details](0.68.md).
+- Adopt IC Build 0.75.0 for the native repository helper and release-metadata
+  recovery CLI. [Details](0.68.md).
+
+### 🩹 Fixed
+
+- Vector iterator `last()` reads only the final remaining live record, including
+  after truncation or partial consumption. Collection layouts and successful
+  results are unchanged; discarded records are not decoded. [Details](0.68.md).
+- Map reopening and region operations admit framing from the header they load,
+  removing a repeated read while preserving typed rejection. [Details](0.68.md).
+
+### 🧪 Testing
+
+- Add native Map/region IO and codec attribution against ICSS using both governed
+  Storage backing and ICSS's own manager. [Details](0.68.md).
+- Add a repeatable population-depth matrix across all five collection forms,
+  with hot/uniform access, mutation histories and bucket-size controls. [Details](0.68.md).
+- Add a Vector read/update history preset with scalar, fixed-byte, chunk and
+  Wire values, reporting individual rounds alongside aggregate costs. [Details](0.68.md).
+- Add frozen-Wasm diagnostics for stable reads, allocator accesses and separate
+  full-handler comparison matrices, preserving existing heap layout. [Details](0.68.md).
+
+### ⚡ Performance
+
+- Avoid temporary heap allocations for Vector Get/Pop of small fixed-width
+  values without destructors. Preserve owned decoding for other values; qualify
+  cutoff boundaries and matched loop/full-handler comparisons. [Details](0.68.md).
+- Resolve allocation indices at lease admission and avoid repeated region extent
+  checks while preserving complete bounds admission and native failure handling.
+- Restore ICSS's direct uninitialized-buffer read path through governed memory.
+  Existing custom backings retain a default implementation. Wasm now requires
+  published Platform Runtime >=0.19.4. [Details](0.68.md).
+
 ## [0.68.0] - 2026-11-06
 
 ### ⚠️ Breaking

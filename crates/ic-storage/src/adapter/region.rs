@@ -200,8 +200,7 @@ impl<K: Storable + Ord + Clone, V: Storable, M: Memory> BTreeMapRegion<K, V, M> 
     }
 
     fn current_map(&self) -> CollectionResult<bridge::Map<K, V, &RegionMemory<M>>> {
-        bridge::admit_map(&self.memory)?;
-        Ok(bridge::Map::load(Backing(&self.memory)))
+        bridge::Map::load(Backing(&self.memory)).ok_or(Error::Format)
     }
 }
 
@@ -228,8 +227,16 @@ impl<M: Memory> RegionMemory<M> {
         Ok(())
     }
 
+    #[inline]
     fn check_io(&self, offset: u64, count: usize) {
-        let extent = self.size() * PAGE_BYTES;
+        // The region owns its static namespace limit; RuntimeMemory admits the
+        // complete live allocation range. Avoid looking up that extent twice.
+        // Empty IO does not delegate, so it must check the current extent here.
+        let extent = if count == 0 {
+            self.size()
+        } else {
+            self.pages.end - self.pages.start
+        } * PAGE_BYTES;
         assert!(offset <= extent && count as u64 <= extent - offset);
     }
 }
@@ -265,6 +272,22 @@ impl<M: Memory> Memory for RegionMemory<M> {
         if !src.is_empty() {
             self.memory
                 .write(self.pages.start * PAGE_BYTES + offset, src);
+        }
+    }
+
+    #[expect(
+        unsafe_code,
+        reason = "Check the region namespace before forwarding the admitted destination"
+    )]
+    unsafe fn read_unsafe(&self, offset: u64, dst: *mut u8, count: usize) {
+        self.check_io(offset, count);
+        if count != 0 {
+            // SAFETY: the destination is unchanged; the lease checks the entire
+            // translated live range before initializing any of its chunks.
+            unsafe {
+                self.memory
+                    .read_unsafe(self.pages.start * PAGE_BYTES + offset, dst, count);
+            }
         }
     }
 }

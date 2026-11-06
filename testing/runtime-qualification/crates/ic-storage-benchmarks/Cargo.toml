@@ -19,6 +19,7 @@ category = "benchmarks"
 [features]
 owned = ["dep:ic-storage"]
 dfinity = []
+dfinity-governed = ["dfinity", "dep:ic-storage"]
 dfinity-head = ["dep:ic-stable-structures-head"]
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
@@ -41,6 +42,11 @@ crate-type = ["cdylib"]
 [[example]]
 name = "multi-allocations"
 path = "benches/multi_allocations.rs"
+required-features = ["owned", "dfinity"]
+
+[[example]]
+name = "collection-io"
+path = "benches/collection_io.rs"
 required-features = ["owned", "dfinity"]
 
 [[example]]

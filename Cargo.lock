@@ -218,9 +218,9 @@ checksum = "2304e00983f87ffb38b55b444b5e3b60a884b5d30c0fca7d82fe33449bbe55ea"
 
 [[package]]
 name = "ic-build"
-version = "0.74.4"
+version = "0.75.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2ac8ae6da2b645b0d0d546f0422e94f43bf76b3835d7b5d8334922492fc86da2"
+checksum = "9b98af8238c96fb5f8a8379810f6bad243fa09a7ed56dd8d431e042fdd275f60"
 dependencies = [
  "cargo_metadata",
  "ic-host-artifacts",
@@ -270,9 +270,9 @@ dependencies = [
 
 [[package]]
 name = "ic-logging"
-version = "0.24.8"
+version = "0.24.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fdb9ef85d52a34d2bdbc6c0289e589d5084b56d0edd1e600d1ec20078dba8863"
+checksum = "b178fc4cdd2b18764cf38f51e95e9ad49ecea39e53f63e2d6abd0784a482bc0d"
 
 [[package]]
 name = "ic-logging-storage"
@@ -287,9 +287,9 @@ dependencies = [
 
 [[package]]
 name = "ic-metrics"
-version = "0.29.3"
+version = "0.29.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a1cd73b94325775977edfe0741aa542900cd2a98ded26a1533b80e53686dafa0"
+checksum = "ad884a3df4134d63d27537cdd816dd4f5665f25de08dea7de1b3a6d82502d13c"
 
 [[package]]
 name = "ic-metrics-storage"
@@ -304,9 +304,9 @@ dependencies = [
 
 [[package]]
 name = "ic-platform-runtime"
-version = "0.19.2"
+version = "0.19.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8e9efb702cf4e43bf5ec790313aec817e2e0df24616c69f2d8730b9e224d10ab"
+checksum = "c36c7a65b74de9cb53145545a50f3603d988f61d24936923cfba720f19f16c57"
 
 [[package]]
 name = "ic-storage"
@@ -328,9 +328,9 @@ dependencies = [
 
 [[package]]
 name = "ic-wire"
-version = "0.17.3"
+version = "0.17.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "39251babbde248d44f18f07b6019db9c1ff54548edc3683a9731ffcb0262c56e"
+checksum = "5b725872a30be01790e4b7e5c64ad65c2247a08231385dae11c8cf857487f0b8"
 dependencies = [
  "bytemuck",
  "postcard",
@@ -492,9 +492,9 @@ dependencies = [
 
 [[package]]
 name = "serde_spanned"
-version = "1.1.2"
+version = "1.1.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4e7523beb55eece201a2356bee0bbca0d1ab466c14c07703b2e0ee6d42cb0c2c"
+checksum = "9c187e0a369471c550af028cba56d4f4fa2a489ad28151ae95a4d340a2a8b782"
 dependencies = [
  "serde_core",
 ]
@@ -558,9 +558,9 @@ dependencies = [
 
 [[package]]
 name = "toml"
-version = "1.2.0+spec-1.1.0"
+version = "1.2.1+spec-1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c5ffcdf8f50436dbbfd675c1fe1b8e0854f42b7defea8584bdebe1aee900e561"
+checksum = "d5755c51863cdac711f1956baf8eb9588e060755f7d3c4c979e70ea1e1f32cd7"
 dependencies = [
  "indexmap",
  "serde_core",
@@ -573,18 +573,18 @@ dependencies = [
 
 [[package]]
 name = "toml_datetime"
-version = "1.1.2+spec-1.1.0"
+version = "1.1.3+spec-1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2b86d767906c6c42421dcba507eb9d203e779497710a47782a224bb871653053"
+checksum = "173f25c883cd2176a2d8212155638c0a60d484a9d84546d270866f40f56b6e49"
 dependencies = [
  "serde_core",
 ]
 
 [[package]]
 name = "toml_edit"
-version = "0.25.18+spec-1.1.0"
+version = "0.25.19+spec-1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1ec6e78bd70db9420d8d212fa9dc97f116448a1ceff5d00eabb991d407e21396"
+checksum = "dd43688c4858d7264ae1cf9a9f874a67c3feb74a883b1cd7bebd6a4ea8307218"
 dependencies = [
  "indexmap",
  "toml_datetime",

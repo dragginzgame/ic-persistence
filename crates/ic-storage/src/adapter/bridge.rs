@@ -14,6 +14,16 @@ impl<M: Memory> engine::Memory for Backing<M> {
     fn read(&self, offset: u64, bytes: &mut [u8]) {
         self.0.read(offset, bytes);
     }
+    #[inline]
+    #[expect(
+        unsafe_code,
+        reason = "Forward the copied ICSS raw-read contract through governed backing"
+    )]
+    unsafe fn read_unsafe(&self, offset: u64, dst: *mut u8, count: usize) {
+        // SAFETY: both traits require the same exclusive destination and full
+        // initialization on success; no address or count changes here.
+        unsafe { self.0.read_unsafe(offset, dst, count) }
+    }
     fn write(&self, offset: u64, bytes: &[u8]) {
         self.0.write(offset, bytes);
     }
@@ -61,17 +71,6 @@ impl<T: Storable> engine::Storable for Codec<T> {
 }
 
 pub(super) type Map<K, V, M> = engine::BTreeMap<Codec<K>, Codec<V>, Backing<M>>;
-
-pub(super) fn admit_map<M: Memory>(memory: &M) -> super::error::Result<()> {
-    use super::error::{CollectionError as Error, ensure};
-    ensure(memory.size() != 0, Error::Format)?;
-    let mut header = [0; 12];
-    memory.read(0, &mut header);
-    ensure(
-        &header[..4] == b"BTR\x02" && header[8..12] == u32::MAX.to_le_bytes(),
-        Error::Format,
-    )
-}
 
 pub(super) fn reserve<M: Memory>(memory: &M) -> super::error::Result<()> {
     if memory.size() == 0 && memory.grow(1) == -1 {

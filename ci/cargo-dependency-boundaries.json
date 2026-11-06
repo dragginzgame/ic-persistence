@@ -1,11 +1,3 @@
 [
-  {"dependency":"ic-stable-structures","allowed_packages":[]},
-  {"dependency":"serde_cbor","allowed_packages":[]},
-  {"dependency":"ciborium","allowed_packages":[]},
-  {"dependency":"ciborium-io","allowed_packages":[]},
-  {"dependency":"ciborium-ll","allowed_packages":[]},
-  {"dependency":"minicbor","allowed_packages":[]},
-  {"dependency":"minicbor-serde","allowed_packages":[]},
-  {"dependency":"cbor4ii","allowed_packages":[]},
-  {"dependency":"serde_ipld_dagcbor","allowed_packages":[]}
+  {"dependency":"ic-stable-structures","allowed_packages":[]}
 ]

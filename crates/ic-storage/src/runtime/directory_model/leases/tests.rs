@@ -77,12 +77,40 @@ fn interleaved_extents_translate_cross_page_io_and_preflight_bounds() {
     assert!(catch_unwind(AssertUnwindSafe(|| a.read(3 * PAGE + 1, &mut []))).is_err());
 }
 
+#[test]
+fn admitted_indices_survive_directory_growth_and_interleaved_extents() {
+    let memory = VectorMemory::default();
+    let owner = Owner::init(memory.clone(), StorageConfig::default()).unwrap();
+    owner.bind(vec![key(900)]).unwrap();
+    let first = owner.lease(&key(900)).unwrap();
+    first.try_grow(1).unwrap();
+    first.write(0, b"first");
+    owner.bind((0..512).map(key).collect()).unwrap();
+    let second = owner.lease(&key(0)).unwrap();
+    second.try_grow(2).unwrap();
+    first.try_grow(2).unwrap();
+    first.write(PAGE, b"later");
+    assert_eq!(first.size(), 3);
+    assert_eq!(second.size(), 2);
+    drop(owner);
+    let mut bytes = [0; 5];
+    first.read(0, &mut bytes);
+    assert_eq!(&bytes, b"first");
+    first.read(PAGE, &mut bytes);
+    assert_eq!(&bytes, b"later");
+    drop((first, second));
+    let owner = Owner::init(memory, StorageConfig::default()).unwrap();
+    assert_eq!(owner.lease(&key(900)).unwrap().size(), 3);
+    assert_eq!(owner.lease(&key(0)).unwrap().size(), 2);
+}
+
 #[derive(Clone, Default)]
 struct Faults {
     memory: VectorMemory,
     fail_io: Rc<Cell<bool>>,
     refuse_growth: Rc<Cell<bool>>,
     reads: Rc<Cell<usize>>,
+    fail_read_at: Rc<Cell<Option<usize>>>,
 }
 
 impl MemoryBacking for Faults {
@@ -104,6 +132,11 @@ impl Memory for Faults {
     }
     fn read(&self, offset: u64, bytes: &mut [u8]) {
         self.reads.set(self.reads.get() + 1);
+        assert_ne!(
+            self.fail_read_at.get(),
+            Some(self.reads.get()),
+            "injected chunk failure"
+        );
         assert!(!self.fail_io.get(), "injected read failure");
         self.memory.read(offset, bytes);
     }
@@ -111,6 +144,57 @@ impl Memory for Faults {
         assert!(!self.fail_io.get(), "injected write failure");
         self.memory.write(offset, bytes);
     }
+}
+
+#[test]
+fn uninitialized_reads_admit_full_range_and_poison_partial_native_failures() {
+    use std::mem::MaybeUninit;
+    #[expect(
+        unsafe_code,
+        reason = "Test-owned independent buffers satisfy the raw-read contract"
+    )]
+    fn read<'a>(
+        lease: &Lease<Faults>,
+        offset: u64,
+        bytes: &'a mut [MaybeUninit<u8>],
+    ) -> &'a mut [u8] {
+        // SAFETY: the test supplies an exclusive independent buffer. Only
+        // successful whole reads reach the initialized-slice conversion.
+        unsafe {
+            lease.read_unsafe(offset, bytes.as_mut_ptr().cast(), bytes.len());
+            std::slice::from_raw_parts_mut(bytes.as_mut_ptr().cast(), bytes.len())
+        }
+    }
+    let memory = Faults::default();
+    let owner = Owner::init(memory.clone(), StorageConfig::default()).unwrap();
+    owner.bind(vec![key(0), key(1)]).unwrap();
+    let a = owner.lease(&key(0)).unwrap();
+    let b = owner.lease(&key(1)).unwrap();
+    a.try_grow(1).unwrap();
+    b.try_grow(1).unwrap();
+    a.try_grow(1).unwrap();
+    a.write(PAGE - 2, &[11, 12, 13, 14]);
+    let mut bytes = [MaybeUninit::uninit(); 4];
+    memory.reads.set(0);
+    assert_eq!(read(&a, PAGE - 2, &mut bytes), &[11, 12, 13, 14]);
+    assert_eq!(memory.reads.get(), 2);
+    memory.reads.set(0);
+    assert!(catch_unwind(AssertUnwindSafe(|| read(&a, 2 * PAGE - 2, &mut bytes).len())).is_err());
+    assert_eq!(
+        memory.reads.get(),
+        0,
+        "reject the complete range before backing IO"
+    );
+    assert_eq!(read(&a, 2 * PAGE, &mut []), [0_u8; 0]);
+    memory.fail_read_at.set(Some(2));
+    assert!(catch_unwind(AssertUnwindSafe(|| read(&a, PAGE - 2, &mut bytes).len())).is_err());
+    assert_eq!(memory.reads.get(), 2);
+    assert!(catch_unwind(AssertUnwindSafe(|| read(&b, 0, &mut bytes).len())).is_err());
+    assert_eq!(
+        memory.reads.get(),
+        2,
+        "partial read poisons all leases before further IO"
+    );
 }
 
 #[test]

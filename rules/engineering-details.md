@@ -278,8 +278,10 @@ an unqualified deploy has the defined fleet scope.
   Record narrow approved exceptions and reject stale allowances. Legitimate
   transitive codecs behind Platform and the specifically enumerated native
   Testkit exception remain permitted; that exception grants no direct CBOR use.
-  The Candid source checker alone does not enforce CBOR ownership, external DTO
-  provenance or byte compatibility. Passing checks and complete migration are
+  Use the shared Cargo common inventory, optional Rust `--cbor` source mode and
+  browser SDK/CBOR check together. Default Candid-only checking does not enforce
+  CBOR ownership; none of these lexical checks proves external DTO provenance or
+  byte compatibility. Passing checks and complete migration are
   separate claims; report uncovered roots and remaining source exceptions.
 - Remove Candid derives, conversions and codec helpers from internal types when
   no remaining Candid contract needs them. Do not wrap an unchanged Candid payload
@@ -486,6 +488,11 @@ contracts; ordinary development does not require rereading these mechanics.
   Prepare shared test artifacts once for their exact inputs, then let applicable
   suites consume them. Different features, targets, hosts, archives and installed
   contracts remain distinct obligations.
+- Do not follow Clippy with `cargo check` merely to repeat the same compilation.
+  Compare package, target, feature, profile, compiler/configuration and generated
+  inputs, and remove the duplicate stage only after qualifying that it owns no
+  distinct obligation. Default-feature, Wasm, separate host and archive checks
+  remain when they establish different contracts. Keep early fail-closed lint.
 - A later release or publication step must freshly admit its inputs, but need
   not automatically repeat every earlier check. Reuse only through the qualified
   [stage evidence contract](../docs/release-validation-reuse.md); missing or

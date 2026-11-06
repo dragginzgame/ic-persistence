@@ -12,6 +12,8 @@ fn every_profile_result_fits_the_existing_wire_budget() {
         Workload::Ordered,
         Workload::AuthLookups,
         Workload::Types,
+        Workload::Depth,
+        Workload::VectorReads,
     ] {
         for &case in profile.cases() {
             for &payload in profile.payloads(case) {
@@ -65,6 +67,34 @@ fn every_profile_result_fits_the_existing_wire_budget() {
     assert!(bytes.len() <= 2 * 1024 * 1024, "IC reply ceiling");
     let decoded: Vec<(u64, Vec<u8>)> = ic_wire::native::decode_response(3, &bytes, LIMITS).unwrap();
     assert_eq!(rows, decoded);
+}
+
+#[test]
+fn depth_profile_covers_all_forms_and_population_mutation_histories() {
+    let profile = Workload::Depth;
+    assert_eq!(DEPTH_POPULATIONS, [256, 4096]);
+    for collection in Collection::ALL {
+        assert!(
+            profile
+                .cases()
+                .iter()
+                .any(|case| case.structure() == collection.name())
+        );
+    }
+    assert_eq!(profile.counts(), &[1, 32]);
+    assert_eq!(profile.patterns(), &[Pattern::Uniform, Pattern::Hot16]);
+    assert!(profile.rounds() > 1);
+    for case in profile.cases() {
+        let operations = case.operations();
+        assert!(operations.contains(&Operation::Get));
+        if case.structure() == "Map" {
+            for phase in [Operation::Insert, Operation::Remove, Operation::Reinsert] {
+                assert!(operations.contains(&phase));
+            }
+        }
+    }
+    assert!(Case::U64Bytes.operations().contains(&Operation::Grow));
+    assert!(Case::U64Bytes.operations().contains(&Operation::Shrink));
 }
 
 #[test]

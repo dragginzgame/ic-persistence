@@ -30,7 +30,8 @@ not copied. Physical access still passes through checked Storage handles.
 ## Deliberate adaptations
 
 The algorithms, current node/overflow layouts, fixed-stride Vector slots and
-scalar iterators follow 0.7.2. Changes are limited to integration and safety:
+scalar iterators follow 0.7.2, with the measured shortcuts described below.
+Integration and safety adaptations:
 
 - Private module paths and checked backing/codec views; existing application
   codecs remain unchanged. Storage unsigned codecs are little-endian, whereas
@@ -39,6 +40,17 @@ scalar iterators follow 0.7.2. Changes are limited to integration and safety:
 - Explicit create/load/reset admission. Remove upstream implicit initialization
   and old B-tree/node migration readers. Only current explicit-page-size BTR2,
   SVC1 and SCL1 images are admitted. No previous Storage image is read or reset.
+  Map and region framing admission shares the engine's header read; foreign
+  framing returns the existing typed error before allocator access.
+- The backing bridge forwards ICSS's `Memory::read_unsafe` contract through
+  governed handles, preserving its ability to avoid preliminary zeroing.
+  Callers admit a non-overlapping writable destination; implementations must
+  initialize the complete range on success. Existing custom backings retain
+  an initializing default. Private engine views must implement the hook
+  explicitly so adapters cannot silently inherit that fallback. Public
+  collection operations remain safe.
+  Wasm uses published Runtime >=0.19.4 for the safe uninitialized stable-read
+  export, with only its `ic0` feature selected.
 - Cell admits the host's byte ceiling before buffer allocation. Vector checks
   a variable slot length against its declared bound before allocating payload.
 - A persisted allocator allocation flag is read as u8, checked, then interpreted,
@@ -51,6 +63,20 @@ scalar iterators follow 0.7.2. Changes are limited to integration and safety:
   models and the separately published reference. Rust 2024 unsafe blocks, checked
   conversions, lint fixes and narrowly explained expectations are mechanical
   adaptations, not performance enhancements.
+
+Vector `last()` directly reads the final remaining live slot instead of scanning
+and decoding every preceding slot as ICSS 0.7.2 does. It clips the iterator's
+original range to the current length after truncation and never includes later
+appends outside that range. Like `nth()`, it does not validate discarded records.
+No collection layout or successful result changes.
+
+Vector direct Get/Pop reads of fixed-width values up to 32 bytes without a
+destructor use a small stack buffer instead of ICSS's temporary heap allocation.
+A separate helper keeps stack preparation off the out-of-range path. Larger,
+variable-width and destructor-bearing values retain owned decoder input;
+iterators retain their reusable buffer. The cutoff is internal and introduces
+no format or API change. The [matched comparison](../audits/recurring/storage-icss-backing-parity-2026-11-06.md#step-8-remove-small-fixed-vector-read-allocations)
+checks both loop and full-handler costs, including unchanged controls.
 
 Codec and engine failures trap. Framing admission and explicit reservations can
 still return typed errors; Result signatures do not promise pre-write rejection.

@@ -89,7 +89,8 @@ impl<T: Storable, M: Memory> StableVec<T, M> {
     pub fn is_empty(&self) -> bool {
         self.inner.is_empty()
     }
-    /// Scalar bidirectional iteration with one reusable buffer, as in ICSS.
+    /// Bidirectional iteration with one reusable buffer. Direct skips and `last()`
+    /// decode only the selected record; they do not validate discarded records.
     pub fn iter(&self) -> impl DoubleEndedIterator<Item = Result<T>> + '_ {
         Iter(self.inner.iter())
     }

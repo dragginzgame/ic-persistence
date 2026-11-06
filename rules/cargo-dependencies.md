@@ -126,6 +126,13 @@ compile does not prove installed IC or macOS behavior.
   automatic pre-commit formatting and independent CI/release checks; ordering
   must preserve the catalog and every inherited selection.
 
+The common option also enforces `ci/cbor-dependencies.json` independently of
+consumer allowlists. Platform owns direct CBOR codecs; Platform Types may use
+them only in development dependencies for serializer compatibility tests. The
+native Testkit exception never grants CBOR. Transitive dependencies are permitted.
+Use the [CBOR source mode](../docs/candid-boundary.md#optional-cbor-source-enforcement)
+and [browser check](../docs/node-tools.md) alongside Cargo declarations.
+
 ## External IC dependency boundary
 
 The Tooling-owned `ic-testkit` native PocketIC implementation may select

@@ -29,16 +29,9 @@ pub trait Memory {
     fn size(&self) -> u64;
     fn grow(&self, pages: u64) -> i64;
     fn read(&self, offset: u64, dst: &mut [u8]);
-    #[inline]
-    unsafe fn read_unsafe(&self, offset: u64, dst: *mut u8, count: usize) {
-        // Initialize the buffer to make the slice valid.
-        // SAFETY: The caller supplies valid non-overlapping writable memory.
-        unsafe {
-            std::ptr::write_bytes(dst, 0, count);
-            let slice = std::slice::from_raw_parts_mut(dst, count);
-            self.read(offset, slice);
-        }
-    }
+    // Every private view must explicitly forward initialization. Backing's
+    // former inherited zeroing fallback silently lost ICSS's fast-read path.
+    unsafe fn read_unsafe(&self, offset: u64, dst: *mut u8, count: usize);
     fn write(&self, offset: u64, src: &[u8]);
 }
 fn read_to_vec<M: Memory>(m: &M, addr: Address, dst: &mut std::vec::Vec<u8>, count: usize) {

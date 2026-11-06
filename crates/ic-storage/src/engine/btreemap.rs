@@ -159,24 +159,31 @@ where
         btree
     }
 
-    pub fn load(memory: M) -> Self {
-        let header = Self::read_header(&memory);
+    pub fn load(memory: M) -> Option<Self> {
+        if memory.size() == 0 {
+            return None;
+        }
+        let header = Self::read_header(&memory)?;
         let allocator_addr = Address::from(ALLOCATOR_OFFSET as u64);
-        Self {
+        Some(Self {
             root_addr: header.root_addr,
             allocator: Allocator::load(memory, allocator_addr),
             version: header.version,
             length: header.length,
             _phantom: PhantomData,
-        }
+        })
     }
 
-    fn read_header(memory: &M) -> BTreeHeader {
+    fn read_header(memory: &M) -> Option<BTreeHeader> {
         // Read the header
         let mut buf = [0; PACKED_HEADER_SIZE];
         memory.read(0, &mut buf);
 
-        assert_eq!(&buf[0..3], MAGIC, "Bad magic.");
+        // Admit current framing from the same read used to load the root.
+        // Reject before allocator access; malformed admitted internals still trap.
+        if &buf[0..3] != MAGIC {
+            return None;
+        }
 
         match buf[3] {
             LAYOUT_VERSION_2 => {
@@ -186,20 +193,20 @@ where
                     let a = u32::from_le_bytes(buf[4..8].try_into().unwrap());
                     let b = u32::from_le_bytes(buf[8..12].try_into().unwrap());
 
-                    assert_eq!(b, PAGE_SIZE_VALUE_MARKER, "Unsupported derived-page layout");
+                    if b != PAGE_SIZE_VALUE_MARKER {
+                        return None;
+                    }
                     PageSize::Value(a)
                 };
 
                 // Deserialize the fields
-                BTreeHeader {
+                Some(BTreeHeader {
                     version: Version::V2(page_size),
                     root_addr: Address::from(u64::from_le_bytes(buf[12..20].try_into().unwrap())),
                     length: u64::from_le_bytes(buf[20..28].try_into().unwrap()),
-                }
+                })
             }
-            version => {
-                panic!("Unsupported version: {version}.");
-            }
+            _ => None,
         }
     }
     pub fn insert(&mut self, key: K, value: V) -> Option<V> {

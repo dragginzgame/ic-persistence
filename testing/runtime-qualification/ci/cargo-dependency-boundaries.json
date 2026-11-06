@@ -6,5 +6,6 @@
   {"dependency":"minicbor","allowed_packages":[]},
   {"dependency":"minicbor-serde","allowed_packages":[]},
   {"dependency":"cbor4ii","allowed_packages":[]},
-  {"dependency":"serde_ipld_dagcbor","allowed_packages":[]}
+  {"dependency":"serde_ipld_dagcbor","allowed_packages":[]},
+  {"dependency":"icrc-cbor","allowed_packages":[]}
 ]

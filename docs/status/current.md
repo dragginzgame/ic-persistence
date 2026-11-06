@@ -1,5 +1,33 @@
 # Current handoff — 2026-11-06
 
+## Pending Storage 0.68.1 release
+
+This checkout owns Storage delivery; Platform is released from its own repository.
+Published Runtime 0.19.4 is adopted in both maintained workspaces and is the new
+minimum for the safe uninitialized stable-read export. No local Cargo override
+is selected. Destination graph checks, selected native/Wasm Clippy and installed
+original/O3/Os/Oz IO, custody, collection reopening, upgrade and trap rollback
+pass (`target/qualification/runtime/attempt.XawP1b`). Evidence is under
+`target/evidence/storage-0681-deploy/`. The earlier local-package proof remains
+under `target/evidence/runtime-local-4547033/`; it is distinct from registry proof.
+
+The pending compatible changes optimize Vector last(), fixed-width direct reads,
+Map/region header admission and governed backing access. The
+[follow-through matrix](../audits/recurring/storage-068-followup-2026-11-06.md)
+and [backing matrix](../audits/recurring/storage-icss-backing-parity-2026-11-06.md)
+retain before/after comparisons against published ICSS 0.7.2. Fixed-width scalar
+and 32-byte batches save 6,400 instructions, including at the full synthetic
+handler boundary. The apparent older eight-page bucket gain was a timer-boundary
+shift and is not credited as a handler speedup. Rejected tuning remains rejected.
+Layouts and successful-call APIs are preserved; no backing migration is needed.
+
+Shared Tooling 0.30.7 and native IC Build 0.75.0 are included. Existing root
+Logging 0.24.10, Metrics 0.29.5 and Wire 0.17.4 selections are preserved and
+qualified as part of this release graph. Neither adapter has an independent
+source change requiring a release. Package versions remain unchanged until the
+standard storage release runner admits all required stages and prepares metadata.
+No release commit, tag, push or publication is claimed by this preparation.
+
 ## Delivered: Storage and both adapters
 
 The authorized Storage-only delivery is complete on `origin/main`. All three
@@ -57,11 +85,25 @@ See [Storage](../../releases/storage/0.68.md),
 
 ## Current tooling and comparison evidence
 
-Shared Tooling 0.30.5 (`be37710`, 156 files) is adopted through the canonical
-exporter. Candid source checking covers the complete first-party Rust roots;
-both workspaces reject named direct CBOR dependencies. General CBOR import/type
-resolution is not supplied by the lexical Candid check; current sources contain
-no direct CBOR use. [Adoption boundaries](../shared-tooling-adoption.md).
+Shared Tooling 0.30.7 (`22a853e`, 159 files) is adopted through the canonical
+exporter. Candid/CBOR lexical checking covers all 164 first-party Rust files;
+both workspaces reject named direct CBOR dependencies. Root admission uses the
+shared inventory; independent qualification retains a matching explicit CBOR
+policy to preserve its authorized ICSS Git control. Frozen-release mode remains
+disabled pending consumer qualification. [Adoption boundaries](../shared-tooling-adoption.md).
+Snapshot/source verification, pins, both dependency boundaries, source checks,
+release-adapter substitutes and local documentation links pass. Evidence is in
+`target/evidence/shared-tooling-0307/`. Both lockfiles and pending runtime work
+are preserved; no new runtime or release qualification is claimed.
+
+IC Build 0.75.0 is adopted from crates.io for the native helper and selected
+release-metadata CLI. Its removed shared-target inspection APIs had no Storage
+callers. Only IC Build's version/checksum changed in this dependency update;
+the independent lock and unrelated selections are preserved. The CLI is prepared
+and admitted; 88 helper tests, strict Clippy, bootstrap-recovery substitutes,
+both locked metadata observations, pin/production-graph checks and formatting
+pass. Evidence: `target/evidence/ic-build-0750/`. This native tooling update
+does not resolve the separate Platform export blocker or qualify publication.
 
 The [type matrix](../audits/recurring/benchmark-full-catalogue-2026-11-05.md)
 qualified 73 types / 565 cases across all five forms, with 46,604 measured calls
