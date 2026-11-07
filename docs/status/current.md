@@ -1,12 +1,12 @@
 # Current handoff — 2026-11-07
 
-## Delivered: Storage 0.68.6
+## Delivered: Storage 0.68.7
 
-The [IO](../audits/recurring/storage-btree-io-2026-11-07.md), [empty-value](../audits/recurring/storage-empty-values-2026-11-07.md) and [save/search](../audits/recurring/storage-save-search-2026-11-07.md) studies own per-step matrices and evidence paths.
-Published `904f570d438f13b65e07e59d914a6dd4b843b905`, tag `storage-v0.68.6`, from `e8724c87f1e284bef0fb54979e89c939edff71ef`; registry/download/receipt hashes and clean archive VCS identity match.
-Batch `batch-dByg2fKB` passed all 12 stages and final archives; local main reconciled. Evidence: `target/evidence/storage-0686-deploy/`, captured receipts under `target/release-frozen/batch-dByg2fKB/target/release-validation/`, recovery under `.git/release-state/frozen/batch-dByg2fKB/`.
-Tail repair, empty IO/value and root-search shortcuts: benchmark Wasm −8,358 bytes, handler savings up to 11.35% versus 0.68.5; 368/344/0 improved/equal/regressed cells. Native/interchange and installed IO/upgrade/rollback pass; no API/layout change or adapter publication.
-Failed `batch-qZrTDTJ9` retained (native test Wasm gate corrected, no release effects); interrupted `batch-dByg2fKB` resumed after verified stale-lock recovery. No batch cleanup; rejected experiments remain documented in the studies.
+Published `2944b9b6cfde16564c30de1aa60f66474748cb77`, tag `storage-v0.68.7`, from `f2368407310c2be7b727499a68d44a47ff8655ce`; registry/download/receipt hashes and clean archive VCS identity match.
+Batch `batch-oldv4xmM` passed all 12 stages and final archives; local main reconciled. Evidence: `target/evidence/storage-0687-deploy/`, captured receipts under `target/release-frozen/batch-oldv4xmM/target/release-validation/`, recovery under `.git/release-state/frozen/batch-oldv4xmM/`.
+Runtime 0.20 and root Wire 0.17.11 are delivered; direct Runtime composition preserves IC0-only production. Installed original/O3/Os/Oz IO/upgrade/rollback/Logging pass; no API/layout change or adapter publication. Detailed adoption evidence remains below.
+Prior 0.68.6 (`904f570d438f13b65e07e59d914a6dd4b843b905`, `batch-dByg2fKB`) passed full delivery/registry/reconciliation; `target/evidence/storage-0686-deploy/` and its captured receipts/recovery remain. Benchmark Wasm −8,358 bytes and handler savings up to 11.35% versus 0.68.5; 368/344/0 improved/equal/regressed cells. The [IO](../audits/recurring/storage-btree-io-2026-11-07.md), [empty-value](../audits/recurring/storage-empty-values-2026-11-07.md) and [save/search](../audits/recurring/storage-save-search-2026-11-07.md) studies retain matrices and rejected experiments.
+Failed `batch-qZrTDTJ9` retained (native test Wasm gate corrected, no release effects); interrupted `batch-dByg2fKB` resumed after verified stale-lock recovery. No batch cleanup.
 
 ## Delivered: Storage 0.68.5
 
@@ -110,7 +110,7 @@ See [Storage](../../releases/storage/0.68.md),
 
 Shared Tooling 0.31.0 is adopted; its live Storage batch proof is above.
 [Adoption boundaries](../shared-tooling-adoption.md) retain earlier tooling proofs.
-Pending 0.68.7 adopts published Runtime 0.20.0 in both locks; root Wire independently advanced to 0.17.11 (unused opt-in bool adapter), benchmark remains 0.17.6. Composition selects Runtime directly; native production excludes Runtime/Types and Wasm selects IC0 only. No API/layout change or publication.
+Released 0.68.7 selects Runtime 0.20.0 in both locks; root Wire is 0.17.11 (unused opt-in bool adapter), benchmark remains 0.17.6. Composition selects Runtime directly; native production excludes Runtime/Types and Wasm selects IC0 only. No API/layout change.
 Dependency graph/lint, native composition, pins/boundaries/formatting and installed original/O3/Os/Oz IO/upgrade/rollback/Logging pass. Evidence: `target/evidence/runtime-020-adoption/`, installed `target/qualification/runtime/attempt.AeDrGP/`; unchanged PocketIC pairing and ICSS supplier.
 
 The [type catalogue](../audits/recurring/benchmark-full-catalogue-2026-11-05.md)
