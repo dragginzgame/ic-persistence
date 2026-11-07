@@ -1,17 +1,17 @@
 # Current handoff — 2026-11-07
 
-## Delivered: Storage 0.68.7
+## Delivered: Storage 0.68.8
 
-Published `2944b9b6cfde16564c30de1aa60f66474748cb77`, tag `storage-v0.68.7`, from `f2368407310c2be7b727499a68d44a47ff8655ce`; registry/download/receipt hashes and clean archive VCS identity match.
-Batch `batch-oldv4xmM` passed all 12 stages and final archives; local main reconciled. Evidence: `target/evidence/storage-0687-deploy/`, captured receipts under `target/release-frozen/batch-oldv4xmM/target/release-validation/`, recovery under `.git/release-state/frozen/batch-oldv4xmM/`.
-Runtime 0.20 and root Wire 0.17.11 are delivered; direct Runtime composition preserves IC0-only production. Installed original/O3/Os/Oz IO/upgrade/rollback/Logging pass; no API/layout change or adapter publication. Detailed adoption evidence remains below.
+Published `d3d892c0707d8e6a26a509a5ea88019e34babdba`, tag `storage-v0.68.8`, from `5f4a91f2d25c1719d9f065511a87029cf217057b`; registry/download/receipt hashes and clean archive VCS identity match.
+Batch `batch-I89m70rP` passed all 12 stages and final archives; local main reconciled. Evidence: `target/evidence/storage-0688-deploy/`, captured receipts under `target/release-frozen/batch-I89m70rP/target/release-validation/`, recovery under `.git/release-state/frozen/batch-I89m70rP/`.
+Installed original/O3/Os/Oz IO/upgrade/rollback/Logging pass in `target/qualification/runtime/attempt.PdoT0O/`. Borrowed u8/bool encodings preserve APIs/images; benchmark Wasm −1,520 bytes. No adapter publication. Root Wire 0.17.12 remains a deferred working-tree edit, verified against local preservation branch `preserve/storage-0688-wire-01712`; released root Wire stays 0.17.11.
+Prior 0.68.7 (`2944b9b6cfde16564c30de1aa60f66474748cb77`, source `f2368407310c2be7b727499a68d44a47ff8655ce`, `batch-oldv4xmM`) passed all 12 stages, publication/readback and reconciliation. Evidence: `target/evidence/storage-0687-deploy/`; captured receipts and durable recovery remain. Runtime 0.20 with IC0-only production, original/O3/Os/Oz installed proof and unchanged API/layout are retained below.
 Prior 0.68.6 (`904f570d438f13b65e07e59d914a6dd4b843b905`, `batch-dByg2fKB`) passed full delivery/registry/reconciliation; `target/evidence/storage-0686-deploy/` and its captured receipts/recovery remain. Benchmark Wasm −8,358 bytes and handler savings up to 11.35% versus 0.68.5; 368/344/0 improved/equal/regressed cells. The [IO](../audits/recurring/storage-btree-io-2026-11-07.md), [empty-value](../audits/recurring/storage-empty-values-2026-11-07.md) and [save/search](../audits/recurring/storage-save-search-2026-11-07.md) studies retain matrices and rejected experiments.
 Failed `batch-qZrTDTJ9` retained (native test Wasm gate corrected, no release effects); interrupted `batch-dByg2fKB` resumed after verified stale-lock recovery. No batch cleanup.
 
 ## Delivered: Storage 0.68.5
 
-Published and non-yanked at `56102f4990bcf11a3ceaebe6bb2b1fb3ff9d380c`, tag
-`storage-v0.68.5`, from source `cc29dfe87c9252347db3c0db4c314b03177a889b`.
+Published and non-yanked at `56102f4990bcf11a3ceaebe6bb2b1fb3ff9d380c`, tag `storage-v0.68.5`, from source `cc29dfe87c9252347db3c0db4c314b03177a889b`.
 Batch `batch-KNdyHdLP` passed all 12 release stages and final archive qualification.
 Registry and downloaded archive checksums match the final receipt and clean VCS identity.
 Publication and guarded local reconciliation passed; no adapter release or cleanup.
@@ -108,9 +108,9 @@ See [Storage](../../releases/storage/0.68.md),
 
 ## Current tooling and comparison evidence
 
-Pending **Storage 0.68.8** keeps borrowed u8/bool encodings with unchanged decoders/APIs/images. The [codec study](../audits/recurring/storage-byte-codecs-2026-11-07.md) records 183/531/2 improved/equal/regressed affected-role handler cells, unchanged 712 depth controls and Wasm −1,520 bytes; worst median/individual-round regressions are 0.068%/0.133%. Focused native/installed comparisons, lint and formatting pass; no deployment. Evidence: `target/evidence/storage-byte-codecs/`. Incoming root Wire 0.17.12 remains unadopted and preserved.
+Delivered **Storage 0.68.8** keeps borrowed u8/bool encodings with unchanged decoders/APIs/images. The [codec study](../audits/recurring/storage-byte-codecs-2026-11-07.md) records 183/531/2 improved/equal/regressed affected-role handler cells, unchanged 712 depth controls and Wasm −1,520 bytes; worst median/individual-round regressions are 0.068%/0.133%. Development comparisons and full release/installed qualification pass. Evidence: `target/evidence/storage-byte-codecs/` and the delivery record above. Incoming root Wire 0.17.12 remains unadopted and preserved.
 Shared Tooling 0.31.0 remains selected; [adoption boundaries](../shared-tooling-adoption.md) retain its proof. The [node-load study](../audits/recurring/storage-node-loads-2026-11-07.md) rejects all three earlier trials; those source changes remain reverted. Evidence stays under `target/evidence/storage-{sibling-load,split-load,split-owned}/`; isolate population/heap-page effects before more node-lifetime changes.
-Released 0.68.7 selects Runtime 0.20.0 in both locks; root Wire is 0.17.11 (unused opt-in bool adapter), benchmark remains 0.17.6. Composition selects Runtime directly; native production excludes Runtime/Types and Wasm selects IC0 only. No API/layout change.
+Released 0.68.8 selects Runtime 0.20.0 in both locks; released root Wire is 0.17.11 (unused opt-in bool adapter), benchmark remains 0.17.6. Composition selects Runtime directly; native production excludes Runtime/Types and Wasm selects IC0 only. No API/layout change.
 Dependency graph/lint, native composition, pins/boundaries/formatting and installed original/O3/Os/Oz IO/upgrade/rollback/Logging pass. Evidence: `target/evidence/runtime-020-adoption/`, installed `target/qualification/runtime/attempt.AeDrGP/`; unchanged PocketIC pairing and ICSS supplier.
 
 The [type catalogue](../audits/recurring/benchmark-full-catalogue-2026-11-05.md)
