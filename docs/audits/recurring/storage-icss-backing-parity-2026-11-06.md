@@ -1,8 +1,8 @@
 # Storage backing parity with ICSS
 
 Reference: published **ic-stable-structures 0.7.2**, not earlier Storage. Updated
-2026-11-07: pending routing-read improvements preserve layouts, APIs and governance.
-Steps 1–8 shipped in Storage 0.68.1; steps 9–10 are local, unpublished work.
+2026-11-07: routing-read improvements preserve layouts, APIs and governance.
+Steps 1–8 shipped in Storage 0.68.1; steps 9–10 shipped in Storage 0.68.3.
 
 The [step/round matrices](../../measurements/storage-icss-backing-steps.csv) and
 [payload matrix](../../measurements/storage-icss-backing-payloads.csv) retain both costs.
