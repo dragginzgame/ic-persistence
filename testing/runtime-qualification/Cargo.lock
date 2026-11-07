@@ -982,9 +982,9 @@ dependencies = [
 
 [[package]]
 name = "ic-wire"
-version = "0.17.0"
+version = "0.17.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "685df1a8586f5daec236a0aee92a858163f464cf64a9306969ea53f45c1f57b2"
+checksum = "c2703592b213ea4d1c2f89aa25f92b8f532a4d698915ae5ad6fb61a51052db40"
 dependencies = [
  "bytemuck",
  "postcard",

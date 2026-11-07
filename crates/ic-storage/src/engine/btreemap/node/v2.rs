@@ -166,8 +166,21 @@ impl<K: Storable + Ord + Clone> Node<K> {
         // Load the keys (eagerly if small).
         let mut entries = Vec::with_capacity(num_entries);
         let mut buf = vec![];
+        // Fixed-width keys are adjacent in the node image. Read the same eager
+        // key bytes once, retaining per-key decoding and lazy larger keys.
+        // NodeReader still translates any overflow-page crossings.
+        let batch_key_size =
+            if K::BOUND.is_fixed_size() && K::BOUND.max_size() <= EAGER_LOAD_KEY_SIZE_THRESHOLD {
+                let size = K::BOUND.max_size() as usize;
+                if size != 0 && num_entries != 0 {
+                    read_to_vec(&reader, offset, &mut buf, num_entries * size);
+                }
+                Some(size)
+            } else {
+                None
+            };
 
-        for _ in 0..num_entries {
+        for index in 0..num_entries {
             let key_offset = Bytes::from(offset.get());
 
             // Get key size.
@@ -180,7 +193,10 @@ impl<K: Storable + Ord + Clone> Node<K> {
             };
 
             // Eager-load small keys, defer large ones.
-            let key = if key_size <= EAGER_LOAD_KEY_SIZE_THRESHOLD {
+            let key = if let Some(size) = batch_key_size {
+                let start = index * size;
+                LazyKey::by_value(K::from_bytes(Cow::Borrowed(&buf[start..start + size])))
+            } else if key_size <= EAGER_LOAD_KEY_SIZE_THRESHOLD {
                 read_to_vec(
                     &reader,
                     Address::from(offset.get()),

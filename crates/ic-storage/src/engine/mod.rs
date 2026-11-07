@@ -54,19 +54,21 @@ fn read_u64<M: Memory>(m: &M, addr: Address) -> u64 {
     u64::from_le_bytes(buf)
 }
 fn read_address_vec<M: Memory>(m: &M, addr: Address, count: usize) -> std::vec::Vec<Address> {
-    let chunk_size = usize::try_from(Address::size().get()).expect("address width");
-    assert_eq!(chunk_size, 8);
-    let byte_len = count * chunk_size;
-    let mut buf = std::vec::Vec::with_capacity(byte_len);
-    read_to_vec(m, addr, &mut buf, byte_len);
-
-    buf.chunks_exact(chunk_size)
-        .map(|chunk| {
-            // SAFETY: chunks_exact(chunk_size) ensures each chunk has exactly 8 bytes
-            let bytes: [u8; 8] = chunk.try_into().expect("chunk must be 8 bytes");
-            Address::from(u64::from_le_bytes(bytes))
-        })
-        .collect()
+    const { assert!(size_of::<Address>() == 8) };
+    let byte_len = count.checked_mul(8).expect("address vector byte length");
+    let mut addresses = Vec::<Address>::with_capacity(count);
+    // SAFETY: Address is a packed u64 with no padding or invalid bit patterns.
+    // Capacity covers the complete destination, separate from backing memory.
+    // Publish the length only after the read initializes every byte; a panic
+    // drops an empty vector. Decode little-endian words in place afterwards.
+    unsafe {
+        m.read_unsafe(addr.get(), addresses.as_mut_ptr().cast(), byte_len);
+        addresses.set_len(count);
+    }
+    for address in &mut addresses {
+        *address = Address::from(u64::from_le(address.get()));
+    }
+    addresses
 }
 fn write_u32<M: Memory>(m: &M, addr: Address, val: u32) {
     write(m, addr.get(), &val.to_le_bytes());
@@ -153,3 +155,6 @@ fn write_struct<T, M: Memory>(t: &T, addr: Address, memory: &M) {
 
     write(memory, addr.get(), slice);
 }
+
+#[cfg(test)]
+mod tests;

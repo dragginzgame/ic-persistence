@@ -44,13 +44,10 @@ ICSS has no bounded region API; the reference reopens its map per operation.
 Bucket selection has no effect on governed backing. Existing CSV `dfinity_`
 columns identify the chosen reference through configuration/revision metadata.
 
-The pending direct-read candidate requires Platform's public
-`stable64_read_uninit` export. Selected registry Runtime does not supply it.
-Current local qualification uses an explicit Cargo patch to the fixed package
-from Platform `998764c`, with a separately prepared qualification lock; it does
-not establish registry adoption. See the [backing study](../../../../docs/audits/recurring/storage-icss-backing-parity-2026-11-06.md)
-for source identities, comparisons and the delivery blocker. Normal locks remain
-unchanged; do not relabel the local package as published Runtime 0.19.2.
+The direct-read path uses published Runtime >=0.19.4's
+`stable64_read_uninit` export. Both selected locks provide it; no local Platform
+patch or alternate lock is needed. The [backing study](../../../../docs/audits/recurring/storage-icss-backing-parity-2026-11-06.md)
+distinguishes the original local-package trials from registry qualification.
 
 ### Complete type-by-collection matrix
 
@@ -185,8 +182,17 @@ population and host execution setup, and includes boundary probe overhead.
 The ordinary inner-loop columns remain; `execution-summary.csv` and
 `execution-round-summary.csv` report the outer scope separately, with raw
 `execution_instructions` in each sample. The two diagnostic modes cannot be mixed.
-Both are restricted to the Vector read-history preset. This large synthetic
-reply is not a measurement of Auth's endpoint.
+Both modes also admit `--workload depth`, covering Map, Set, Vector, Cell and
+regions at 256/4,096 records. Full-handler counters retain all batches/operations
+and aggregate across populations. Depth read traces capture only batch-one Get
+calls: multiple tree traversals can exceed the bounded 160-read trace. Other
+ordinary samples remain present with null read traces; overflow still fails closed.
+The existing Vector read-history diagnostic retains both batch sizes. This large
+synthetic reply is not a measurement of Auth's endpoint. Keep frozen ordinary
+modules as the reference, verify a plain WAT round trip, then compare boundary
+probe inner counts against ordinary counts before interpreting the outer scope.
+Boundary-only probes also admit `--workload ordered` to check larger scans and
+string/fixed-byte key controls; bounded read probes remain restricted as above.
 
 For deeper attribution, apply `benches/trace_allocator_accesses.pl` to the
 **read-instrumented** WAT, then assemble it identically. Add driver

@@ -218,9 +218,9 @@ checksum = "2304e00983f87ffb38b55b444b5e3b60a884b5d30c0fca7d82fe33449bbe55ea"
 
 [[package]]
 name = "ic-build"
-version = "0.75.0"
+version = "0.76.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9b98af8238c96fb5f8a8379810f6bad243fa09a7ed56dd8d431e042fdd275f60"
+checksum = "e46dc1d452989a7a9637fee92652e73b0776093c4e3f528e788921dfb26476a5"
 dependencies = [
  "cargo_metadata",
  "ic-host-artifacts",
@@ -270,9 +270,9 @@ dependencies = [
 
 [[package]]
 name = "ic-logging"
-version = "0.24.10"
+version = "0.24.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b178fc4cdd2b18764cf38f51e95e9ad49ecea39e53f63e2d6abd0784a482bc0d"
+checksum = "dd4b62fa52e1d9625e05dc7992b5327bf3e2f3dcccd23abd833223c84b35d450"
 
 [[package]]
 name = "ic-logging-storage"
@@ -287,9 +287,9 @@ dependencies = [
 
 [[package]]
 name = "ic-metrics"
-version = "0.29.5"
+version = "0.29.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ad884a3df4134d63d27537cdd816dd4f5665f25de08dea7de1b3a6d82502d13c"
+checksum = "7aa1b95a894d02d797929104bbbd0998fc1e69f3b45eb2342deaa0c69d769723"
 
 [[package]]
 name = "ic-metrics-storage"
@@ -328,9 +328,9 @@ dependencies = [
 
 [[package]]
 name = "ic-wire"
-version = "0.17.5"
+version = "0.17.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b65a20ea8ba6b677e6a85e16e0d60cc24c069c2e9f8965ca954034f81eda0c3e"
+checksum = "c2703592b213ea4d1c2f89aa25f92b8f532a4d698915ae5ad6fb61a51052db40"
 dependencies = [
  "bytemuck",
  "postcard",

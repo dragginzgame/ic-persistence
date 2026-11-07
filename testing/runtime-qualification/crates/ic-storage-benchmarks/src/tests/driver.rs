@@ -729,7 +729,7 @@ fn population_reports_distinguish_singleton_cells_in_csv_and_raw_output() {
         fs::write(part.join("samples.jsonl"), "{\"request\":{\"rows\":1}}\n").unwrap();
         reports.push((part, "update", population));
     }
-    combine_populations(&root, &reports).unwrap();
+    combine_populations(&root, &reports, false).unwrap();
     for file in ["summary.csv", "round-summary.csv", "lookup-stages.csv"] {
         assert_eq!(
             fs::read_to_string(root.join(file)).unwrap(),
@@ -746,6 +746,19 @@ fn population_reports_distinguish_singleton_cells_in_csv_and_raw_output() {
         assert_eq!(record["request"]["rows"], 1);
         assert_eq!(record["execution_mode"], "update");
         assert_eq!(record["population_context_rows"], population);
+    }
+    for file in ["execution-summary.csv", "execution-round-summary.csv"] {
+        assert!(!root.join(file).exists());
+        for (part, _, _) in &reports {
+            fs::write(part.join(file), "rows,cost\n1,123\n").unwrap();
+        }
+    }
+    combine_populations(&root, &reports, true).unwrap();
+    for file in ["execution-summary.csv", "execution-round-summary.csv"] {
+        assert_eq!(
+            fs::read_to_string(root.join(file)).unwrap(),
+            "rows,cost,execution_mode,population_context_rows\n1,123,update,256\n1,123,update,4096\n"
+        );
     }
 }
 
@@ -794,6 +807,21 @@ fn execution_boundary_and_operation_probes_cannot_be_mixed() {
         "--output",
         "report",
     ];
+    for workload in ["vector-reads", "depth", "auth-lookups", "ordered"] {
+        for diagnostic in ["--trace-stable-reads", "--trace-execution-cost"] {
+            let args = Arguments::try_parse_from(base.into_iter().chain([
+                "--workload",
+                workload,
+                diagnostic,
+            ]))
+            .unwrap();
+            assert_eq!(
+                validate_diagnostics(&args).is_ok(),
+                matches!(workload, "vector-reads" | "depth")
+                    || (workload == "ordered" && diagnostic == "--trace-execution-cost")
+            );
+        }
+    }
     assert!(
         Arguments::try_parse_from(
             base.into_iter()

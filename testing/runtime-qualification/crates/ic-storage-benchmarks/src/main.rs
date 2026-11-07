@@ -166,16 +166,21 @@ fn decode_trace_rows(bytes: &[u8], capacity: usize) -> Result<Vec<[u64; 4]>, &'s
         .collect())
 }
 
+fn validate_diagnostics(args: &Arguments) -> Result<(), &'static str> {
+    if !matches!(args.workload, Some(Workload::VectorReads | Workload::Depth)) {
+        if args.trace_stable_reads {
+            return Err("read probes require --workload vector-reads or depth");
+        }
+        if args.trace_execution_cost && !matches!(args.workload, Some(Workload::Ordered)) {
+            return Err("execution probes require --workload vector-reads, depth or ordered");
+        }
+    }
+    Ok(())
+}
+
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args = Arguments::parse();
-    if (args.trace_stable_reads || args.trace_execution_cost)
-        && !matches!(args.workload, Some(Workload::VectorReads))
-    {
-        return Err(
-            "diagnostic modes require --workload vector-reads and matching instrumented modules"
-                .into(),
-        );
-    }
+    validate_diagnostics(&args)?;
     if args.collection.is_some() && !matches!(args.workload, Some(Workload::Types)) {
         return Err("--collection requires --workload types".into());
     }
@@ -209,11 +214,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 run(selected)?;
             }
         }
-        combine_populations(&args.output, &reports)?;
+        combine_populations(&args.output, &reports, args.trace_execution_cost)?;
         fs::write(
             args.output.join("configuration.json"),
             serde_json::to_vec_pretty(
-                &serde_json::json!({"workload":args.workload, "populations":populations,"subreports":reports,"execution_modes":modes.iter().map(|(_,mode)|mode).collect::<Vec<_>>(),"instrumented":auth,"scope":if auth {"outer Wire envelope only; opaque inner Auth bytes"} else {"collection operations; population, hot access, growth and churn controls"}}),
+                &serde_json::json!({"workload":args.workload, "populations":populations,"subreports":reports,"execution_modes":modes.iter().map(|(_,mode)|mode).collect::<Vec<_>>(),"instrumented":auth || args.trace_stable_reads || args.trace_execution_cost,"scope":if auth {"outer Wire envelope only; opaque inner Auth bytes"} else {"collection operations; population, hot access, growth and churn controls"}}),
             )?,
         )?;
         return Ok(());
@@ -235,8 +240,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 fn combine_populations(
     root: &std::path::Path,
     reports: &[(PathBuf, &str, u32)],
+    execution_cost: bool,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    for name in ["summary.csv", "round-summary.csv", "lookup-stages.csv"] {
+    let mut files = vec!["summary.csv", "round-summary.csv", "lookup-stages.csv"];
+    if execution_cost {
+        files.extend(["execution-summary.csv", "execution-round-summary.csv"]);
+    }
+    for name in files {
         let mut output = fs::File::create(root.join(name))?;
         let mut header = None;
         for (report, mode, rows) in reports {
@@ -338,6 +348,7 @@ fn run(mut args: Arguments) -> Result<(), Box<dyn std::error::Error>> {
             "instrumented_stable_reads": args.trace_stable_reads,
             "instrumented_allocator_accesses": args.trace_allocator_accesses,
             "instrumented_execution_cost": args.trace_execution_cost,
+            "read_trace_batch_limit": (args.trace_stable_reads && matches!(args.workload, Some(Workload::Depth))).then_some(1),
             "execution_measurement": args.trace_execution_cost.then_some("exported benchmark handler including request decoding, input preparation, collection loop, response encoding/reply and cleanup; includes boundary probe overhead; excludes installation/population and host execution setup"),
             "execution_mode": if args.query {"query"} else {"update"}, "rows": args.rows, "structures": ["Map","Set","Vector","Cell","Region"], "samples": args.samples, "cases": cases.iter().map(|case| serde_json::json!({"case":case, "key_type":case.key_type(), "value_type":case.value_type(), "key_bound":case.key_bound(), "value_bound":case.value_bound(), "logical_value_bytes":payloads(*case), "structure":case.structure(), "operations":case.operations(), "phases":phases(*case,args.growth_cycles,args.workload), "payload_scope":match case {Case::Typed{value,..}=>value.payload_scope(),_=>"logical-value-bytes"}, "population_rows":case.rows(args.rows)})).collect::<Vec<_>>(), "batch_sizes": batches, "workload": args.workload,
             "patterns": args.patterns, "seed": if args.growth_cycles { "sample + 1 (same keys across rounds)" } else { "sample + 1 + round * 7919" }, "shuffled": args.shuffled,
@@ -537,37 +548,41 @@ fn run(mut args: Arguments) -> Result<(), Box<dyn std::error::Error>> {
                                     } else {
                                         None
                                     };
-                                    let read_trace =
-                                        if args.trace_stable_reads && operation == Operation::Get {
-                                            let bytes = pic
-                                                .query_call(
-                                                    canister,
-                                                    ExternalPrincipal::anonymous(),
-                                                    "stable_read_trace",
-                                                    Vec::new(),
-                                                )
-                                                .map_err(|e| format!("{name} read trace: {e:?}"))?;
-                                            Some(decode_read_trace(&bytes)?)
-                                        } else {
-                                            None
-                                        };
-                                    let allocator_accesses = if args.trace_allocator_accesses
-                                        && operation == Operation::Get
-                                    {
+                                    // A populated tree can exceed the bounded trace after
+                                    // multiple lookups. Keep all ordinary operation samples,
+                                    // but capture depth diagnostics only for single reads.
+                                    let capture_read = operation == Operation::Get
+                                        && (!matches!(args.workload, Some(Workload::Depth))
+                                            || count == 1);
+                                    let read_trace = if args.trace_stable_reads && capture_read {
                                         let bytes = pic
                                             .query_call(
                                                 canister,
                                                 ExternalPrincipal::anonymous(),
-                                                "allocator_access_trace",
+                                                "stable_read_trace",
                                                 Vec::new(),
                                             )
-                                            .map_err(|e| {
-                                                format!("{name} allocator access trace: {e:?}")
-                                            })?;
-                                        Some(decode_trace_rows(&bytes, 64)?)
+                                            .map_err(|e| format!("{name} read trace: {e:?}"))?;
+                                        Some(decode_read_trace(&bytes)?)
                                     } else {
                                         None
                                     };
+                                    let allocator_accesses =
+                                        if args.trace_allocator_accesses && capture_read {
+                                            let bytes = pic
+                                                .query_call(
+                                                    canister,
+                                                    ExternalPrincipal::anonymous(),
+                                                    "allocator_access_trace",
+                                                    Vec::new(),
+                                                )
+                                                .map_err(|e| {
+                                                    format!("{name} allocator access trace: {e:?}")
+                                                })?;
+                                            Some(decode_trace_rows(&bytes, 64)?)
+                                        } else {
+                                            None
+                                        };
                                     writeln!(
                                         raw,
                                         "{}",

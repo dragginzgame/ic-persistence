@@ -78,6 +78,17 @@ iterators retain their reusable buffer. The cutoff is internal and introduces
 no format or API change. The [matched comparison](../audits/recurring/storage-icss-backing-parity-2026-11-06.md#step-8-remove-small-fixed-vector-read-allocations)
 checks both loop and full-handler costs, including unchanged controls.
 
+B-tree child-address batches read into their final vector instead of allocating
+ICSS's intermediate byte vector and copying into a second allocation. Packed
+addresses retain little-endian decoding, including on native big-endian hosts;
+the vector length becomes visible only after a complete initializing read.
+Already-eager fixed-width keys up to 16 bytes are read as one contiguous range
+per node, with the same per-key decoding and overflow-page translation. Larger
+and variable-width keys keep their existing paths. These changes apply to Map,
+Set and region views without changing images, geometry, bounds or custody.
+The [backing study](../audits/recurring/storage-icss-backing-parity-2026-11-06.md)
+retains before/after and whole-handler comparisons with published ICSS 0.7.2.
+
 Codec and engine failures trap. Framing admission and explicit reservations can
 still return typed errors; Result signatures do not promise pre-write rejection.
 There are no collection checksums. Existing Storage collection images require an

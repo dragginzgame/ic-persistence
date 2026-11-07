@@ -21,6 +21,48 @@ fn bounded_map_keys_and_mixed_end_ranges_preserve_order() {
     assert_eq!(keys.next_back().unwrap().unwrap(), 13);
     assert_eq!(keys.collect::<Result<Vec<_>, _>>().unwrap(), vec![11, 12]);
 }
+
+fn fixed_key_history<const N: usize>() {
+    let backing = VectorMemory::default();
+    let host = runtime(backing.clone());
+    let binding = crate::StableKey::parse(KEYS[0]).unwrap();
+    let mut map =
+        StableBTreeMap::<[u8; N], ()>::create(host.open_memory(&binding).unwrap()).unwrap();
+    let mut model = std::collections::BTreeSet::new();
+    // Wide fixed keys with zero-sized values exercise densely occupied nodes;
+    // N=0 also verifies empty slices without chunks_exact(0) or extra key IO.
+    for number in (0..240_u8).rev() {
+        let key = [number; N];
+        assert_eq!(map.insert(key, ()).unwrap().is_none(), model.insert(key));
+    }
+    drop(map);
+    drop(host);
+    let host = runtime(backing);
+    let mut map = StableBTreeMap::<[u8; N], ()>::load(host.open_memory(&binding).unwrap()).unwrap();
+    for number in 0..240_u8 {
+        let key = [number; N];
+        assert_eq!(map.get(&key).unwrap(), model.contains(&key).then_some(()));
+        if number % 3 == 0 {
+            assert_eq!(map.remove(&key).unwrap().is_some(), model.remove(&key));
+        }
+    }
+    assert_eq!(
+        map.iter()
+            .map(|entry| entry.unwrap().into_pair().unwrap())
+            .collect::<Vec<_>>(),
+        model.into_iter().map(|key| (key, ())).collect::<Vec<_>>()
+    );
+}
+
+#[test]
+fn fixed_key_batch_boundaries_preserve_splits_removals_and_reopening() {
+    fixed_key_history::<0>();
+    fixed_key_history::<1>();
+    fixed_key_history::<8>();
+    fixed_key_history::<15>();
+    fixed_key_history::<16>();
+    fixed_key_history::<17>();
+}
 #[derive(Clone)]
 struct RejectDecode(u64);
 impl Storable for RejectDecode {

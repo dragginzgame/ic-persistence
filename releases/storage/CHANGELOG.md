@@ -3,6 +3,25 @@
 Current releases use the Storage naming. [Earlier published history](https://github.com/dragginzgame/ic-storage/blob/23deb81c48d58558ac3b0ce36bf266ddc25dca91/releases/persistence/CHANGELOG.md)
 retains its original package and release identities.
 
+## [0.68.3] - Unreleased
+
+### ⚡ Performance
+
+- Remove a temporary routing-address allocation and batch small fixed-width
+  B-tree key reads across Map, Set and regions. Preserve public APIs, layouts
+  and allocation governance. [Details](0.68.md).
+
+### 🧪 Testing
+
+- Extend depth comparisons with full-handler and bounded read/allocation probes,
+  separating inner-loop costs from complete synthetic calls. [Details](0.68.md).
+
+### 🔧 Tooling
+
+- Adopt IC Build 0.76.0 for the native helper and release-metadata CLI. Align
+  both workspaces on IC Wire 0.17.6 without changing stored codecs or public
+  Wire requirements. [Details](0.68.md).
+
 ## [0.68.2] - 2026-11-06
 
 ### 🔧 Tooling
