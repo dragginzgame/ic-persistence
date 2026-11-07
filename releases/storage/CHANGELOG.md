@@ -3,6 +3,14 @@
 Current releases use the Storage naming. [Earlier published history](https://github.com/dragginzgame/ic-storage/blob/23deb81c48d58558ac3b0ce36bf266ddc25dca91/releases/persistence/CHANGELOG.md)
 retains its original package and release identities.
 
+## [0.68.8] - Unreleased
+
+### ⚡ Performance
+
+- Borrow `u8` and `bool` encodings instead of allocating temporary byte buffers.
+  Preserve decoding, stored bytes and public APIs. Extend whole-handler benchmark
+  probes to custom type selections. [Details](0.68.md).
+
 ## [0.68.7] - 2026-11-07
 
 ### 🔧 Dependencies

@@ -1,6 +1,9 @@
 //! Storage-owned record codec contract. Application records normally use IC Wire.
 use std::borrow::Cow;
 
+#[cfg(test)]
+mod tests;
+
 ///
 /// Bound
 ///
@@ -107,7 +110,24 @@ macro_rules! integer {
         }
     )*};
 }
-integer!(u8, u16, u32, u64, u128, i8, i16, i32, i64, i128, f32, f64);
+integer!(u16, u32, u64, u128, i8, i16, i32, i64, i128, f32, f64);
+impl Storable for u8 {
+    const BOUND: Bound = Bound::Bounded {
+        max_size: 1,
+        is_fixed_size: true,
+    };
+    fn to_bytes(&self) -> Result<Cow<'_, [u8]>, CodecError> {
+        Ok(Cow::Borrowed(std::slice::from_ref(self)))
+    }
+    fn from_bytes(bytes: Cow<'_, [u8]>) -> Result<Self, CodecError> {
+        Ok(Self::from_le_bytes(
+            bytes
+                .as_ref()
+                .try_into()
+                .map_err(|_| CodecError::Invalid("integer width"))?,
+        ))
+    }
+}
 impl Storable for () {
     const BOUND: Bound = Bound::Bounded {
         max_size: 0,
@@ -126,7 +146,7 @@ impl Storable for bool {
         is_fixed_size: true,
     };
     fn to_bytes(&self) -> Result<Cow<'_, [u8]>, CodecError> {
-        Ok(Cow::Owned(vec![u8::from(*self)]))
+        Ok(Cow::Borrowed(if *self { &[1] } else { &[0] }))
     }
     fn from_bytes(bytes: Cow<'_, [u8]>) -> Result<Self, CodecError> {
         match bytes.as_ref() {

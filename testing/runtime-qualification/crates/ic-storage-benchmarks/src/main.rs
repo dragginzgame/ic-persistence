@@ -171,8 +171,10 @@ fn validate_diagnostics(args: &Arguments) -> Result<(), &'static str> {
         if args.trace_stable_reads {
             return Err("read probes require --workload vector-reads or depth");
         }
-        if args.trace_execution_cost && !matches!(args.workload, Some(Workload::Ordered)) {
-            return Err("execution probes require --workload vector-reads, depth or ordered");
+        if args.trace_execution_cost && !matches!(args.workload, None | Some(Workload::Ordered)) {
+            return Err(
+                "execution probes require custom cases or --workload vector-reads, depth or ordered",
+            );
         }
     }
     Ok(())

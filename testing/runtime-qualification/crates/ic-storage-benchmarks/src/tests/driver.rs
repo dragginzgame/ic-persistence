@@ -869,6 +869,18 @@ fn execution_boundary_and_operation_probes_cannot_be_mixed() {
             );
         }
     }
+    for diagnostic in ["--trace-stable-reads", "--trace-execution-cost"] {
+        let args = Arguments::try_parse_from(base.into_iter().chain([
+            "--cases",
+            "VectorU8,VectorBool,CellBool",
+            diagnostic,
+        ]))
+        .unwrap();
+        assert_eq!(
+            validate_diagnostics(&args).is_ok(),
+            diagnostic == "--trace-execution-cost"
+        );
+    }
     assert!(
         Arguments::try_parse_from(
             base.into_iter()

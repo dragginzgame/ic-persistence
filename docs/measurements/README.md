@@ -14,6 +14,8 @@ within the 5 MiB repository budget. These are limits, not storage targets.
 | B-tree IO follow-through | [Retained tail/empty-write shortcuts and rejected prefix reads](../audits/recurring/storage-btree-io-2026-11-07.md) | Per-step Storage/ICSS instruction, IO and Wasm-size tables |
 | Empty B-tree values | [Retained value shortcut and rejected general-read branch](../audits/recurring/storage-empty-values-2026-11-07.md) | Matched all-collection depth matrix and reduced Wasm size |
 | B-tree save and search | [Retained root lookup and rejected overflow-list transfer](../audits/recurring/storage-save-search-2026-11-07.md) | Per-step depth matrix plus matched 64-KiB/1-MiB payload study |
+| B-tree node loads | [Rejected delayed-sibling and borrowed/owned split trials](../audits/recurring/storage-node-loads-2026-11-07.md) | Three-step all-collection Storage/ICSS handler matrix and Wasm sizes |
+| Byte and Boolean codecs | [Borrowed encodings and decoder control](../audits/recurring/storage-byte-codecs-2026-11-07.md) | Two-revision all-collection Storage/ICSS matrix, individual-round regressions and Wasm sizes |
 | Consumer memory sizing | [Declaration inventory and historical controls](../local-memory-audit.md) | [Consumer declarations](consumer-memory-inventory.json), [selected historical controls](storage-memory-study.json) |
 | Current engine reset | [Compatibility, safety and selected baseline](../audits/recurring/icss-engine-baseline-2026-11-05.md) | Inline selected table |
 | Historical engine experiments | [Decisions and limits](../audits/recurring/storage-icss-hotspots-2026-11-04.md) | Inline selected table |

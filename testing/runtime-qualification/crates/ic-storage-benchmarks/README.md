@@ -192,7 +192,9 @@ synthetic reply is not a measurement of Auth's endpoint. Keep frozen ordinary
 modules as the reference, verify a plain WAT round trip, then compare boundary
 probe inner counts against ordinary counts before interpreting the outer scope.
 Boundary-only probes also admit `--workload ordered` to check larger scans and
-string/fixed-byte key controls; bounded read probes remain restricted as above.
+string/fixed-byte key controls, or custom `--cases` selections with the same
+rows, rounds and patterns as their ordinary runs. Bounded read probes remain
+restricted as above.
 
 For deeper attribution, apply `benches/trace_allocator_accesses.pl` to the
 **read-instrumented** WAT, then assemble it identically. Add driver
