@@ -310,10 +310,14 @@ identity. Hosts must align their direct supplier dependencies. Both suppliers no
 share this repository's Rust 1.99.1 floor; arithmetic, logging semantics, encoded
 records and runtime ownership remain unchanged.
 
-The library and selected metadata editor use Build 0.74.0. Host Artifacts, FS and
-Process select 0.74.1. The installed Testkit CLI selects 0.79.0, with
-server 16.1.0 unchanged. Storage 0.65.0 and Metrics Storage 0.66.0 deliver this source
-adoption. Logging Storage 0.64.0 subsequently completes its separate publication.
+Storage 0.65.0 and Metrics Storage 0.66.0 delivered Build 0.74.0 and Host 0.74.1;
+Logging Storage 0.64.0 subsequently completed its separate publication.
+The current native helper selects Host 0.75.0 and Build 0.78.0 together because
+archive qualification passes Host process-limit types into Build. The removed
+Host provenance/sampling and Build wrapper, prepared-input and progress APIs have
+no Storage callers. The metadata editor follows the selected Build version;
+explicit setup and offline recovery qualification remain separate from selection.
+The independent runtime workspace and installed Testkit/server selections are unchanged.
 
 The library [dependency catalog](../Cargo.toml) owns direct package requirements
 and feature selections; its [lockfile](../Cargo.lock) owns resolved identities.

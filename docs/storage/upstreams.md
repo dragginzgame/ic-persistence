@@ -53,6 +53,10 @@ Integration and safety adaptations:
   export, with only its `ic0` feature selected.
 - Cell admits the host's byte ceiling before buffer allocation. Vector checks
   a variable slot length against its declared bound before allocating payload.
+- Cell writes its existing eight-byte header as one range, followed by the payload,
+  instead of ICSS 0.7.2's three separate header writes. Layout and cached-value
+  semantics are unchanged. The [write-path study](../audits/recurring/storage-write-paths-2026-11-07.md)
+  records the measured savings and rejected B-tree experiments.
 - A persisted allocator allocation flag is read as u8, checked, then interpreted,
   preserving valid bytes without constructing an invalid Rust bool on corruption.
 - Native mutation unwind guards poison the shared owner after a panic. They add

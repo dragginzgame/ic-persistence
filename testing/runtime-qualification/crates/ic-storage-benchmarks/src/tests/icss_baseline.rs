@@ -74,6 +74,16 @@ fn map_images_cross_read_after_splits_overflows_and_removals() {
         map.insert(key, bytes.clone()).unwrap();
         model.insert(key, bytes);
     }
+    // Replace values throughout the populated tree, including internal entries
+    // and records spanning overflow pages, before admitting the same image in ICSS.
+    for (&key, value) in &mut model {
+        let replacement = vec![key.to_le_bytes()[0].wrapping_add(1); value.len()];
+        assert_eq!(
+            map.insert(key, replacement.clone()).unwrap().as_ref(),
+            Some(&*value)
+        );
+        *value = replacement;
+    }
     drop(map);
     let mut stock =
         icss::BTreeMap::<Reference<u64>, Reference<Vec<u8>>, _>::load(Checked(memory(&runtime)));

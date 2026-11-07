@@ -88,13 +88,15 @@ impl<T: Storable, M: Memory> Cell<T, M> {
 
         debug_assert!(memory.size() * WASM_PAGE_SIZE >= len as u64 + HEADER_V1_SIZE);
 
-        let version = [LAYOUT_VERSION; 1];
-        memory.write(0, MAGIC);
-        memory.write(3, &version);
-        memory.write(
-            4,
-            &(u32::try_from(len).expect("admitted cell length")).to_le_bytes(),
+        let mut header = [0; 8];
+        header[..3].copy_from_slice(MAGIC);
+        header[3] = LAYOUT_VERSION;
+        header[4..].copy_from_slice(
+            &u32::try_from(len)
+                .expect("admitted cell length")
+                .to_le_bytes(),
         );
+        memory.write(0, &header);
         memory.write(HEADER_V1_SIZE, bytes);
         Ok(())
     }

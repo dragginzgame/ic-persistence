@@ -1,5 +1,23 @@
 # Current handoff — 2026-11-07
 
+## Pending 0.68.5: Cell header writes and Host adoption
+
+Combine Cell header writes: Wasm −662 bytes, batch-32 handler −0.93%; other depth cells equal.
+The [study](../audits/recurring/storage-write-paths-2026-11-07.md) owns 73-type/native/runtime proof.
+Both B-tree trials were reverted. No version bump, commit or delivery.
+
+Host Artifacts/FS/Process 0.75.0 and matching Build/editor 0.78.0 are adopted.
+All 88 helper tests, strict lint, pins/production graphs, formatting and real
+offline metadata recovery for all three groups pass; editor setup/check pass.
+Evidence: `target/evidence/ic-host-075-adoption/`; independent workspace unchanged.
+
+## Rejected terminal-iterator experiments
+
+The [ordered-iterator study](../audits/recurring/storage-ordered-iteration-2026-11-07.md)
+retains both rejected projection trials; deployed 0.68.4 entry shortcuts remain.
+Raw evidence: `target/evidence/storage-projection-last/`, `storage-next-back/`.
+The local 5–10 KB Wasm-growth guideline remains binding absent exceptional benefit.
+
 ## Delivered: Storage 0.68.4
 
 Published and non-yanked at `663662663c702e2003ac88d25596f5bfd71be470`, tag
@@ -10,24 +28,19 @@ evidence: `target/evidence/storage-0684-deploy/`. Receipts remain in
 `target/release-frozen/batch-Er9VPHO8/target/release-validation/`; durable recovery
 is `.git/release-state/frozen/batch-Er9VPHO8/`. No cleanup or adapter release.
 
-Adopt IC Build 0.77.0 and select Runtime 0.19.5 in both lockfiles. Original/O3/Os/Oz
-installed IO, custody, upgrade and rollback pass in
-`target/qualification/runtime/attempt.uMwbLm`. All 88 helper tests and offline
-metadata recovery pass; adoption evidence: `target/evidence/ic-build-adoption/`.
-
+Prior Build proof: `target/evidence/ic-build-adoption/`; Runtime 0.19.5 original/O3/Os/Oz
+installed IO, custody, upgrade and rollback: `target/qualification/runtime/attempt.uMwbLm`.
 Reuse lazy-key read buffers for types with destructors; preserve fixed-key paths.
 Map/Set entry iterator `last()` now uses the existing reverse cursor. Public
 APIs, formats and governance are unchanged; no host migration is required.
 The [backing study](../audits/recurring/storage-icss-backing-parity-2026-11-06.md)
-owns both steps' matrices. The earlier key-buffer step improves selected string
+and ordered-iterator study own the matrices. The key-buffer step improves selected string
 handlers 1.5–5.2% versus 0.68.3; evidence: `target/evidence/storage-owned-key/`.
-The new 11,772-call ordered matrix improves all 90 iterator-last cells. Selected
-32-query handlers improve 85–94% against the pending baseline and 86–95% against
-ICSS 0.7.2. Worst other handler: +2.24%; full benchmark Wasm: +296,606 bytes.
-Keys/values projections remain unchanged. All 23 adapter and 49 benchmark tests,
-strict lint and focused installed Storage upgrade/rollback pass. Frozen boundary
-probes preserve all loop counts. Evidence: `target/evidence/storage-iterator-last/`.
-Full type timing was not rerun; release qualification is separate from benchmark claims.
+The 11,772-call matrix improves all 90 entry-last cells; the ordered study retains
+handler gains, a 2.24% worst regression and +296,606-byte benchmark Wasm growth.
+All 23 adapter and 49 benchmark tests and focused installed qualification passed.
+Evidence was recorded under `target/evidence/storage-iterator-last/`; full type
+timing was not rerun. Release qualification is separate from benchmark claims.
 
 ## Delivered: Storage 0.68.3
 
@@ -39,25 +52,13 @@ match the final receipt; evidence: `target/evidence/storage-0683-deploy/`.
 Receipts remain under `target/release-frozen/batch-RAD7_qIV/target/release-validation/`;
 durable recovery remains `.git/release-state/frozen/batch-RAD7_qIV/`. No cleanup.
 
-Read B-tree child addresses into their final vector and batch already-eager fixed
-keys up to 16 bytes. The backing study retains point-operation gains and scan
-tradeoffs against ICSS 0.7.2; these are synthetic results, not complete endpoints.
-
-The [backing study](../audits/recurring/storage-icss-backing-parity-2026-11-06.md)
-owns both scopes and trial matrices. Raw evidence: `target/evidence/storage-map-routing/`;
-ordinary depth runs: `qKBykW`, `SpnBn9`, `LLDlVi`. Each checks 3,936 calls;
-round-trip and boundary-probe inner counts match. Native IO covers 160 cases.
-Engine, collection, driver and ICSS image-interchange tests pass, as do
-strict Clippy and original/O3/Os/Oz installed IO, custody, upgrade and rollback
-(`target/qualification/runtime/attempt.UjEWo6`). No format migration is required.
-
-Storage 0.68.3 adopted Build 0.76.0 and Wire 0.17.6. Wire's compatible 0.17.0
-minimum and all stored codecs remained unchanged; details are in its release notes.
-
-Dependency checks and installed original/O3/Os/Oz qualification passed in
-`target/qualification/runtime/attempt.F3ZzEd`; evidence: `target/evidence/build-076-wire-0176/`.
-Testkit 0.79.0 was re-prepared after native build-input changes; server 16.1.0
-is unchanged. The initial CLI-admission failure remains retained.
+Routing-read changes retain APIs and layouts; the backing study owns gains,
+scan tradeoffs and the 160-case native IO proof. Evidence was recorded under
+`target/evidence/storage-map-routing/`, with depth runs `qKBykW`/`SpnBn9`/`LLDlVi`.
+Original/O3/Os/Oz installed qualification passed in `attempt.UjEWo6` and
+`attempt.F3ZzEd` under `target/qualification/runtime/`.
+Build 0.76.0 and Wire 0.17.6 adoption evidence was recorded under
+`target/evidence/build-076-wire-0176/`, including the initial CLI-admission failure.
 
 ## Earlier delivered groups and retained recovery
 
@@ -109,7 +110,7 @@ See [Storage](../../releases/storage/0.68.md),
 
 Shared Tooling 0.31.0 is adopted; its live Storage batch proof is above.
 [Adoption boundaries](../shared-tooling-adoption.md) retain earlier tooling proofs.
-Both locks select Wire 0.17.6 and Runtime 0.19.5.
+Both locks select Runtime 0.19.5; root Wire is now 0.17.7 (independent edit), benchmark 0.17.6.
 Native production excludes Runtime/Types; Wasm selects Runtime IC0 only.
 
 The [type catalogue](../audits/recurring/benchmark-full-catalogue-2026-11-05.md)
@@ -140,7 +141,6 @@ Closed #153/#154 and publication evidence remain linked by the delivered handoff
 The [consumer inventory](../local-memory-audit.md) lists declarations, not live
 usage. Canic receipt bounds and complete Auth endpoints remain unqualified.
 Any adoption must explicitly replace old collection images and host framing.
-No current public API raw-backing extraction or independent ID assignment is added.
 
 The authorized IcyDB layout preparation exists only in `/tmp/icydb-control-layout`,
 branch `storage/control-allocation`, base `03c5713e`. Preserve its complete

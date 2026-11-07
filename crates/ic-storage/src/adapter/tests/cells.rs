@@ -7,21 +7,28 @@ use std::{
 };
 #[test]
 fn cell_current_header_ceiling_and_reopen_are_read_only() {
-    let backing = VectorMemory::default();
+    let backing = crate::testing::MeteredMemory::<VectorMemory>::default();
     let runtime = runtime(backing.clone());
     let key = crate::StableKey::parse("test.cell.v1").unwrap();
     let mut cell = StableCell::create(runtime.open_memory(&key).unwrap(), vec![7; 256]).unwrap();
+    backing.reset();
     assert_eq!(cell.set(vec![8; 2048]).unwrap(), vec![7; 256]);
+    let counts = backing.counts();
+    assert!(!counts.overflowed);
+    assert_eq!(
+        (counts.writes, counts.write_bytes, counts.grows),
+        (2, 2056, 0)
+    );
     drop(cell);
-    let before = backing.borrow().clone();
+    let before = backing.backing().borrow().clone();
     assert!(matches!(
-        StableCell::<Vec<u8>>::load(runtime.open_memory(&key).unwrap(), 2047),
+        StableCell::<Vec<u8>, _>::load(runtime.open_memory(&key).unwrap(), 2047),
         Err(CollectionError::Cell(StableCellPayloadError::TooLarge {
             value_len: 2048
         }))
     ));
-    assert_eq!(*backing.borrow(), before);
-    let cell = StableCell::<Vec<u8>>::load(runtime.open_memory(&key).unwrap(), 2048).unwrap();
+    assert_eq!(*backing.backing().borrow(), before);
+    let cell = StableCell::<Vec<u8>, _>::load(runtime.open_memory(&key).unwrap(), 2048).unwrap();
     assert_eq!(cell.get(), &vec![8; 2048]);
     drop(cell);
     let memory = runtime.open_memory(&key).unwrap();

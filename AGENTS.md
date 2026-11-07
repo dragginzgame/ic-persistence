@@ -232,6 +232,14 @@ lockfile/public-type qualification remain required. See
 for [Storage](docs/migration/ic-persistence.md) and
 [Metrics Storage](docs/migration/ic-metrics-stable.md).
 
+## Optimisation size budget
+
+Keep Wasm growth from an individual change within 5–10 KB unless a clearly
+demonstrated exceptional benefit justifies more. Report matched before/after
+Wasm bytes alongside instruction results, distinguishing benchmark harness size
+from application size. Instruction savings alone do not justify retaining a
+large size increase.
+
 ## Allocation consolidation
 
 The maintainer selected a complete package/API hard cut on 2026-11-02.

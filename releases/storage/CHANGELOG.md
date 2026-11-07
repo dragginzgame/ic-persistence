@@ -3,6 +3,19 @@
 Current releases use the Storage naming. [Earlier published history](https://github.com/dragginzgame/ic-storage/blob/23deb81c48d58558ac3b0ce36bf266ddc25dca91/releases/persistence/CHANGELOG.md)
 retains its original package and release identities.
 
+## [0.68.5] - Unreleased
+
+### ⚡ Performance
+
+- Combine stable Cell header writes, reducing write overhead without changing
+  stored bytes, public APIs or cached-value behaviour. [Details](0.68.md).
+
+### 🔧 Tooling
+
+- Adopt Host 0.75.0 and matching IC Build 0.78.0 for native repository tooling.
+  Prepare the updated metadata editor with `make install-release-tools`.
+  Production dependencies and collection APIs are unchanged. [Details](0.68.md).
+
 ## [0.68.4] - 2026-11-07
 
 ### ⚡ Performance

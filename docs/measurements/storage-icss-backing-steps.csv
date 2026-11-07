@@ -670,3 +670,15 @@ iterator-last-handler-after,attempt.w0luRK,256,256,Map,U64U64,8,32,Uniform,IterL
 iterator-last-handler-after,attempt.w0luRK,256,256,Map,StringString,32,32,Uniform,IterLast,,8,1833104,27747470,4,9
 iterator-last-handler-after,attempt.w0luRK,256,256,Set,SetU64,0,32,Uniform,IterLast,,8,1107900,8746399,4,9
 iterator-last-handler-after,attempt.w0luRK,256,256,Set,SetString,0,32,Uniform,IterLast,,8,1519380,30710448,4,9
+projection-last-handler-before,attempt.g5v6Ay,256,256,Map,U64Bytes,256,32,Uniform,KeysLast,,8,9064506,9739175,5,9
+projection-last-handler-before,attempt.g5v6Ay,256,256,Map,U64Bytes,256,32,Uniform,ValuesLast,,8,27300590,26111518,5,9
+projection-last-handler-before,attempt.g5v6Ay,256,256,Map,U64U64,8,32,Uniform,KeysLast,,8,7566251,8442282,4,9
+projection-last-handler-before,attempt.g5v6Ay,256,256,Map,U64U64,8,32,Uniform,ValuesLast,,8,12688445,13415727,4,9
+projection-last-handler-before,attempt.g5v6Ay,256,256,Map,StringString,32,32,Uniform,KeysLast,,8,28731462,30877638,4,9
+projection-last-handler-before,attempt.g5v6Ay,256,256,Map,StringString,32,32,Uniform,ValuesLast,,8,41414569,42428243,4,9
+projection-last-handler-after,attempt.KaX5nl,256,256,Map,U64Bytes,256,32,Uniform,KeysLast,,8,1280497,9739175,5,9
+projection-last-handler-after,attempt.KaX5nl,256,256,Map,U64Bytes,256,32,Uniform,ValuesLast,,8,2621453,26111518,5,9
+projection-last-handler-after,attempt.KaX5nl,256,256,Map,U64U64,8,32,Uniform,KeysLast,,8,1097879,8442282,4,9
+projection-last-handler-after,attempt.KaX5nl,256,256,Map,U64U64,8,32,Uniform,ValuesLast,,8,1161505,13415727,4,9
+projection-last-handler-after,attempt.KaX5nl,256,256,Map,StringString,32,32,Uniform,KeysLast,,8,1612311,30877638,4,9
+projection-last-handler-after,attempt.KaX5nl,256,256,Map,StringString,32,32,Uniform,ValuesLast,,8,1623248,42428243,4,9

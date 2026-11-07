@@ -178,42 +178,8 @@ Other optimizer profiles and the full 73-type timing catalogue were not rerun.
 
 ## Step 12: select the last remaining entry through the reverse cursor
 
-Map iterator `last()` now calls its existing reverse cursor; Set inherits it.
-Ranges and partial consumption retain their results. ICSS 0.7.2's iterator
-still scans forward, though its direct Map/Set last-entry APIs are already fast.
-Keys/values projections remain unchanged. No new cache, public API or layout.
-
-The expanded ordered harness separates `IterLast`, `KeysLast` and `ValuesLast`
-from direct `Last`. Baseline `ksmFDM` includes step 11; candidate `w0luRK` differs
-only in this shortcut and native tests. Each validates 11,772 calls / 1,962 cells.
-Full-handler instructions below: 256 records, 32 fresh iterator-last queries,
-shuffled setup, uniform inputs, one seed and medians over three stateful rounds;
-ICSS uses eight-page buckets. CSV rows: `iterator-last-handler-*`.
-
-| Case | Before | After | ICSS 0.7.2 |
-| --- | ---: | ---: | ---: |
-| u64 Map | 7,757,897 | 1,182,226 | 8,623,678 |
-| String Map | 25,413,172 | 1,833,104 | 27,747,470 |
-| u64 Set | 7,688,250 | 1,107,900 | 8,746,399 |
-| String Set | 25,346,909 | 1,519,380 | 30,710,448 |
-
-All 90 `IterLast` cells improve: 58–98% in-loop and 26–97% for full handlers.
-Across the whole matrix, handler cells improve/match/regress 139/1,757/66;
-loop cells 126/1,783/53. Worst handler regression: U64Bytes ValuesLast, 256-byte
-values, batch 32, 26,702,298 → 27,300,590 (+2.24%; ICSS 26,111,518).
-Outside key/value-last controls the worst handler increase is 0.282%.
-Do not attribute those stateful-trace differences to a specific allocator cause
-without further isolation. Ordinary lookup and scan algorithms are unchanged.
-
-ICSS modules and driver are byte-identical; every boundary probe preserves all
-ordinary inner counts and all median stable-page counts match. Benchmark Wasm
-grows 14,064,129 → 14,360,735 bytes; section-10 payload grows
-11,868,259 → 12,137,165. These are full-catalogue harness sizes, not application sizes.
-All 23 adapter and 49 benchmark/model/image tests, strict lint and focused
-installed IO/upgrade/rollback pass. Evidence: `target/evidence/storage-iterator-last/`.
-Reproduce with `BENCH_WORKLOAD=ordered BENCH_SAMPLES=1 make benchmark-storage`
-and the benchmark guide's boundary probes. Full type timing and all optimizer
-profiles were not rerun; this is a terminal-iterator gain, not universal parity.
+The [ordered-iterator study](storage-ordered-iteration-2026-11-07.md) owns the
+released 0.68.4 entry shortcut and rejected key/value projection comparisons.
 
 ## Qualification, reproduction and delivery boundary
 
