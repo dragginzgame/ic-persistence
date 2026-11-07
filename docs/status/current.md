@@ -1,12 +1,12 @@
 # Current handoff — 2026-11-07
 
-## Pending 0.68.6: avoid redundant B-tree IO, setup and root searches
+## Delivered: Storage 0.68.6
 
 The [IO](../audits/recurring/storage-btree-io-2026-11-07.md), [empty-value](../audits/recurring/storage-empty-values-2026-11-07.md) and [save/search](../audits/recurring/storage-save-search-2026-11-07.md) studies own per-step matrices and evidence paths.
-Keep tail repair, empty IO/value and root-search shortcuts: −8,358 Wasm bytes, up to 11.35% handler savings versus 0.68.5; 368/344/0 improved/equal/regressed cells.
-Reject prefix reads, the general empty-read branch and overflow-list transfer. Native/interchange checks pass.
-Failed batch `batch-qZrTDTJ9`: native metering tests failed Wasm test compilation; corrected target gate, no release effects. Evidence retained.
-Installed original IO/upgrade/rollback passes. No API/layout change, version bump or delivery.
+Published `904f570d438f13b65e07e59d914a6dd4b843b905`, tag `storage-v0.68.6`, from `e8724c87f1e284bef0fb54979e89c939edff71ef`; registry/download/receipt hashes and clean archive VCS identity match.
+Batch `batch-dByg2fKB` passed all 12 stages and final archives; local main reconciled. Evidence: `target/evidence/storage-0686-deploy/`, captured receipts under `target/release-frozen/batch-dByg2fKB/target/release-validation/`, recovery under `.git/release-state/frozen/batch-dByg2fKB/`.
+Tail repair, empty IO/value and root-search shortcuts: benchmark Wasm −8,358 bytes, handler savings up to 11.35% versus 0.68.5; 368/344/0 improved/equal/regressed cells. Native/interchange and installed IO/upgrade/rollback pass; no API/layout change or adapter publication.
+Failed `batch-qZrTDTJ9` retained (native test Wasm gate corrected, no release effects); interrupted `batch-dByg2fKB` resumed after verified stale-lock recovery. No batch cleanup; rejected experiments remain documented in the studies.
 
 ## Delivered: Storage 0.68.5
 
@@ -110,7 +110,7 @@ See [Storage](../../releases/storage/0.68.md),
 
 Shared Tooling 0.31.0 is adopted; its live Storage batch proof is above.
 [Adoption boundaries](../shared-tooling-adoption.md) retain earlier tooling proofs.
-Both locks select Runtime 0.19.5; root Wire is now 0.17.10 (independent edit), benchmark 0.17.6.
+Both locks select Runtime 0.19.5; released root Wire is 0.17.10, benchmark 0.17.6.
 Native production excludes Runtime/Types; Wasm selects Runtime IC0 only.
 
 The [type catalogue](../audits/recurring/benchmark-full-catalogue-2026-11-05.md)
