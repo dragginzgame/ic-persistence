@@ -84,6 +84,29 @@ fn map_images_cross_read_after_splits_overflows_and_removals() {
         );
         *value = replacement;
     }
+    // Shrink, regrow and reuse overflow chains before cross-reading every
+    // intermediate image with ICSS's independent chain walker.
+    for size in [0, 65536, 31, 4096] {
+        for key in (0..300).step_by(13) {
+            let replacement = vec![0xa5; size];
+            assert_eq!(
+                map.insert(key, replacement.clone()).unwrap(),
+                model.insert(key, replacement)
+            );
+        }
+        drop(map);
+        let stock = icss::BTreeMap::<Reference<u64>, Reference<Vec<u8>>, _>::load(Checked(memory(
+            &runtime,
+        )));
+        for (&key, value) in &model {
+            assert_eq!(
+                stock.get(&Reference(key)).map(|v| v.0).as_ref(),
+                Some(value)
+            );
+        }
+        drop(stock);
+        map = StableBTreeMap::<u64, Vec<u8>>::load(memory(&runtime)).unwrap();
+    }
     drop(map);
     let mut stock =
         icss::BTreeMap::<Reference<u64>, Reference<Vec<u8>>, _>::load(Checked(memory(&runtime)));

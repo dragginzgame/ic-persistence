@@ -222,20 +222,19 @@ where
             // Load the root from memory.
             let mut root = self.load_node(self.root_addr);
 
-            // Check if the key already exists in the root.
-            if let Ok(idx) = root.search(&key, self.memory()) {
-                // Key found, replace its value and return the old one.
-                return Some(V::from_bytes(Cow::Owned(
-                    self.update_value(&mut root, idx, value),
-                )));
-            }
-
             // If the root is full, we need to introduce a new node as the root.
             //
             // NOTE: In the case where we are overwriting an existing key, then introducing
             // a new root node isn't strictly necessary. However, that's a micro-optimization
             // that adds more complexity than it's worth.
             if root.is_full() {
+                // Check before splitting a full root. A non-full root is
+                // searched by insert_nonfull below; do not search it twice.
+                if let Ok(idx) = root.search(&key, self.memory()) {
+                    return Some(V::from_bytes(Cow::Owned(
+                        self.update_value(&mut root, idx, value),
+                    )));
+                }
                 // The root is full. Allocate a new node that will be used as the new root.
                 let mut new_root = self.allocate_node(NodeType::Internal);
 

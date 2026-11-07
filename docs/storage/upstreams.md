@@ -57,6 +57,21 @@ Integration and safety adaptations:
   instead of ICSS 0.7.2's three separate header writes. Layout and cached-value
   semantics are unchanged. The [write-path study](../audits/recurring/storage-write-paths-2026-11-07.md)
   records the measured savings and rejected B-tree experiments.
+- B-tree node saves repair the overflow-chain terminator only when pages are
+  removed; loaded and newly allocated tails already terminate. ICSS 0.7.2
+  repeats that write on every save. See the [IO study](../audits/recurring/storage-btree-io-2026-11-07.md).
+- Empty node fields inside the already allocated initial page skip backing
+  calls, unlike ICSS 0.7.2. Logical extent and overflow reservation are preserved;
+  governed backing already suppresses physical empty writes, so this saves CPU
+  overhead rather than page charges. The IO study records the measured tradeoff.
+- Loading/extracting an empty B-tree value returns an empty vector before
+  constructing its payload reader; ICSS 0.7.2 still requests a zero-byte read.
+  Nonempty values, keys and routing retain their original read paths. The
+  [empty-value study](../audits/recurring/storage-empty-values-2026-11-07.md)
+  records this shortcut and the rejected general-reader experiment.
+- Insertions search non-full roots once through `insert_nonfull`; ICSS 0.7.2
+  searches again there after an initial root miss. Full roots retain the
+  pre-split lookup. See the [save/search study](../audits/recurring/storage-save-search-2026-11-07.md).
 - A persisted allocator allocation flag is read as u8, checked, then interpreted,
   preserving valid bytes without constructing an invalid Rust bool on corruption.
 - Native mutation unwind guards poison the shared owner after a panic. They add

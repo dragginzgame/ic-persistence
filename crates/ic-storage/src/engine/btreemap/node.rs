@@ -216,6 +216,11 @@ impl<K: Storable + Ord + Clone> Node<K> {
         loaded_size: u32,
         memory: &M,
     ) -> Vec<u8> {
+        // The stored length was already read during node admission. Empty
+        // values (including Set entries) need no payload reader or backing IO.
+        if loaded_size == 0 {
+            return Vec::new();
+        }
         let reader = NodeReader {
             address: self.address,
             overflows: &self.overflows,

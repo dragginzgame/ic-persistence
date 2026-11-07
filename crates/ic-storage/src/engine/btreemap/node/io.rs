@@ -232,7 +232,12 @@ impl<'a, M: Memory> NodeWriter<'a, M> {
         // If the write is only in the initial page, then write it directly in one go.
         // This is a performance enhancement to avoid the cost of creating a `NodeIterator`.
         if end_offset < u64::from(self.page_size.get()) {
-            write(self.allocator.memory(), self.address.get() + offset, src);
+            // Leaf child lists and empty values occupy no bytes. The node's
+            // initial page is already allocated; retain max_offset accounting
+            // above without entering the backing's write path for these fields.
+            if !src.is_empty() {
+                write(self.allocator.memory(), self.address.get() + offset, src);
+            }
             return;
         }
 
@@ -344,6 +349,13 @@ impl<'a, M: Memory> NodeWriter<'a, M> {
         // There cannot be a case where we require more pages than what we currently have.
         assert!(overflow_pages_needed <= self.overflows.len());
 
+        // Loaded chains already end in NULL; allocation initializes each new
+        // tail likewise. The initial node link is written by save_v2(). Only
+        // removing pages changes which link must terminate the chain.
+        if overflow_pages_needed == self.overflows.len() {
+            return;
+        }
+
         // Deallocate all the unused pages.
         while self.overflows.len() > overflow_pages_needed {
             self.allocator.deallocate(self.overflows.pop().unwrap());
@@ -382,3 +394,6 @@ const fn compute_num_overflow_pages_needed(size: u64, page_size: u64) -> u64 {
         0
     }
 }
+
+#[cfg(test)]
+mod tests;

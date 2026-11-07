@@ -3,6 +3,22 @@
 Current releases use the Storage naming. [Earlier published history](https://github.com/dragginzgame/ic-storage/blob/23deb81c48d58558ac3b0ce36bf266ddc25dca91/releases/persistence/CHANGELOG.md)
 retains its original package and release identities.
 
+## [0.68.6] - Unreleased
+
+### ⚡ Performance
+
+- Avoid redundant B-tree overflow-tail writes when saving unchanged or growing
+  chains, skip empty node-field writes and return empty values without payload
+  reader setup. Preserve page reclamation, stored layouts and public APIs.
+  Matched benchmark Wasm is smaller. [Details](0.68.md).
+- Avoid searching a non-full B-tree root twice when inserting or updating a key
+  held below it. Full-root replacement still avoids an unnecessary split.
+
+### 🔧 Dependencies
+
+- Refresh the root locked IC Wire selection to 0.17.10. Its published codec
+  sources and dependency contract are unchanged from 0.17.7.
+
 ## [0.68.5] - 2026-11-07
 
 ### ⚡ Performance

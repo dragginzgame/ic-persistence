@@ -1,5 +1,13 @@
 # Current handoff — 2026-11-07
 
+## Pending 0.68.6: avoid redundant B-tree IO, setup and root searches
+
+The [IO](../audits/recurring/storage-btree-io-2026-11-07.md), [empty-value](../audits/recurring/storage-empty-values-2026-11-07.md) and [save/search](../audits/recurring/storage-save-search-2026-11-07.md) studies own per-step matrices and evidence paths.
+Keep tail repair, empty IO/value and root-search shortcuts: −8,358 Wasm bytes,
+up to 11.35% handler savings versus 0.68.5; 368/344/0 improved/equal/regressed cells.
+Reject prefix reads, the general empty-read branch and overflow-list transfer. Native/interchange checks pass.
+Installed original IO/upgrade/rollback passes. No API/layout change, version bump or delivery.
+
 ## Delivered: Storage 0.68.5
 
 Published and non-yanked at `56102f4990bcf11a3ceaebe6bb2b1fb3ff9d380c`, tag
@@ -44,21 +52,13 @@ installed qualification passed; full type timing was not rerun.
 
 ## Delivered: Storage 0.68.3
 
-Published and non-yanked at `50dbd7f8b8fbc1516ccf9630a0e26bc3539a5b90`,
-with annotated tag `storage-v0.68.3`. Shared batch `batch-RAD7_qIV` passed all
-12 release stages, final archive qualification, publication and guarded local
-reconciliation. Registry checksum, downloaded archive and clean VCS identity
-match the final receipt; evidence: `target/evidence/storage-0683-deploy/`.
-Receipts remain under `target/release-frozen/batch-RAD7_qIV/target/release-validation/`;
-durable recovery remains `.git/release-state/frozen/batch-RAD7_qIV/`. No cleanup.
-
-Routing-read changes retain APIs and layouts; the backing study owns gains,
-scan tradeoffs and the 160-case native IO proof. Evidence was recorded under
-`target/evidence/storage-map-routing/`, with depth runs `qKBykW`/`SpnBn9`/`LLDlVi`.
-Original/O3/Os/Oz installed qualification passed in `attempt.UjEWo6` and
-`attempt.F3ZzEd` under `target/qualification/runtime/`.
-Build 0.76.0 and Wire 0.17.6 adoption evidence was recorded under
-`target/evidence/build-076-wire-0176/`, including the initial CLI-admission failure.
+Published at `50dbd7f8b8fbc1516ccf9630a0e26bc3539a5b90`, tag `storage-v0.68.3`.
+Batch `batch-RAD7_qIV` passed all 12 gates, archives, registry verification and reconciliation.
+Evidence: `target/evidence/storage-0683-deploy/`; no cleanup.
+Receipts/recovery for `batch-RAD7_qIV` remain in the standard captured/durable paths above.
+Raw routing evidence: `target/evidence/storage-map-routing/` (`qKBykW`/`SpnBn9`/`LLDlVi`).
+Installed original/O3/Os/Oz proofs: `target/qualification/runtime/attempt.UjEWo6` and `attempt.F3ZzEd`.
+Build/Wire adoption and initial CLI refusal: `target/evidence/build-076-wire-0176/`.
 
 ## Earlier delivered groups and retained recovery
 
@@ -110,7 +110,7 @@ See [Storage](../../releases/storage/0.68.md),
 
 Shared Tooling 0.31.0 is adopted; its live Storage batch proof is above.
 [Adoption boundaries](../shared-tooling-adoption.md) retain earlier tooling proofs.
-Both locks select Runtime 0.19.5; root Wire is now 0.17.7 (independent edit), benchmark 0.17.6.
+Both locks select Runtime 0.19.5; root Wire is now 0.17.10 (independent edit), benchmark 0.17.6.
 Native production excludes Runtime/Types; Wasm selects Runtime IC0 only.
 
 The [type catalogue](../audits/recurring/benchmark-full-catalogue-2026-11-05.md)

@@ -11,6 +11,9 @@ within the 5 MiB repository budget. These are limits, not storage targets.
 | Governed backing parity | [Attribution and routing-read comparisons](../audits/recurring/storage-icss-backing-parity-2026-11-06.md) | [Step/round and diagnostic counters](storage-icss-backing-steps.csv), [payload costs](storage-icss-backing-payloads.csv); published Runtime ≥0.19.4 |
 | Ordered terminal iteration | [Retained entry shortcut and rejected projection/caller trials](../audits/recurring/storage-ordered-iteration-2026-11-07.md) | Selected rows in the summary and shared [step matrix](storage-icss-backing-steps.csv) |
 | Write-path experiments | [B-tree rejections and retained Cell header writes](../audits/recurring/storage-write-paths-2026-11-07.md) | Selected instruction, IO and Wasm-size matrices in the summary |
+| B-tree IO follow-through | [Retained tail/empty-write shortcuts and rejected prefix reads](../audits/recurring/storage-btree-io-2026-11-07.md) | Per-step Storage/ICSS instruction, IO and Wasm-size tables |
+| Empty B-tree values | [Retained value shortcut and rejected general-read branch](../audits/recurring/storage-empty-values-2026-11-07.md) | Matched all-collection depth matrix and reduced Wasm size |
+| B-tree save and search | [Retained root lookup and rejected overflow-list transfer](../audits/recurring/storage-save-search-2026-11-07.md) | Per-step depth matrix plus matched 64-KiB/1-MiB payload study |
 | Consumer memory sizing | [Declaration inventory and historical controls](../local-memory-audit.md) | [Consumer declarations](consumer-memory-inventory.json), [selected historical controls](storage-memory-study.json) |
 | Current engine reset | [Compatibility, safety and selected baseline](../audits/recurring/icss-engine-baseline-2026-11-05.md) | Inline selected table |
 | Historical engine experiments | [Decisions and limits](../audits/recurring/storage-icss-hotspots-2026-11-04.md) | Inline selected table |
