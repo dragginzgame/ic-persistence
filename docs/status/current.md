@@ -1,17 +1,23 @@
 # Current handoff — 2026-11-07
 
-## Pending 0.68.4: ordered reads and IC Build
+## Delivered: Storage 0.68.4
 
-IC Build 0.77.0 is selected for the native helper and prepared release editor.
-Storage has no callers of its removed cache-timing getters. All 88 helper tests,
-strict lint, native/Wasm graphs, pins and three-group interrupted metadata
-recovery pass; evidence: `target/evidence/ic-build-adoption/`. Both lockfiles now
-select Runtime 0.19.5; original/O3/Os/Oz installed IO, custody, upgrade and rollback
-pass in `target/qualification/runtime/attempt.uMwbLm` for deployment.
+Published and non-yanked at `663662663c702e2003ac88d25596f5bfd71be470`, tag
+`storage-v0.68.4`. Shared batch `batch-Er9VPHO8` passed all 12 release stages,
+final archive qualification, publication and guarded local reconciliation.
+Downloaded archive checksum and clean VCS identity match the final receipt;
+evidence: `target/evidence/storage-0684-deploy/`. Receipts remain in
+`target/release-frozen/batch-Er9VPHO8/target/release-validation/`; durable recovery
+is `.git/release-state/frozen/batch-Er9VPHO8/`. No cleanup or adapter release.
+
+Adopt IC Build 0.77.0 and select Runtime 0.19.5 in both lockfiles. Original/O3/Os/Oz
+installed IO, custody, upgrade and rollback pass in
+`target/qualification/runtime/attempt.uMwbLm`. All 88 helper tests and offline
+metadata recovery pass; adoption evidence: `target/evidence/ic-build-adoption/`.
 
 Reuse lazy-key read buffers for types with destructors; preserve fixed-key paths.
 Map/Set entry iterator `last()` now uses the existing reverse cursor. Public
-APIs, formats and governance are unchanged; no version, commit or publication.
+APIs, formats and governance are unchanged; no host migration is required.
 The [backing study](../audits/recurring/storage-icss-backing-parity-2026-11-06.md)
 owns both steps' matrices. The earlier key-buffer step improves selected string
 handlers 1.5–5.2% versus 0.68.3; evidence: `target/evidence/storage-owned-key/`.
@@ -21,7 +27,7 @@ ICSS 0.7.2. Worst other handler: +2.24%; full benchmark Wasm: +296,606 bytes.
 Keys/values projections remain unchanged. All 23 adapter and 49 benchmark tests,
 strict lint and focused installed Storage upgrade/rollback pass. Frozen boundary
 probes preserve all loop counts. Evidence: `target/evidence/storage-iterator-last/`.
-Full type timing and release gates remain separate from these performance proofs.
+Full type timing was not rerun; release qualification is separate from benchmark claims.
 
 ## Delivered: Storage 0.68.3
 
@@ -33,21 +39,15 @@ match the final receipt; evidence: `target/evidence/storage-0683-deploy/`.
 Receipts remain under `target/release-frozen/batch-RAD7_qIV/target/release-validation/`;
 durable recovery remains `.git/release-state/frozen/batch-RAD7_qIV/`. No cleanup.
 
-Read B-tree child addresses into their final vector; batch already-eager fixed
-keys up to 16 bytes. Map, Set and regions keep their APIs, formats and governance.
-Against published ICSS 0.7.2, the selected 4,096-record full-handler matrix is
-9.7% cheaper for Map Get, 5.2% for Replace, 13.9% for Set Get and 6.1% for region
-Get; region Replace is effectively equal. Baseline Map Get was already at parity
-outside the inner timer. These are synthetic results, not complete endpoints.
+Read B-tree child addresses into their final vector and batch already-eager fixed
+keys up to 16 bytes. The backing study retains point-operation gains and scan
+tradeoffs against ICSS 0.7.2; these are synthetic results, not complete endpoints.
 
 The [backing study](../audits/recurring/storage-icss-backing-parity-2026-11-06.md)
 owns both scopes and trial matrices. Raw evidence: `target/evidence/storage-map-routing/`;
 ordinary depth runs: `qKBykW`, `SpnBn9`, `LLDlVi`. Each checks 3,936 calls;
-round-trip and boundary-probe inner counts match. The wider ordered matrix checks
-10,476 calls per run: 1,654/1,746 full-handler cells improve; worst regression is
-1.63% for a 128-entry string scan (0.75% above ICSS). Wide scans remain a tradeoff.
-Native IO checks 160 matched cases: fewer calls with identical bytes/codecs/ranges.
-Focused engine, collection, driver and ICSS image-interchange tests pass, as do
+round-trip and boundary-probe inner counts match. Native IO covers 160 cases.
+Engine, collection, driver and ICSS image-interchange tests pass, as do
 strict Clippy and original/O3/Os/Oz installed IO, custody, upgrade and rollback
 (`target/qualification/runtime/attempt.UjEWo6`). No format migration is required.
 
