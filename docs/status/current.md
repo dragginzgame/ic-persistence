@@ -110,8 +110,8 @@ See [Storage](../../releases/storage/0.68.md),
 
 Shared Tooling 0.31.0 is adopted; its live Storage batch proof is above.
 [Adoption boundaries](../shared-tooling-adoption.md) retain earlier tooling proofs.
-Both locks select Runtime 0.19.5; released root Wire is 0.17.10, benchmark 0.17.6.
-Native production excludes Runtime/Types; Wasm selects Runtime IC0 only.
+Pending 0.68.7 adopts published Runtime 0.20.0 in both locks; root Wire independently advanced to 0.17.11 (unused opt-in bool adapter), benchmark remains 0.17.6. Composition selects Runtime directly; native production excludes Runtime/Types and Wasm selects IC0 only. No API/layout change or publication.
+Dependency graph/lint, native composition, pins/boundaries/formatting and installed original/O3/Os/Oz IO/upgrade/rollback/Logging pass. Evidence: `target/evidence/runtime-020-adoption/`, installed `target/qualification/runtime/attempt.AeDrGP/`; unchanged PocketIC pairing and ICSS supplier.
 
 The [type catalogue](../audits/recurring/benchmark-full-catalogue-2026-11-05.md)
 retains 73 types / 565 cases across five forms, 53 verified refusals and 18

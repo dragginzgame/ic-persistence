@@ -50,7 +50,7 @@ for target in "$host" wasm32-unknown-unknown; do
         --forbid-feature ic-platform-runtime/runtime --forbid-feature ic-platform-runtime/executor --forbid-feature ic-platform-runtime/cdk \
         --forbid ic-platform-runtime-guard --forbid ic-platform-types --forbid candid --forbid-pattern '^ic-cdk'
 done
-# A separate consumer selects the published facade runtime as an application would.
+# A separate consumer selects the published canonical runtime as an application would.
 # Keep this out of production-library graphs and the opaque-Wasm native driver.
 for target in "$host" wasm32-unknown-unknown; do
     perl "$shared/check-cargo-graph.pl" --consumer "$PWD/testing/runtime-qualification" \

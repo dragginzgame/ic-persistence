@@ -304,9 +304,9 @@ dependencies = [
 
 [[package]]
 name = "ic-platform-runtime"
-version = "0.19.5"
+version = "0.20.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "50c3993129a37d30563cc7cda9e38e922c7f5986c9c9424dae804d9e5f2545ae"
+checksum = "edd7cdf5798dc7830346a971d33a9790073d769d676d8902af3f5928a3a434f7"
 
 [[package]]
 name = "ic-storage"
@@ -328,9 +328,9 @@ dependencies = [
 
 [[package]]
 name = "ic-wire"
-version = "0.17.10"
+version = "0.17.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7e38a76e8475c017769d8a00e9f693ea44ce51bb684ed836db8b5b9e530dabf1"
+checksum = "5c4f409b57ca119afa1b1cc7580d0b8fe6ebbdb97b2b1ae50c0cd4f6c430db15"
 dependencies = [
  "bytemuck",
  "postcard",

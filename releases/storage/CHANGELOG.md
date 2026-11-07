@@ -3,6 +3,16 @@
 Current releases use the Storage naming. [Earlier published history](https://github.com/dragginzgame/ic-storage/blob/23deb81c48d58558ac3b0ce36bf266ddc25dca91/releases/persistence/CHANGELOG.md)
 retains its original package and release identities.
 
+## [0.68.7] - Unreleased
+
+### 🔧 Dependencies
+
+- Adopt Platform Runtime 0.20 for Wasm stable-memory IO. Preserve the IC0-only
+  production boundary, public APIs and stored layouts; qualify direct Runtime
+  composition and the existing canonical CDK entrypoints. [Details](0.68.md).
+- Qualify the pending root-lock update to IC Wire 0.17.11. Its new bool adapter
+  is opt-in and unused here; Storage's existing codec behaviour is unchanged.
+
 ## [0.68.6] - 2026-11-07
 
 ### ⚡ Performance

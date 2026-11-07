@@ -9,8 +9,9 @@ publish = false
 [package.metadata.shared-tooling.loc]
 category = "tests"
 
-# Deliberately compose the facade's runtime feature with Storage's backing.
+# Deliberately compose the canonical runtime with Storage's backing.
 # This isolated consumer catches executor guard conflicts reported in #152.
 [dependencies]
-ic-platform = { workspace = true, features = ["runtime"] }
+ic-platform = { workspace = true, features = ["principal"] }
+ic-platform-runtime = { workspace = true, features = ["runtime"] }
 ic-storage.workspace = true

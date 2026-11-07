@@ -797,16 +797,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4c09ed6a8bafe4ba7f13b4ba12091839e85095766fad7b7dcd1640e81b53b346"
 dependencies = [
  "ic-platform-pocket-ic",
- "ic-platform-runtime",
  "ic-platform-types",
  "serde",
 ]
 
 [[package]]
 name = "ic-platform-macros"
-version = "0.19.5"
+version = "0.20.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "69216204e7b9cf7daf73280719d4afb0311083cb95f932c856cea2ca8ad6772e"
+checksum = "a3762781b46b2ee0786b90cf66287bd7da8d5359d50df5d4407bbf5ff76f0d2b"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -847,9 +846,9 @@ dependencies = [
 
 [[package]]
 name = "ic-platform-runtime"
-version = "0.19.5"
+version = "0.20.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "50c3993129a37d30563cc7cda9e38e922c7f5986c9c9424dae804d9e5f2545ae"
+checksum = "edd7cdf5798dc7830346a971d33a9790073d769d676d8902af3f5928a3a434f7"
 dependencies = [
  "ic-platform-macros",
  "ic-platform-runtime-guard",
@@ -862,9 +861,9 @@ dependencies = [
 
 [[package]]
 name = "ic-platform-runtime-guard"
-version = "0.19.5"
+version = "0.20.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7b77c70c88f0192ffd34fffc44d0f47bee07c84dcd9364ecaa8657307dae4bb4"
+checksum = "bebca505403a4bea17b9f6d58f3e5f0eecca184c059cd90063481dbc1f015625"
 
 [[package]]
 name = "ic-platform-types"
@@ -936,6 +935,7 @@ name = "ic-storage-platform-qualification"
 version = "0.0.0"
 dependencies = [
  "ic-platform 0.19.0",
+ "ic-platform-runtime",
  "ic-storage",
 ]
 

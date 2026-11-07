@@ -1,4 +1,4 @@
-//! Independent consumer of Storage and Platform's runtime feature (#152).
+//! Independent consumer of Storage and the canonical Platform Runtime (#152).
 //! Graph admission proves one executor; installed backing tests remain separate.
 use ic_storage::{
     AllocationGrants, DefaultMemoryImpl, GenericAllocationPolicy, MemoryAuthority, MemoryBacking,

@@ -246,7 +246,7 @@ with their original helper. Historical released receipts and archives are untouc
 ShellCheck's separate reuse path and tool/compiler/dependency pins remain unchanged.
 Rust 1.99.1 remains both support floor and development/release compiler.
 
-Production Storage imports `ic-platform-runtime` 0.19.0 only on Wasm. Native
+Production Storage imports `ic-platform-runtime` 0.20.0 only on Wasm. Native
 production selects no Platform/Runtime, runtime guard or Types provider. Wasm
 production selects `ic0` alone: safe public `stable64_*` wrappers cover size,
 growth, reads and writes. The execution boundary restored in Storage 0.65.2
@@ -255,7 +255,11 @@ and Candid. Platform 0.19's Types 0.18 changes are confined to explicitly select
 development/runtime-composition graphs, not Storage's public codec types.
 Logging's Wasm qualification entrypoints explicitly select CDK as a dev dependency.
 The separate unpublished `ic-storage-platform-qualification` consumer composes
-candidate Storage with the facade's `runtime` feature for issue #152. Adoption
+candidate Storage with the canonical Runtime's `runtime` feature for issue #152.
+The facade supplies only Principal types in that fixture; selecting its older
+runtime would introduce a conflicting executor guard. Runtime 0.20's ordinary
+entrypoint macros remain under `ic_platform_runtime::cdk`; Logging's fixture
+already uses that path. No production API or stored layout changes. Adoption
 checks require one canonical Runtime/guard on native and Wasm and compile both
 graphs; its native test checks governed cell creation/reopen.
 The native qualifier uses Platform 0.19.0's owned PocketIC client 0.19.0,
@@ -270,7 +274,7 @@ conversion layer are added. Evidence: `target/platform-019-adoption/`.
 Platform 0.18 removed its stable-structures facade. The unpublished comparison
 benchmark alone retains an explicitly named `ic-platform-stable-benchmark` alias
 for Platform 0.17, with only its `stable-structures` feature. Its system calls use
-Runtime 0.19 and its native driver uses Platform 0.19. Production has no upstream
+Runtime 0.20 and its native driver uses Platform 0.19. Production has no upstream
 collection dependency. Optional crypto/certification profiles remain unselected.
 
 The maintainer-requested upstream comparison additionally selects the immutable
