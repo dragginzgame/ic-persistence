@@ -265,7 +265,7 @@ This preset uses one sample, three stateful rounds and shuffled population of
 variable Map values use 31/32/33/256 bytes. These sizes retain coverage of the
 previous engine's inline threshold; the copied engine has ICSS geometry.
 Batch/scan lengths are `1, 5, 6, 11, 12, 31, 32, 64, 128`. The ten case/payload
-combinations produce 1,746 aggregate rows and 10,476 measured backend calls.
+combinations produce 1,962 aggregate rows and 11,772 measured backend calls.
 
 The normal Map matrix also includes direct `Nth`/`NthBack`, `AlternatingScan`,
 `ValuesScan`, `ReverseKeysScan` and `BoundedKeysScan`. Value-only responses use
@@ -274,6 +274,13 @@ Bounded key scans use the same lower-inclusive, upper-exclusive interval as
 bounded pair scans. Key-only paths call each library's public key iterator;
 values are not fetched merely to normalize results. Skipping uses each public
 iterator API, including any traversal needed by that implementation.
+
+`IterLast`, `KeysLast` and `ValuesLast` repeatedly call a fresh iterator's
+`last()` for Map entries, keys and values. Set also measures `IterLast`.
+These are distinct from Map's existing `Last` operation, which calls
+`last_key_value()` directly. The native model checks every result, empty
+collections and unchanged state. Rebuild both backends and the driver together
+for this expanded private operation schema.
 
 Paired Set measurements include forward scans and `Nth`. Published ICSS's Set
 iterator and the pinned Git control are forward-only; reverse/mixed-end Set

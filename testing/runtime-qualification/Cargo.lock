@@ -804,9 +804,9 @@ dependencies = [
 
 [[package]]
 name = "ic-platform-macros"
-version = "0.19.4"
+version = "0.19.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c0e5f1c4b4931ed6cc321160096f19c1b6449f7a118c0da1bcca76664b04a529"
+checksum = "69216204e7b9cf7daf73280719d4afb0311083cb95f932c856cea2ca8ad6772e"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -847,9 +847,9 @@ dependencies = [
 
 [[package]]
 name = "ic-platform-runtime"
-version = "0.19.4"
+version = "0.19.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c36c7a65b74de9cb53145545a50f3603d988f61d24936923cfba720f19f16c57"
+checksum = "50c3993129a37d30563cc7cda9e38e922c7f5986c9c9424dae804d9e5f2545ae"
 dependencies = [
  "ic-platform-macros",
  "ic-platform-runtime-guard",
@@ -862,9 +862,9 @@ dependencies = [
 
 [[package]]
 name = "ic-platform-runtime-guard"
-version = "0.19.4"
+version = "0.19.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "eca2d68a0a478b5eccf82d55776a8a095a3dea822f9e097888199faa39951616"
+checksum = "7b77c70c88f0192ffd34fffc44d0f47bee07c84dcd9364ecaa8657307dae4bb4"
 
 [[package]]
 name = "ic-platform-types"

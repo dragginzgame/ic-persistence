@@ -218,9 +218,9 @@ checksum = "2304e00983f87ffb38b55b444b5e3b60a884b5d30c0fca7d82fe33449bbe55ea"
 
 [[package]]
 name = "ic-build"
-version = "0.76.0"
+version = "0.77.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e46dc1d452989a7a9637fee92652e73b0776093c4e3f528e788921dfb26476a5"
+checksum = "41883c4420ed9c70d4a0be08718141675001315f1f1964e13169b253bbb3ee01"
 dependencies = [
  "cargo_metadata",
  "ic-host-artifacts",
@@ -304,9 +304,9 @@ dependencies = [
 
 [[package]]
 name = "ic-platform-runtime"
-version = "0.19.4"
+version = "0.19.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c36c7a65b74de9cb53145545a50f3603d988f61d24936923cfba720f19f16c57"
+checksum = "50c3993129a37d30563cc7cda9e38e922c7f5986c9c9424dae804d9e5f2545ae"
 
 [[package]]
 name = "ic-storage"

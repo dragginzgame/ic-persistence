@@ -268,6 +268,7 @@ impl Case {
                 RemoveMiss,
                 Reinsert,
                 RemoveInserted,
+                IterLast,
             ],
             "Region" => vec![
                 Control,

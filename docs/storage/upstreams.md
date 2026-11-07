@@ -70,6 +70,14 @@ original range to the current length after truncation and never includes later
 appends outside that range. Like `nth()`, it does not validate discarded records.
 No collection layout or successful result changes.
 
+Map entry iterator `last()` uses the existing reverse cursor, including bounded
+and partially consumed ranges; Set inherits that shortcut. ICSS 0.7.2's entry
+iterators still walk forward. Its direct Map `last_key_value()` and Set `last()`
+are already efficient alternatives. Key/value projection iterators remain
+unchanged. This shortcut does not validate discarded keys or nodes; it preserves
+successful results and requires no image migration. The backing study records
+instruction gains, stateful-trace regressions and benchmark Wasm-size growth.
+
 Vector direct Get/Pop reads of fixed-width values up to 32 bytes without a
 destructor use a small stack buffer instead of ICSS's temporary heap allocation.
 A separate helper keeps stack preparation off the out-of-range path. Larger,
@@ -88,6 +96,13 @@ and variable-width keys keep their existing paths. These changes apply to Map,
 Set and region views without changing images, geometry, bounds or custody.
 The [backing study](../audits/recurring/storage-icss-backing-parity-2026-11-06.md)
 retains before/after and whole-handler comparisons with published ICSS 0.7.2.
+
+Lazy B-tree key reads transfer their existing buffer to codecs for key types
+with destructors, allowing String and byte-vector decoders to reuse it. ICSS
+0.7.2 passes this buffer as borrowed bytes. Keys without destructors retain the
+borrowed path: transferring every buffer regressed fixed-array iteration in the
+matched matrix. Eager keys still borrow their shared read buffer. The choice
+folds at compile time and changes neither images nor successful decoding semantics.
 
 Codec and engine failures trap. Framing admission and explicit reservations can
 still return typed errors; Result signatures do not promise pre-write rejection.

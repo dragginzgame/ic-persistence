@@ -97,6 +97,81 @@ fn map_images_cross_read_after_splits_overflows_and_removals() {
         model.into_iter().collect::<Vec<_>>()
     );
 }
+fn owned_key_image_history<K>(key: impl Fn(u32, usize) -> K)
+where
+    K: ic_storage::storable::Storable + Ord + Clone + std::fmt::Debug,
+{
+    let runtime = runtime();
+    let mut stock =
+        icss::BTreeMap::<Reference<K>, Reference<u64>, _>::new(Checked(memory(&runtime)));
+    let mut model = BTreeMap::new();
+    // Both sides of eager loading, plus keys spanning multiple overflow pages.
+    for id in (0..96).rev() {
+        let width = [4, 16, 17, 31, 4096, 65536][id as usize % 6];
+        let key = key(id, width);
+        stock.insert(Reference(key.clone()), Reference(u64::from(id)));
+        model.insert(key, u64::from(id));
+    }
+    drop(stock);
+    let mut map = StableBTreeMap::<K, u64>::load(memory(&runtime)).unwrap();
+    for (key, value) in &model {
+        assert_eq!(map.get(key).unwrap(), Some(*value));
+    }
+    let expected: Vec<_> = model
+        .iter()
+        .map(|(key, value)| (key.clone(), *value))
+        .collect();
+    {
+        let mut actual = map.iter();
+        let mut expected = expected.iter();
+        let mut forward = true;
+        loop {
+            let (a, b) = if forward {
+                (actual.next(), expected.next())
+            } else {
+                (actual.next_back(), expected.next_back())
+            };
+            assert_eq!(
+                a.map(|entry| entry.unwrap().into_pair().unwrap()),
+                b.cloned()
+            );
+            if b.is_none() {
+                break;
+            }
+            forward = !forward;
+        }
+    }
+    for (index, (key, _)) in expected.iter().enumerate() {
+        if index % 3 == 0 {
+            assert_eq!(map.remove(key).unwrap(), model.remove(key));
+        } else {
+            assert_eq!(
+                map.insert(key.clone(), 1000).unwrap(),
+                model.insert(key.clone(), 1000)
+            );
+        }
+    }
+    drop(map);
+    let stock = icss::BTreeMap::<Reference<K>, Reference<u64>, _>::load(Checked(memory(&runtime)));
+    assert_eq!(
+        stock
+            .iter()
+            .map(|entry| {
+                let (key, value) = entry.into_pair();
+                (key.0, value.0)
+            })
+            .collect::<Vec<_>>(),
+        model.into_iter().collect::<Vec<_>>()
+    );
+}
+
+#[test]
+fn string_and_byte_keys_cross_read_overflows_and_mixed_end_iteration() {
+    let text = |id: u32, width: usize| format!("{id:04}{}", "x".repeat(width - 4));
+    owned_key_image_history(text);
+    owned_key_image_history(|id, width| text(id, width).into_bytes());
+}
+
 #[derive(Clone)]
 struct Bytes(Vec<u8>);
 impl ic_storage::storable::Storable for Bytes {

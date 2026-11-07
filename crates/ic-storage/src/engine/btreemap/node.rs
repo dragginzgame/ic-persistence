@@ -201,7 +201,14 @@ impl<K: Storable + Ord + Clone> Node<K> {
         let mut bytes = Vec::with_capacity(size);
         read_to_vec(&reader, Address::from(offset.get()), &mut bytes, size);
 
-        K::from_bytes(Cow::Borrowed(&bytes))
+        // This buffer belongs only to this key. Let owning codecs reuse it
+        // instead of copying it while decoding String or Vec<u8> keys. Keep
+        // non-owning types on the cheaper borrowed path; this folds per type.
+        if std::mem::needs_drop::<K>() {
+            K::from_bytes(Cow::Owned(bytes))
+        } else {
+            K::from_bytes(Cow::Borrowed(&bytes))
+        }
     }
     fn load_value_from_memory<M: Memory>(
         &self,

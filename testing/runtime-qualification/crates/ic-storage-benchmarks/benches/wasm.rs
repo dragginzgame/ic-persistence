@@ -447,13 +447,33 @@ mod canister {
             let mut entries = Vec::with_capacity(r.count as usize);
             let mut booleans = Vec::with_capacity(r.count as usize);
             let mut key_entries = Vec::with_capacity(r.count as usize);
-            let mut values = if r.operation == Operation::ValuesScan {
+            let mut values = if matches!(r.operation, Operation::ValuesScan | Operation::ValuesLast)
+            {
                 Vec::with_capacity(r.count as usize)
             } else {
                 Vec::new()
             };
             let start = ic0::performance_counter(0);
-            if r.operation == Operation::KeysScan {
+            if r.operation == Operation::IterLast {
+                for _ in 0..r.count {
+                    if let Some(entry) = self.map.iter().last() {
+                        let (key, value) = checked!(checked!(entry).into_pair());
+                        entries.push((key, Some(value)));
+                    }
+                }
+            } else if r.operation == Operation::KeysLast {
+                for _ in 0..r.count {
+                    if let Some(key) = self.map.keys().last() {
+                        key_entries.push(checked!(key));
+                    }
+                }
+            } else if r.operation == Operation::ValuesLast {
+                for _ in 0..r.count {
+                    if let Some(value) = self.map.values().last() {
+                        values.push(checked!(value));
+                    }
+                }
+            } else if r.operation == Operation::KeysScan {
                 for key in self.map.keys().take(r.count as usize) {
                     key_entries.push(checked!(key));
                 }
@@ -566,7 +586,7 @@ mod canister {
                         .into_iter()
                         .map(|(k, v)| (k.id(), Some(vec![u8::from(v)])))
                         .collect()
-                } else if r.operation == Operation::ValuesScan {
+                } else if matches!(r.operation, Operation::ValuesScan | Operation::ValuesLast) {
                     values
                         .into_iter()
                         .enumerate()
@@ -574,7 +594,10 @@ mod canister {
                         .collect()
                 } else if matches!(
                     r.operation,
-                    Operation::KeysScan | Operation::ReverseKeysScan | Operation::BoundedKeysScan
+                    Operation::KeysScan
+                        | Operation::ReverseKeysScan
+                        | Operation::BoundedKeysScan
+                        | Operation::KeysLast
                 ) {
                     key_entries
                         .into_iter()

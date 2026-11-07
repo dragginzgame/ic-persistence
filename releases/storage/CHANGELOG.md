@@ -3,6 +3,24 @@
 Current releases use the Storage naming. [Earlier published history](https://github.com/dragginzgame/ic-storage/blob/23deb81c48d58558ac3b0ce36bf266ddc25dca91/releases/persistence/CHANGELOG.md)
 retains its original package and release identities.
 
+## [0.68.4] - Unreleased
+
+### ⚡ Performance
+
+- Reuse large-key read buffers when decoding owning B-tree keys, avoiding an
+  extra String/byte-vector copy. Keep keys without destructors on their existing
+  path. Public APIs, stored layouts and allocation governance are unchanged.
+  [Details and measured tradeoffs](0.68.md).
+- Find the last remaining Map/Set iterator entry through the reverse cursor,
+  avoiding a full forward traversal. Bounded and partially consumed iterators
+  retain their results; no stored-layout migration is required.
+
+### 🔧 Tooling
+
+- Adopt IC Build 0.77.0 for the native helper and release-metadata CLI.
+  Its removed cache-timing getters have no Storage callers; public collection
+  APIs and formats are unchanged. [Details](0.68.md).
+
 ## [0.68.3] - 2026-11-07
 
 ### ⚡ Performance

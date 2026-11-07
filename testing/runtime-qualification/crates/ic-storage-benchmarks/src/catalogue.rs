@@ -402,6 +402,7 @@ pub fn operations(case: Case) -> Vec<Operation> {
             RemoveMiss,
             Reinsert,
             RemoveInserted,
+            IterLast,
         ],
         Collection::Vector => vec![
             Control,

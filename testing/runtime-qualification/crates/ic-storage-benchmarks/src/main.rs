@@ -1007,14 +1007,30 @@ fn expected(model: &mut BTreeMap<u64, Vec<u8>>, r: Request) -> Vec<(u64, Option<
             })
             .collect();
     }
-    if matches!(r.operation, First | Last) {
+    if matches!(r.operation, First | Last | IterLast | KeysLast | ValuesLast) {
         let entry = if r.operation == First {
             model.first_key_value()
         } else {
             model.last_key_value()
         };
         return entry
-            .map(|(&k, v)| vec![(k, Some(v.clone())); r.count as usize])
+            .map(|(&key, value)| {
+                (0..r.count)
+                    .map(|rank| {
+                        let key = if r.operation == ValuesLast {
+                            u64::from(rank)
+                        } else {
+                            key
+                        };
+                        let value = if r.operation == KeysLast || structure == "Set" {
+                            vec![]
+                        } else {
+                            value.clone()
+                        };
+                        (key, Some(value))
+                    })
+                    .collect()
+            })
             .unwrap_or_default();
     }
     if matches!(

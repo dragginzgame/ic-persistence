@@ -74,12 +74,9 @@ impl<K: Storable + Ord + Clone, V: Storable, M: Memory> Iterator for MapIter<'_,
     fn nth(&mut self, n: usize) -> Option<Self::Item> {
         self.0.nth(n).map(|e| Ok(entry(e)))
     }
-    #[expect(
-        clippy::double_ended_iterator_last,
-        reason = "Delegate to the ICSS iterator unchanged for the initial engine baseline"
-    )]
-    fn last(self) -> Option<Self::Item> {
-        self.0.last().map(|e| Ok(entry(e)))
+    fn last(mut self) -> Option<Self::Item> {
+        // The reverse cursor already respects bounds and consumption from either end.
+        self.next_back()
     }
     fn count(self) -> usize {
         self.0.count()

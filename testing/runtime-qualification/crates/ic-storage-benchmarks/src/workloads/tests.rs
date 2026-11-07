@@ -163,6 +163,7 @@ fn ordered_profile_covers_node_boundaries_inline_transitions_and_supported_set_o
             assert!(count <= crate::max_batch(case));
         }
         assert!(case.operations().contains(&Operation::Nth));
+        assert!(case.operations().contains(&Operation::IterLast));
         if case.structure() == "Map" {
             for op in [
                 Operation::NthBack,
@@ -170,6 +171,8 @@ fn ordered_profile_covers_node_boundaries_inline_transitions_and_supported_set_o
                 Operation::ReverseKeysScan,
                 Operation::BoundedKeysScan,
                 Operation::AlternatingScan,
+                Operation::KeysLast,
+                Operation::ValuesLast,
             ] {
                 assert!(case.operations().contains(&op));
             }

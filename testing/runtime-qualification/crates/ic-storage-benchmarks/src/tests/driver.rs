@@ -522,6 +522,53 @@ fn ordered_iteration_model_preserves_key_identity_rank_and_range_endpoints() {
         seed: 0,
         pattern: Pattern::Sequential,
     };
+    let original = model.clone();
+    for (operation, expected_rows) in [
+        (Operation::IterLast, vec![(12, Some(vec![12])); 3]),
+        (Operation::KeysLast, vec![(12, Some(vec![])); 3]),
+        (
+            Operation::ValuesLast,
+            vec![
+                (0, Some(vec![12])),
+                (1, Some(vec![12])),
+                (2, Some(vec![12])),
+            ],
+        ),
+    ] {
+        assert_eq!(
+            expected(
+                &mut model,
+                Request {
+                    operation,
+                    ..request
+                }
+            ),
+            expected_rows
+        );
+        assert_eq!(model, original);
+        assert!(
+            expected(
+                &mut BTreeMap::new(),
+                Request {
+                    operation,
+                    ..request
+                }
+            )
+            .is_empty()
+        );
+    }
+    assert_eq!(
+        expected(
+            &mut model,
+            Request {
+                case: Case::SetU64,
+                operation: Operation::IterLast,
+                payload: 0,
+                ..request
+            }
+        ),
+        vec![(12, Some(vec![])); 3]
+    );
     assert_eq!(
         expected(&mut model, request),
         vec![(2, Some(vec![2])), (5, Some(vec![5])), (8, Some(vec![8]))]

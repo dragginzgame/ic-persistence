@@ -8,6 +8,7 @@ use std::{cell::Cell, rc::Rc};
 mod cells;
 mod framing;
 mod improvements;
+mod iteration;
 mod owned;
 mod regions;
 

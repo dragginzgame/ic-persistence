@@ -3,6 +3,7 @@
 Reference: published **ic-stable-structures 0.7.2**, not earlier Storage. Updated
 2026-11-07: routing-read improvements preserve layouts, APIs and governance.
 Steps 1–8 shipped in Storage 0.68.1; steps 9–10 shipped in Storage 0.68.3.
+Steps 11–12 target 0.68.4; the current handoff records delivery state.
 
 The [step/round matrices](../../measurements/storage-icss-backing-steps.csv) and
 [payload matrix](../../measurements/storage-icss-backing-payloads.csv) retain both costs.
@@ -138,6 +139,81 @@ The wider `ordered` control checks 10,476 calls per run and 1,746 cells. Combine
 changes improve 1,654 full-handler cells; 54 match and 38 regress. Worst: a 128-entry
 string scan rises 1.63% (3,595,044 → 3,653,675; ICSS 3,626,366). This is a retained
 tradeoff, not universal parity. Both wider boundary probes preserve all loop counts.
+
+## Step 11: transfer lazy key buffers into owning decoders
+
+ICSS 0.7.2 and the copied engine borrow a newly allocated lazy-key buffer for
+decoding, forcing String/byte-vector codecs to copy it. Transfer it as owned
+bytes when the key has a destructor; a compile-time check keeps fixed arrays on
+their existing borrowed path. Eager keys still use their shared buffer.
+
+The unconditional trial improved strings but regressed fixed-array iterator
+handlers up to 1.07%. The retained refinement removes those regressions.
+Full-handler instructions, 256 rows, uniform access, shuffled setup, one sample
+over three stateful rounds, ICSS eight-page buckets:
+
+| String-key operation | 0.68.3 | Unconditional | Retained | ICSS 0.7.2 |
+| --- | ---: | ---: | ---: | ---: |
+| Map Get, batch 32 | 2,158,247 | 2,073,573 | 2,073,573 | 2,178,251 |
+| Map Replace, batch 32 | 2,993,507 | 2,859,809 | 2,859,809 | 2,970,587 |
+| Scan, 128 entries | 3,653,675 | 3,600,612 | 3,600,612 | 3,626,366 |
+| Set Get, batch 32 | 1,677,730 | 1,590,373 | 1,590,373 | 1,727,726 |
+
+Ordinary attempts `qEcOwW`/`tKETst`/`SmqSbx` each check 10,476 calls, as do their
+frozen boundary probes; every probe preserves all ordinary inner counts. ICSS
+modules/driver and all median stable-page counts match. Of 1,746 refined handler
+cells, 289 improve, 1,452 match and only five no-op controls regress (≤0.095%).
+Loop cells: 287 improve, 1,457 match, two regress: a no-op and single-key scan
+(+113 instructions, 0.116%). Integer/fixed-byte measurements are unchanged.
+
+The complete type-harness module falls from 13,793,677 to 13,789,967 bytes;
+its code section falls from 11,603,300 to 11,599,590 bytes (both −3,710).
+Code size is the Wasm section-10 payload length; no post-link optimization passes.
+These are benchmark modules, not minimal production modules.
+Raw evidence: `target/evidence/storage-owned-key/`; selected CSV rows: `owned-key-*`.
+Seven native ICSS image tests cover all five collection forms, including new
+4–65,536-byte String/byte-vector key histories. All 21 adapter tests, strict core
+and benchmark lint, and original installed Storage IO/upgrade/rollback pass.
+Other optimizer profiles and the full 73-type timing catalogue were not rerun.
+
+## Step 12: select the last remaining entry through the reverse cursor
+
+Map iterator `last()` now calls its existing reverse cursor; Set inherits it.
+Ranges and partial consumption retain their results. ICSS 0.7.2's iterator
+still scans forward, though its direct Map/Set last-entry APIs are already fast.
+Keys/values projections remain unchanged. No new cache, public API or layout.
+
+The expanded ordered harness separates `IterLast`, `KeysLast` and `ValuesLast`
+from direct `Last`. Baseline `ksmFDM` includes step 11; candidate `w0luRK` differs
+only in this shortcut and native tests. Each validates 11,772 calls / 1,962 cells.
+Full-handler instructions below: 256 records, 32 fresh iterator-last queries,
+shuffled setup, uniform inputs, one seed and medians over three stateful rounds;
+ICSS uses eight-page buckets. CSV rows: `iterator-last-handler-*`.
+
+| Case | Before | After | ICSS 0.7.2 |
+| --- | ---: | ---: | ---: |
+| u64 Map | 7,757,897 | 1,182,226 | 8,623,678 |
+| String Map | 25,413,172 | 1,833,104 | 27,747,470 |
+| u64 Set | 7,688,250 | 1,107,900 | 8,746,399 |
+| String Set | 25,346,909 | 1,519,380 | 30,710,448 |
+
+All 90 `IterLast` cells improve: 58–98% in-loop and 26–97% for full handlers.
+Across the whole matrix, handler cells improve/match/regress 139/1,757/66;
+loop cells 126/1,783/53. Worst handler regression: U64Bytes ValuesLast, 256-byte
+values, batch 32, 26,702,298 → 27,300,590 (+2.24%; ICSS 26,111,518).
+Outside key/value-last controls the worst handler increase is 0.282%.
+Do not attribute those stateful-trace differences to a specific allocator cause
+without further isolation. Ordinary lookup and scan algorithms are unchanged.
+
+ICSS modules and driver are byte-identical; every boundary probe preserves all
+ordinary inner counts and all median stable-page counts match. Benchmark Wasm
+grows 14,064,129 → 14,360,735 bytes; section-10 payload grows
+11,868,259 → 12,137,165. These are full-catalogue harness sizes, not application sizes.
+All 23 adapter and 49 benchmark/model/image tests, strict lint and focused
+installed IO/upgrade/rollback pass. Evidence: `target/evidence/storage-iterator-last/`.
+Reproduce with `BENCH_WORKLOAD=ordered BENCH_SAMPLES=1 make benchmark-storage`
+and the benchmark guide's boundary probes. Full type timing and all optimizer
+profiles were not rerun; this is a terminal-iterator gain, not universal parity.
 
 ## Qualification, reproduction and delivery boundary
 

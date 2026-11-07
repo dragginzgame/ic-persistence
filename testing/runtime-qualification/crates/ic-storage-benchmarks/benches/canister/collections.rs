@@ -48,7 +48,13 @@ impl<K: BenchKey + Storable> Benchmark for TypedSet<K> {
         let mut results = Vec::with_capacity(r.count as usize);
         let mut scan = Vec::with_capacity(r.count as usize);
         let start = ic0::performance_counter(0);
-        if r.operation == Operation::Scan {
+        if r.operation == Operation::IterLast {
+            for _ in 0..r.count {
+                if let Some(key) = self.set.iter().last() {
+                    scan.push(checked!(key));
+                }
+            }
+        } else if r.operation == Operation::Scan {
             for k in self.set.iter().take(r.count as usize) {
                 scan.push(checked!(k));
             }
@@ -79,7 +85,10 @@ impl<K: BenchKey + Storable> Benchmark for TypedSet<K> {
             }
         }
         let instructions = ic0::performance_counter(0) - start;
-        let entries = if matches!(r.operation, Operation::Scan | Operation::Nth) {
+        let entries = if matches!(
+            r.operation,
+            Operation::Scan | Operation::Nth | Operation::IterLast
+        ) {
             scan.into_iter().map(|k| (k.id(), Some(vec![]))).collect()
         } else {
             results

@@ -111,8 +111,11 @@ pub enum Operation {
     BoundedKeysScan,
     Decode,
     WarmGet,
+    IterLast,
+    KeysLast,
+    ValuesLast,
 }
-pub const OPERATIONS: [Operation; 24] = [
+pub const OPERATIONS: [Operation; 27] = [
     Operation::Control,
     Operation::Get,
     Operation::MissAbove,
@@ -137,6 +140,9 @@ pub const OPERATIONS: [Operation; 24] = [
     Operation::ValuesScan,
     Operation::ReverseKeysScan,
     Operation::BoundedKeysScan,
+    Operation::IterLast,
+    Operation::KeysLast,
+    Operation::ValuesLast,
 ];
 ///
 /// Request
