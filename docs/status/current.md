@@ -3,9 +3,9 @@
 ## Pending 0.68.6: avoid redundant B-tree IO, setup and root searches
 
 The [IO](../audits/recurring/storage-btree-io-2026-11-07.md), [empty-value](../audits/recurring/storage-empty-values-2026-11-07.md) and [save/search](../audits/recurring/storage-save-search-2026-11-07.md) studies own per-step matrices and evidence paths.
-Keep tail repair, empty IO/value and root-search shortcuts: −8,358 Wasm bytes,
-up to 11.35% handler savings versus 0.68.5; 368/344/0 improved/equal/regressed cells.
+Keep tail repair, empty IO/value and root-search shortcuts: −8,358 Wasm bytes, up to 11.35% handler savings versus 0.68.5; 368/344/0 improved/equal/regressed cells.
 Reject prefix reads, the general empty-read branch and overflow-list transfer. Native/interchange checks pass.
+Failed batch `batch-qZrTDTJ9`: native metering tests failed Wasm test compilation; corrected target gate, no release effects. Evidence retained.
 Installed original IO/upgrade/rollback passes. No API/layout change, version bump or delivery.
 
 ## Delivered: Storage 0.68.5

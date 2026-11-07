@@ -395,5 +395,5 @@ const fn compute_num_overflow_pages_needed(size: u64, page_size: u64) -> u64 {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, not(target_arch = "wasm32")))]
 mod tests;
