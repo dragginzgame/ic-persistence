@@ -1,15 +1,21 @@
 # Current handoff — 2026-11-07
 
-## Pending 0.68.5: Cell header writes and Host adoption
+## Delivered: Storage 0.68.5
 
+Published and non-yanked at `56102f4990bcf11a3ceaebe6bb2b1fb3ff9d380c`, tag
+`storage-v0.68.5`, from source `cc29dfe87c9252347db3c0db4c314b03177a889b`.
+Batch `batch-KNdyHdLP` passed all 12 release stages and final archive qualification.
+Registry and downloaded archive checksums match the final receipt and clean VCS identity.
+Publication and guarded local reconciliation passed; no adapter release or cleanup.
+Evidence: `target/evidence/storage-0685-deploy/`; receipts remain under
+`target/release-frozen/batch-KNdyHdLP/target/release-validation/` and recovery under
+`.git/release-state/frozen/batch-KNdyHdLP/`.
 Combine Cell header writes: Wasm −662 bytes, batch-32 handler −0.93%; other depth cells equal.
 The [study](../audits/recurring/storage-write-paths-2026-11-07.md) owns 73-type/native/runtime proof.
-Both B-tree trials were reverted. No version bump, commit or delivery.
-
+Both B-tree trials were reverted. Public APIs and retained formats are unchanged.
 Host Artifacts/FS/Process 0.75.0 and matching Build/editor 0.78.0 are adopted.
-All 88 helper tests, strict lint, pins/production graphs, formatting and real
-offline metadata recovery for all three groups pass; editor setup/check pass.
-Evidence: `target/evidence/ic-host-075-adoption/`; independent workspace unchanged.
+All 88 helper tests and three-group offline metadata recovery pass;
+focused adoption evidence remains in `target/evidence/ic-host-075-adoption/`.
 
 ## Rejected terminal-iterator experiments
 
@@ -30,17 +36,11 @@ is `.git/release-state/frozen/batch-Er9VPHO8/`. No cleanup or adapter release.
 
 Prior Build proof: `target/evidence/ic-build-adoption/`; Runtime 0.19.5 original/O3/Os/Oz
 installed IO, custody, upgrade and rollback: `target/qualification/runtime/attempt.uMwbLm`.
-Reuse lazy-key read buffers for types with destructors; preserve fixed-key paths.
-Map/Set entry iterator `last()` now uses the existing reverse cursor. Public
-APIs, formats and governance are unchanged; no host migration is required.
 The [backing study](../audits/recurring/storage-icss-backing-parity-2026-11-06.md)
-and ordered-iterator study own the matrices. The key-buffer step improves selected string
-handlers 1.5–5.2% versus 0.68.3; evidence: `target/evidence/storage-owned-key/`.
-The 11,772-call matrix improves all 90 entry-last cells; the ordered study retains
-handler gains, a 2.24% worst regression and +296,606-byte benchmark Wasm growth.
-All 23 adapter and 49 benchmark tests and focused installed qualification passed.
-Evidence was recorded under `target/evidence/storage-iterator-last/`; full type
-timing was not rerun. Release qualification is separate from benchmark claims.
+and ordered-iterator study own the key-buffer and entry-last matrices, tradeoffs
+and unchanged API/layout contract. Evidence: `target/evidence/storage-owned-key/`
+and `storage-iterator-last/`. All 23 adapter and 49 benchmark tests and focused
+installed qualification passed; full type timing was not rerun.
 
 ## Delivered: Storage 0.68.3
 
